@@ -1,0 +1,35 @@
+<Window x:Class="GGEZArchiver.View.CompressionProgressWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:GGEZArchiver.View"
+        mc:Ignorable="d"
+        Title="圧縮中..." Height="200" Width="400" 
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
+        WindowStyle="ToolWindow">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ファイル名 -->
+        <TextBlock Grid.Row="0" x:Name="FileNameTextBlock" 
+                   Text="ファイル名" FontWeight="Bold" Margin="0,0,0,10"/>
+
+        <!-- 進行状況バー -->
+        <ProgressBar Grid.Row="1" x:Name="ProgressBar" 
+                     Height="20" Margin="0,0,0,10"/>
+
+        <!-- 進行状況テキスト -->
+        <TextBlock Grid.Row="2" x:Name="ProgressTextBlock" 
+                   Text="0%" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+
+        <!-- 詳細情報 -->
+        <TextBlock Grid.Row="3" x:Name="DetailTextBlock" 
+                   Text="準備中..." TextWrapping="Wrap" VerticalAlignment="Center"/>
+    </Grid>
+</Window> 
