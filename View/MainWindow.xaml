@@ -5,48 +5,76 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GGEZArchiver.View"
         mc:Ignorable="d"
-        Title="GGEZ Extract - 設定" Height="463" Width="680" 
+        Title="GGEZArchiver" Height="381" Width="739"
         WindowStartupLocation="CenterScreen" ResizeMode="CanMinimize">
     <Grid Margin="15">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition/>
-            <RowDefinition Height="Auto" MinHeight="37.96"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+            <RowDefinition Height="Auto" MinHeight="37.96" />
         </Grid.RowDefinitions>
 
         <!-- 出力先設定 -->
         <Grid Grid.Row="0" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            
+
             <!-- 展開用出力先設定 -->
             <GroupBox Grid.Column="0" Header="展開用出力先設定">
                 <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="ExtractionOutputPathTextBox" Grid.Column="0" 
-                             VerticalAlignment="Center" IsReadOnly="True"/>
-                    <Button x:Name="ExtractionBrowseButton" Grid.Column="1" Content="参照..." 
-                            Margin="8,0,0,0" Padding="8,4" Click="ExtractionBrowseButton_Click"/>
+
+                    <!-- 出力先パターン選択 -->
+                    <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
+                        <RadioButton x:Name="ExtractionOutputToSameDirectoryRadio" Content="元のファイルと同じディレクトリに出力"
+                                     Margin="0,2" Checked="ExtractionOutputPattern_Changed" />
+                        <RadioButton x:Name="ExtractionOutputToDirectoryRadio" Content="ディレクトリを指定する"
+                                     Margin="0,2" IsChecked="True" Checked="ExtractionOutputPattern_Changed" />
+                    </StackPanel>
+
+                    <!-- ディレクトリ指定 -->
+                    <TextBox x:Name="ExtractionOutputPathTextBox" Grid.Row="1" Grid.Column="0"
+                             VerticalAlignment="Center" IsReadOnly="True" />
+                    <Button x:Name="ExtractionBrowseButton" Grid.Row="1" Grid.Column="1" Content="参照..."
+                            Margin="8,0,0,0" Padding="8,4" Click="ExtractionBrowseButton_Click" />
                 </Grid>
             </GroupBox>
-            
+
             <!-- 圧縮用出力先設定 -->
             <GroupBox Grid.Column="2" Header="圧縮用出力先設定">
                 <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBox x:Name="CompressionOutputPathTextBox" Grid.Column="0" 
-                             VerticalAlignment="Center" IsReadOnly="True"/>
-                    <Button x:Name="CompressionBrowseButton" Grid.Column="1" Content="参照..." 
-                            Margin="8,0,0,0" Padding="8,4" Click="CompressionBrowseButton_Click"/>
+
+                    <!-- 出力先パターン選択 -->
+                    <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,8">
+                        <RadioButton x:Name="CompressionOutputToSameDirectoryRadio" Content="元のファイルと同じディレクトリに出力"
+                                     Margin="0,2" Checked="CompressionOutputPattern_Changed" />
+                        <RadioButton x:Name="CompressionOutputToDirectoryRadio" Content="ディレクトリを指定する"
+                                     Margin="0,2" IsChecked="True" Checked="CompressionOutputPattern_Changed" />
+                    </StackPanel>
+
+                    <!-- ディレクトリ指定 -->
+                    <TextBox x:Name="CompressionOutputPathTextBox" Grid.Row="1" Grid.Column="0"
+                             VerticalAlignment="Center" IsReadOnly="True" />
+                    <Button x:Name="CompressionBrowseButton" Grid.Row="1" Grid.Column="1" Content="参照..."
+                            Margin="8,0,0,0" Padding="8,4" Click="CompressionBrowseButton_Click" />
                 </Grid>
             </GroupBox>
         </Grid>
@@ -54,100 +82,83 @@
         <!-- 設定エリア（左右分割） -->
         <Grid Grid.Row="1" Margin="0,0,0,12">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="12"/>
-                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
             <!-- ファイル関連付け設定 -->
             <GroupBox Grid.Column="0" Header="ファイル関連付け設定">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="8">
-                        <CheckBox x:Name="ZipCheckBox" Content="ZIPファイル (.zip)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                        <CheckBox x:Name="SevenZipCheckBox" Content="7-Zipファイル (.7z)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                        <CheckBox x:Name="TarCheckBox" Content="TARファイル (.tar)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                        <CheckBox x:Name="GzCheckBox" Content="GZIPファイル (.gz)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                        <CheckBox x:Name="Bz2CheckBox" Content="BZIP2ファイル (.bz2)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                        <CheckBox x:Name="LzmaCheckBox" Content="LZMAファイル (.lzma)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                        <CheckBox x:Name="XzCheckBox" Content="XZファイル (.xz)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                        <CheckBox x:Name="RarCheckBox" Content="RARファイル (.rar)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                        <CheckBox x:Name="LzhCheckBox" Content="LZHファイル (.lzh)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                        <CheckBox x:Name="CabCheckBox" Content="CABファイル (.cab)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                        <CheckBox x:Name="ArjCheckBox" Content="ARJファイル (.arj)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                        <CheckBox x:Name="ZCheckBox" Content="Zファイル (.z)" 
-                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed"/>
-                    </StackPanel>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                    <UniformGrid Columns="3" Margin="8">
+                        <CheckBox x:Name="ZipCheckBox" Content="ZIPファイル (.zip)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                        <CheckBox x:Name="SevenZipCheckBox" Content="7-Zipファイル (.7z)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                        <CheckBox x:Name="TarCheckBox" Content="TARファイル (.tar)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                        <CheckBox x:Name="GzCheckBox" Content="GZIPファイル (.gz)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                        <CheckBox x:Name="Bz2CheckBox" Content="BZIP2ファイル (.bz2)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                        <CheckBox x:Name="LzmaCheckBox" Content="LZMAファイル (.lzma)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                        <CheckBox x:Name="XzCheckBox" Content="XZファイル (.xz)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                        <CheckBox x:Name="RarCheckBox" Content="RARファイル (.rar)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                        <CheckBox x:Name="LzhCheckBox" Content="LZHファイル (.lzh)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                        <CheckBox x:Name="CabCheckBox" Content="CABファイル (.cab)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                        <CheckBox x:Name="ArjCheckBox" Content="ARJファイル (.arj)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                        <CheckBox x:Name="ZCheckBox" Content="Zファイル (.z)"
+                                  Margin="0,2" Checked="FileAssociation_Changed" Unchecked="FileAssociation_Changed" />
+                    </UniformGrid>
                 </ScrollViewer>
-            </GroupBox>
-
-            <!-- 使用方法 -->
-            <GroupBox Grid.Column="2" Header="使用方法">
-                <Grid Margin="8">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,8">
-                        <Run Text="1. 出力先フォルダを設定してください。&#x0a;"/>
-                        <Run Text="2. 関連付けしたいファイル形式にチェックを入れてください。&#x0a;"/>
-                        <Run Text="3. 設定を保存してください。&#x0a;"/>
-                        <Run Text="4. 関連付けされたファイルをダブルクリックすると、自動的に展開されます。"/>
-                    </TextBlock>
-                    <!-- ドロップ領域 -->
-                    <Border Grid.Row="1"
-                            x:Name="DropZone"
-                            BorderBrush="DarkSlateBlue"
-                            BorderThickness="2"
-                            Background="#FFE0E8FF"
-                            CornerRadius="6"
-                            Margin="0,4,0,0"
-                            HorizontalAlignment="Stretch"
-                            Height="45"
-                            AllowDrop="True"
-                            DragEnter="DropZone_DragEnter"
-                            DragLeave="DropZone_DragLeave"
-                            Drop="DropZone_Drop">
-                        <TextBlock Text="ここにファイルをドラッグ＆ドロップ"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"
-                                   Foreground="DarkSlateBlue"
-                                   FontWeight="Bold"
-                                   FontSize="13"/>
-                    </Border>
-                </Grid>
             </GroupBox>
         </Grid>
 
         <!-- ボタン -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0" Width="491">
-            <TextBlock Text="圧縮形式:" VerticalAlignment="Center" Margin="0,0,4,0"/>
-            <ComboBox x:Name="CompressionFormatComboBox" Width="75" Margin="0,0,12,0" 
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <TextBlock Text="圧縮形式:" VerticalAlignment="Center" Margin="0,0,4,0" />
+            <ComboBox x:Name="CompressionFormatComboBox" Width="75" Margin="0,10,12,10"
                       SelectedIndex="0" SelectionChanged="CompressionFormatComboBox_SelectionChanged">
-                <ComboBoxItem Content="ZIP"/>
-                <ComboBoxItem Content="7Z"/>
-                <ComboBoxItem Content="TAR"/>
-                <ComboBoxItem Content="GZ"/>
-                <ComboBoxItem Content="BZ2"/>
-                <ComboBoxItem Content="LZMA"/>
-                <ComboBoxItem Content="XZ"/>
+                <ComboBoxItem Content="ZIP" />
+                <ComboBoxItem Content="7Z" />
+                <ComboBoxItem Content="TAR" />
+                <ComboBoxItem Content="GZ" />
+                <ComboBoxItem Content="BZ2" />
+                <ComboBoxItem Content="LZMA" />
+                <ComboBoxItem Content="XZ" />
             </ComboBox>
-            <Button x:Name="CreateShortcutButton" Content="デスクトップにショートカット作成" 
-                    Padding="8,6" Margin="0,0,8,0" Click="CreateShortcutButton_Click"/>
-            <Button x:Name="SaveButton" Content="設定を保存" 
-                    Padding="16,6" Margin="0,0,8,0" Click="SaveButton_Click"/>
-            <Button x:Name="CancelButton" Content="キャンセル" 
-                    Padding="16,6" Click="CancelButton_Click"/>
+            <Button x:Name="CreateShortcutButton" Content="デスクトップにショートカット作成"
+                    Padding="8,6" Margin="0,0,8,0" Click="CreateShortcutButton_Click" />
+            <!-- ドロップ領域 -->
+            <Border Grid.Row="1"
+                    x:Name="DropZone"
+                    BorderBrush="DarkSlateBlue"
+                    BorderThickness="2"
+                    Background="#FFE0E8FF"
+                    CornerRadius="6"
+                    Margin="0,0,8,0"
+                    Padding="10,0,10,0"
+                    HorizontalAlignment="Stretch"
+                    Height="45"
+                    AllowDrop="True"
+                    DragEnter="DropZone_DragEnter"
+                    DragLeave="DropZone_DragLeave"
+                    Drop="DropZone_Drop">
+                <TextBlock Text="ここにファイルをドラッグ＆ドロップ"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="DarkSlateBlue"
+                           FontWeight="Bold"
+                           FontSize="13" />
+            </Border>
+            <Button x:Name="SaveButton" Content="設定を保存"
+                    Padding="16,6" Margin="0,0,8,0" Click="SaveButton_Click" />
+            <Button x:Name="CancelButton" Content="キャンセル"
+                    Padding="16,6" Click="CancelButton_Click" />
         </StackPanel>
     </Grid>
 </Window>

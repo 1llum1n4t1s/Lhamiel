@@ -58,6 +58,7 @@ namespace GGEZArchiver
         /// <summary>
         /// コマンドライン引数を処理する
         /// ファイルまたはフォルダが指定された場合、自動的に展開・圧縮処理を実行する
+        /// 対応圧縮ファイル形式以外のファイルは圧縮処理を行う
         /// </summary>
         /// <param name="args">コマンドライン引数</param>
         private void ProcessCommandLineArguments(string[] args)
@@ -67,15 +68,23 @@ namespace GGEZArchiver
                 var filePath = args[0];
                 if (File.Exists(filePath))
                 {
-                    // ファイルが存在する場合、展開処理を開始
-                    ExtractFile(filePath);
+                    if (ArchiveExtractor.IsSupportedArchiveType(filePath))
+                    {
+                        // 対応圧縮ファイル形式の場合は展開処理
+                        ExtractFile(filePath);
+                    }
+                    else
+                    {
+                        // 対応圧縮ファイル形式以外のファイルは圧縮処理
+                        CompressItem(filePath);
+                    }
                     Shutdown();
                     return;
                 }
                 else if (Directory.Exists(filePath))
                 {
                     // フォルダが存在する場合、圧縮処理を開始
-                    CompressFile(filePath);
+                    CompressItem(filePath);
                     Shutdown();
                     return;
                 }
@@ -105,7 +114,7 @@ namespace GGEZArchiver
                 progressWindow.SetFileName(filePath);
                 progressWindow.Show();
 
-                var outputDir = ArchiveExtractor.GetOutputDirectory(filePath, settings.ExtractionOutputDirectory);
+                var outputDir = ArchiveExtractor.GetOutputDirectory(filePath, settings.ExtractionOutputDirectory, settings.ExtractionOutputToSameDirectory);
                 
                 var progress = new Progress<int>(percentage =>
                 {
@@ -131,15 +140,14 @@ namespace GGEZArchiver
         /// 保存された設定に基づいて圧縮形式を決定し、圧縮処理を実行する
         /// </summary>
         /// <param name="sourcePath">圧縮するフォルダのパス</param>
-        private async void CompressFile(string sourcePath)
+        private async void CompressItem(string sourcePath)
         {
             try
             {
                 // 保存された設定から圧縮形式と出力ディレクトリを取得
                 var settings = Settings.Load();
                 var format = settings.CompressionFormat;
-                var fileName = ArchiveCompressor.GetCompressedFileName(sourcePath, format);
-                var outputPath = Path.Combine(settings.CompressionOutputDirectory, fileName);
+                var outputPath = ArchiveCompressor.GetCompressedFileName(sourcePath, format, settings.CompressionOutputDirectory, settings.CompressionOutputToSameDirectory);
 
                 var progressWindow = new View.ProgressWindow("圧縮");
                 progressWindow.SetFileName(outputPath);

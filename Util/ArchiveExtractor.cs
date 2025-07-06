@@ -113,14 +113,29 @@ public class ArchiveExtractor
     /// <summary>
     /// 展開先のディレクトリパスを決定する
     /// 設定で指定された出力ディレクトリとアーカイブファイル名を組み合わせて生成
+    /// 出力先パターンが「元のファイルと同じディレクトリ」の場合は元ファイルのディレクトリを使用
     /// </summary>
     /// <param name="archivePath">展開するアーカイブファイルのパス</param>
     /// <param name="defaultOutputDir">デフォルトの出力ディレクトリ</param>
+    /// <param name="outputToSameDirectory">元のファイルと同じディレクトリに出力するかどうか</param>
     /// <returns>展開先のディレクトリパス</returns>
-    public static string GetOutputDirectory(string archivePath, string defaultOutputDir)
+    public static string GetOutputDirectory(string archivePath, string defaultOutputDir, bool outputToSameDirectory = false)
     {
-        var fileName = Path.GetFileNameWithoutExtension(archivePath);
-        var outputDir = Path.Combine(defaultOutputDir, fileName);
+        string outputDir;
+        
+        if (outputToSameDirectory)
+        {
+            // 元のファイルと同じディレクトリに出力
+            var archiveDir = Path.GetDirectoryName(archivePath);
+            var fileName = Path.GetFileNameWithoutExtension(archivePath);
+            outputDir = Path.Combine(archiveDir ?? string.Empty, fileName);
+        }
+        else
+        {
+            // 指定されたディレクトリに出力
+            var fileName = Path.GetFileNameWithoutExtension(archivePath);
+            outputDir = Path.Combine(defaultOutputDir, fileName);
+        }
         
         // 同名ディレクトリが存在する場合は番号を付ける
         var counter = 1;

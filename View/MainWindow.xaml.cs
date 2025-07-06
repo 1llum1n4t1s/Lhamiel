@@ -40,6 +40,12 @@ namespace GGEZArchiver.View
             CompressionOutputPathTextBox.Text = _settings.CompressionOutputDirectory;
             CompressionFormatComboBox.SelectedItem = _settings.CompressionFormat;
             
+            // 出力先パターンの設定を反映
+            ExtractionOutputToDirectoryRadio.IsChecked = !_settings.ExtractionOutputToSameDirectory;
+            ExtractionOutputToSameDirectoryRadio.IsChecked = _settings.ExtractionOutputToSameDirectory;
+            CompressionOutputToDirectoryRadio.IsChecked = !_settings.CompressionOutputToSameDirectory;
+            CompressionOutputToSameDirectoryRadio.IsChecked = _settings.CompressionOutputToSameDirectory;
+            
             // ファイル関連付けの状態を実際のWindowsの状態から読み込む
             var associationStatus = FileAssociation.GetCurrentAssociationStatus();
             
@@ -132,17 +138,7 @@ namespace GGEZArchiver.View
                     // 実際のファイル関連付けを設定/解除
                     if (isChecked)
                     {
-                        if (FileAssociation.AssociateFileType(extension))
-                        {
-                            // Windows 11での設定方法を案内
-                            var helpText = FileAssociation.GetWindows11AssociationHelp();
-                            System.Windows.MessageBox.Show(
-                                $"ファイル関連付けを設定しました。\n\n{helpText}", 
-                                "設定完了", 
-                                MessageBoxButton.OK, 
-                                MessageBoxImage.Information);
-                        }
-                        else
+                        if (FileAssociation.AssociateFileType(extension) == false)
                         {
                             System.Windows.MessageBox.Show(
                                 "ファイル関連付けの設定に失敗しました。", 
@@ -175,6 +171,36 @@ namespace GGEZArchiver.View
         }
 
         /// <summary>
+        /// 展開用出力先パターン選択の変更イベントハンドラー
+        /// 選択された出力先パターンを設定に保存する
+        /// </summary>
+        /// <param name="sender">イベントの送信元オブジェクト</param>
+        /// <param name="e">イベント引数</param>
+        private void ExtractionOutputPattern_Changed(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.RadioButton radioButton && _settings != null)
+            {
+                _settings.ExtractionOutputToSameDirectory = radioButton == ExtractionOutputToSameDirectoryRadio;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
+        /// 圧縮用出力先パターン選択の変更イベントハンドラー
+        /// 選択された出力先パターンを設定に保存する
+        /// </summary>
+        /// <param name="sender">イベントの送信元オブジェクト</param>
+        /// <param name="e">イベント引数</param>
+        private void CompressionOutputPattern_Changed(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.RadioButton radioButton && _settings != null)
+            {
+                _settings.CompressionOutputToSameDirectory = radioButton == CompressionOutputToSameDirectoryRadio;
+                SaveSettings();
+            }
+        }
+
+        /// <summary>
         /// ショートカット作成ボタンのクリックイベントハンドラー
         /// デスクトップにショートカットを作成する
         /// </summary>
@@ -201,7 +227,6 @@ namespace GGEZArchiver.View
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             SaveSettings();
-            System.Windows.MessageBox.Show("設定を保存しました。", "完了", MessageBoxButton.OK, MessageBoxImage.Information);
             System.Windows.Application.Current.Shutdown();
         }
 
@@ -272,6 +297,7 @@ namespace GGEZArchiver.View
         /// <summary>
         /// ドロップされたアイテムを処理する
         /// ファイルまたはフォルダの種類に応じて適切な処理（圧縮・展開）を実行
+        /// 対応圧縮ファイル形式以外のファイルは圧縮処理を行う
         /// </summary>
         /// <param name="filePath">ドロップされたファイルまたはフォルダのパス</param>
         private async void ProcessDroppedItem(string filePath)
@@ -282,15 +308,18 @@ namespace GGEZArchiver.View
                 {
                     if (ArchiveExtractor.IsSupportedArchiveType(filePath))
                     {
+                        // 対応圧縮ファイル形式の場合は展開処理
                         await ExtractFile(filePath);
                     }
                     else
                     {
-                        System.Windows.MessageBox.Show("サポートされていないファイル形式です。", "エラー", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        // 対応圧縮ファイル形式以外のファイルは圧縮処理
+                        await CompressFile(filePath);
                     }
                 }
                 else if (Directory.Exists(filePath))
                 {
+                    // フォルダの場合は圧縮処理
                     await CompressFolder(filePath);
                 }
                 else
@@ -312,7 +341,13 @@ namespace GGEZArchiver.View
         /// <returns>展開処理の完了を表すTask</returns>
         private async Task ExtractFile(string filePath)
         {
-            var outputDir = ArchiveExtractor.GetOutputDirectory(filePath, _settings.ExtractionOutputDirectory);
+            if (_settings == null)
+            {
+                System.Windows.MessageBox.Show("設定が読み込まれていません。", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var outputDir = ArchiveExtractor.GetOutputDirectory(filePath, _settings.ExtractionOutputDirectory, _settings.ExtractionOutputToSameDirectory);
             var progressWindow = new ProgressWindow("展開");
             progressWindow.SetFileName(filePath);
             progressWindow.Show();
@@ -332,17 +367,48 @@ namespace GGEZArchiver.View
         /// <returns>圧縮処理の完了を表すTask</returns>
         private async Task CompressFolder(string folderPath)
         {
-            var fileName = ArchiveCompressor.GetCompressedFileName(folderPath, _settings.CompressionFormat);
-            var outputPath = Path.Combine(_settings.CompressionOutputDirectory, fileName);
+            if (_settings == null)
+            {
+                System.Windows.MessageBox.Show("設定が読み込まれていません。", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var fileName = ArchiveCompressor.GetCompressedFileName(folderPath, _settings.CompressionFormat, _settings.CompressionOutputDirectory, _settings.CompressionOutputToSameDirectory);
             var progressWindow = new ProgressWindow("圧縮");
-            progressWindow.SetFileName(outputPath);
+            progressWindow.SetFileName(fileName);
             progressWindow.Show();
             var progress = new System.Progress<int>(percentage =>
             {
                 progressWindow.UpdateProgress(percentage, "フォルダを圧縮中...");
             });
-            await CompressWithFormat(folderPath, outputPath, _settings.CompressionFormat, progress);
-            progressWindow.SetCompleted($"圧縮が完了しました。\n出力先: {outputPath}");
+            await CompressWithFormat(folderPath, fileName, _settings.CompressionFormat, progress);
+            progressWindow.SetCompleted($"圧縮が完了しました。\n出力先: {fileName}");
+        }
+
+        /// <summary>
+        /// ファイルを圧縮する
+        /// 指定されたファイルを圧縮処理ウィンドウで実行
+        /// </summary>
+        /// <param name="filePath">圧縮するファイルのパス</param>
+        /// <returns>圧縮処理の完了を表すTask</returns>
+        private async Task CompressFile(string filePath)
+        {
+            if (_settings == null)
+            {
+                System.Windows.MessageBox.Show("設定が読み込まれていません。", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var fileName = ArchiveCompressor.GetCompressedFileName(filePath, _settings.CompressionFormat, _settings.CompressionOutputDirectory, _settings.CompressionOutputToSameDirectory);
+            var progressWindow = new ProgressWindow("圧縮");
+            progressWindow.SetFileName(fileName);
+            progressWindow.Show();
+            var progress = new System.Progress<int>(percentage =>
+            {
+                progressWindow.UpdateProgress(percentage, "ファイルを圧縮中...");
+            });
+            await CompressWithFormat(filePath, fileName, _settings.CompressionFormat, progress);
+            progressWindow.SetCompleted($"圧縮が完了しました。\n出力先: {fileName}");
         }
 
         /// <summary>
@@ -364,7 +430,10 @@ namespace GGEZArchiver.View
         /// </summary>
         private void SaveSettings()
         {
-            _settings.Save();
+            if (_settings != null)
+            {
+                _settings.Save();
+            }
         }
     }
 }

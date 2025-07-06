@@ -1,6 +1,7 @@
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace GGEZArchiver.Util
 {
@@ -14,7 +15,7 @@ namespace GGEZArchiver.Util
         /// アプリケーションの実行ファイルパス
         /// 現在実行中のアプリケーションのパスを取得
         /// </summary>
-        private static readonly string AppPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+        private static readonly string AppPath = GetExecutablePath();
 
         /// <summary>
         /// アプリケーションのアイコンファイルパス
@@ -22,6 +23,49 @@ namespace GGEZArchiver.Util
         /// </summary>
         private static readonly string IconPath = Path.Combine(
             System.AppDomain.CurrentDomain.BaseDirectory, "app.ico");
+
+        /// <summary>
+        /// アプリケーションの実行ファイルパスを取得する
+        /// WPFアプリケーションでは.exeファイルのパスを返す
+        /// </summary>
+        /// <returns>アプリケーションの実行ファイルパス</returns>
+        private static string GetExecutablePath()
+        {
+            try
+            {
+                // Process.GetCurrentProcess().MainModule.FileNameを使用して.exeファイルのパスを取得
+                var process = Process.GetCurrentProcess();
+                var mainModule = process.MainModule;
+                if (mainModule != null)
+                {
+                    return mainModule.FileName;
+                }
+            }
+            catch
+            {
+                // Process.GetCurrentProcess()が失敗した場合のフォールバック
+            }
+
+            // フォールバック: Assembly.GetExecutingAssembly()を使用
+            var assembly = Assembly.GetExecutingAssembly();
+            var path = assembly.Location;
+            
+            // WPFアプリケーションの場合、.exeファイルのパスを取得
+            if (path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            {
+                // .dllファイルの場合は、同じディレクトリの.exeファイルを探す
+                var directory = Path.GetDirectoryName(path);
+                var exeName = Path.GetFileNameWithoutExtension(path) + ".exe";
+                var exePath = Path.Combine(directory ?? "", exeName);
+                
+                if (File.Exists(exePath))
+                {
+                    return exePath;
+                }
+            }
+            
+            return path;
+        }
 
         /// <summary>
         /// デスクトップにショートカットを作成する

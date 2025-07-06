@@ -142,24 +142,39 @@ public class ArchiveCompressor
     }
 
     /// <summary>
-    /// 圧縮ファイルの出力名を生成する
-    /// 同名ファイルが存在する場合は番号を付けて重複を回避する
+    /// 圧縮ファイルの出力パスを決定する
+    /// 出力先パターンが「元のファイルと同じディレクトリ」の場合は元ファイルのディレクトリを使用
     /// </summary>
-    /// <param name="sourcePath">圧縮元のファイルまたはフォルダのパス</param>
+    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
     /// <param name="extension">圧縮形式の拡張子</param>
-    /// <returns>重複しない出力ファイル名</returns>
-    public static string GetCompressedFileName(string sourcePath, string extension)
+    /// <param name="outputDirectory">指定された出力ディレクトリ</param>
+    /// <param name="outputToSameDirectory">元のファイルと同じディレクトリに出力するかどうか</param>
+    /// <returns>重複しない出力ファイルパス</returns>
+    public static string GetCompressedFileName(string sourcePath, string extension, string outputDirectory = "", bool outputToSameDirectory = false)
     {
-        var fileName = Path.GetFileNameWithoutExtension(sourcePath);
-        var directory = Path.GetDirectoryName(sourcePath);
+        string directory;
+        string fileName;
+        
+        if (outputToSameDirectory)
+        {
+            // 元のファイルと同じディレクトリに出力
+            directory = Path.GetDirectoryName(sourcePath) ?? "";
+            fileName = Path.GetFileNameWithoutExtension(sourcePath);
+        }
+        else
+        {
+            // 指定されたディレクトリに出力
+            directory = outputDirectory;
+            fileName = Path.GetFileNameWithoutExtension(sourcePath);
+        }
             
         // 同名ファイルが存在する場合は番号を付ける
         var counter = 1;
-        var outputPath = Path.Combine(directory ?? "", $"{fileName}.{extension}");
+        var outputPath = Path.Combine(directory, $"{fileName}.{extension}");
             
         while (File.Exists(outputPath))
         {
-            outputPath = Path.Combine(directory ?? "", $"{fileName}_{counter}.{extension}");
+            outputPath = Path.Combine(directory, $"{fileName}_{counter}.{extension}");
             counter++;
         }
             

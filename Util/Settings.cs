@@ -35,6 +35,20 @@ public class Settings
     public string CompressionOutputDirectory { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
     /// <summary>
+    /// 展開用出力先パターンの設定
+    /// true: 元のファイルと同じディレクトリに出力、false: 指定したディレクトリに出力
+    /// デフォルトは指定したディレクトリに出力
+    /// </summary>
+    public bool ExtractionOutputToSameDirectory { get; set; } = false;
+
+    /// <summary>
+    /// 圧縮用出力先パターンの設定
+    /// true: 元のファイルと同じディレクトリに出力、false: 指定したディレクトリに出力
+    /// デフォルトは指定したディレクトリに出力
+    /// </summary>
+    public bool CompressionOutputToSameDirectory { get; set; } = false;
+
+    /// <summary>
     /// ショートカット作成の有効/無効設定
     /// デフォルトは有効
     /// </summary>
@@ -149,6 +163,8 @@ public class Settings
         CompressionFormat = "zip";
         ExtractionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         CompressionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        ExtractionOutputToSameDirectory = false;
+        CompressionOutputToSameDirectory = false;
         EnableShortcutCreation = true;
     }
 }
