@@ -1,57 +1,154 @@
 using System.Text.Json;
 using System.IO;
 
-namespace GGEZArchiver.Util
+namespace GGEZArchiver.Util;
+
+/// <summary>
+/// アプリケーション設定を管理するクラス
+/// 設定の保存・読み込みとデフォルト値の提供を担当
+/// </summary>
+public class Settings
 {
-    public class Settings
+    /// <summary>
+    /// 設定ファイルのパス
+    /// アプリケーションの実行ファイルと同じディレクトリに配置される
+    /// </summary>
+    private static readonly string SettingsFilePath = Path.Combine(
+        System.AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+
+    /// <summary>
+    /// 圧縮形式の設定
+    /// デフォルトはZIP形式
+    /// </summary>
+    public string CompressionFormat { get; set; } = "zip";
+
+    /// <summary>
+    /// 展開用出力ディレクトリの設定
+    /// デフォルトはデスクトップ
+    /// </summary>
+    public string ExtractionOutputDirectory { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+    /// <summary>
+    /// 圧縮用出力ディレクトリの設定
+    /// デフォルトはデスクトップ
+    /// </summary>
+    public string CompressionOutputDirectory { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+    /// <summary>
+    /// ショートカット作成の有効/無効設定
+    /// デフォルトは有効
+    /// </summary>
+    public bool EnableShortcutCreation { get; set; } = true;
+
+    /// <summary>
+    /// サポートされている圧縮形式の一覧
+    /// ユーザーが選択可能な形式を定義
+    /// </summary>
+    public static readonly string[] SupportedCompressionFormats = new[]
     {
-        private static readonly string SettingsPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "GGEZArchiver",
-            "settings.json");
+        "zip", "7z", "tar", "gz", "bz2", "lzma", "xz"
+    };
 
-        public string OutputDirectory { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-        public bool AssociateZip { get; set; } = true;
-        public bool Associate7z { get; set; } = true;
-        public bool AssociateLzh { get; set; } = true;
-        public bool AssociateCab { get; set; } = true;
+    /// <summary>
+    /// サポートされている展開形式の一覧
+    /// 圧縮・展開両方に対応する形式と展開のみ対応する形式を含む
+    /// </summary>
+    public static readonly string[] SupportedExtractionFormats = new[]
+    {
+        "zip", "7z", "tar", "gz", "bz2", "lzma", "xz", "rar", "lzh", "cab", "arj", "z"
+    };
 
-        public static Settings Load()
+    /// <summary>
+    /// 展開専用形式の一覧
+    /// これらの形式は圧縮には使用できない
+    /// </summary>
+    public static readonly string[] ExtractOnlyFormats = new[]
+    {
+        "rar", "lzh", "cab", "arj", "z"
+    };
+
+    /// <summary>
+    /// 設定をファイルから読み込む
+    /// ファイルが存在しない場合はデフォルト設定を返す
+    /// </summary>
+    /// <returns>読み込まれた設定オブジェクト</returns>
+    public static Settings Load()
+    {
+        try
         {
-            try
+            if (File.Exists(SettingsFilePath))
             {
-                if (File.Exists(SettingsPath))
-                {
-                    var json = File.ReadAllText(SettingsPath);
-                    var settings = JsonSerializer.Deserialize<Settings>(json);
-                    return settings ?? new Settings();
-                }
+                var json = File.ReadAllText(SettingsFilePath);
+                var settings = JsonSerializer.Deserialize<Settings>(json);
+                return settings ?? new Settings();
             }
-            catch
-            {
-                // 設定ファイルの読み込みに失敗した場合はデフォルト設定を使用
-            }
-
-            return new Settings();
+        }
+        catch (Exception)
+        {
+            // エラーが発生した場合はデフォルト設定を返す
         }
 
-        public void Save()
-        {
-            try
-            {
-                var directory = Path.GetDirectoryName(SettingsPath);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
+        return new Settings();
+    }
 
-                var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(SettingsPath, json);
-            }
-            catch
+    /// <summary>
+    /// 設定をファイルに保存する
+    /// JSON形式でシリアライズしてファイルに書き込む
+    /// </summary>
+    public void Save()
+    {
+        try
+        {
+            var options = new JsonSerializerOptions
             {
-                // 設定の保存に失敗した場合は無視
-            }
+                WriteIndented = true
+            };
+            var json = JsonSerializer.Serialize(this, options);
+            File.WriteAllText(SettingsFilePath, json);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"設定の保存に失敗しました: {ex.Message}", ex);
         }
     }
-} 
+
+    /// <summary>
+    /// 設定が有効かどうかを検証する
+    /// 必須項目の存在と値の妥当性をチェックする
+    /// </summary>
+    /// <returns>設定が有効な場合はtrue、そうでなければfalse</returns>
+    public bool IsValid()
+    {
+        // 圧縮形式がサポートされているかチェック
+        if (!SupportedCompressionFormats.Contains(CompressionFormat))
+        {
+            return false;
+        }
+
+        // 展開用出力ディレクトリが存在するかチェック
+        if (!Directory.Exists(ExtractionOutputDirectory))
+        {
+            return false;
+        }
+
+        // 圧縮用出力ディレクトリが存在するかチェック
+        if (!Directory.Exists(CompressionOutputDirectory))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// 設定をデフォルト値にリセットする
+    /// すべてのプロパティを初期値に戻す
+    /// </summary>
+    public void ResetToDefaults()
+    {
+        CompressionFormat = "zip";
+        ExtractionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        CompressionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        EnableShortcutCreation = true;
+    }
+}

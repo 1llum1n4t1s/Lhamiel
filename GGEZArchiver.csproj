@@ -11,15 +11,19 @@
     <AssemblyProduct>GGEZArchiver</AssemblyProduct>
     <AssemblyCompany>GGEZArchiver</AssemblyCompany>
     <RootNamespace>GGEZArchiver</RootNamespace>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.Compatibility" Version="9.0.6" />
     <PackageReference Include="SharpCompress" Version="0.40.0" />
-    <PackageReference Include="System.IO.Compression" Version="4.3.0" />
+    <PackageReference Include="7z.Libs" Version="25.0.0" />
+    <PackageReference Include="SevenZipSharp" Version="0.64.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Page Include="App.xaml" />
+    <None Include="app.ico" />
   </ItemGroup>
 
 </Project>

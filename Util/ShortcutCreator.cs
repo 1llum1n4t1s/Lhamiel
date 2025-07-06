@@ -1,77 +1,101 @@
-using System.Runtime.InteropServices;
 using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace GGEZArchiver.Util
 {
-    public static class ShortcutCreator
+    /// <summary>
+    /// ショートカット作成機能を提供するクラス
+    /// dynamicを使用してWshShell経由でショートカットファイル（.lnk）を作成
+    /// </summary>
+    public class ShortcutCreator
     {
-        [ComImport]
-        [Guid("00021401-0000-0000-C000-000000000046")]
-        private class ShellLink { }
+        /// <summary>
+        /// アプリケーションの実行ファイルパス
+        /// 現在実行中のアプリケーションのパスを取得
+        /// </summary>
+        private static readonly string AppPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
 
-        [ComImport]
-        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-        [Guid("000214F9-0000-0000-C000-000000000046")]
-        private interface IShellLink
-        {
-            void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] out string pszFile, int cchMaxPath, out nint pfd, int fFlags);
-            void GetIDList(out nint ppidl);
-            void SetIDList(nint pidl);
-            void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] out string pszName, int cchMaxName);
-            void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string pszName);
-            void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] out string pszDir, int cchMaxDir);
-            void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string pszDir);
-            void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] out string pszArgs, int cchMaxPath);
-            void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
-            void GetHotkey(out short pwHotkey);
-            void SetHotkey(short wHotkey);
-            void GetShowCmd(out int piShowCmd);
-            void SetShowCmd(int iShowCmd);
-            void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] out string pszIconPath, int cchIconPath, out int piIcon);
-            void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iIcon);
-            void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, int dwReserved);
-            void Resolve(nint hwnd, int fFlags);
-            void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
-        }
+        /// <summary>
+        /// アプリケーションのアイコンファイルパス
+        /// アプリケーションと同じディレクトリに配置されたICOファイル
+        /// </summary>
+        private static readonly string IconPath = Path.Combine(
+            System.AppDomain.CurrentDomain.BaseDirectory, "app.ico");
 
-        [ComImport]
-        [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-        [Guid("0000010B-0000-0000-C000-000000000046")]
-        private interface IPersistFile
-        {
-            void GetClassID(out Guid pClassID);
-            void IsDirty();
-            void Load([In, MarshalAs(UnmanagedType.LPWStr)] string pszFileName, uint dwMode);
-            void Save([In, MarshalAs(UnmanagedType.LPWStr)] string pszFileName, [In, MarshalAs(UnmanagedType.Bool)] bool fRemember);
-            void SaveCompleted([In, MarshalAs(UnmanagedType.LPWStr)] string pszFileName);
-            void GetCurFile([Out, MarshalAs(UnmanagedType.LPWStr)] out string ppszFileName);
-        }
-
-        public static bool CreateShortcut(string targetPath, string shortcutPath, string description = "", string? arguments = null)
+        /// <summary>
+        /// デスクトップにショートカットを作成する
+        /// アプリケーションのショートカットをデスクトップに配置
+        /// </summary>
+        /// <param name="shortcutName">ショートカットの表示名（拡張子なし）</param>
+        /// <returns>作成が成功した場合はtrue、そうでなければfalse</returns>
+        public static bool CreateDesktopShortcut(string shortcutName = "GGEZArchiver")
         {
             try
             {
-                var shellLink = new ShellLink();
-                var shellLinkInterface = (IShellLink)shellLink;
-                var persistFile = (IPersistFile)shellLink;
+                var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                var shortcutPath = Path.Combine(desktopPath, $"{shortcutName}.lnk");
+                
+                return CreateShortcut(shortcutPath, AppPath, "GGEZアーカイバー - 圧縮・展開ツール");
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
-                shellLinkInterface.SetPath(targetPath);
-                shellLinkInterface.SetDescription(description);
-                var workingDir = Path.GetDirectoryName(targetPath);
-                if (!string.IsNullOrEmpty(workingDir))
+        /// <summary>
+        /// スタートメニューにショートカットを作成する
+        /// アプリケーションのショートカットをスタートメニューに配置
+        /// </summary>
+        /// <param name="shortcutName">ショートカットの表示名（拡張子なし）</param>
+        /// <returns>作成が成功した場合はtrue、そうでなければfalse</returns>
+        public static bool CreateStartMenuShortcut(string shortcutName = "GGEZArchiver")
+        {
+            try
+            {
+                var startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
+                var programPath = Path.Combine(startMenuPath, "Programs");
+                
+                // Programsフォルダが存在しない場合は作成
+                if (!Directory.Exists(programPath))
                 {
-                    shellLinkInterface.SetWorkingDirectory(workingDir);
+                    Directory.CreateDirectory(programPath);
                 }
-                if (!string.IsNullOrEmpty(arguments))
-                {
-                    shellLinkInterface.SetArguments(arguments);
-                }
+                
+                var shortcutPath = Path.Combine(programPath, $"{shortcutName}.lnk");
+                
+                return CreateShortcut(shortcutPath, AppPath, "GGEZアーカイバー - 圧縮・展開ツール");
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
-                persistFile.Save(shortcutPath, false);
-
-                // ドロップ機能を有効にするために、ショートカットファイルにプロパティを設定
-                EnableDropTarget(shortcutPath);
-
+        /// <summary>
+        /// 指定されたパスにショートカットを作成する
+        /// dynamicを使用してWshShell経由でショートカットファイルを生成
+        /// </summary>
+        /// <param name="shortcutPath">作成するショートカットファイルのパス</param>
+        /// <param name="targetPath">ショートカットが指すターゲットファイルのパス</param>
+        /// <param name="description">ショートカットの説明</param>
+        /// <returns>作成が成功した場合はtrue、そうでなければfalse</returns>
+        public static bool CreateShortcut(string shortcutPath, string targetPath, string description)
+        {
+            try
+            {
+                // COMのWshShellをdynamicで生成
+                var shellType = Type.GetTypeFromProgID("WScript.Shell");
+                if (shellType == null) return false;
+                dynamic shell = Activator.CreateInstance(shellType);
+                dynamic shortcut = shell.CreateShortcut(shortcutPath);
+                shortcut.TargetPath = targetPath;
+                shortcut.Description = description;
+                shortcut.WorkingDirectory = Path.GetDirectoryName(targetPath);
+                if (File.Exists(IconPath))
+                    shortcut.IconLocation = IconPath;
+                shortcut.Save();
                 return true;
             }
             catch
@@ -80,35 +104,122 @@ namespace GGEZArchiver.Util
             }
         }
 
-        private static void EnableDropTarget(string shortcutPath)
+        /// <summary>
+        /// 既存のショートカットを削除する
+        /// 指定されたパスのショートカットファイルを削除
+        /// </summary>
+        /// <param name="shortcutPath">削除するショートカットファイルのパス</param>
+        /// <returns>削除が成功した場合はtrue、そうでなければfalse</returns>
+        public static bool DeleteShortcut(string shortcutPath)
         {
             try
             {
-                // ショートカットファイルのプロパティを設定してドロップ機能を有効にする
-                var fileInfo = new FileInfo(shortcutPath);
-                if (fileInfo.Exists)
+                if (File.Exists(shortcutPath))
                 {
-                    // ファイル属性を設定（読み取り専用を解除）
-                    fileInfo.Attributes &= ~FileAttributes.ReadOnly;
+                    File.Delete(shortcutPath);
+                    return true;
                 }
-
-                // ドロップされたファイルのパスを引数として受け取るように設定
-                // これはWindowsの標準的なドロップ機能の仕組み
+                return false;
             }
             catch
             {
-                // エラーが発生してもショートカット作成は続行
+                return false;
             }
         }
 
-        public static string GetDesktopPath()
+        /// <summary>
+        /// デスクトップのショートカットを削除する
+        /// デスクトップに配置されたアプリケーションのショートカットを削除
+        /// </summary>
+        /// <param name="shortcutName">削除するショートカットの名前（拡張子なし）</param>
+        /// <returns>削除が成功した場合はtrue、そうでなければfalse</returns>
+        public static bool DeleteDesktopShortcut(string shortcutName = "GGEZArchiver")
         {
-            return Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            try
+            {
+                var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                var shortcutPath = Path.Combine(desktopPath, $"{shortcutName}.lnk");
+                
+                return DeleteShortcut(shortcutPath);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
-        public static string GetApplicationPath()
+        /// <summary>
+        /// スタートメニューのショートカットを削除する
+        /// スタートメニューに配置されたアプリケーションのショートカットを削除
+        /// </summary>
+        /// <param name="shortcutName">削除するショートカットの名前（拡張子なし）</param>
+        /// <returns>削除が成功した場合はtrue、そうでなければfalse</returns>
+        public static bool DeleteStartMenuShortcut(string shortcutName = "GGEZArchiver")
         {
-            return System.Reflection.Assembly.GetExecutingAssembly().Location;
+            try
+            {
+                var startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
+                var programPath = Path.Combine(startMenuPath, "Programs");
+                var shortcutPath = Path.Combine(programPath, $"{shortcutName}.lnk");
+                
+                return DeleteShortcut(shortcutPath);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// ショートカットが存在するかどうかを確認する
+        /// 指定されたパスのショートカットファイルの存在をチェック
+        /// </summary>
+        /// <param name="shortcutPath">チェックするショートカットファイルのパス</param>
+        /// <returns>ショートカットが存在する場合はtrue、そうでなければfalse</returns>
+        public static bool ShortcutExists(string shortcutPath)
+        {
+            return File.Exists(shortcutPath);
+        }
+
+        /// <summary>
+        /// デスクトップのショートカットが存在するかどうかを確認する
+        /// </summary>
+        /// <param name="shortcutName">チェックするショートカットの名前（拡張子なし）</param>
+        /// <returns>ショートカットが存在する場合はtrue、そうでなければfalse</returns>
+        public static bool DesktopShortcutExists(string shortcutName = "GGEZArchiver")
+        {
+            try
+            {
+                var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+                var shortcutPath = Path.Combine(desktopPath, $"{shortcutName}.lnk");
+                
+                return ShortcutExists(shortcutPath);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// スタートメニューのショートカットが存在するかどうかを確認する
+        /// </summary>
+        /// <param name="shortcutName">チェックするショートカットの名前（拡張子なし）</param>
+        /// <returns>ショートカットが存在する場合はtrue、そうでなければfalse</returns>
+        public static bool StartMenuShortcutExists(string shortcutName = "GGEZArchiver")
+        {
+            try
+            {
+                var startMenuPath = Environment.GetFolderPath(Environment.SpecialFolder.StartMenu);
+                var programPath = Path.Combine(startMenuPath, "Programs");
+                var shortcutPath = Path.Combine(programPath, $"{shortcutName}.lnk");
+                
+                return ShortcutExists(shortcutPath);
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
-} 
+}

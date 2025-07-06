@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GGEZArchiver.View"
         mc:Ignorable="d"
-        Title="展開中..." Height="200" Width="400" 
+        Title="処理中..." Height="200" Width="400" 
         WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
         WindowStyle="ToolWindow">
     <Grid Margin="20">
@@ -28,8 +28,8 @@
         <TextBlock Grid.Row="2" x:Name="ProgressTextBlock" 
                    Text="0%" HorizontalAlignment="Center" Margin="0,0,0,10"/>
 
-        <!-- 詳細情報 -->
-        <TextBlock Grid.Row="3" x:Name="DetailTextBlock" 
+        <!-- ステータス情報 -->
+        <TextBlock Grid.Row="3" x:Name="StatusTextBlock" 
                    Text="準備中..." TextWrapping="Wrap" VerticalAlignment="Center"/>
     </Grid>
 </Window> 
