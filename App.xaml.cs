@@ -1,188 +1,99 @@
 ﻿using System.Windows;
 using System.IO;
-using System.Threading.Tasks;
-using GGEZArchiver.Util;
-using SevenZip;
+using Lhamiel.Util;
 
-namespace GGEZArchiver
+namespace Lhamiel;
+
+/// <summary>
+/// App.xaml の相互作用ロジック
+/// </summary>
+public partial class App : Application
 {
     /// <summary>
-    /// アプリケーションのメインクラス
-    /// アプリケーションの起動処理とコマンドライン引数の処理を担当
+    /// アプリケーション起動時の処理
     /// </summary>
-    public partial class App : System.Windows.Application
+    /// <param name="e">起動イベント引数</param>
+    protected override void OnStartup(StartupEventArgs e)
     {
-        /// <summary>
-        /// アプリケーション起動時の処理
-        /// SevenZipSharpのDLL初期化とコマンドライン引数の処理を行う
-        /// </summary>
-        /// <param name="e">起動イベントの引数</param>
-        protected override void OnStartup(StartupEventArgs e)
+        try
         {
-            // SevenZipSharpのDLLパス初期化
-            InitializeSevenZipLibrary();
-
             base.OnStartup(e);
-
+            
+            // 起動ログを出力
+            Logger.LogStartup(e.Args);
+        
             // コマンドライン引数をチェック
-            ProcessCommandLineArguments(e.Args);
-
-            // 設定画面を表示
-            ShowMainWindow();
-        }
-
-        /// <summary>
-        /// SevenZipSharpライブラリのDLLパスを初期化する
-        /// 7z.Libsパッケージで配置されたDLLを自動検出して設定する
-        /// </summary>
-        private void InitializeSevenZipLibrary()
+            if (e.Args.Length > 0)
         {
-            var exeDir = System.AppDomain.CurrentDomain.BaseDirectory;
-            var sevenZipDllPath = Path.Combine(exeDir, "7z.dll");
-            if (File.Exists(sevenZipDllPath))
-            {
-                SevenZipBase.SetLibraryPath(sevenZipDllPath);
+                // ファイルが指定されている場合は展開処理を実行
+                ProcessCommandLineFile(e.Args[0]);
             }
             else
             {
-                // 7z.LibsのDLL配置先を探索（x64/x86対応）
-                var x64Path = Path.Combine(exeDir, "x64", "7z.dll");
-                var x86Path = Path.Combine(exeDir, "x86", "7z.dll");
-                if (File.Exists(x64Path))
-                    SevenZipBase.SetLibraryPath(x64Path);
-                else if (File.Exists(x86Path))
-                    SevenZipBase.SetLibraryPath(x86Path);
+                // 引数がない場合はメインウィンドウを表示
+                var mainWindow = new View.MainWindow();
+                mainWindow.Show();
             }
         }
-
-        /// <summary>
-        /// コマンドライン引数を処理する
-        /// ファイルまたはフォルダが指定された場合、自動的に展開・圧縮処理を実行する
-        /// 対応圧縮ファイル形式以外のファイルは圧縮処理を行う
-        /// </summary>
-        /// <param name="args">コマンドライン引数</param>
-        private void ProcessCommandLineArguments(string[] args)
+        catch (Exception ex)
         {
-            if (args.Length > 0)
-            {
-                var filePath = args[0];
-                if (File.Exists(filePath))
-                {
-                    if (ArchiveExtractor.IsSupportedArchiveType(filePath))
-                    {
-                        // 対応圧縮ファイル形式の場合は展開処理
-                        ExtractFile(filePath);
-                    }
-                    else
-                    {
-                        // 対応圧縮ファイル形式以外のファイルは圧縮処理
-                        CompressItem(filePath);
-                    }
-                    Shutdown();
-                    return;
-                }
-                else if (Directory.Exists(filePath))
-                {
-                    // フォルダが存在する場合、圧縮処理を開始
-                    CompressItem(filePath);
-                    Shutdown();
-                    return;
-                }
-            }
+            // ログファイルに直接書き込み（Loggerが使えない場合のため）
+            var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log");
+            File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] アプリケーション起動エラー: {ex}\n");
+            
+            MessageBox.Show($"アプリケーションの起動に失敗しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            throw;
         }
+    }
 
-        /// <summary>
-        /// メインウィンドウを表示する
-        /// </summary>
-        private void ShowMainWindow()
+    /// <summary>
+    /// コマンドラインで指定されたファイルの展開処理を実行
+    /// </summary>
+    /// <param name="filePath">展開するファイルのパス</param>
+    private async void ProcessCommandLineFile(string filePath)
+    {
+        try
         {
-            var mainWindow = new View.MainWindow();
-            mainWindow.Show();
-        }
+            Logger.Log($"コマンドラインから展開処理を開始: {filePath}");
+            
+            // 設定を読み込み
+            var settings = Settings.Load();
+            var outputDir = settings.ExtractionOutputDirectory;
+            var outputToSameDirectory = settings.ExtractionOutputToSameDirectory;
+            
+            // 進行状況ウィンドウを表示
+            var progressWindow = new View.ProgressWindow("展開");
+            progressWindow.Show();
 
-        /// <summary>
-        /// 指定されたファイルを展開する
-        /// 保存された設定に基づいて出力先を決定し、展開処理を実行する
-        /// </summary>
-        /// <param name="filePath">展開するファイルのパス</param>
-        private async void ExtractFile(string filePath)
+            // 共通化された展開処理を実行
+            var success = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow);
+            
+            if (success)
+            {
+                // アプリケーションを終了
+                Shutdown();
+            }
+            else
+            {
+                // エラーが発生した場合はアプリケーションを終了
+                Shutdown();
+            }
+        }
+        catch (Exception ex)
         {
-            try
-            {
-                var settings = Settings.Load();
-                var progressWindow = new View.ProgressWindow("展開");
-                progressWindow.SetFileName(filePath);
-                progressWindow.Show();
-
-                var outputDir = ArchiveExtractor.GetOutputDirectory(filePath, settings.ExtractionOutputDirectory, settings.ExtractionOutputToSameDirectory);
-                
-                var progress = new Progress<int>(percentage =>
-                {
-                    progressWindow.UpdateProgress(percentage, "ファイルを展開中...");
-                });
-
-                await ArchiveExtractor.ExtractArchiveAsync(filePath, outputDir, progress);
-
-                progressWindow.SetCompleted($"展開が完了しました。\n出力先: {outputDir}");
-                
-                // 3秒後にウィンドウを閉じる
-                await Task.Delay(3000);
-                progressWindow.Close();
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show($"展開中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            Logger.LogException("コマンドライン展開処理でエラーが発生", ex);
+            MessageBox.Show($"展開中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown();
         }
+    }
 
-        /// <summary>
-        /// 指定されたフォルダを圧縮する
-        /// 保存された設定に基づいて圧縮形式を決定し、圧縮処理を実行する
-        /// </summary>
-        /// <param name="sourcePath">圧縮するフォルダのパス</param>
-        private async void CompressItem(string sourcePath)
-        {
-            try
-            {
-                // 保存された設定から圧縮形式と出力ディレクトリを取得
-                var settings = Settings.Load();
-                var format = settings.CompressionFormat;
-                var outputPath = ArchiveCompressor.GetCompressedFileName(sourcePath, format, settings.CompressionOutputDirectory, settings.CompressionOutputToSameDirectory);
-
-                var progressWindow = new View.ProgressWindow("圧縮");
-                progressWindow.SetFileName(outputPath);
-                progressWindow.Show();
-
-                var progress = new Progress<int>(percentage =>
-                {
-                    progressWindow.UpdateProgress(percentage, "ファイルを圧縮中...");
-                });
-
-                // 圧縮形式に応じて適切な圧縮メソッドを呼び出す
-                await CompressWithFormat(sourcePath, outputPath, format, progress);
-
-                progressWindow.SetCompleted($"圧縮が完了しました。\n出力先: {outputPath}");
-                
-                // 3秒後にウィンドウを閉じる
-                await Task.Delay(3000);
-                progressWindow.Close();
-            }
-            catch (Exception ex)
-            {
-                System.Windows.MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-
-        /// <summary>
-        /// 指定された圧縮形式でファイルを圧縮する
-        /// </summary>
-        /// <param name="sourcePath">圧縮するファイルのパス</param>
-        /// <param name="outputPath">出力ファイルのパス</param>
-        /// <param name="format">圧縮形式</param>
-        /// <param name="progress">進行状況を報告するオブジェクト</param>
-        private async Task CompressWithFormat(string sourcePath, string outputPath, string format, IProgress<int> progress)
-        {
-            await ArchiveCompressor.CompressAsync(sourcePath, outputPath, format, progress);
-        }
+    /// <summary>
+    /// アプリケーション終了時の処理
+    /// </summary>
+    /// <param name="e">終了イベント引数</param>
+    protected override void OnExit(ExitEventArgs e)
+    {
+        Logger.Log($"アプリケーション終了: 終了コード = {e.ApplicationExitCode}");
+        base.OnExit(e);
     }
 }

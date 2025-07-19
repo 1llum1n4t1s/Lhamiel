@@ -1,14 +1,17 @@
 using Microsoft.Win32;
+using System.Diagnostics;
 using System.IO;
-using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 
-namespace GGEZArchiver.Util;
+namespace Lhamiel.Util;
 
 /// <summary>
 /// ファイル関連付け機能を提供するクラス
 /// Windows 11対応：ユーザーレベルの設定を使用してファイル拡張子とアプリケーションの関連付けを管理
 /// </summary>
+[SupportedOSPlatform("windows")]
 public class FileAssociation
 {
     // Windows APIの定数
@@ -23,20 +26,35 @@ public class FileAssociation
     /// アプリケーションの実行ファイルパス
     /// 現在実行中のアプリケーションのパスを取得
     /// </summary>
-    private static readonly string AppPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+    private static readonly string AppPath = Assembly.GetExecutingAssembly().Location;
 
     /// <summary>
     /// アプリケーションのアイコンファイルパス
     /// アプリケーションと同じディレクトリに配置されたICOファイル
     /// </summary>
-    private static readonly string IconPath = Path.Combine(
-        System.AppDomain.CurrentDomain.BaseDirectory, "app.ico");
+    private static readonly string IconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
 
     /// <summary>
     /// アプリケーション名
     /// レジストリに登録されるアプリケーションの表示名
     /// </summary>
-    private static readonly string AppName = "GGEZArchiver";
+    private static readonly string AppName = "Lhamiel";
+
+    /// <summary>
+    /// エクスプローラーに変更を通知する（安全な方法）
+    /// </summary>
+    private static void SafeNotifyExplorer()
+    {
+        try
+        {
+            SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+            Thread.Sleep(200);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("エクスプローラー通知でエラーが発生しました", ex);
+        }
+    }
 
     /// <summary>
     /// ファイル関連付けを設定する
@@ -44,54 +62,64 @@ public class FileAssociation
     /// </summary>
     /// <param name="extension">関連付けるファイル拡張子（例: .zip）</param>
     /// <returns>設定が成功した場合はtrue、そうでなければfalse</returns>
+    [SupportedOSPlatform("windows")]
     public static bool AssociateFileType(string extension)
     {
         try
         {
-            // 拡張子を正規化（先頭にドットがない場合は追加）
+            Logger.Log($"[関連付け設定] 開始: {extension}");
+            Debug.WriteLine($"[関連付け設定] 開始: {extension}");
+
             if (!extension.StartsWith("."))
             {
                 extension = "." + extension;
             }
 
-            // Windows 11対応：ユーザーレベルの設定を使用
             var userKeyPath = $"Software\\Classes\\{extension}";
+            Logger.Log($"[関連付け設定] レジストリキー作成: {userKeyPath}");
+            Debug.WriteLine($"[関連付け設定] レジストリキー作成: {userKeyPath}");
             using var userKey = Registry.CurrentUser.CreateSubKey(userKeyPath);
-            
-            // アプリケーション識別子を設定
-            var appId = $"GGEZArchiver{extension}";
+            var appId = $"Lhamiel{extension}";
             userKey?.SetValue("", appId);
+            Logger.Log($"[関連付け設定] アプリケーション識別子: {appId}");
+            Debug.WriteLine($"[関連付け設定] アプリケーション識別子: {appId}");
 
-            // アプリケーション識別子の詳細設定
             var appKeyPath = $"Software\\Classes\\{appId}";
             using var appKey = Registry.CurrentUser.CreateSubKey(appKeyPath);
             appKey?.SetValue("FriendlyTypeName", $"{AppName} {extension.ToUpper()} ファイル");
 
-            // シェルコマンドの設定
             var shellKeyPath = $"Software\\Classes\\{appId}\\shell\\open\\command";
             using var shellKey = Registry.CurrentUser.CreateSubKey(shellKeyPath);
-            shellKey?.SetValue("", $"\"{AppPath}\" \"%1\"");
+            var command = $"\"{AppPath}\" \"%1\"";
+            shellKey?.SetValue("", command);
+            Logger.Log($"[関連付け設定] シェルコマンド: {command}");
+            Debug.WriteLine($"[関連付け設定] シェルコマンド: {command}");
 
-            // アイコンの設定（ICOファイルが存在する場合）
             if (File.Exists(IconPath))
             {
                 var iconKeyPath = $"Software\\Classes\\{appId}\\DefaultIcon";
                 using var iconKey = Registry.CurrentUser.CreateSubKey(iconKeyPath);
                 iconKey?.SetValue("", IconPath);
+                Logger.Log($"[関連付け設定] アイコン: {IconPath}");
+                Debug.WriteLine($"[関連付け設定] アイコン: {IconPath}");
             }
 
-            // ファイルの種類の説明を設定
             var typeKeyPath = $"Software\\Classes\\{appId}";
             using var typeKey = Registry.CurrentUser.CreateSubKey(typeKeyPath);
             typeKey?.SetValue("", $"{AppName} {extension.ToUpper()} ファイル");
 
-            // エクスプローラーに通知
-            SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+            Logger.Log($"[関連付け設定] エクスプローラーに通知");
+            Debug.WriteLine($"[関連付け設定] エクスプローラーに通知");
+            SafeNotifyExplorer();
 
+            Logger.Log($"[関連付け設定] 完了: {extension}");
+            Debug.WriteLine($"[関連付け設定] 完了: {extension}");
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Logger.LogException($"[関連付け設定] エラー: {extension}", ex);
+            Debug.WriteLine($"[関連付け設定] エラー: {ex.Message}");
             return false;
         }
     }
@@ -102,34 +130,44 @@ public class FileAssociation
     /// </summary>
     /// <param name="extension">解除するファイル拡張子（例: .zip）</param>
     /// <returns>解除が成功した場合はtrue、そうでなければfalse</returns>
+    [SupportedOSPlatform("windows")]
     public static bool DisassociateFileType(string extension)
     {
         try
         {
-            // 拡張子を正規化（先頭にドットがない場合は追加）
+            Logger.Log($"[関連付け解除] 開始: {extension}");
+            Debug.WriteLine($"[関連付け解除] 開始: {extension}");
             if (!extension.StartsWith("."))
             {
                 extension = "." + extension;
             }
-
-            // アプリケーション識別子
-            var appId = $"GGEZArchiver{extension}";
-
-            // ユーザーレベルの設定を削除
+            var appId = $"Lhamiel{extension}";
             var userKeyPath = $"Software\\Classes\\{extension}";
+            Logger.Log($"[関連付け解除] レジストリキー削除: {userKeyPath}");
+            Debug.WriteLine($"[関連付け解除] レジストリキー削除: {userKeyPath}");
             Registry.CurrentUser.DeleteSubKeyTree(userKeyPath, false);
-
-            // アプリケーション識別子の詳細設定も削除
             var appKeyPath = $"Software\\Classes\\{appId}";
+            Logger.Log($"[関連付け解除] アプリケーション識別子キー削除: {appKeyPath}");
+            Debug.WriteLine($"[関連付け解除] アプリケーション識別子キー削除: {appKeyPath}");
             Registry.CurrentUser.DeleteSubKeyTree(appKeyPath, false);
 
-            // エクスプローラーに通知
-            SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+            // OpenWithでの関連付けも削除
+            var openWithKeyPath = $"Software\\Classes\\Applications\\{Path.GetFileName(AppPath)}";
+            Logger.Log($"[関連付け解除] OpenWithキー削除: {openWithKeyPath}");
+            Debug.WriteLine($"[関連付け解除] OpenWithキー削除: {openWithKeyPath}");
+            Registry.CurrentUser.DeleteSubKeyTree(openWithKeyPath, false);
 
+            Logger.Log($"[関連付け解除] エクスプローラーに通知");
+            Debug.WriteLine($"[関連付け解除] エクスプローラーに通知");
+            SafeNotifyExplorer();
+            Logger.Log($"[関連付け解除] 完了: {extension}");
+            Debug.WriteLine($"[関連付け解除] 完了: {extension}");
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Logger.LogException($"[関連付け解除] エラー: {extension}", ex);
+            Debug.WriteLine($"[関連付け解除] エラー: {ex.Message}");
             return false;
         }
     }
@@ -140,57 +178,82 @@ public class FileAssociation
     /// </summary>
     /// <param name="extension">チェックするファイル拡張子（例: .zip）</param>
     /// <returns>関連付けられている場合はtrue、そうでなければfalse</returns>
+    [SupportedOSPlatform("windows")]
     public static bool IsFileTypeAssociated(string extension)
     {
         try
         {
-            // 拡張子を正規化（先頭にドットがない場合は追加）
+            Logger.Log($"[関連付け状態取得] 開始: {extension}");
+            Debug.WriteLine($"[関連付け状態取得] 開始: {extension}");
             if (!extension.StartsWith("."))
             {
                 extension = "." + extension;
             }
 
-            // ユーザーレベルの設定をチェック
+            // まず、ユーザーレベルの直接的な関連付けをチェック
             var userKeyPath = $"Software\\Classes\\{extension}";
             using var userKey = Registry.CurrentUser.OpenSubKey(userKeyPath);
-            
             if (userKey != null)
             {
                 var appId = userKey.GetValue("") as string;
-                if (!string.IsNullOrEmpty(appId) && appId.StartsWith("GGEZArchiver"))
+                Logger.Log($"[関連付け状態取得] アプリケーション識別子: {appId}");
+                Debug.WriteLine($"[関連付け状態取得] アプリケーション識別子: {appId}");
+                if (!string.IsNullOrEmpty(appId) && appId.StartsWith("Lhamiel"))
                 {
-                    // アプリケーション識別子のコマンドをチェック
                     var shellKeyPath = $"Software\\Classes\\{appId}\\shell\\open\\command";
                     using var shellKey = Registry.CurrentUser.OpenSubKey(shellKeyPath);
-                    
                     if (shellKey != null)
                     {
                         var command = shellKey.GetValue("") as string;
-                        return command?.Contains(AppPath) == true;
+                        Logger.Log($"[関連付け状態取得] コマンド: {command}");
+                        Debug.WriteLine($"[関連付け状態取得] コマンド: {command}");
+                        Logger.Log($"[関連付け状態取得] AppPath: {AppPath}");
+                        Debug.WriteLine($"[関連付け状態取得] AppPath: {AppPath}");
+                        var isAssociated = command?.Contains(AppPath) == true;
+                        Logger.Log($"[関連付け状態取得] 関連付け状態: {isAssociated}");
+                        Debug.WriteLine($"[関連付け状態取得] 関連付け状態: {isAssociated}");
+                        return isAssociated;
                     }
+                    Logger.Log("[関連付け状態取得] シェルキーが見つかりません");
+                    Debug.WriteLine("[関連付け状態取得] シェルキーが見つかりません");
+                }
+                else
+                {
+                    Logger.Log("[関連付け状態取得] アプリケーション識別子がLhamielではありません");
+                    Debug.WriteLine("[関連付け状態取得] アプリケーション識別子がLhamielではありません");
                 }
             }
+            else
+            {
+                Logger.Log("[関連付け状態取得] ユーザーキーが見つかりません");
+                Debug.WriteLine("[関連付け状態取得] ユーザーキーが見つかりません");
+            }
 
+            Logger.Log($"[関連付け状態取得] 関連付けなし: {extension}");
+            Debug.WriteLine($"[関連付け状態取得] 関連付けなし: {extension}");
             return false;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Logger.LogException($"[関連付け状態取得] エラー: {extension}", ex);
+            Debug.WriteLine($"[関連付け状態取得] エラー: {ex.Message}");
             return false;
         }
     }
 
     /// <summary>
     /// すべてのサポートされているファイル形式に関連付けを設定する
-    /// Settingsクラスで定義された展開形式すべてに関連付けを作成
     /// </summary>
-    /// <returns>設定が成功した場合はtrue、そうでなければfalse</returns>
+    /// <returns>すべての設定が成功した場合はtrue、そうでなければfalse</returns>
+    [SupportedOSPlatform("windows")]
     public static bool AssociateAllSupportedTypes()
     {
+        var supportedTypes = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".lzma", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z" };
         var success = true;
-        
-        foreach (var format in Settings.SupportedExtractionFormats)
+
+        foreach (var type in supportedTypes)
         {
-            if (!AssociateFileType(format))
+            if (!AssociateFileType(type))
             {
                 success = false;
             }
@@ -201,16 +264,17 @@ public class FileAssociation
 
     /// <summary>
     /// すべてのサポートされているファイル形式の関連付けを解除する
-    /// Settingsクラスで定義された展開形式すべての関連付けを削除
     /// </summary>
-    /// <returns>解除が成功した場合はtrue、そうでなければfalse</returns>
+    /// <returns>すべての解除が成功した場合はtrue、そうでなければfalse</returns>
+    [SupportedOSPlatform("windows")]
     public static bool DisassociateAllSupportedTypes()
     {
+        var supportedTypes = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".lzma", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z" };
         var success = true;
-        
-        foreach (var format in Settings.SupportedExtractionFormats)
+
+        foreach (var type in supportedTypes)
         {
-            if (!DisassociateFileType(format))
+            if (!DisassociateFileType(type))
             {
                 success = false;
             }
@@ -220,104 +284,67 @@ public class FileAssociation
     }
 
     /// <summary>
-    /// レジストリの権限をチェックする
-    /// ファイル関連付けの設定に必要な権限があるかを確認
+    /// レジストリへの書き込み権限があるかどうかを確認する
     /// </summary>
     /// <returns>権限がある場合はtrue、そうでなければfalse</returns>
+    [SupportedOSPlatform("windows")]
     public static bool HasRegistryPermission()
     {
         try
         {
-            // テスト用のキーを作成して権限をチェック
-            var testKeyName = "Software\\GGEZArchiver\\Test";
-            using var testKey = Registry.CurrentUser.CreateSubKey(testKeyName);
+            var testKeyPath = "Software\\LhamielTest";
+            using var testKey = Registry.CurrentUser.CreateSubKey(testKeyPath);
             if (testKey != null)
             {
-                Registry.CurrentUser.DeleteSubKey(testKeyName);
+                testKey.SetValue("Test", "TestValue");
+                Registry.CurrentUser.DeleteSubKey(testKeyPath);
                 return true;
             }
             return false;
         }
-        catch (Exception)
+        catch
         {
             return false;
         }
     }
 
     /// <summary>
-    /// 現在のWindowsのファイル関連付け状態を取得する
-    /// 各拡張子について実際の関連付け状態をチェックして返す
+    /// 現在の関連付け状態を取得する
     /// </summary>
     /// <returns>拡張子と関連付け状態の辞書</returns>
+    [SupportedOSPlatform("windows")]
     public static Dictionary<string, bool> GetCurrentAssociationStatus()
     {
+        var supportedTypes = new[] { "zip", "7z", "tar", "gz", "bz2", "lzma", "xz", "rar", "lzh", "cab", "arj", "z" };
         var status = new Dictionary<string, bool>();
-        
-        foreach (var format in Settings.SupportedExtractionFormats)
+
+        foreach (var type in supportedTypes)
         {
-            status[format] = IsFileTypeAssociated(format);
+            status[type] = IsFileTypeAssociated(type);
         }
-        
+
         return status;
     }
 
     /// <summary>
     /// 指定された拡張子の現在の関連付け状態を取得する
     /// </summary>
-    /// <param name="extension">チェックするファイル拡張子（例: .zip）</param>
+    /// <param name="extension">拡張子</param>
     /// <returns>関連付けられている場合はtrue、そうでなければfalse</returns>
+    [SupportedOSPlatform("windows")]
     public static bool GetCurrentAssociationStatus(string extension)
     {
         return IsFileTypeAssociated(extension);
     }
 
     /// <summary>
-    /// ファイル関連付けの設定が正常に完了したかどうかを確認する
-    /// Windows 11では設定後にエクスプローラーの再起動が必要な場合がある
+    /// 指定された拡張子の関連付けが完全に設定されているかどうかを確認する
     /// </summary>
-    /// <param name="extension">チェックするファイル拡張子</param>
-    /// <returns>設定が完了している場合はtrue、そうでなければfalse</returns>
+    /// <param name="extension">拡張子</param>
+    /// <returns>完全に設定されている場合はtrue、そうでなければfalse</returns>
+    [SupportedOSPlatform("windows")]
     public static bool IsAssociationFullyConfigured(string extension)
     {
-        try
-        {
-            // 拡張子を正規化
-            if (!extension.StartsWith("."))
-            {
-                extension = "." + extension;
-            }
-
-            // ユーザーレベルの設定をチェック
-            var userKeyPath = $"Software\\Classes\\{extension}";
-            using var userKey = Registry.CurrentUser.OpenSubKey(userKeyPath);
-            
-            if (userKey != null)
-            {
-                var appId = userKey.GetValue("") as string;
-                if (!string.IsNullOrEmpty(appId) && appId.StartsWith("GGEZArchiver"))
-                {
-                    // アプリケーション識別子のコマンドをチェック
-                    var shellKeyPath = $"Software\\Classes\\{appId}\\shell\\open\\command";
-                    using var shellKey = Registry.CurrentUser.OpenSubKey(shellKeyPath);
-                    
-                    if (shellKey != null)
-                    {
-                        var command = shellKey.GetValue("") as string;
-                        if (command?.Contains(AppPath) == true)
-                        {
-                            // エクスプローラーに通知して設定を反映
-                            SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
-                            return true;
-                        }
-                    }
-                }
-            }
-
-            return false;
-        }
-        catch (Exception)
-        {
-            return false;
-        }
+        return IsFileTypeAssociated(extension);
     }
 }

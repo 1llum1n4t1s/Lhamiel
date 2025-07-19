@@ -1,374 +1,237 @@
-using SharpCompress.Archives;
-using SharpCompress.Common;
-using System.IO.Compression;
 using System.IO;
-using SevenZip;
+using System.IO.Compression;
+using Cube.FileSystem.SevenZip;
+using Cube.FileSystem;
 
-namespace GGEZArchiver.Util;
+namespace Lhamiel.Util;
 
 /// <summary>
-/// アーカイブ圧縮機能を提供するクラス
-/// 様々な圧縮形式（ZIP、7Z、TAR、GZ、BZ2、LZMA、XZ）に対応
+/// アーカイブ圧縮機能
 /// </summary>
 public class ArchiveCompressor
 {
     /// <summary>
-    /// 圧縮処理の委譲型
-    /// 異なる圧縮形式に対応するための統一インターフェース
+    /// 圧縮ファイル名を取得する
     /// </summary>
-    /// <param name="sourcePath">圧縮元のパス</param>
-    /// <param name="outputPath">出力パス</param>
-    /// <param name="progress">進行状況報告オブジェクト</param>
-    /// <returns>圧縮処理の完了を表すTask</returns>
-    private delegate Task CompressionDelegate(string sourcePath, string outputPath, IProgress<int>? progress);
-
-    /// <summary>
-    /// 圧縮形式と処理メソッドのマッピング
-    /// 圧縮形式に応じて適切な処理メソッドを選択
-    /// </summary>
-    private static readonly Dictionary<string, CompressionDelegate> CompressionMethods = new()
-    {
-        ["zip"] = CompressToZipAsync,
-        ["7z"] = CompressTo7zAsync,
-        ["tar"] = CompressToTarAsync,
-        ["gz"] = CompressToGzAsync,
-        ["bz2"] = CompressToBz2Async,
-        ["lzma"] = CompressToLzmaAsync,
-        ["xz"] = CompressToXzAsync
-    };
-
-    /// <summary>
-    /// 指定されたファイルまたはフォルダを圧縮する
-    /// 圧縮形式を自動判定して適切な圧縮処理を実行
-    /// </summary>
-    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
-    /// <param name="outputPath">出力ファイルのパス</param>
-    /// <param name="format">圧縮形式</param>
-    /// <param name="progress">進行状況を報告するオブジェクト（オプション）</param>
-    /// <returns>圧縮処理の完了を表すTask</returns>
-    /// <exception cref="ArgumentException">無効なパスが指定された場合</exception>
-    /// <exception cref="FileNotFoundException">圧縮元ファイルが見つからない場合</exception>
-    /// <exception cref="DirectoryNotFoundException">圧縮元ディレクトリが見つからない場合</exception>
-    public static async Task CompressAsync(string sourcePath, string outputPath, string format, IProgress<int>? progress = null)
-    {
-        // 入力パスの検証
-        if (string.IsNullOrWhiteSpace(sourcePath))
-            throw new ArgumentException("圧縮元のパスが指定されていません。", nameof(sourcePath));
-        
-        if (string.IsNullOrWhiteSpace(outputPath))
-            throw new ArgumentException("出力パスが指定されていません。", nameof(outputPath));
-
-        if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
-            throw new FileNotFoundException($"圧縮元のファイルまたはディレクトリが見つかりません: {sourcePath}");
-
-        if (CompressionMethods.TryGetValue(format.ToLowerInvariant(), out var compressionMethod))
-        {
-            await compressionMethod(sourcePath, outputPath, progress);
-        }
-        else
-        {
-            // デフォルトはZIP形式
-            await CompressToZipAsync(sourcePath, outputPath, progress);
-        }
-    }
-
-    /// <summary>
-    /// 指定されたファイルまたはフォルダをZIP形式で圧縮する
-    /// </summary>
-    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
-    /// <param name="outputPath">出力ZIPファイルのパス</param>
-    /// <param name="progress">進行状況を報告するオブジェクト（オプション）</param>
-    /// <returns>圧縮処理の完了を表すTask</returns>
-    public static async Task CompressToZipAsync(string sourcePath, string outputPath, IProgress<int>? progress = null)
-    {
-        await Task.Run(() =>
-        {
-            if (Directory.Exists(sourcePath))
-            {
-                // フォルダの場合
-                ZipFile.CreateFromDirectory(sourcePath, outputPath);
-                progress?.Report(100);
-            }
-            else if (File.Exists(sourcePath))
-            {
-                // ファイルの場合
-                using var archive = ZipFile.Open(outputPath, ZipArchiveMode.Create);
-                var entry = archive.CreateEntry(Path.GetFileName(sourcePath));
-                using var sourceStream = File.OpenRead(sourcePath);
-                using var entryStream = entry.Open();
-                sourceStream.CopyTo(entryStream);
-                progress?.Report(100);
-            }
-        });
-    }
-
-    /// <summary>
-    /// 指定されたファイルまたはフォルダを7Z形式で圧縮する
-    /// SevenZipSharpライブラリを使用して高圧縮率を実現
-    /// </summary>
-    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
-    /// <param name="outputPath">出力7Zファイルのパス</param>
-    /// <param name="progress">進行状況を報告するオブジェクト（オプション）</param>
-    /// <returns>圧縮処理の完了を表すTask</returns>
-    public static async Task CompressTo7zAsync(string sourcePath, string outputPath, IProgress<int>? progress = null)
-    {
-        await Task.Run(() =>
-        {
-            var compressor = new SevenZipCompressor();
-            compressor.CompressionLevel = SevenZip.CompressionLevel.Normal;
-            compressor.CompressionMethod = CompressionMethod.Lzma2;
-            compressor.ArchiveFormat = OutArchiveFormat.SevenZip;
-            compressor.TempFolderPath = Path.GetTempPath();
-            compressor.PreserveDirectoryRoot = true;
-            
-            if (progress != null)
-            {
-                compressor.Compressing += (s, e) =>
-                {
-                    progress.Report(e.PercentDone);
-                };
-            }
-
-            if (Directory.Exists(sourcePath))
-            {
-                compressor.CompressDirectory(sourcePath, outputPath);
-            }
-            else if (File.Exists(sourcePath))
-            {
-                compressor.CompressFiles(outputPath, sourcePath);
-            }
-            progress?.Report(100);
-        });
-    }
-
-    /// <summary>
-    /// 圧縮ファイルの出力パスを決定する
-    /// 出力先パターンが「元のファイルと同じディレクトリ」の場合は元ファイルのディレクトリを使用
-    /// </summary>
-    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
+    /// <param name="sourcePath">圧縮対象のパス</param>
     /// <param name="extension">圧縮形式の拡張子</param>
-    /// <param name="outputDirectory">指定された出力ディレクトリ</param>
-    /// <param name="outputToSameDirectory">元のファイルと同じディレクトリに出力するかどうか</param>
-    /// <returns>重複しない出力ファイルパス</returns>
+    /// <param name="outputDirectory">出力ディレクトリ</param>
+    /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
+    /// <returns>圧縮ファイルのパス</returns>
     public static string GetCompressedFileName(string sourcePath, string extension, string outputDirectory = "", bool outputToSameDirectory = false)
     {
-        string directory;
-        string fileName;
+        var directory = outputToSameDirectory 
+            ? Path.GetDirectoryName(sourcePath) ?? "" 
+            : outputDirectory;
+        var fileName = Path.GetFileNameWithoutExtension(sourcePath);
         
-        if (outputToSameDirectory)
+        return Path.Combine(directory, $"{fileName}.{extension}");
+    }
+
+    /// <summary>
+    /// ファイルを圧縮する（非同期版）
+    /// </summary>
+    /// <param name="sourcePath">圧縮するファイル・フォルダのパス</param>
+    /// <param name="outputPath">出力アーカイブのパス</param>
+    /// <param name="format">圧縮形式</param>
+    /// <param name="progress">進捗コールバック</param>
+    /// <returns>圧縮処理の完了を表すTask</returns>
+    public static async Task CompressAsync(string sourcePath, string outputPath, string format, IProgress<int>? progress = null)
+    {
+        var compressor = new ArchiveCompressor();
+        await Task.Run(() => {
+            var progressCallback = progress != null ? new Action<int>(p => progress.Report(p)) : null;
+            compressor.CompressFiles(new[] { sourcePath }, outputPath, progressCallback);
+        });
+    }
+
+    /// <summary>
+    /// ファイルを圧縮する
+    /// </summary>
+    /// <param name="sourcePaths">圧縮するファイル・フォルダのパス</param>
+    /// <param name="outputPath">出力アーカイブのパス</param>
+    /// <param name="progressCallback">進捗コールバック</param>
+    public void CompressFiles(IEnumerable<string> sourcePaths, string outputPath, Action<int>? progressCallback = null)
+    {
+        var sourceList = sourcePaths.ToList();
+        if (!sourceList.Any())
         {
-            // 元のファイルと同じディレクトリに出力
-            directory = Path.GetDirectoryName(sourcePath) ?? "";
-            fileName = Path.GetFileNameWithoutExtension(sourcePath);
+            throw new ArgumentException("圧縮するファイルが指定されていません。");
         }
-        else
+
+        // 出力ファイルが既に存在する場合は上書き確認
+        if (File.Exists(outputPath))
         {
-            // 指定されたディレクトリに出力
-            directory = outputDirectory;
-            fileName = Path.GetFileNameWithoutExtension(sourcePath);
-        }
-            
-        // 同名ファイルが存在する場合は番号を付ける
-        var counter = 1;
-        var outputPath = Path.Combine(directory, $"{fileName}.{extension}");
-            
-        while (File.Exists(outputPath))
-        {
-            outputPath = Path.Combine(directory, $"{fileName}_{counter}.{extension}");
-            counter++;
-        }
-            
-        return outputPath;
-    }
-
-    /// <summary>
-    /// 指定された拡張子がサポートされている圧縮形式かどうかを判定する
-    /// </summary>
-    /// <param name="extension">チェックする拡張子</param>
-    /// <returns>サポートされている場合はtrue、そうでなければfalse</returns>
-    public static bool IsSupportedCompressionType(string extension)
-    {
-        return CompressionMethods.ContainsKey(extension.ToLowerInvariant());
-    }
-
-    /// <summary>
-    /// 指定されたファイルまたはフォルダをTAR形式で圧縮する
-    /// </summary>
-    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
-    /// <param name="outputPath">出力TARファイルのパス</param>
-    /// <param name="progress">進行状況を報告するオブジェクト（オプション）</param>
-    /// <returns>圧縮処理の完了を表すTask</returns>
-    public static async Task CompressToTarAsync(string sourcePath, string outputPath, IProgress<int>? progress = null)
-    {
-        await Task.Run(() =>
-        {
-            using var archive = ArchiveFactory.Create(ArchiveType.Tar);
-                
-            if (Directory.Exists(sourcePath))
-            {
-                // フォルダの場合
-                AddDirectoryToArchive(archive, sourcePath, Path.GetDirectoryName(sourcePath) ?? "");
-            }
-            else if (File.Exists(sourcePath))
-            {
-                // ファイルの場合
-                archive.AddEntry(Path.GetFileName(sourcePath), sourcePath);
-            }
-
-            archive.SaveTo(outputPath, CompressionType.None);
-            progress?.Report(100);
-        });
-    }
-
-    /// <summary>
-    /// 指定されたファイルまたはフォルダをGZIP形式で圧縮する
-    /// </summary>
-    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
-    /// <param name="outputPath">出力GZIPファイルのパス</param>
-    /// <param name="progress">進行状況を報告するオブジェクト（オプション）</param>
-    /// <returns>圧縮処理の完了を表すTask</returns>
-    public static async Task CompressToGzAsync(string sourcePath, string outputPath, IProgress<int>? progress = null)
-    {
-        await Task.Run(() =>
-        {
-            using var archive = ArchiveFactory.Create(ArchiveType.GZip);
-                
-            if (Directory.Exists(sourcePath))
-            {
-                // フォルダの場合
-                AddDirectoryToArchive(archive, sourcePath, Path.GetDirectoryName(sourcePath) ?? "");
-            }
-            else if (File.Exists(sourcePath))
-            {
-                // ファイルの場合
-                archive.AddEntry(Path.GetFileName(sourcePath), sourcePath);
-            }
-
-            archive.SaveTo(outputPath, CompressionType.GZip);
-            progress?.Report(100);
-        });
-    }
-
-    /// <summary>
-    /// 指定されたファイルまたはフォルダをBZIP2形式で圧縮する
-    /// </summary>
-    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
-    /// <param name="outputPath">出力BZIP2ファイルのパス</param>
-    /// <param name="progress">進行状況を報告するオブジェクト（オプション）</param>
-    /// <returns>圧縮処理の完了を表すTask</returns>
-    public static async Task CompressToBz2Async(string sourcePath, string outputPath, IProgress<int>? progress = null)
-    {
-        await Task.Run(() =>
-        {
-            using var archive = ArchiveFactory.Create(ArchiveType.Tar);
-                
-            if (Directory.Exists(sourcePath))
-            {
-                // フォルダの場合
-                AddDirectoryToArchive(archive, sourcePath, Path.GetDirectoryName(sourcePath) ?? "");
-            }
-            else if (File.Exists(sourcePath))
-            {
-                // ファイルの場合
-                archive.AddEntry(Path.GetFileName(sourcePath), sourcePath);
-            }
-
-            archive.SaveTo(outputPath, CompressionType.BZip2);
-            progress?.Report(100);
-        });
-    }
-
-    /// <summary>
-    /// 指定されたファイルまたはフォルダをLZMA形式で圧縮する
-    /// </summary>
-    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
-    /// <param name="outputPath">出力LZMAファイルのパス</param>
-    /// <param name="progress">進行状況を報告するオブジェクト（オプション）</param>
-    /// <returns>圧縮処理の完了を表すTask</returns>
-    public static async Task CompressToLzmaAsync(string sourcePath, string outputPath, IProgress<int>? progress = null)
-    {
-        await Task.Run(() =>
-        {
-            using var archive = ArchiveFactory.Create(ArchiveType.Tar);
-                
-            if (Directory.Exists(sourcePath))
-            {
-                // フォルダの場合
-                AddDirectoryToArchive(archive, sourcePath, Path.GetDirectoryName(sourcePath) ?? "");
-            }
-            else if (File.Exists(sourcePath))
-            {
-                // ファイルの場合
-                archive.AddEntry(Path.GetFileName(sourcePath), sourcePath);
-            }
-
-            archive.SaveTo(outputPath, CompressionType.LZMA);
-            progress?.Report(100);
-        });
-    }
-
-    /// <summary>
-    /// 指定されたファイルまたはフォルダをXZ形式で圧縮する
-    /// </summary>
-    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
-    /// <param name="outputPath">出力XZファイルのパス</param>
-    /// <param name="progress">進行状況を報告するオブジェクト（オプション）</param>
-    /// <returns>圧縮処理の完了を表すTask</returns>
-    public static async Task CompressToXzAsync(string sourcePath, string outputPath, IProgress<int>? progress = null)
-    {
-        await Task.Run(() =>
-        {
-            using var archive = ArchiveFactory.Create(ArchiveType.Tar);
-                
-            if (Directory.Exists(sourcePath))
-            {
-                // フォルダの場合
-                AddDirectoryToArchive(archive, sourcePath, Path.GetDirectoryName(sourcePath) ?? "");
-            }
-            else if (File.Exists(sourcePath))
-            {
-                // ファイルの場合
-                archive.AddEntry(Path.GetFileName(sourcePath), sourcePath);
-            }
-
-            archive.SaveTo(outputPath, CompressionType.LZMA);
-            progress?.Report(100);
-        });
-    }
-
-    /// <summary>
-    /// ディレクトリ内のすべてのファイルをアーカイブに追加する
-    /// 相対パスを保持してディレクトリ構造を維持する
-    /// </summary>
-    /// <param name="archive">追加先のアーカイブ</param>
-    /// <param name="directoryPath">追加するディレクトリのパス</param>
-    /// <param name="basePath">基準となるパス（相対パス計算用）</param>
-    private static void AddDirectoryToArchive(IWritableArchive archive, string directoryPath, string basePath)
-    {
-        var files = Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories);
-        var totalFiles = files.Length;
-        var processedFiles = 0;
-
-        foreach (var file in files)
-        {
-            try
-            {
-                var relativePath = file.Substring(basePath.Length).TrimStart('\\', '/');
-                archive.AddEntry(relativePath, file);
-                processedFiles++;
-                    
-                // 進行状況を報告（簡易版）
-                if (processedFiles % 10 == 0 || processedFiles == totalFiles)
+            var canOverwrite = FileOverwriteDialog.CanOverwriteFile(sourceList.First(), outputPath);
+                if (!canOverwrite)
                 {
-                    var percentage = (int)((double)processedFiles / totalFiles * 100);
-                    // 進行状況の報告は実装が複雑なため、ここでは省略
+                    throw new OperationCanceledException("ユーザーが圧縮処理をキャンセルしました。");
                 }
-            }
-            catch (Exception ex)
+                
+                // 上書きが許可された場合は既存ファイルを削除
+                File.Delete(outputPath);
+        }
+
+        // 出力ディレクトリを作成
+        var outputDir = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
+        {
+            Directory.CreateDirectory(outputDir);
+        }
+
+        // 圧縮形式を決定
+        var format = GetFormatFromExtension(outputPath);
+        
+        try
+        {
+        // ArchiveWriterを使用して圧縮
+        using var writer = new ArchiveWriter(format);
+        
+        // 圧縮対象のファイルとディレクトリを追加
+        foreach (var sourcePath in sourceList)
+        {
+            if (File.Exists(sourcePath))
             {
-                // 個別ファイルのエラーはログに記録して続行
-                System.Diagnostics.Debug.WriteLine($"ファイルの追加に失敗しました: {file}, エラー: {ex.Message}");
+                writer.Add(sourcePath);
             }
+            else if (Directory.Exists(sourcePath))
+            {
+                writer.Add(sourcePath);
+            }
+            else
+            {
+                throw new FileNotFoundException($"指定されたパスが見つかりません: {sourcePath}");
+            }
+        }
+
+            // 進捗報告を設定
+            progressCallback?.Invoke(0);
+
+        // 圧縮を実行
+        writer.Save(outputPath);
+        
+        // 完了時の進捗報告
+            progressCallback?.Invoke(100);
+            
+            Logger.Log($"圧縮完了: {outputPath}");
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"圧縮でエラーが発生しました: {ex.Message}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// ファイル拡張子から圧縮形式を取得する
+    /// </summary>
+    /// <param name="outputPath">出力ファイルパス</param>
+    /// <returns>圧縮形式</returns>
+    private static Format GetFormatFromExtension(string outputPath)
+    {
+        var extension = Path.GetExtension(outputPath).ToLowerInvariant();
+        return extension switch
+        {
+            ".zip" => Format.Zip,
+            ".7z" => Format.SevenZip,
+            ".tar" => Format.Tar,
+            ".gz" => Format.GZip,
+            ".bz2" => Format.BZip2,
+            ".xz" => Format.XZ,
+            ".cab" => Format.Cab,
+            ".wim" => Format.Wim,
+            _ => Format.Zip // デフォルトはZIP
+        };
+    }
+
+    /// <summary>
+    /// ディレクトリを圧縮する
+    /// </summary>
+    /// <param name="directoryPath">圧縮するディレクトリのパス</param>
+    /// <param name="outputPath">出力アーカイブのパス</param>
+    /// <param name="progressCallback">進捗コールバック</param>
+    public void CompressDirectory(string directoryPath, string outputPath, Action<int>? progressCallback = null)
+    {
+        if (!Directory.Exists(directoryPath))
+        {
+            throw new DirectoryNotFoundException($"ディレクトリが見つかりません: {directoryPath}");
+        }
+
+        // 出力ファイルが既に存在する場合は上書き確認
+        if (File.Exists(outputPath))
+        {
+            var canOverwrite = FileOverwriteDialog.CanOverwriteFile(directoryPath, outputPath);
+            if (!canOverwrite)
+            {
+                throw new OperationCanceledException("ユーザーが圧縮処理をキャンセルしました。");
+            }
+            
+            // 上書きが許可された場合は既存ファイルを削除
+            File.Delete(outputPath);
+        }
+
+        // 出力ディレクトリを作成
+        var outputDir = Path.GetDirectoryName(outputPath);
+        if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
+        {
+            Directory.CreateDirectory(outputDir);
+        }
+
+        // 圧縮形式を決定
+        var format = GetFormatFromExtension(outputPath);
+
+        try
+        {
+            // ArchiveWriterを使用して圧縮
+            using var writer = new ArchiveWriter(format);
+
+            // ディレクトリを追加
+            writer.Add(directoryPath);
+
+            // 進捗報告を設定
+            progressCallback?.Invoke(0);
+
+            // 圧縮を実行
+            writer.Save(outputPath);
+            
+            // 完了時の進捗報告
+            progressCallback?.Invoke(100);
+            
+            Logger.Log($"ディレクトリ圧縮完了: {directoryPath} -> {outputPath}");
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"ディレクトリ圧縮でエラーが発生しました: {ex.Message}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// 同名フォルダが存在するかチェックする
+    /// </summary>
+    /// <param name="archivePath">アーカイブパス</param>
+    /// <param name="folderName">チェックするフォルダ名</param>
+    /// <returns>同名フォルダが存在するかどうか</returns>
+    public bool HasFolderWithSameName(string archivePath, string folderName)
+    {
+        if (!File.Exists(archivePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var reader = new ArchiveReader(archivePath);
+
+            // Items プロパティを使用してアーカイブ内容をチェック
+            return reader.Items.Any(item => 
+                item.IsDirectory && 
+                string.Equals(item.FullName, folderName, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"フォルダ構造のチェックに失敗しました: {ex.Message}");
+            return false;
         }
     }
 }
