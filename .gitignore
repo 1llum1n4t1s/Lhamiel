@@ -1,5 +1,7 @@
+.idea/
 .vs/
+.vscode/
+*.csproj.user
+*.suo
 bin/
 obj/
-.vscode/
-.idea/
