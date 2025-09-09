@@ -26,7 +26,67 @@ public class FileAssociation
     /// アプリケーションの実行ファイルパス
     /// 現在実行中のアプリケーションのパスを取得
     /// </summary>
-    private static readonly string AppPath = Assembly.GetExecutingAssembly().Location;
+    private static string AppPath
+    {
+        get
+        {
+            try
+            {
+                // 一般的な方法：Process.GetCurrentProcess().MainModule.FileNameを使用
+                var processPath = Process.GetCurrentProcess().MainModule?.FileName;
+                if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
+                {
+                    return processPath;
+                }
+                
+                // .NET 9の新しい実行モデルに対応
+                // アプリケーションのベースディレクトリからexeファイルを探す
+                var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                
+                // ベースディレクトリ内のexeファイルを探す
+                var exeFiles = Directory.GetFiles(baseDirectory, "*.exe");
+                if (exeFiles.Length > 0)
+                {
+                    // メインのアプリケーションexeファイルを特定
+                    // Lhamiel.exeを優先し、見つからない場合は最初のexeファイルを使用
+                    var mainExe = exeFiles.FirstOrDefault(f => Path.GetFileName(f).Equals("Lhamiel.exe", StringComparison.OrdinalIgnoreCase));
+                    if (mainExe != null)
+                    {
+                        return mainExe;
+                    }
+                    
+                    // Lhamiel.exeが見つからない場合は、最初のexeファイルを使用
+                    return exeFiles[0];
+                }
+                
+                // フォールバック：Assembly.GetExecutingAssembly().Location
+                var assemblyPath = Assembly.GetExecutingAssembly().Location;
+                
+                // DLLファイルの場合は、同じディレクトリのexeファイルを探す
+                if (Path.GetExtension(assemblyPath).ToLowerInvariant() == ".dll")
+                {
+                    var assemblyDir = Path.GetDirectoryName(assemblyPath);
+                    if (assemblyDir != null)
+                    {
+                        var assemblyName = Path.GetFileNameWithoutExtension(assemblyPath);
+                        var exePath = Path.Combine(assemblyDir, assemblyName + ".exe");
+                        
+                        if (File.Exists(exePath))
+                        {
+                            return exePath;
+                        }
+                    }
+                }
+                
+                return assemblyPath;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogException("実行ファイルパスの取得に失敗しました", ex);
+                return Assembly.GetExecutingAssembly().Location;
+            }
+        }
+    }
 
     /// <summary>
     /// アプリケーションのアイコンファイルパス

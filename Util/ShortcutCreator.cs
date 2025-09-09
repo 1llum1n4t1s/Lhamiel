@@ -112,11 +112,36 @@ public static class ShortcutCreator
             var processPath = Process.GetCurrentProcess().MainModule?.FileName;
             if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
             {
+                Logger.Log($"Process.GetCurrentProcess().MainModule.FileName: {processPath}");
                 return processPath;
+            }
+            
+            // .NET 9の新しい実行モデルに対応
+            // アプリケーションのベースディレクトリからexeファイルを探す
+            var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            Logger.Log($"AppDomain.CurrentDomain.BaseDirectory: {baseDirectory}");
+            
+            // ベースディレクトリ内のexeファイルを探す
+            var exeFiles = Directory.GetFiles(baseDirectory, "*.exe");
+            if (exeFiles.Length > 0)
+            {
+                // メインのアプリケーションexeファイルを特定
+                // Lhamiel.exeを優先し、見つからない場合は最初のexeファイルを使用
+                var mainExe = exeFiles.FirstOrDefault(f => Path.GetFileName(f).Equals("Lhamiel.exe", StringComparison.OrdinalIgnoreCase));
+                if (mainExe != null)
+                {
+                    Logger.Log($"メイン実行ファイルを発見: {mainExe}");
+                    return mainExe;
+                }
+                
+                // Lhamiel.exeが見つからない場合は、最初のexeファイルを使用
+                Logger.Log($"実行ファイルを発見: {exeFiles[0]}");
+                return exeFiles[0];
             }
             
             // フォールバック：Assembly.GetExecutingAssembly().Location
             var assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            Logger.Log($"Assembly.GetExecutingAssembly().Location: {assemblyPath}");
             
             // DLLファイルの場合は、同じディレクトリのexeファイルを探す
             if (Path.GetExtension(assemblyPath).ToLowerInvariant() == ".dll")
@@ -129,11 +154,13 @@ public static class ShortcutCreator
                     
                     if (File.Exists(exePath))
                     {
+                        Logger.Log($"DLLから派生した実行ファイル: {exePath}");
                         return exePath;
                     }
                 }
             }
             
+            Logger.Log($"最終的なパス: {assemblyPath}");
             return assemblyPath;
         }
         catch (Exception ex)

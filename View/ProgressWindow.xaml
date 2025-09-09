@@ -5,34 +5,32 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Lhamiel.View"
         mc:Ignorable="d"
-        Title="処理中..." Height="200" Width="400" 
-        WindowStartupLocation="CenterScreen" 
-        Style="{StaticResource FluentWindowStyle}">
+        Title="処理中..." Height="200" Width="400"
+        WindowStartupLocation="CenterScreen">
     <Grid Margin="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <!-- ファイル名 -->
-        <TextBlock Grid.Row="0" x:Name="FileNameTextBlock" 
-                   Text="ファイル名" Margin="0,0,0,15" 
-                   TextTrimming="CharacterEllipsis"/>
+        <TextBlock Grid.Row="0" x:Name="FileNameTextBlock"
+                   Text="ファイル名" Margin="0,0,0,15"
+                   TextTrimming="CharacterEllipsis" />
 
         <!-- 進行状況バー -->
-        <ProgressBar Grid.Row="1" x:Name="ProgressBar" 
-                     Height="8" Margin="0,0,0,10"
-                     Style="{StaticResource FluentProgressBarStyle}"/>
+        <ProgressBar Grid.Row="1" x:Name="ProgressBar"
+                     Height="8" Margin="0,0,0,10" />
 
         <!-- 進行状況テキスト -->
-        <TextBlock Grid.Row="2" x:Name="ProgressTextBlock" 
-                   Text="0%" HorizontalAlignment="Center" Margin="0,0,0,15"/>
+        <TextBlock Grid.Row="2" x:Name="ProgressTextBlock"
+                   Text="0%" HorizontalAlignment="Center" Margin="0,0,0,15" />
 
         <!-- ステータス情報 -->
-        <TextBlock Grid.Row="3" x:Name="StatusTextBlock" 
+        <TextBlock Grid.Row="3" x:Name="StatusTextBlock"
                    Text="準備中..." TextWrapping="Wrap" VerticalAlignment="Center"
-                   HorizontalAlignment="Center"/>
+                   HorizontalAlignment="Center" />
     </Grid>
-</Window> 
+</Window>

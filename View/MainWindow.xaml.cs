@@ -12,7 +12,7 @@ namespace Lhamiel.View;
 public partial class MainWindow : Window
 {
     private readonly Settings _settings;
-    private bool _isInitializing = true;
+    private readonly bool _isInitializing = true;
 
     /// <summary>
     /// MainWindowのコンストラクタ
@@ -43,7 +43,7 @@ public partial class MainWindow : Window
         {
             // 圧縮形式の選択肢を設定
             CompressionFormatComboBox.ItemsSource = Settings.SupportedCompressionFormats;
-            
+
             // 設定された圧縮形式がサポートされているかチェックし、見つからない場合はデフォルト値を使用
             var selectedFormat = _settings.CompressionFormat?.ToLowerInvariant();
             if (Settings.SupportedCompressionFormats.Contains(selectedFormat))
@@ -168,17 +168,57 @@ public partial class MainWindow : Window
                 var progressWindow = new ProgressWindow("圧縮");
                 progressWindow.Show();
 
-                foreach (var filePath in openFileDialog.FileNames)
+                // ファイルとフォルダを分けて処理
+                var files = new List<string>();
+                var folders = new List<string>();
+
+                foreach (var path in openFileDialog.FileNames)
                 {
-                    var outputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
-                    progressWindow.SetFileName(outputPath);
-
-                    var progress = new Progress<int>(percentage =>
+                    if (File.Exists(path))
                     {
-                        progressWindow.UpdateProgress(percentage, "ファイルを圧縮中...");
-                    });
+                        files.Add(path);
+                    }
+                    else if (Directory.Exists(path))
+                    {
+                        folders.Add(path);
+                    }
+                }
 
-                    await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress);
+                // フォルダの圧縮処理
+                if (folders.Count > 0)
+                {
+                    await ArchiveProcessor.CompressFoldersAsync(folders.ToArray(), outputDir, outputToSameDirectory, format, progressWindow);
+                }
+
+                // ファイルの圧縮処理
+                if (files.Count > 0)
+                {
+                    foreach (var filePath in files)
+                    {
+                        var outputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
+
+                        // 出力ファイルが既に存在する場合は上書き確認
+                        if (File.Exists(outputPath))
+                        {
+                            var canOverwrite = FileOverwriteDialog.CanOverwriteFile(filePath, outputPath, this);
+                            if (!canOverwrite)
+                            {
+                                Logger.Log("ユーザーが圧縮処理をキャンセルしました");
+                                continue;
+                            }
+
+                            // 上書きが許可された場合は既存ファイルを削除
+                            File.Delete(outputPath);
+                        }
+
+                        progressWindow.SetFileName(outputPath);
+
+                        var progress = new Progress<int>(percentage => {
+                            progressWindow.UpdateProgress(percentage, "ファイルを圧縮中...");
+                        });
+
+                        await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress);
+                    }
                 }
 
                 progressWindow.SetCompleted("圧縮が完了しました。");
@@ -264,7 +304,7 @@ public partial class MainWindow : Window
 
             // チェックボックスの状態に基づいて関連付けを設定/解除
             var associations = new Dictionary<string, bool>
-        {
+            {
                 { "zip", ZipCheckBox.IsChecked ?? false },
                 { "7z", SevenZipCheckBox.IsChecked ?? false },
                 { "tar", TarCheckBox.IsChecked ?? false },
@@ -277,10 +317,10 @@ public partial class MainWindow : Window
                 { "cab", CabCheckBox.IsChecked ?? false },
                 { "arj", ArjCheckBox.IsChecked ?? false },
                 { "z", ZCheckBox.IsChecked ?? false }
-        };
+            };
 
             foreach (var association in associations)
-        {
+            {
                 var extension = association.Key;
                 var shouldAssociate = association.Value;
                 var isCurrentlyAssociated = FileAssociation.IsFileTypeAssociated(extension);
@@ -360,8 +400,8 @@ public partial class MainWindow : Window
         try
         {
             if (!_isInitializing && sender is RadioButton radioButton && _settings != null)
-        {
-            _settings.ExtractionOutputToSameDirectory = radioButton == ExtractionOutputToSameDirectoryRadio;
+            {
+                _settings.ExtractionOutputToSameDirectory = radioButton == ExtractionOutputToSameDirectoryRadio;
             }
         }
 
@@ -379,8 +419,8 @@ public partial class MainWindow : Window
         try
         {
             if (!_isInitializing && sender is RadioButton radioButton && _settings != null)
-        {
-            _settings.CompressionOutputToSameDirectory = radioButton == CompressionOutputToSameDirectoryRadio;
+            {
+                _settings.CompressionOutputToSameDirectory = radioButton == CompressionOutputToSameDirectoryRadio;
             }
         }
 
@@ -436,7 +476,7 @@ public partial class MainWindow : Window
     /// 全選択ボタンクリック時の処理
     /// </summary>
     private void SelectAllButton_Click(object sender, RoutedEventArgs e)
-        {
+    {
         try
         {
             // すべてのチェックボックスを選択状態にする
@@ -457,7 +497,7 @@ public partial class MainWindow : Window
         {
             Logger.LogException("全選択処理でエラーが発生", ex);
             MessageBox.Show($"全選択処理でエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
+        }
     }
 
     /// <summary>

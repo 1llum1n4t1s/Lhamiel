@@ -203,24 +203,19 @@ public class ArchiveExtractor
     /// <returns>展開先ディレクトリのパス</returns>
     public static string GetOutputDirectory(string archivePath, string defaultOutputDir, bool outputToSameDirectory = false)
     {
-        if (outputToSameDirectory)
+        var directory = Path.GetDirectoryName(archivePath) ?? "";
+        var fileName = Path.GetFileNameWithoutExtension(archivePath);
+        
+        // アーカイブの内容をチェックして、二重フォルダを避ける
+        var adjustedFileName = GetAdjustedFileName(archivePath, fileName);
+        
+        // 空文字列が返された場合は、アーカイブファイルと同じディレクトリに展開
+        if (string.IsNullOrEmpty(adjustedFileName))
         {
-            var directory = Path.GetDirectoryName(archivePath) ?? "";
-            var fileName = Path.GetFileNameWithoutExtension(archivePath);
-            
-            // アーカイブの内容をチェックして、二重フォルダを避ける
-            var adjustedFileName = GetAdjustedFileName(archivePath, fileName);
-            
-            // 空文字列が返された場合は、アーカイブファイルと同じディレクトリに展開
-            if (string.IsNullOrEmpty(adjustedFileName))
-            {
-                return directory;
-            }
-            
-            return Path.Combine(directory, adjustedFileName);
+            return directory;
         }
-
-        return defaultOutputDir;
+        
+        return Path.Combine(directory, adjustedFileName);
     }
 
     /// <summary>
@@ -461,7 +456,19 @@ public class ArchiveExtractor
         }
         catch (Exception ex)
         {
-            Logger.Log($"アーカイブ展開でエラーが発生しました: {ex.Message}");
+            // 詳細なエラー分析を実行
+            var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath);
+            Logger.Log($"アーカイブ展開でエラーが発生しました: {errorInfo.Message}");
+            Logger.Log($"エラー詳細: {errorInfo.Details}");
+            
+            // 破損ファイルの場合は詳細分析を実行
+            if (errorInfo.ErrorType == ArchiveErrorType.CorruptedFile)
+            {
+                Logger.Log("破損ファイルの詳細分析を実行します");
+                var corruptionAnalysis = ArchiveErrorHandler.AnalyzeCorruption(archivePath);
+                Logger.Log($"破損分析結果: 破損={corruptionAnalysis.IsCorrupted}, 種類={corruptionAnalysis.CorruptionType}, 回復率={corruptionAnalysis.RecoveryRate:F1}%");
+            }
+            
             throw;
         }
     }

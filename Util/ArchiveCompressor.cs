@@ -59,19 +59,6 @@ public class ArchiveCompressor
             throw new ArgumentException("圧縮するファイルが指定されていません。");
         }
 
-        // 出力ファイルが既に存在する場合は上書き確認
-        if (File.Exists(outputPath))
-        {
-            var canOverwrite = FileOverwriteDialog.CanOverwriteFile(sourceList.First(), outputPath);
-                if (!canOverwrite)
-                {
-                    throw new OperationCanceledException("ユーザーが圧縮処理をキャンセルしました。");
-                }
-                
-                // 上書きが許可された場合は既存ファイルを削除
-                File.Delete(outputPath);
-        }
-
         // 出力ディレクトリを作成
         var outputDir = Path.GetDirectoryName(outputPath);
         if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
@@ -155,19 +142,6 @@ public class ArchiveCompressor
         if (!Directory.Exists(directoryPath))
         {
             throw new DirectoryNotFoundException($"ディレクトリが見つかりません: {directoryPath}");
-        }
-
-        // 出力ファイルが既に存在する場合は上書き確認
-        if (File.Exists(outputPath))
-        {
-            var canOverwrite = FileOverwriteDialog.CanOverwriteFile(directoryPath, outputPath);
-            if (!canOverwrite)
-            {
-                throw new OperationCanceledException("ユーザーが圧縮処理をキャンセルしました。");
-            }
-            
-            // 上書きが許可された場合は既存ファイルを削除
-            File.Delete(outputPath);
         }
 
         // 出力ディレクトリを作成

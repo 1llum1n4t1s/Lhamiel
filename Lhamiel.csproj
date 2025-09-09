@@ -35,16 +35,20 @@
     <Compile Include="App.xaml.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Util\ArchiveCompressor.cs" />
+    <Compile Include="Util\ArchiveErrorHandler.cs" />
     <Compile Include="Util\ArchiveExtractor.cs" />
     <Compile Include="Util\ArchiveProcessor.cs" />
     <Compile Include="Util\FileAssociation.cs" />
     <Compile Include="Util\FileOverwriteDialog.cs" />
     <Compile Include="Util\Logger.cs" />
+    <Compile Include="Util\PartialExtractionHandler.cs" />
     <Compile Include="Util\Settings.cs" />
     <Compile Include="Util\ShortcutCreator.cs" />
+    <Compile Include="View\ErrorRecoveryDialog.xaml.cs" />
     <Compile Include="View\MainWindow.xaml.cs" />
     <Compile Include="View\ProgressWindow.xaml.cs" />
   </ItemGroup>
+
 
   <ItemGroup>
     <PackageReference Include="7z.Libs" Version="25.0.0" />

@@ -3,11 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Lhamiel.View"
         mc:Ignorable="d"
-        Title="Lhamiel" Height="500" Width="720"
-        WindowStartupLocation="CenterScreen" 
-        Style="{StaticResource FluentWindowStyle}">
+        Title="Lhamiel" Height="550" Width="720"
+        WindowStartupLocation="CenterScreen">
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -93,7 +91,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    
+
                     <!-- 全選択・全解除ボタン -->
                     <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,8">
                         <Button x:Name="SelectAllButton" Content="全選択" Width="60" Height="25" Margin="4,0"
@@ -101,36 +99,36 @@
                         <Button x:Name="DeselectAllButton" Content="全解除" Width="60" Height="25" Margin="4,0"
                                 Click="DeselectAllButton_Click" />
                     </StackPanel>
-                    
+
                     <!-- チェックボックス一覧 -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
-                    <UniformGrid Columns="3" Margin="8">
-                        <CheckBox x:Name="ZipCheckBox" Content="ZIPファイル (.zip)"
-                                  Margin="0,2" />
-                        <CheckBox x:Name="SevenZipCheckBox" Content="7-Zipファイル (.7z)"
-                                  Margin="0,2" />
-                        <CheckBox x:Name="TarCheckBox" Content="TARファイル (.tar)"
-                                  Margin="0,2" />
-                        <CheckBox x:Name="GzCheckBox" Content="GZIPファイル (.gz)"
-                                  Margin="0,2" />
-                        <CheckBox x:Name="Bz2CheckBox" Content="BZIP2ファイル (.bz2)"
-                                  Margin="0,2" />
-                        <CheckBox x:Name="LzmaCheckBox" Content="LZMAファイル (.lzma)"
-                                  Margin="0,2" />
-                        <CheckBox x:Name="XzCheckBox" Content="XZファイル (.xz)"
-                                  Margin="0,2" />
-                        <CheckBox x:Name="RarCheckBox" Content="RARファイル (.rar)"
-                                  Margin="0,2" />
-                        <CheckBox x:Name="LzhCheckBox" Content="LZHファイル (.lzh)"
-                                  Margin="0,2" />
-                        <CheckBox x:Name="CabCheckBox" Content="CABファイル (.cab)"
-                                  Margin="0,2" />
-                        <CheckBox x:Name="ArjCheckBox" Content="ARJファイル (.arj)"
-                                  Margin="0,2" />
-                        <CheckBox x:Name="ZCheckBox" Content="Zファイル (.z)"
-                                  Margin="0,2" />
-                    </UniformGrid>
-                </ScrollViewer>
+                        <UniformGrid Columns="3" Margin="8">
+                            <CheckBox x:Name="ZipCheckBox" Content="ZIPファイル (.zip)"
+                                      Margin="0,2" />
+                            <CheckBox x:Name="SevenZipCheckBox" Content="7-Zipファイル (.7z)"
+                                      Margin="0,2" />
+                            <CheckBox x:Name="TarCheckBox" Content="TARファイル (.tar)"
+                                      Margin="0,2" />
+                            <CheckBox x:Name="GzCheckBox" Content="GZIPファイル (.gz)"
+                                      Margin="0,2" />
+                            <CheckBox x:Name="Bz2CheckBox" Content="BZIP2ファイル (.bz2)"
+                                      Margin="0,2" />
+                            <CheckBox x:Name="LzmaCheckBox" Content="LZMAファイル (.lzma)"
+                                      Margin="0,2" />
+                            <CheckBox x:Name="XzCheckBox" Content="XZファイル (.xz)"
+                                      Margin="0,2" />
+                            <CheckBox x:Name="RarCheckBox" Content="RARファイル (.rar)"
+                                      Margin="0,2" />
+                            <CheckBox x:Name="LzhCheckBox" Content="LZHファイル (.lzh)"
+                                      Margin="0,2" />
+                            <CheckBox x:Name="CabCheckBox" Content="CABファイル (.cab)"
+                                      Margin="0,2" />
+                            <CheckBox x:Name="ArjCheckBox" Content="ARJファイル (.arj)"
+                                      Margin="0,2" />
+                            <CheckBox x:Name="ZCheckBox" Content="Zファイル (.z)"
+                                      Margin="0,2" />
+                        </UniformGrid>
+                    </ScrollViewer>
                 </Grid>
             </GroupBox>
         </Grid>

@@ -18,13 +18,13 @@ public partial class App : Application
         try
         {
             base.OnStartup(e);
-            
+
             // 起動ログを出力
             Logger.LogStartup(e.Args);
-        
+
             // コマンドライン引数をチェック
             if (e.Args.Length > 0)
-        {
+            {
                 // ファイルが指定されている場合は展開処理を実行
                 ProcessCommandLineFile(e.Args[0]);
             }
@@ -40,49 +40,131 @@ public partial class App : Application
             // ログファイルに直接書き込み（Loggerが使えない場合のため）
             var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log");
             File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] アプリケーション起動エラー: {ex}\n");
-            
+
             MessageBox.Show($"アプリケーションの起動に失敗しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             throw;
         }
     }
 
     /// <summary>
-    /// コマンドラインで指定されたファイルの展開処理を実行
+    /// コマンドラインで指定されたファイルまたはフォルダの処理を実行
     /// </summary>
-    /// <param name="filePath">展開するファイルのパス</param>
-    private async void ProcessCommandLineFile(string filePath)
+    /// <param name="path">処理するファイルまたはフォルダのパス</param>
+    private async void ProcessCommandLineFile(string path)
     {
         try
         {
-            Logger.Log($"コマンドラインから展開処理を開始: {filePath}");
-            
+            Logger.Log($"コマンドラインから処理を開始: {path}");
+
+            // パスが存在するかチェック
+            if (!File.Exists(path) && !Directory.Exists(path))
+            {
+                Logger.Log($"指定されたパスが存在しません: {path}");
+                MessageBox.Show($"指定されたファイルまたはフォルダが見つかりません。\n{path}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown();
+                return;
+            }
+
             // 設定を読み込み
             var settings = Settings.Load();
+
+            // ファイルかフォルダかを判定して適切な処理を実行
+            if (File.Exists(path))
+            {
+                // ファイルの場合は展開処理を実行
+                Logger.Log($"ファイルを展開処理します: {path}");
+                await ProcessFileExtraction(path, settings);
+            }
+            else if (Directory.Exists(path))
+            {
+                // フォルダの場合は圧縮処理を実行
+                Logger.Log($"フォルダを圧縮処理します: {path}");
+                await ProcessFolderCompression(path, settings);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("コマンドライン処理でエラーが発生", ex);
+            MessageBox.Show($"処理中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// ファイルの展開処理を実行
+    /// </summary>
+    /// <param name="filePath">展開するファイルのパス</param>
+    /// <param name="settings">アプリケーション設定</param>
+    private async Task ProcessFileExtraction(string filePath, Settings settings)
+    {
+        try
+        {
             var outputDir = settings.ExtractionOutputDirectory;
             var outputToSameDirectory = settings.ExtractionOutputToSameDirectory;
-            
+
             // 進行状況ウィンドウを表示
             var progressWindow = new View.ProgressWindow("展開");
             progressWindow.Show();
 
             // 共通化された展開処理を実行
             var success = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow);
-            
+
             if (success)
             {
-                // アプリケーションを終了
-                Shutdown();
+                Logger.Log("ファイル展開処理が完了しました");
             }
             else
             {
-                // エラーが発生した場合はアプリケーションを終了
-                Shutdown();
+                Logger.Log("ファイル展開処理が失敗しました");
             }
+
+            // アプリケーションを終了
+            Shutdown();
         }
         catch (Exception ex)
         {
-            Logger.LogException("コマンドライン展開処理でエラーが発生", ex);
+            Logger.LogException("ファイル展開処理でエラーが発生", ex);
             MessageBox.Show($"展開中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// フォルダの圧縮処理を実行
+    /// </summary>
+    /// <param name="folderPath">圧縮するフォルダのパス</param>
+    /// <param name="settings">アプリケーション設定</param>
+    private async Task ProcessFolderCompression(string folderPath, Settings settings)
+    {
+        try
+        {
+            var outputDir = settings.CompressionOutputDirectory;
+            var outputToSameDirectory = settings.CompressionOutputToSameDirectory;
+            var format = settings.CompressionFormat;
+
+            // 進行状況ウィンドウを表示
+            var progressWindow = new View.ProgressWindow("圧縮");
+            progressWindow.Show();
+
+            // 共通化された圧縮処理を実行
+            var success = await ArchiveProcessor.CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow);
+
+            if (success)
+            {
+                Logger.Log("フォルダ圧縮処理が完了しました");
+            }
+            else
+            {
+                Logger.Log("フォルダ圧縮処理が失敗しました");
+            }
+
+            // アプリケーションを終了
+            Shutdown();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("フォルダ圧縮処理でエラーが発生", ex);
+            MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
         }
     }
