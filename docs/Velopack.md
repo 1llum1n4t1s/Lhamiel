@@ -47,12 +47,26 @@ dotnet tool update -g vpk
 vpk upload github --outputDir Releases --repoUrl "https://github.com/<OWNER>/<REPO>" --tag "v1.0.0" --publish
 ```
 
+### GitHub Actions で自動公開する場合
+
+タグ `v1.0.0` のように `v` から始まるタグをプッシュすると、
+`Releases/` 配下の成果物を GitHub Releases に自動アップロードします。
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 ## 4. 配布運用
 
 - 初回インストール: `Setup.exe` を配布。
 - 以後の更新: GitHub Releases に `Releases/` の中身を必ずすべてアップロード。
   - `Setup.exe` のみでは更新が機能しません。
   - `RELEASES` と `*.nupkg` が更新配信に必要です。
+
+### ダウンロード確認
+
+GitHub Releases の対象リリースから `Setup.exe` をダウンロードしてテストできます。
 
 ## 5. アプリ側設定
 
