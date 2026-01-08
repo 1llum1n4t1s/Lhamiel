@@ -61,9 +61,8 @@ public partial class App : Application
             // ログファイルに直接書き込み（Loggerが使えない場合のため）
             var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log");
             File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] アプリケーション起動エラー: {ex}\n");
-
-            MessageBox.Show($"アプリケーションの起動に失敗しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-            throw;
+            Shutdown();
+            return;
         }
         finally
         {
@@ -79,9 +78,17 @@ public partial class App : Application
             return null;
         }
 
-        const string repoOwner = "YOUR_GITHUB_OWNER";
-        const string repoName = "YOUR_GITHUB_REPO";
-        const string channel = "win";
+        var settings = Settings.Load();
+        var repoOwner = settings.UpdateRepoOwner;
+        var repoName = settings.UpdateRepoName;
+        var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "win" : settings.UpdateChannel;
+
+        if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName))
+        {
+            Logger.Log("Velopack: 更新元リポジトリが未設定のため更新チェックをスキップします。");
+            return null;
+        }
+
         var source = new GithubSource(repoOwner, repoName, channel);
         return new UpdateManager(source);
     }
