@@ -1,6 +1,8 @@
 ﻿using System.Windows;
 using System.IO;
 using Lhamiel.Util;
+using Velopack;
+using Velopack.Sources;
 
 namespace Lhamiel;
 
@@ -13,10 +15,29 @@ public partial class App : Application
     /// アプリケーション起動時の処理
     /// </summary>
     /// <param name="e">起動イベント引数</param>
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
+        UpdateManager? updateManager = null;
+
         try
         {
+            updateManager = InitializeUpdateManager();
+            if (updateManager != null)
+            {
+                Logger.Log("Velopack: 更新チェックを開始します。");
+                var updateInfo = await updateManager.CheckForUpdatesAsync();
+                if (updateInfo != null)
+                {
+                    Logger.Log("Velopack: 更新を検出しました。ダウンロードを開始します。");
+                    await updateManager.DownloadUpdatesAsync(updateInfo);
+                    Logger.Log("Velopack: 更新を適用して再起動します。");
+                    updateManager.ApplyUpdatesAndRestart(updateInfo);
+                    return;
+                }
+
+                Logger.Log("Velopack: 利用可能な更新はありません。");
+            }
+
             base.OnStartup(e);
 
             // 起動ログを出力
@@ -44,6 +65,25 @@ public partial class App : Application
             MessageBox.Show($"アプリケーションの起動に失敗しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             throw;
         }
+        finally
+        {
+            updateManager?.Dispose();
+        }
+    }
+
+    private static UpdateManager? InitializeUpdateManager()
+    {
+        if (!VelopackRuntimeInfo.IsInstalled)
+        {
+            Logger.Log("Velopack: 開発実行のため更新チェックをスキップします。");
+            return null;
+        }
+
+        const string repoOwner = "YOUR_GITHUB_OWNER";
+        const string repoName = "YOUR_GITHUB_REPO";
+        const string channel = "win";
+        var source = new GithubSource(repoOwner, repoName, channel);
+        return new UpdateManager(source);
     }
 
     /// <summary>
