@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
 $project = Join-Path $root "Lhamiel.csproj"
-$publishDir = Join-Path $root "bin/Release/net9.0-windows10.0.26100.0/win-x64/publish"
+$publishDir = Join-Path $root "bin/Release/net10.0-windows10.0.26100.0/win-x64/publish"
 $releaseDir = Join-Path $root "Releases"
 $iconPath = Join-Path $root "Asset/icon/app.ico"
 
