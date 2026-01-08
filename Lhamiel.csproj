@@ -53,6 +53,7 @@
   <ItemGroup>
     <PackageReference Include="7z.Libs" Version="25.0.0" />
     <PackageReference Include="Cube.FileSystem.SevenZip" Version="8.4.1" />
+    <PackageReference Include="Velopack" Version="0.0.1298" />
   </ItemGroup>
 
   <!-- 7z.dllを手動でルートに配置 -->
