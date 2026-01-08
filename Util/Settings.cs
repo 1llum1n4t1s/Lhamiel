@@ -53,6 +53,21 @@ public class Settings
     public bool EnableShortcutCreation { get; set; } = true;
 
     /// <summary>
+    /// 自動更新用のGitHubオーナー名
+    /// </summary>
+    public string UpdateRepoOwner { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 自動更新用のGitHubリポジトリ名
+    /// </summary>
+    public string UpdateRepoName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 自動更新用のチャンネル名
+    /// </summary>
+    public string UpdateChannel { get; set; } = "win";
+
+    /// <summary>
     /// サポートされている圧縮形式の一覧
     /// </summary>
     public static readonly string[] SupportedCompressionFormats = { "7z", "xz", "bz2", "gz", "tar", "zip", "wim", "cab" };
@@ -81,6 +96,11 @@ public class Settings
                 var settings = JsonSerializer.Deserialize<Settings>(json, JsonOptions);
                 return settings ?? new Settings();
             }
+
+            var defaultSettings = new Settings();
+            var jsonDefault = JsonSerializer.Serialize(defaultSettings, JsonOptions);
+            File.WriteAllText(SettingsFilePath, jsonDefault);
+            return defaultSettings;
         }
         catch (Exception ex)
         {
@@ -128,5 +148,8 @@ public class Settings
         ExtractionOutputToSameDirectory = false;
         CompressionOutputToSameDirectory = false;
         EnableShortcutCreation = true;
+        UpdateRepoOwner = string.Empty;
+        UpdateRepoName = string.Empty;
+        UpdateChannel = "win";
     }
 }
