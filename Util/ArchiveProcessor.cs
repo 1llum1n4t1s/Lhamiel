@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using System.Threading;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -20,7 +21,7 @@ public static class ArchiveProcessor
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <param name="enablePartialExtraction">部分展開を有効にするかどうか</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, bool enablePartialExtraction = false)
+    public static async Task<bool> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
         
@@ -69,6 +70,8 @@ public static class ArchiveProcessor
             // ファイル名を設定
             progressWindow?.SetFileName(filePath);
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             // 展開処理を実行
             var progress = new Progress<int>(percentage =>
             {
@@ -80,6 +83,8 @@ public static class ArchiveProcessor
                 Logger.Log($"部分展開モードで展開処理を実行: {filePath}");
                 
                 // 部分展開処理を実行
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var result = await PartialExtractionHandler.ExtractWithPartialFailureHandling(
                     filePath,
                     outputPath,
@@ -106,11 +111,18 @@ public static class ArchiveProcessor
             else
             {
                 Logger.Log($"ArchiveExtractor.ExtractArchiveAsyncを呼び出し: filePath={filePath}, outputPath={outputPath}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
-                await ArchiveExtractor.ExtractArchiveAsync(filePath, outputPath, progress, progressWindow);
+                await ArchiveExtractor.ExtractArchiveAsync(filePath, outputPath, progress, progressWindow, cancellationToken);
 
                 Logger.Log($"展開処理が完了: {filePath}");
                 return true;
             }
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log($"展開処理がキャンセルされました: {filePath}");
+            progressWindow?.SetCompleted("キャンセルしました。");
+            MessageBox.Show("展開処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
+            return false;
         }
         catch (Exception ex)
         {
@@ -134,7 +146,7 @@ public static class ArchiveProcessor
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow)
+    public static async Task<bool> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -143,7 +155,8 @@ public static class ArchiveProcessor
 
             foreach (var filePath in filePaths)
             {
-                var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow);
+                cancellationToken.ThrowIfCancellationRequested();
+                var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken);
                 if (success)
                 {
                     successCount++;
@@ -166,6 +179,13 @@ public static class ArchiveProcessor
                 return false;
             }
         }
+        catch (OperationCanceledException)
+        {
+            Logger.Log("複数ファイル展開処理がキャンセルされました");
+            progressWindow?.SetCompleted("キャンセルしました。");
+            MessageBox.Show("展開処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
+            return false;
+        }
         catch (Exception ex)
         {
             Logger.LogException("複数ファイル展開処理でエラーが発生", ex);
@@ -183,7 +203,7 @@ public static class ArchiveProcessor
     /// <param name="format">圧縮形式</param>
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressFolderAsync(string folderPath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow)
+    public static async Task<bool> CompressFolderAsync(string folderPath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
     {
         Logger.Log($"ArchiveProcessor.CompressFolderAsync開始: folderPath={folderPath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
         
@@ -245,6 +265,8 @@ public static class ArchiveProcessor
             // ファイル名を設定
             progressWindow?.SetFileName(outputPath);
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             // 圧縮処理を実行
             var progress = new Progress<int>(percentage =>
             {
@@ -252,7 +274,7 @@ public static class ArchiveProcessor
             });
 
             Logger.Log($"ArchiveCompressor.CompressAsyncを呼び出し: folderPath={folderPath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
-            await ArchiveCompressor.CompressAsync(folderPath, outputPath, format, progress);
+            await ArchiveCompressor.CompressAsync(folderPath, outputPath, format, progress, cancellationToken);
 
             Logger.Log($"圧縮処理が完了: {folderPath} -> {outputPath}");
             
@@ -262,6 +284,13 @@ public static class ArchiveProcessor
             progressWindow?.Close();
             
             return true;
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log($"圧縮処理がキャンセルされました: {folderPath}");
+            progressWindow?.SetCompleted("キャンセルしました。");
+            MessageBox.Show("圧縮処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
+            return false;
         }
         catch (Exception ex)
         {
@@ -280,7 +309,7 @@ public static class ArchiveProcessor
     /// <param name="format">圧縮形式</param>
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressFoldersAsync(string[] folderPaths, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow)
+    public static async Task<bool> CompressFoldersAsync(string[] folderPaths, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -289,7 +318,8 @@ public static class ArchiveProcessor
 
             foreach (var folderPath in folderPaths)
             {
-                var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow);
+                cancellationToken.ThrowIfCancellationRequested();
+                var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, cancellationToken);
                 if (success)
                 {
                     successCount++;
@@ -311,6 +341,13 @@ public static class ArchiveProcessor
                 progressWindow?.Close();
                 return false;
             }
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log("複数フォルダ圧縮処理がキャンセルされました");
+            progressWindow?.SetCompleted("キャンセルしました。");
+            MessageBox.Show("圧縮処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
+            return false;
         }
         catch (Exception ex)
         {

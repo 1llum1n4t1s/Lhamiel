@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using Microsoft.Win32;
 using System.IO;
 using Lhamiel.Util;
+using System.Threading;
 
 namespace Lhamiel.View;
 
@@ -151,6 +152,7 @@ public partial class MainWindow : Window
     /// </summary>
     private async void CompressButton_Click(object sender, RoutedEventArgs e)
     {
+        ProgressWindow? progressWindow = null;
         try
         {
             var openFileDialog = new OpenFileDialog
@@ -165,7 +167,9 @@ public partial class MainWindow : Window
                 var outputDir = CompressionOutputPathTextBox.Text;
                 var outputToSameDirectory = CompressionOutputToSameDirectoryRadio.IsChecked ?? false;
 
-                var progressWindow = new ProgressWindow("圧縮");
+                progressWindow = new ProgressWindow("圧縮");
+                var cancellationTokenSource = new CancellationTokenSource();
+                progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
                 progressWindow.Show();
 
                 // ファイルとフォルダを分けて処理
@@ -187,7 +191,7 @@ public partial class MainWindow : Window
                 // フォルダの圧縮処理
                 if (folders.Count > 0)
                 {
-                    await ArchiveProcessor.CompressFoldersAsync(folders.ToArray(), outputDir, outputToSameDirectory, format, progressWindow);
+                    await ArchiveProcessor.CompressFoldersAsync(folders.ToArray(), outputDir, outputToSameDirectory, format, progressWindow, cancellationTokenSource.Token);
                 }
 
                 // ファイルの圧縮処理
@@ -195,6 +199,8 @@ public partial class MainWindow : Window
                 {
                     foreach (var filePath in files)
                     {
+                        cancellationTokenSource.Token.ThrowIfCancellationRequested();
+
                         var outputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
 
                         // 出力ファイルが既に存在する場合は上書き確認
@@ -217,7 +223,7 @@ public partial class MainWindow : Window
                             progressWindow.UpdateProgress(percentage, "ファイルを圧縮中...");
                         });
 
-                        await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress);
+                        await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationTokenSource.Token);
                     }
                 }
 
@@ -225,6 +231,17 @@ public partial class MainWindow : Window
                 await Task.Delay(1000);
                 progressWindow.Close();
             }
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log("圧縮処理がキャンセルされました");
+            if (progressWindow != null)
+            {
+                progressWindow.SetCompleted("キャンセルしました。");
+                await Task.Delay(500);
+                progressWindow.Close();
+            }
+            MessageBox.Show("圧縮処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
@@ -238,6 +255,7 @@ public partial class MainWindow : Window
     /// </summary>
     private async void ExtractButton_Click(object sender, RoutedEventArgs e)
     {
+        ProgressWindow? progressWindow = null;
         try
         {
             var openFileDialog = new OpenFileDialog
@@ -252,12 +270,25 @@ public partial class MainWindow : Window
                 var outputDir = ExtractionOutputPathTextBox.Text;
                 var outputToSameDirectory = ExtractionOutputToSameDirectoryRadio.IsChecked ?? false;
 
-                var progressWindow = new ProgressWindow("展開");
+                progressWindow = new ProgressWindow("展開");
+                var cancellationTokenSource = new CancellationTokenSource();
+                progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
                 progressWindow.Show();
 
                 // 共通化された展開処理を実行
-                await ArchiveProcessor.ExtractArchivesAsync(openFileDialog.FileNames, outputDir, outputToSameDirectory, progressWindow);
+                await ArchiveProcessor.ExtractArchivesAsync(openFileDialog.FileNames, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
             }
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log("展開処理がキャンセルされました");
+            if (progressWindow != null)
+            {
+                progressWindow.SetCompleted("キャンセルしました。");
+                await Task.Delay(500);
+                progressWindow.Close();
+            }
+            MessageBox.Show("展開処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace Lhamiel.Util;
 
@@ -294,11 +295,13 @@ public class ArchiveExtractor
     /// <param name="progress">進捗コールバック</param>
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<int>? progress = null, System.Windows.Window? parentWindow = null)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<int>? progress = null, System.Windows.Window? parentWindow = null, CancellationToken cancellationToken = default)
     {
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
         
         var extractor = new ArchiveExtractor();
+
+        cancellationToken.ThrowIfCancellationRequested();
         
         // 上書き確認が必要かどうかを事前にチェック
         var needsOverwriteConfirmation = Directory.Exists(outputPath);
@@ -370,10 +373,11 @@ public class ArchiveExtractor
             Logger.Log("parentWindowがnullのため、アーカイブ内容の事前チェックをスキップ");
         }
         
-        await Task.Run(() => {
+        await Task.Run(() =>
+        {
             var progressCallback = progress != null ? new Action<int>(p => progress.Report(p)) : null;
-            extractor.ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, needsOverwriteConfirmation);
-        });
+            extractor.ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, needsOverwriteConfirmation, cancellationToken);
+        }, cancellationToken);
     }
 
     /// <summary>
@@ -384,7 +388,7 @@ public class ArchiveExtractor
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
-    public void ExtractArchive(string archivePath, string outputPath, Action<int>? progressCallback = null, System.Windows.Window? parentWindow = null, bool overwriteConfirmed = false)
+    public void ExtractArchive(string archivePath, string outputPath, Action<int>? progressCallback = null, System.Windows.Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default)
     {
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}");
         
@@ -392,6 +396,8 @@ public class ArchiveExtractor
         {
             throw new FileNotFoundException($"アーカイブファイルが見つかりません: {archivePath}");
         }
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         // 展開先ディレクトリが既に存在する場合は上書き確認
         if (Directory.Exists(outputPath) && !overwriteConfirmed)
@@ -422,37 +428,60 @@ public class ArchiveExtractor
             }
         }
 
-        // 出力ディレクトリを作成
-        if (!Directory.Exists(outputPath))
-        {
-            Directory.CreateDirectory(outputPath);
-        }
-
-        // アーカイブ内容を事前にチェックして、既存ファイルとの競合を確認
+        var outputPrepared = false;
         try
         {
+            // 出力ディレクトリを作成
+            if (!Directory.Exists(outputPath))
+            {
+                Directory.CreateDirectory(outputPath);
+                outputPrepared = true;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
             using var reader = new ArchiveReader(archivePath);
 
             // 既存ファイルとの競合をチェック（事前チェックで既に処理済みのため、ここではスキップ）
             // 複数ファイルの上書き確認は ExtractArchiveAsync で事前に処理される
             
             // 進捗報告を設定
-        if (progressCallback != null)
-        {
+            if (progressCallback != null)
+            {
                 var progress = new Progress<Report>(report =>
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     var percentage = report.TotalBytes > 0 ? (int)((report.Bytes * 100) / report.TotalBytes) : 0;
                     progressCallback(percentage);
                 });
-                
+
                 reader.Save(outputPath, progress);
             }
             else
             {
                 reader.Save(outputPath);
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
             
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
+        }
+        catch (OperationCanceledException)
+        {
+            if (outputPrepared && Directory.Exists(outputPath))
+            {
+                try
+                {
+                    RemoveReadOnlyAttributes(outputPath);
+                    Directory.Delete(outputPath, true);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"キャンセル時の出力ディレクトリ削除に失敗しました: {outputPath}, {ex.Message}");
+                }
+            }
+
+            throw;
         }
         catch (Exception ex)
         {
@@ -715,4 +744,3 @@ public class ArchiveFileInfo
     /// </summary>
     public DateTime LastWriteTime { get; set; }
 }
-

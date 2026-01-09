@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.IO;
+using System.Threading;
 using Lhamiel.Util;
 using Velopack;
 using Velopack.Sources;
@@ -151,10 +152,12 @@ public partial class App : Application
 
             // 進行状況ウィンドウを表示
             var progressWindow = new View.ProgressWindow("展開");
+            var cancellationTokenSource = new CancellationTokenSource();
+            progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
 
             // 共通化された展開処理を実行
-            var success = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow);
+            var success = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
 
             if (success)
             {
@@ -191,10 +194,12 @@ public partial class App : Application
 
             // 進行状況ウィンドウを表示
             var progressWindow = new View.ProgressWindow("圧縮");
+            var cancellationTokenSource = new CancellationTokenSource();
+            progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
 
             // 共通化された圧縮処理を実行
-            var success = await ArchiveProcessor.CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow);
+            var success = await ArchiveProcessor.CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, cancellationTokenSource.Token);
 
             if (success)
             {

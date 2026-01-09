@@ -13,6 +13,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ファイル名 -->
@@ -31,6 +32,11 @@
         <!-- ステータス情報 -->
         <TextBlock Grid.Row="3" x:Name="StatusTextBlock"
                    Text="準備中..." TextWrapping="Wrap" VerticalAlignment="Center"
-                   HorizontalAlignment="Center" />
+                   HorizontalAlignment="Center" Margin="0,0,0,15" />
+
+        <!-- キャンセルボタン -->
+        <Button Grid.Row="4" x:Name="CancelButton" Content="キャンセル"
+                Width="100" HorizontalAlignment="Right"
+                Click="CancelButton_Click" />
     </Grid>
 </Window>
