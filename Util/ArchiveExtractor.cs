@@ -206,6 +206,12 @@ public class ArchiveExtractor
     {
         var directory = Path.GetDirectoryName(archivePath) ?? "";
         var fileName = Path.GetFileNameWithoutExtension(archivePath);
+        var baseDirectory = outputToSameDirectory ? directory : defaultOutputDir;
+
+        if (string.IsNullOrWhiteSpace(baseDirectory))
+        {
+            baseDirectory = directory;
+        }
         
         // アーカイブの内容をチェックして、二重フォルダを避ける
         var adjustedFileName = GetAdjustedFileName(archivePath, fileName);
@@ -213,10 +219,10 @@ public class ArchiveExtractor
         // 空文字列が返された場合は、アーカイブファイルと同じディレクトリに展開
         if (string.IsNullOrEmpty(adjustedFileName))
         {
-            return directory;
+            return baseDirectory;
         }
         
-        return Path.Combine(directory, adjustedFileName);
+        return Path.Combine(baseDirectory, adjustedFileName);
     }
 
     /// <summary>
