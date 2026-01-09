@@ -55,17 +55,17 @@ public class Settings
     /// <summary>
     /// 自動更新用のGitHubオーナー名
     /// </summary>
-    public string UpdateRepoOwner { get; set; } = string.Empty;
+    public string UpdateRepoOwner { get; set; } = "1llum1n4t1s";
 
     /// <summary>
     /// 自動更新用のGitHubリポジトリ名
     /// </summary>
-    public string UpdateRepoName { get; set; } = string.Empty;
+    public string UpdateRepoName { get; set; } = "Lhamiel";
 
     /// <summary>
     /// 自動更新用のチャンネル名
     /// </summary>
-    public string UpdateChannel { get; set; } = "win";
+    public string UpdateChannel { get; set; } = "release";
 
     /// <summary>
     /// サポートされている圧縮形式の一覧
@@ -148,8 +148,8 @@ public class Settings
         ExtractionOutputToSameDirectory = false;
         CompressionOutputToSameDirectory = false;
         EnableShortcutCreation = true;
-        UpdateRepoOwner = string.Empty;
-        UpdateRepoName = string.Empty;
-        UpdateChannel = "win";
+        UpdateRepoOwner = "1llum1n4t1s";
+        UpdateRepoName = "Lhamiel";
+        UpdateChannel = "release";
     }
 }

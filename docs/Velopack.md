@@ -73,20 +73,20 @@ GitHub Releases の対象リリースから `Setup.exe` をダウンロードし
 `settings.json` に更新元リポジトリ情報を設定してください。
 
 - `updateRepoOwner`: GitHub のオーナー名
-- `updateRepoName`: リポジトリ名
-- `updateChannel`: `vpk pack` と同じチャンネル名 (既定: `win`)
+- `updateRepoName`: リポジトリ名（URLではなく短い名前）
+- `updateChannel`: `vpk pack` と同じチャンネル名 (既定: `release`)
 
 設定例:
 
 ```json
 {
-  "updateRepoOwner": "YOUR_GITHUB_OWNER",
-  "updateRepoName": "YOUR_GITHUB_REPO",
-  "updateChannel": "win"
+  "updateRepoOwner": "1llum1n4t1s",
+  "updateRepoName": "Lhamiel",
+  "updateChannel": "release"
 }
 ```
 
 ### 追加確認
 
 - `settings.json` が存在しない場合は初回起動時に自動生成されます。
-- `updateRepoOwner` / `updateRepoName` が未設定の場合は更新チェックをスキップします。
+- `updateRepoOwner` / `updateRepoName` が未設定の場合は更新チェックをスキップします（既定値を変更した場合は再設定が必要です）。
