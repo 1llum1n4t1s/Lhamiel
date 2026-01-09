@@ -2,8 +2,8 @@ name: Velopack Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -23,13 +25,40 @@ jobs:
       - name: Install Velopack CLI
         run: dotnet tool install -g vpk
 
+      - name: Determine version
+        id: version
+        shell: pwsh
+        run: |
+          $tag = git describe --tags --abbrev=0 2>$null
+          if (-not $tag) {
+            $dateVersion = Get-Date -Format "yyyy.MM.dd.HHmmss"
+            $shortSha = git rev-parse --short HEAD
+            $version = "$dateVersion+$shortSha"
+          } else {
+            $version = $tag.TrimStart("v")
+          }
+          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Create tag for release
+        shell: pwsh
+        run: |
+          $tagName = "v${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if (-not (git tag -l $tagName)) {
+            git tag $tagName
+            git push origin $tagName
+          }
+
       - name: Pack release
         shell: pwsh
         run: |
-          $version = "${env:GITHUB_REF_NAME}".TrimStart("v")
+          $version = "${{ steps.version.outputs.version }}"
           ./build/pack-velopack.ps1 -Version $version
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: v${{ steps.version.outputs.version }}
           files: Releases/*
