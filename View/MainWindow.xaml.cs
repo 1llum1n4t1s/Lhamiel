@@ -468,9 +468,9 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (!_isInitializing && CompressionFormatComboBox.SelectedItem is ComboBoxItem selectedItem && _settings != null)
+            if (!_isInitializing && _settings != null)
             {
-                _settings.CompressionFormat = selectedItem.Content.ToString() ?? "zip";
+                _settings.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "zip";
             }
         }
 
