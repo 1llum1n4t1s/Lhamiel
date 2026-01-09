@@ -2,7 +2,8 @@
 
 Lhamiel のインストーラーは以下からダウンロードできます。
 
-- インストーラー（Windows）: https://github.com/1llum1n4t1s/Lhamiel/releases/latest/download/Setup.exe
+- インストーラー（Windows）: https://github.com/1llum1n4t1s/Lhamiel/releases
+  - Releases の Assets から `Setup.exe` をダウンロードしてください。
 
 ## インストール手順
 
