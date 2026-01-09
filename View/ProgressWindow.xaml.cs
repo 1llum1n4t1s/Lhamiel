@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 
 namespace Lhamiel.View;
@@ -7,6 +8,8 @@ namespace Lhamiel.View;
 /// </summary>
 public partial class ProgressWindow : Window
 {
+    public event EventHandler? CancelRequested;
+
     public ProgressWindow(string operationType)
     {
         InitializeComponent();
@@ -43,5 +46,12 @@ public partial class ProgressWindow : Window
         ProgressBar.Value = 100;
         StatusTextBlock.Text = message;
         ProgressTextBlock.Text = "100%";
+    }
+
+    private void CancelButton_Click(object sender, RoutedEventArgs e)
+    {
+        CancelButton.IsEnabled = false;
+        StatusTextBlock.Text = "キャンセル中...";
+        CancelRequested?.Invoke(this, EventArgs.Empty);
     }
 }

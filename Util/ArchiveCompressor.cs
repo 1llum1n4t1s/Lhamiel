@@ -2,6 +2,7 @@ using System.IO;
 using System.IO.Compression;
 using Cube.FileSystem.SevenZip;
 using Cube.FileSystem;
+using System.Threading;
 
 namespace Lhamiel.Util;
 
@@ -36,13 +37,14 @@ public class ArchiveCompressor
     /// <param name="format">圧縮形式</param>
     /// <param name="progress">進捗コールバック</param>
     /// <returns>圧縮処理の完了を表すTask</returns>
-    public static async Task CompressAsync(string sourcePath, string outputPath, string format, IProgress<int>? progress = null)
+    public static async Task CompressAsync(string sourcePath, string outputPath, string format, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
     {
         var compressor = new ArchiveCompressor();
-        await Task.Run(() => {
+        await Task.Run(() =>
+        {
             var progressCallback = progress != null ? new Action<int>(p => progress.Report(p)) : null;
-            compressor.CompressFiles(new[] { sourcePath }, outputPath, progressCallback);
-        });
+            compressor.CompressFiles(new[] { sourcePath }, outputPath, progressCallback, cancellationToken);
+        }, cancellationToken);
     }
 
     /// <summary>
@@ -51,7 +53,7 @@ public class ArchiveCompressor
     /// <param name="sourcePaths">圧縮するファイル・フォルダのパス</param>
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="progressCallback">進捗コールバック</param>
-    public void CompressFiles(IEnumerable<string> sourcePaths, string outputPath, Action<int>? progressCallback = null)
+    public void CompressFiles(IEnumerable<string> sourcePaths, string outputPath, Action<int>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         var sourceList = sourcePaths.ToList();
         if (!sourceList.Any())
@@ -69,14 +71,19 @@ public class ArchiveCompressor
         // 圧縮形式を決定
         var format = GetFormatFromExtension(outputPath);
         
+        var outputCreated = false;
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
         // ArchiveWriterを使用して圧縮
         using var writer = new ArchiveWriter(format);
         
         // 圧縮対象のファイルとディレクトリを追加
         foreach (var sourcePath in sourceList)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (File.Exists(sourcePath))
             {
                 writer.Add(sourcePath);
@@ -95,12 +102,29 @@ public class ArchiveCompressor
             progressCallback?.Invoke(0);
 
         // 圧縮を実行
+        outputCreated = true;
         writer.Save(outputPath);
         
         // 完了時の進捗報告
             progressCallback?.Invoke(100);
             
             Logger.Log($"圧縮完了: {outputPath}");
+        }
+        catch (OperationCanceledException)
+        {
+            if (outputCreated && File.Exists(outputPath))
+            {
+                try
+                {
+                    File.Delete(outputPath);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"キャンセル時の一時ファイル削除に失敗しました: {outputPath}, {ex.Message}");
+                }
+            }
+
+            throw;
         }
         catch (Exception ex)
         {
