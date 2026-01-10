@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using System.IO;
 using Lhamiel.Util;
 using System.Threading;
+using System.Windows.Media;
 
 namespace Lhamiel.View;
 
@@ -12,8 +13,9 @@ namespace Lhamiel.View;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private readonly Settings _settings;
+    private readonly SettingsManager _settingsManager;
     private readonly bool _isInitializing = true;
+    private readonly Dictionary<string, CheckBox> _associationCheckBoxes;
 
     /// <summary>
     /// MainWindowのコンストラクタ
@@ -23,14 +25,31 @@ public partial class MainWindow : Window
         try
         {
             InitializeComponent();
-            _settings = Settings.Load();
+            _settingsManager = SettingsManager.Instance;
+
+            // チェックボックスの辞書を初期化
+            _associationCheckBoxes = new Dictionary<string, CheckBox>
+            {
+                { "zip", ZipCheckBox },
+                { "7z", SevenZipCheckBox },
+                { "tar", TarCheckBox },
+                { "gz", GzCheckBox },
+                { "bz2", Bz2CheckBox },
+                { "lzma", LzmaCheckBox },
+                { "xz", XzCheckBox },
+                { "rar", RarCheckBox },
+                { "lzh", LzhCheckBox },
+                { "cab", CabCheckBox },
+                { "arj", ArjCheckBox },
+                { "z", ZCheckBox }
+            };
+
             InitializeUI();
             _isInitializing = false;
         }
         catch (Exception ex)
         {
-            Logger.LogException("MainWindow初期化でエラーが発生", ex);
-            MessageBox.Show($"アプリケーションの初期化に失敗しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowException("アプリケーションの初期化に失敗しました", ex);
             throw;
         }
     }
@@ -46,7 +65,7 @@ public partial class MainWindow : Window
             CompressionFormatComboBox.ItemsSource = Settings.SupportedCompressionFormats;
 
             // 設定された圧縮形式がサポートされているかチェックし、見つからない場合はデフォルト値を使用
-            var selectedFormat = _settings.CompressionFormat?.ToLowerInvariant();
+            var selectedFormat = _settingsManager.Current.CompressionFormat?.ToLowerInvariant();
             if (Settings.SupportedCompressionFormats.Contains(selectedFormat))
             {
                 CompressionFormatComboBox.SelectedItem = selectedFormat;
@@ -55,18 +74,18 @@ public partial class MainWindow : Window
             {
                 // デフォルト値（zip）を選択
                 CompressionFormatComboBox.SelectedItem = "zip";
-                _settings.CompressionFormat = "zip";
+                _settingsManager.Current.CompressionFormat = "zip";
             }
 
             // 出力ディレクトリの設定
-            ExtractionOutputPathTextBox.Text = _settings.ExtractionOutputDirectory;
-            CompressionOutputPathTextBox.Text = _settings.CompressionOutputDirectory;
+            ExtractionOutputPathTextBox.Text = _settingsManager.Current.ExtractionOutputDirectory;
+            CompressionOutputPathTextBox.Text = _settingsManager.Current.CompressionOutputDirectory;
 
             // 出力先パターンの設定
-            ExtractionOutputToSameDirectoryRadio.IsChecked = _settings.ExtractionOutputToSameDirectory;
-            ExtractionOutputToDirectoryRadio.IsChecked = !_settings.ExtractionOutputToSameDirectory;
-            CompressionOutputToSameDirectoryRadio.IsChecked = _settings.CompressionOutputToSameDirectory;
-            CompressionOutputToDirectoryRadio.IsChecked = !_settings.CompressionOutputToSameDirectory;
+            ExtractionOutputToSameDirectoryRadio.IsChecked = _settingsManager.Current.ExtractionOutputToSameDirectory;
+            ExtractionOutputToDirectoryRadio.IsChecked = !_settingsManager.Current.ExtractionOutputToSameDirectory;
+            CompressionOutputToSameDirectoryRadio.IsChecked = _settingsManager.Current.CompressionOutputToSameDirectory;
+            CompressionOutputToDirectoryRadio.IsChecked = !_settingsManager.Current.CompressionOutputToSameDirectory;
 
             // 関連付け設定の読み込み
             LoadAssociationStatus();
@@ -80,8 +99,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Logger.LogException("UI初期化でエラーが発生", ex);
-            MessageBox.Show($"UIの初期化に失敗しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowException("UIの初期化に失敗しました", ex);
             throw;
         }
     }
@@ -97,18 +115,10 @@ public partial class MainWindow : Window
             var associationStatus = FileAssociation.GetCurrentAssociationStatus();
 
             // チェックボックスの状態を設定
-            ZipCheckBox.IsChecked = associationStatus.GetValueOrDefault("zip", false);
-            SevenZipCheckBox.IsChecked = associationStatus.GetValueOrDefault("7z", false);
-            TarCheckBox.IsChecked = associationStatus.GetValueOrDefault("tar", false);
-            GzCheckBox.IsChecked = associationStatus.GetValueOrDefault("gz", false);
-            Bz2CheckBox.IsChecked = associationStatus.GetValueOrDefault("bz2", false);
-            LzmaCheckBox.IsChecked = associationStatus.GetValueOrDefault("lzma", false);
-            XzCheckBox.IsChecked = associationStatus.GetValueOrDefault("xz", false);
-            RarCheckBox.IsChecked = associationStatus.GetValueOrDefault("rar", false);
-            LzhCheckBox.IsChecked = associationStatus.GetValueOrDefault("lzh", false);
-            CabCheckBox.IsChecked = associationStatus.GetValueOrDefault("cab", false);
-            ArjCheckBox.IsChecked = associationStatus.GetValueOrDefault("arj", false);
-            ZCheckBox.IsChecked = associationStatus.GetValueOrDefault("z", false);
+            foreach (var kvp in _associationCheckBoxes)
+            {
+                kvp.Value.IsChecked = associationStatus.GetValueOrDefault(kvp.Key, false);
+            }
 
             Logger.Log("関連付け設定の読み込みが完了しました");
         }
@@ -117,29 +127,22 @@ public partial class MainWindow : Window
         {
             Logger.LogException("関連付け設定の読み込みでエラーが発生", ex);
             // エラーが発生した場合はすべてのチェックボックスを非選択状態にする
-            SetAllCheckBoxesToFalse();
+            SetAllCheckBoxes(false);
         }
     }
 
     /// <summary>
-    /// すべてのチェックボックスを非選択状態にする
+    /// すべてのチェックボックスを指定した状態にする
     /// </summary>
-    private void SetAllCheckBoxesToFalse()
+    /// <param name="isChecked">チェック状態</param>
+    private void SetAllCheckBoxes(bool isChecked)
     {
         try
         {
-            ZipCheckBox.IsChecked = false;
-            SevenZipCheckBox.IsChecked = false;
-            TarCheckBox.IsChecked = false;
-            GzCheckBox.IsChecked = false;
-            Bz2CheckBox.IsChecked = false;
-            LzmaCheckBox.IsChecked = false;
-            XzCheckBox.IsChecked = false;
-            RarCheckBox.IsChecked = false;
-            LzhCheckBox.IsChecked = false;
-            CabCheckBox.IsChecked = false;
-            ArjCheckBox.IsChecked = false;
-            ZCheckBox.IsChecked = false;
+            foreach (var checkBox in _associationCheckBoxes.Values)
+            {
+                checkBox.IsChecked = isChecked;
+            }
         }
         catch (Exception ex)
         {
@@ -241,12 +244,11 @@ public partial class MainWindow : Window
                 await Task.Delay(500);
                 progressWindow.Close();
             }
-            MessageBox.Show("圧縮処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageService.ShowInfo("圧縮処理をキャンセルしました。", "キャンセル");
         }
         catch (Exception ex)
         {
-            Logger.LogException("圧縮処理でエラーが発生", ex);
-            MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowException("圧縮中にエラーが発生しました", ex);
         }
     }
 
@@ -288,12 +290,11 @@ public partial class MainWindow : Window
                 await Task.Delay(500);
                 progressWindow.Close();
             }
-            MessageBox.Show("展開処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageService.ShowInfo("展開処理をキャンセルしました。", "キャンセル");
         }
         catch (Exception ex)
         {
-            Logger.LogException("展開処理でエラーが発生", ex);
-            MessageBox.Show($"展開中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowException("展開中にエラーが発生しました", ex);
         }
     }
 
@@ -304,13 +305,13 @@ public partial class MainWindow : Window
     {
         try
         {
-            _settings.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "zip";
-            _settings.ExtractionOutputDirectory = ExtractionOutputPathTextBox.Text;
-            _settings.CompressionOutputDirectory = CompressionOutputPathTextBox.Text;
-            _settings.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectoryRadio.IsChecked ?? false;
-            _settings.CompressionOutputToSameDirectory = CompressionOutputToSameDirectoryRadio.IsChecked ?? false;
+            _settingsManager.Current.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "zip";
+            _settingsManager.Current.ExtractionOutputDirectory = ExtractionOutputPathTextBox.Text;
+            _settingsManager.Current.CompressionOutputDirectory = CompressionOutputPathTextBox.Text;
+            _settingsManager.Current.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectoryRadio.IsChecked ?? false;
+            _settingsManager.Current.CompressionOutputToSameDirectory = CompressionOutputToSameDirectoryRadio.IsChecked ?? false;
 
-            _settings.Save();
+            _settingsManager.Save();
 
             // 関連付け設定の処理
             ApplyAssociationSettings();
@@ -319,8 +320,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Logger.LogException("設定保存でエラーが発生", ex);
-            MessageBox.Show($"設定の保存に失敗しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowException("設定の保存に失敗しました", ex);
         }
     }
 
@@ -334,26 +334,10 @@ public partial class MainWindow : Window
             Logger.Log("関連付け設定の適用を開始");
 
             // チェックボックスの状態に基づいて関連付けを設定/解除
-            var associations = new Dictionary<string, bool>
+            foreach (var kvp in _associationCheckBoxes)
             {
-                { "zip", ZipCheckBox.IsChecked ?? false },
-                { "7z", SevenZipCheckBox.IsChecked ?? false },
-                { "tar", TarCheckBox.IsChecked ?? false },
-                { "gz", GzCheckBox.IsChecked ?? false },
-                { "bz2", Bz2CheckBox.IsChecked ?? false },
-                { "lzma", LzmaCheckBox.IsChecked ?? false },
-                { "xz", XzCheckBox.IsChecked ?? false },
-                { "rar", RarCheckBox.IsChecked ?? false },
-                { "lzh", LzhCheckBox.IsChecked ?? false },
-                { "cab", CabCheckBox.IsChecked ?? false },
-                { "arj", ArjCheckBox.IsChecked ?? false },
-                { "z", ZCheckBox.IsChecked ?? false }
-            };
-
-            foreach (var association in associations)
-            {
-                var extension = association.Key;
-                var shouldAssociate = association.Value;
+                var extension = kvp.Key;
+                var shouldAssociate = kvp.Value.IsChecked ?? false;
                 var isCurrentlyAssociated = FileAssociation.IsFileTypeAssociated(extension);
 
                 if (shouldAssociate && !isCurrentlyAssociated)
@@ -361,11 +345,11 @@ public partial class MainWindow : Window
                     // 関連付けを設定
                     if (FileAssociation.AssociateFileType(extension))
                     {
-                        Logger.Log($"関連付け設定成功: {extension}");
+                        Logger.Log($"関連付け設定成功: {extension}", LogLevel.Info);
                     }
                     else
                     {
-                        Logger.Log($"関連付け設定失敗: {extension}");
+                        Logger.Log($"関連付け設定失敗: {extension}", LogLevel.Warning);
                     }
                 }
                 else if (!shouldAssociate && isCurrentlyAssociated)
@@ -373,21 +357,20 @@ public partial class MainWindow : Window
                     // 関連付けを解除
                     if (FileAssociation.DisassociateFileType(extension))
                     {
-                        Logger.Log($"関連付け解除成功: {extension}");
+                        Logger.Log($"関連付け解除成功: {extension}", LogLevel.Info);
                     }
                     else
                     {
-                        Logger.Log($"関連付け解除失敗: {extension}");
+                        Logger.Log($"関連付け解除失敗: {extension}", LogLevel.Warning);
                     }
                 }
             }
 
-            Logger.Log("関連付け設定の適用が完了しました");
+            Logger.Log("関連付け設定の適用が完了しました", LogLevel.Info);
         }
         catch (Exception ex)
         {
-            Logger.LogException("関連付け設定の適用でエラーが発生", ex);
-            MessageBox.Show($"関連付け設定の適用に失敗しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowException("関連付け設定の適用に失敗しました", ex);
         }
     }
 
@@ -430,9 +413,9 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (!_isInitializing && sender is RadioButton radioButton && _settings != null)
+            if (!_isInitializing && sender is RadioButton radioButton)
             {
-                _settings.ExtractionOutputToSameDirectory = radioButton == ExtractionOutputToSameDirectoryRadio;
+                _settingsManager.Current.ExtractionOutputToSameDirectory = radioButton == ExtractionOutputToSameDirectoryRadio;
             }
         }
 
@@ -449,9 +432,9 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (!_isInitializing && sender is RadioButton radioButton && _settings != null)
+            if (!_isInitializing && sender is RadioButton radioButton)
             {
-                _settings.CompressionOutputToSameDirectory = radioButton == CompressionOutputToSameDirectoryRadio;
+                _settingsManager.Current.CompressionOutputToSameDirectory = radioButton == CompressionOutputToSameDirectoryRadio;
             }
         }
 
@@ -468,9 +451,9 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (!_isInitializing && _settings != null)
+            if (!_isInitializing)
             {
-                _settings.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "zip";
+                _settingsManager.Current.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "zip";
             }
         }
 
@@ -487,11 +470,11 @@ public partial class MainWindow : Window
     {
         if (ShortcutCreator.CreateDesktopShortcut())
         {
-            MessageBox.Show("デスクトップにショートカットを作成しました。", "完了", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageService.ShowSuccess("デスクトップにショートカットを作成しました。");
         }
         else
         {
-            MessageBox.Show("ショートカットの作成に失敗しました。", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowError("ショートカットの作成に失敗しました。");
         }
     }
 
@@ -511,23 +494,11 @@ public partial class MainWindow : Window
         try
         {
             // すべてのチェックボックスを選択状態にする
-            ZipCheckBox.IsChecked = true;
-            SevenZipCheckBox.IsChecked = true;
-            TarCheckBox.IsChecked = true;
-            GzCheckBox.IsChecked = true;
-            Bz2CheckBox.IsChecked = true;
-            LzmaCheckBox.IsChecked = true;
-            XzCheckBox.IsChecked = true;
-            RarCheckBox.IsChecked = true;
-            LzhCheckBox.IsChecked = true;
-            CabCheckBox.IsChecked = true;
-            ArjCheckBox.IsChecked = true;
-            ZCheckBox.IsChecked = true;
+            SetAllCheckBoxes(true);
         }
         catch (Exception ex)
         {
-            Logger.LogException("全選択処理でエラーが発生", ex);
-            MessageBox.Show($"全選択処理でエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowException("全選択処理でエラーが発生しました", ex);
         }
     }
 
@@ -539,23 +510,11 @@ public partial class MainWindow : Window
         try
         {
             // すべてのチェックボックスを非選択状態にする
-            ZipCheckBox.IsChecked = false;
-            SevenZipCheckBox.IsChecked = false;
-            TarCheckBox.IsChecked = false;
-            GzCheckBox.IsChecked = false;
-            Bz2CheckBox.IsChecked = false;
-            LzmaCheckBox.IsChecked = false;
-            XzCheckBox.IsChecked = false;
-            RarCheckBox.IsChecked = false;
-            LzhCheckBox.IsChecked = false;
-            CabCheckBox.IsChecked = false;
-            ArjCheckBox.IsChecked = false;
-            ZCheckBox.IsChecked = false;
+            SetAllCheckBoxes(false);
         }
         catch (Exception ex)
         {
-            Logger.LogException("全解除処理でエラーが発生", ex);
-            MessageBox.Show($"全解除処理でエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowException("全解除処理でエラーが発生しました", ex);
         }
     }
 
@@ -567,6 +526,11 @@ public partial class MainWindow : Window
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             e.Effects = DragDropEffects.Copy;
+
+            // ドラッグ中の視覚的フィードバックを提供
+            DropZoneBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0, 120, 212)); // PrimaryColor
+            DropZoneBorder.BorderThickness = new Thickness(3);
+            DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(230, 243, 255)); // Light blue
         }
         else
         {
@@ -580,6 +544,11 @@ public partial class MainWindow : Window
     /// </summary>
     private void DropZone_DragLeave(object sender, DragEventArgs e)
     {
+        // ドラッグが離れた時に元の見た目に戻す
+        DropZoneBorder.BorderBrush = (SolidColorBrush)Application.Current.Resources["BorderBrush"];
+        DropZoneBorder.BorderThickness = new Thickness(2);
+        DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(249, 249, 249)); // #F9F9F9
+
         e.Handled = true;
     }
 
@@ -588,6 +557,11 @@ public partial class MainWindow : Window
     /// </summary>
     private void DropZone_Drop(object sender, DragEventArgs e)
     {
+        // ドロップ後に元の見た目に戻す
+        DropZoneBorder.BorderBrush = (SolidColorBrush)Application.Current.Resources["BorderBrush"];
+        DropZoneBorder.BorderThickness = new Thickness(2);
+        DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(249, 249, 249)); // #F9F9F9
+
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             var files = (string[])e.Data.GetData(DataFormats.FileDrop);
@@ -629,8 +603,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Logger.LogException("ドロップされたファイルの処理に失敗しました", ex);
-            MessageBox.Show($"ファイルの処理に失敗しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowException("ファイルの処理に失敗しました", ex);
         }
     }
 
