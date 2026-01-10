@@ -49,12 +49,23 @@ vpk upload github --outputDir Releases --repoUrl "https://github.com/<OWNER>/<RE
 
 ### GitHub Actions で自動公開する場合
 
-タグ `v1.0.0` のように `v` から始まるタグをプッシュすると、
-`Releases/` 配下の成果物を GitHub Releases に自動アップロードします。
+`releases` ブランチにプッシュすると、`Releases/` 配下の成果物を
+GitHub Releases に自動アップロードします。
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git push origin releases
+```
+
+### 他プロジェクトに同じ仕組みを導入するための依頼プロンプト
+
+以下の内容を、そのまま他プロジェクトの依頼文として使えます。
+
+```
+GitHub Actions を使って、releases ブランチへの push をトリガーに
+Velopack のリリース作成と GitHub Releases へのアップロードを行う
+ワークフローに変更してください。main ブランチの push は対象外にし、
+ワークフロー内でタグを作成するステップは削除してください。
+ドキュメント（公開手順）も、releases ブランチの push を前提に更新してください。
 ```
 
 ## 4. 配布運用

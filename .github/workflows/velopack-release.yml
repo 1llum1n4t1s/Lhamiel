@@ -3,7 +3,7 @@ name: Velopack Release
 on:
   push:
     branches:
-      - main
+      - releases
 
 permissions:
   contents: write
@@ -38,17 +38,6 @@ jobs:
             $version = $tag.TrimStart("v")
           }
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-
-      - name: Create tag for release
-        shell: pwsh
-        run: |
-          $tagName = "v${{ steps.version.outputs.version }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          if (-not (git tag -l $tagName)) {
-            git tag $tagName
-            git push origin $tagName
-          }
 
       - name: Pack release
         shell: pwsh
