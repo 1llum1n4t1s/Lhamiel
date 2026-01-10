@@ -29,7 +29,8 @@ dotnet tool update -g vpk
 ```
 
 - `-Version` は `AssemblyInfo.cs` のバージョンと合わせてください。
-出力先は `Releases/` です。
+- チャンネルは既定で `release` を使用します（変更する場合は `-Channel` で指定）。
+- 出力先は `Releases/` です。
 
 ## 3. GitHub Releases へアップロード
 
@@ -40,6 +41,9 @@ dotnet tool update -g vpk
 - `RELEASES`
 - `Lhamiel-<version>-full.nupkg`
 - `Lhamiel-<version>-delta.nupkg` (ある場合)
+- `*.blockmap` (更新差分適用用)
+
+**重要:** `Releases/` に生成されたファイルはすべてアップロードしてください。欠けていると更新が失敗します。
 
 手動アップロードでも構いませんが、`vpk upload github` を使う場合は次のように実行できます。
 

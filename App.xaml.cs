@@ -12,27 +12,32 @@ namespace Lhamiel;
 /// </summary>
 public partial class App : Application
 {
+    private readonly UpdateManager? _updateManager;
+
+    public App()
+    {
+        VelopackApp.Build().Run();
+        _updateManager = InitializeUpdateManager();
+    }
+
     /// <summary>
     /// アプリケーション起動時の処理
     /// </summary>
     /// <param name="e">起動イベント引数</param>
     protected override async void OnStartup(StartupEventArgs e)
     {
-        UpdateManager? updateManager = null;
-
         try
         {
-            updateManager = InitializeUpdateManager();
-            if (updateManager != null)
+            if (_updateManager != null)
             {
                 Logger.Log("Velopack: 更新チェックを開始します。");
-                var updateInfo = await updateManager.CheckForUpdatesAsync();
+                var updateInfo = await _updateManager.CheckForUpdatesAsync();
                 if (updateInfo != null)
                 {
                     Logger.Log("Velopack: 更新を検出しました。ダウンロードを開始します。");
-                    await updateManager.DownloadUpdatesAsync(updateInfo);
+                    await _updateManager.DownloadUpdatesAsync(updateInfo);
                     Logger.Log("Velopack: 更新を適用して再起動します。");
-                    updateManager.ApplyUpdatesAndRestart(updateInfo);
+                    _updateManager.ApplyUpdatesAndRestart(updateInfo);
                     return;
                 }
 
@@ -67,7 +72,6 @@ public partial class App : Application
         }
         finally
         {
-            updateManager?.Dispose();
         }
     }
 
@@ -82,7 +86,7 @@ public partial class App : Application
         var settings = Settings.Load();
         var repoOwner = settings.UpdateRepoOwner;
         var repoName = settings.UpdateRepoName;
-        var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "win" : settings.UpdateChannel;
+        var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "release" : settings.UpdateChannel;
 
         if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName))
         {
@@ -228,6 +232,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         Logger.Log($"アプリケーション終了: 終了コード = {e.ApplicationExitCode}");
+        _updateManager?.Dispose();
         base.OnExit(e);
     }
 }
