@@ -25,3 +25,24 @@ jobs:
 
       - name: Build
         run: dotnet build Lhamiel.slnx --configuration Release --no-restore
+
+      - name: Run Tests
+        run: dotnet test Lhamiel.slnx --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        continue-on-error: false
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action/windows@v2
+        if: always()
+        with:
+          files: |
+            **/test-results.trx
+
+      - name: Code Quality - Format Check
+        run: dotnet format Lhamiel.slnx --verify-no-changes --verbosity diagnostic
+        continue-on-error: true
+
+      - name: Security Scan - Dependency Check
+        run: |
+          dotnet list package --vulnerable --include-transitive
+          dotnet list package --deprecated
+        continue-on-error: true

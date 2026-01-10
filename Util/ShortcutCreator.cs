@@ -66,21 +66,76 @@ public static class ShortcutCreator
             var shellType = Type.GetTypeFromProgID("WScript.Shell");
             if (shellType == null)
             {
-                Logger.Log("WScript.Shell COMオブジェクトの作成に失敗しました");
+                Logger.Log("WScript.Shell COMオブジェクトの作成に失敗しました", LogLevel.Error);
                 return false;
             }
-            
-            dynamic shell = Activator.CreateInstance(shellType)!;
-            dynamic shortcut = shell.CreateShortcut(shortcutPath);
-            
-            shortcut.TargetPath = targetPath;
-            shortcut.Description = description;
-            shortcut.WorkingDirectory = Path.GetDirectoryName(targetPath) ?? "";
-            shortcut.Save();
 
-            // COMオブジェクトを解放
-            Marshal.ReleaseComObject(shortcut);
-            Marshal.ReleaseComObject(shell);
+            // リフレクションを使った型安全な実装
+            var shell = Activator.CreateInstance(shellType);
+            if (shell == null)
+            {
+                Logger.Log("WScript.Shellインスタンスの作成に失敗しました", LogLevel.Error);
+                return false;
+            }
+
+            object? shortcut = null;
+            try
+            {
+                // CreateShortcutメソッドを呼び出し
+                shortcut = shellType.InvokeMember("CreateShortcut",
+                    System.Reflection.BindingFlags.InvokeMethod,
+                    null,
+                    shell,
+                    new object[] { shortcutPath });
+
+                if (shortcut == null)
+                {
+                    Logger.Log("ショートカットオブジェクトの作成に失敗しました", LogLevel.Error);
+                    return false;
+                }
+
+                var shortcutType = shortcut.GetType();
+
+                // TargetPathプロパティを設定
+                shortcutType.InvokeMember("TargetPath",
+                    System.Reflection.BindingFlags.SetProperty,
+                    null,
+                    shortcut,
+                    new object[] { targetPath });
+
+                // Descriptionプロパティを設定
+                shortcutType.InvokeMember("Description",
+                    System.Reflection.BindingFlags.SetProperty,
+                    null,
+                    shortcut,
+                    new object[] { description });
+
+                // WorkingDirectoryプロパティを設定
+                shortcutType.InvokeMember("WorkingDirectory",
+                    System.Reflection.BindingFlags.SetProperty,
+                    null,
+                    shortcut,
+                    new object[] { Path.GetDirectoryName(targetPath) ?? "" });
+
+                // Saveメソッドを呼び出し
+                shortcutType.InvokeMember("Save",
+                    System.Reflection.BindingFlags.InvokeMethod,
+                    null,
+                    shortcut,
+                    null);
+            }
+            finally
+            {
+                // COMオブジェクトを解放
+                if (shortcut != null && Marshal.IsComObject(shortcut))
+                {
+                    Marshal.ReleaseComObject(shortcut);
+                }
+                if (Marshal.IsComObject(shell))
+                {
+                    Marshal.ReleaseComObject(shell);
+                }
+            }
 
             if (File.Exists(shortcutPath))
             {
