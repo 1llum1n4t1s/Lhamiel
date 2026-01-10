@@ -14,6 +14,13 @@ Lhamiel のインストーラーは以下からダウンロードできます。
 
 Lhamiel は、Windows 向けのアーカイブ圧縮・展開ツールです。圧縮形式の選択、出力先の指定、ファイル関連付けの管理、デスクトップショートカットの作成などを GUI から行えます。
 
+## システム要件
+
+- **OS**: Windows 10 (ビルド 26100.0) 以上
+- **フレームワーク**: .NET 10.0 Runtime (インストーラーに含まれます)
+- **アーキテクチャ**: x64
+- **必要な権限**: ユーザー権限（管理者権限不要）
+
 ## 主な機能
 
 - ファイル/フォルダの圧縮とアーカイブの展開に対応
@@ -56,6 +63,8 @@ Lhamiel は、Windows 向けのアーカイブ圧縮・展開ツールです。�
 
 設定はアプリの実行ディレクトリに `settings.json` として保存されます。圧縮形式、出力先ディレクトリ、出力先パターン（同じディレクトリに出力するかどうか）などの情報が保持されます。
 
+詳細は [SETTINGS_SCHEMA.md](SETTINGS_SCHEMA.md) を参照してください。
+
 ## ファイル関連付け
 
 対応拡張子（zip/7z/tar/gz/bz2/lzma/xz/rar/lzh/cab/arj/z）の関連付けを GUI から設定できます。全選択・全解除の操作も可能です。
@@ -67,6 +76,44 @@ Lhamiel は、Windows 向けのアーカイブ圧縮・展開ツールです。�
 ## 更新について
 
 更新配信の詳細は `docs/Velopack.md` を参照してください。
+
+## 開発者向け情報
+
+### ドキュメント
+
+- [アーキテクチャドキュメント](ARCHITECTURE.md) - システム設計と実装の詳細
+- [設定スキーマ](SETTINGS_SCHEMA.md) - settings.json の詳細仕様
+
+### ビルド方法
+
+```bash
+# 依存関係の復元
+dotnet restore Lhamiel.slnx
+
+# ビルド
+dotnet build Lhamiel.slnx --configuration Release
+
+# テスト実行
+dotnet test Lhamiel.slnx --configuration Release
+```
+
+### 技術スタック
+
+- .NET 10.0 (Windows)
+- WPF (Windows Presentation Foundation)
+- Cube.FileSystem.SevenZip (圧縮ライブラリ)
+- Velopack (自動更新)
+
+### 最近の改善点
+
+- ✅ 本番環境対応のログレベル実装
+- ✅ コード重複の解消（IsSelfExtractingArchive）
+- ✅ マジックナンバーの定数化
+- ✅ パス検証ユーティリティの実装
+- ✅ 動的型（dynamic）の削除と型安全性の向上
+- ✅ CI/CDパイプラインの改善（テスト・品質チェック追加）
+- ✅ ユニットテストプロジェクトの追加
+- ✅ 包括的なドキュメント整備
 
 ## 作者・連絡先
 

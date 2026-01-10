@@ -151,23 +151,24 @@ public class PartialExtractionHandler
             for (int i = 0; i < items.Count; i++)
             {
                 var item = items[i];
+                var fullName = GetFullName(item);
                 var progress = (int)((double)i / items.Count * 100);
-                progressCallback?.Invoke(progress, $"展開中: {item.FullName}");
+                progressCallback?.Invoke(progress, $"展開中: {fullName}");
 
                 try
                 {
                     // 個別ファイルの展開を試行
                     await ExtractSingleFile(reader, item, outputPath);
-                    result.SuccessFiles.Add(item.FullName);
+                    result.SuccessFiles.Add(fullName);
                     result.SuccessCount++;
-                    
-                    Logger.Log($"ファイル展開成功: {item.FullName}");
+
+                    Logger.Log($"ファイル展開成功: {fullName}", LogLevel.Debug);
                 }
                 catch (Exception ex)
                 {
                     var failedFile = new FailedFileInfo
                     {
-                        FilePath = item.FullName,
+                        FilePath = fullName,
                         ErrorMessage = ex.Message,
                         ErrorType = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath).ErrorType,
                         IsRecoverable = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath).IsRecoverable
@@ -176,39 +177,39 @@ public class PartialExtractionHandler
                     result.FailedFiles.Add(failedFile);
                     result.FailureCount++;
 
-                    Logger.Log($"ファイル展開失敗: {item.FullName}, エラー: {ex.Message}");
+                    Logger.Log($"ファイル展開失敗: {fullName}, エラー: {ex.Message}", LogLevel.Error);
 
                     // エラー処理オプションに基づいて処理を決定
                     var handlingOption = DetermineErrorHandling(failedFile, errorHandling, userChoiceCallback);
-                    
+
                     switch (handlingOption)
                     {
                         case ErrorHandlingOption.StopOnError:
-                            Logger.Log("エラーで停止");
+                            Logger.Log("エラーで停止", LogLevel.Error);
                             result.IsSuccess = false;
                             return result;
 
                         case ErrorHandlingOption.SkipOnError:
-                            result.SkippedFiles.Add(item.FullName);
+                            result.SkippedFiles.Add(fullName);
                             result.SkippedCount++;
-                            Logger.Log($"ファイルをスキップ: {item.FullName}");
+                            Logger.Log($"ファイルをスキップ: {fullName}", LogLevel.Warning);
                             break;
 
                         case ErrorHandlingOption.AutoRetry:
                             // リトライを試行
                             if (await RetryExtraction(reader, item, outputPath, 3))
                             {
-                                result.SuccessFiles.Add(item.FullName);
+                                result.SuccessFiles.Add(fullName);
                                 result.SuccessCount++;
                                 result.FailedFiles.RemoveAt(result.FailedFiles.Count - 1);
                                 result.FailureCount--;
-                                Logger.Log($"リトライ成功: {item.FullName}");
+                                Logger.Log($"リトライ成功: {fullName}", LogLevel.Info);
                             }
                             else
                             {
-                                result.SkippedFiles.Add(item.FullName);
+                                result.SkippedFiles.Add(fullName);
                                 result.SkippedCount++;
-                                Logger.Log($"リトライ失敗、スキップ: {item.FullName}");
+                                Logger.Log($"リトライ失敗、スキップ: {fullName}", LogLevel.Warning);
                             }
                             break;
                     }
@@ -230,23 +231,51 @@ public class PartialExtractionHandler
     }
 
     /// <summary>
+    /// アーカイブアイテムからFullNameプロパティを取得する
+    /// </summary>
+    /// <param name="item">アーカイブアイテム</param>
+    /// <returns>FullName文字列</returns>
+    private static string GetFullName(object item)
+    {
+        try
+        {
+            var fullNameProperty = item.GetType().GetProperty("FullName");
+            if (fullNameProperty != null)
+            {
+                var value = fullNameProperty.GetValue(item);
+                return value?.ToString() ?? string.Empty;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"FullNameプロパティの取得に失敗: {ex.Message}", LogLevel.Warning);
+        }
+        return string.Empty;
+    }
+
+    /// <summary>
     /// 単一ファイルの展開を実行
     /// </summary>
-    private static async Task ExtractSingleFile(ArchiveReader reader, dynamic item, string outputPath)
+    private static async Task ExtractSingleFile(ArchiveReader reader, object item, string outputPath)
     {
         await Task.Run(() =>
         {
-            // 現在のライブラリでは個別ファイル展開が制限されているため、
-            // 一時的な方法を使用
+            // PERFORMANCE WARNING: 現在のライブラリ(Cube.FileSystem.SevenZip)では個別ファイル展開が制限されているため、
+            // 全アーカイブを一時ディレクトリに展開してから目的のファイルのみをコピーする非効率な方法を使用しています。
+            // TODO: ライブラリのExtract(item, path)メソッドやSevenZipSharpの直接利用を検討
+            // 大きなアーカイブでは著しくパフォーマンスが低下します。
+            var fullName = GetFullName(item);
+            Logger.Log($"部分展開のため全アーカイブを一時展開中: {fullName}", LogLevel.Warning);
+
             var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             try
             {
                 // 全体を展開してから目的のファイルのみをコピー
                 reader.Save(tempPath);
-                
-                var sourceFile = Path.Combine(tempPath, item.FullName);
-                var targetFile = Path.Combine(outputPath, item.FullName);
-                
+
+                var sourceFile = Path.Combine(tempPath, fullName);
+                var targetFile = Path.Combine(outputPath, fullName);
+
                 if (File.Exists(sourceFile))
                 {
                     var targetDir = Path.GetDirectoryName(targetFile);
@@ -254,12 +283,12 @@ public class PartialExtractionHandler
                     {
                         Directory.CreateDirectory(targetDir);
                     }
-                    
+
                     File.Copy(sourceFile, targetFile, true);
                 }
                 else if (Directory.Exists(sourceFile))
                 {
-                    var targetDir = Path.Combine(outputPath, item.FullName);
+                    var targetDir = Path.Combine(outputPath, fullName);
                     if (!Directory.Exists(targetDir))
                     {
                         Directory.CreateDirectory(targetDir);
@@ -296,17 +325,18 @@ public class PartialExtractionHandler
     /// <summary>
     /// 展開のリトライを実行
     /// </summary>
-    private static async Task<bool> RetryExtraction(ArchiveReader reader, dynamic item, string outputPath, int maxRetries)
+    private static async Task<bool> RetryExtraction(ArchiveReader reader, object item, string outputPath, int maxRetries)
     {
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
-                Logger.Log($"リトライ試行 {attempt}/{maxRetries}: {item.FullName}");
-                
+                var fullName = GetFullName(item);
+                Logger.Log($"リトライ試行 {attempt}/{maxRetries}: {fullName}", LogLevel.Info);
+
                 // 少し待機してからリトライ
                 await Task.Delay(1000 * attempt);
-                
+
                 await ExtractSingleFile(reader, item, outputPath);
                 return true;
             }

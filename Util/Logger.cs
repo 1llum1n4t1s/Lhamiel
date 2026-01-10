@@ -5,6 +5,17 @@ using System.Text;
 namespace Lhamiel.Util;
 
 /// <summary>
+/// ログレベルを表す列挙型
+/// </summary>
+public enum LogLevel
+{
+    Debug,
+    Info,
+    Warning,
+    Error
+}
+
+/// <summary>
 /// ログ出力機能を提供するクラス
 /// </summary>
 public static class Logger
@@ -20,16 +31,29 @@ public static class Logger
     private const int MaxLogLines = 1000;
 
     /// <summary>
+    /// 最小ログレベル（これ以上のレベルのログのみ出力）
+    /// </summary>
+    private static readonly LogLevel MinLogLevel =
+#if DEBUG
+        LogLevel.Debug;
+#else
+        LogLevel.Warning;
+#endif
+
+    /// <summary>
     /// ログを出力する
     /// </summary>
     /// <param name="message">ログメッセージ</param>
-    public static void Log(string message)
+    /// <param name="level">ログレベル（デフォルト: Info）</param>
+    public static void Log(string message, LogLevel level = LogLevel.Info)
     {
-#if DEBUG
+        if (level < MinLogLevel)
+            return;
+
         try
         {
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-            var logMessage = $"[{timestamp}] {message}{Environment.NewLine}";
+            var logMessage = $"[{timestamp}] [{level}] {message}{Environment.NewLine}";
 
             File.AppendAllText(LogFilePath, logMessage, Encoding.UTF8);
             TrimLogFile();
@@ -38,20 +62,22 @@ public static class Logger
         {
             Debug.WriteLine($"ログ出力エラー: {ex.Message}");
         }
-#endif
     }
 
     /// <summary>
     /// 複数行のログを出力する
     /// </summary>
     /// <param name="messages">ログメッセージの配列</param>
-    public static void LogLines(string[] messages)
+    /// <param name="level">ログレベル（デフォルト: Info）</param>
+    public static void LogLines(string[] messages, LogLevel level = LogLevel.Info)
     {
-#if DEBUG
+        if (level < MinLogLevel)
+            return;
+
         try
         {
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-            var logLines = messages.Select(message => $"[{timestamp}] {message}").ToArray();
+            var logLines = messages.Select(message => $"[{timestamp}] [{level}] {message}").ToArray();
 
             File.AppendAllLines(LogFilePath, logLines, Encoding.UTF8);
             TrimLogFile();
@@ -60,21 +86,27 @@ public static class Logger
         {
             Debug.WriteLine($"ログ出力エラー: {ex.Message}");
         }
-#endif
     }
 
     /// <summary>
-    /// 例外情報を含むログを出力する
+    /// 例外情報を含むログを出力する（常にErrorレベル）
     /// </summary>
     /// <param name="message">ログメッセージ</param>
     /// <param name="exception">例外オブジェクト</param>
     public static void LogException(string message, Exception exception)
     {
-#if DEBUG
         try
         {
             var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-            var logMessage = $"[{timestamp}] {message}\n例外: {exception.Message}\nスタックトレース: {exception.StackTrace}{Environment.NewLine}";
+            var logMessage = $"[{timestamp}] [Error] {message}\n例外: {exception.Message}\nスタックトレース: {exception.StackTrace}";
+
+            // InnerExceptionも記録
+            if (exception.InnerException != null)
+            {
+                logMessage += $"\nInnerException: {exception.InnerException.Message}\nInnerStackTrace: {exception.InnerException.StackTrace}";
+            }
+
+            logMessage += Environment.NewLine;
 
             File.AppendAllText(LogFilePath, logMessage, Encoding.UTF8);
             TrimLogFile();
@@ -83,7 +115,6 @@ public static class Logger
         {
             Debug.WriteLine($"ログ出力エラー: {ex.Message}");
         }
-#endif
     }
 
     /// <summary>
@@ -91,7 +122,6 @@ public static class Logger
     /// </summary>
     private static void TrimLogFile()
     {
-#if DEBUG
         try
         {
             if (File.Exists(LogFilePath))
@@ -108,16 +138,14 @@ public static class Logger
         {
             Debug.WriteLine($"ログファイル整理エラー: {ex.Message}");
         }
-#endif
     }
 
     /// <summary>
-    /// アプリケーション起動時のログを出力する
+    /// アプリケーション起動時のログを出力する（Debugレベル）
     /// </summary>
     /// <param name="args">コマンドライン引数</param>
     public static void LogStartup(string[] args)
     {
-#if DEBUG
         var messages = new List<string>
         {
             "=== Lhamiel 起動ログ ===",
@@ -132,7 +160,6 @@ public static class Logger
             messages.Add($"  [{i}]: {args[i]}");
         }
 
-        LogLines(messages.ToArray());
-#endif
+        LogLines(messages.ToArray(), LogLevel.Debug);
     }
 }
