@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -51,9 +51,9 @@
 
 
   <ItemGroup>
-    <PackageReference Include="7z.Libs" Version="25.0.0" />
+    <PackageReference Include="7z.Libs" Version="25.1.0" />
     <PackageReference Include="Cube.FileSystem.SevenZip" Version="8.4.1" />
-    <PackageReference Include="Velopack" Version="0.0.1298" />
+    <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
   </ItemGroup>
 
   <!-- 7z.dllを手動でルートに配置 -->

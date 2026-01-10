@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.IO;
 using System.Threading;
 using Lhamiel.Util;
@@ -77,12 +77,6 @@ public partial class App : Application
 
     private static UpdateManager? InitializeUpdateManager()
     {
-        if (!VelopackRuntimeInfo.IsInstalled)
-        {
-            Logger.Log("Velopack: 開発実行のため更新チェックをスキップします。");
-            return null;
-        }
-
         var settings = Settings.Load();
         var repoOwner = settings.UpdateRepoOwner;
         var repoName = settings.UpdateRepoName;
@@ -94,8 +88,18 @@ public partial class App : Application
             return null;
         }
 
-        var source = new GithubSource(repoOwner, repoName, channel);
-        return new UpdateManager(source);
+        var repoUrl = $"https://github.com/{repoOwner}/{repoName}";
+        var isPrerelease = channel.Equals("prerelease", StringComparison.OrdinalIgnoreCase);
+        var source = new GithubSource(repoUrl, string.Empty, isPrerelease);
+        var updateManager = new UpdateManager(source);
+
+        if (!updateManager.IsInstalled)
+        {
+            Logger.Log("Velopack: 開発実行のため更新チェックをスキップします。");
+            return null;
+        }
+
+        return updateManager;
     }
 
     /// <summary>
@@ -232,7 +236,6 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         Logger.Log($"アプリケーション終了: 終了コード = {e.ApplicationExitCode}");
-        _updateManager?.Dispose();
         base.OnExit(e);
     }
 }
