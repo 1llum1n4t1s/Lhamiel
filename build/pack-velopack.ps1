@@ -1,7 +1,7 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$Version,
-    [string]$Channel = "win"
+    [string]$Channel = "release"
 )
 
 $ErrorActionPreference = "Stop"
