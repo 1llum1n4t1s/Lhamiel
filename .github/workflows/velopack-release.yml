@@ -2,8 +2,6 @@ name: Velopack リリース作成
 
 on:
   push:
-    branches:
-      - 'release/**'
 
 permissions:
   contents: write
@@ -12,6 +10,7 @@ jobs:
   build-release:
     name: Velopack リリース作成
     runs-on: windows-latest
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
     steps:
       - name: リポジトリをチェックアウト
         uses: actions/checkout@v4

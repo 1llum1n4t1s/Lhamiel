@@ -2,16 +2,13 @@ name: .NET ビルド
 
 on:
   push:
-    branches-ignore:
-      - 'release/**'
   pull_request:
-    branches-ignore:
-      - 'release/**'
 
 jobs:
   build:
     name: .NET ビルド
     runs-on: windows-latest
+    if: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
     steps:
       - name: リポジトリをチェックアウト
         uses: actions/checkout@v4
