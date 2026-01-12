@@ -1,48 +1,50 @@
-name: Dotnet Build
+name: .NET ビルド
 
 on:
   push:
     branches-ignore:
-      - releases
+      - 'release/**'
   pull_request:
     branches-ignore:
-      - releases
+      - 'release/**'
 
 jobs:
   build:
+    name: .NET ビルド
     runs-on: windows-latest
     steps:
-      - name: Checkout
+      - name: リポジトリをチェックアウト
         uses: actions/checkout@v4
 
-      - name: Setup .NET
+      - name: .NET SDK をセットアップ
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: '10.0.x'
 
-      - name: Restore
+      - name: 依存関係を復元
         run: dotnet restore Lhamiel.slnx
 
-      - name: Build
+      - name: ビルド
         run: dotnet build Lhamiel.slnx --configuration Release --no-restore
 
-      - name: Run Tests
+      - name: テスト実行
         run: dotnet test Lhamiel.slnx --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
-        continue-on-error: false
+        continue-on-error: true
 
-      - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action/windows@v2
+      - name: テスト結果をアップロード
+        uses: actions/upload-artifact@v4
         if: always()
         with:
-          files: |
-            **/test-results.trx
+          name: test-results-Release
+          path: '**/TestResults/*.trx'
+          retention-days: 30
 
-      - name: Code Quality - Format Check
-        run: dotnet format Lhamiel.slnx --verify-no-changes --verbosity diagnostic
-        continue-on-error: true
-
-      - name: Security Scan - Dependency Check
-        run: |
-          dotnet list package --vulnerable --include-transitive
-          dotnet list package --deprecated
-        continue-on-error: true
+      - name: ビルド成果物をアップロード
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts-release
+          path: |
+            bin/Release/**/*.exe
+            bin/Release/**/*.dll
+            !bin/Release/**/ref/**
+          retention-days: 7

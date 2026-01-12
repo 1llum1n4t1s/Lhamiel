@@ -95,6 +95,12 @@ public class FileAssociation
     private static readonly string IconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
 
     /// <summary>
+    /// ファイル関連付けのアイコンファイルパス
+    /// ファイルマネージャーで表示されるアイコン
+    /// </summary>
+    private static readonly string FileIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "file.ico");
+
+    /// <summary>
     /// アプリケーション名
     /// レジストリに登録されるアプリケーションの表示名
     /// </summary>
@@ -155,13 +161,15 @@ public class FileAssociation
             Logger.Log($"[関連付け設定] シェルコマンド: {command}");
             Debug.WriteLine($"[関連付け設定] シェルコマンド: {command}");
 
-            if (File.Exists(IconPath))
+            // ファイル関連付けアイコンを設定（file.icoがあれば使用、なければapp.icoを使用）
+            var fileIconToUse = File.Exists(FileIconPath) ? FileIconPath : IconPath;
+            if (File.Exists(fileIconToUse))
             {
                 var iconKeyPath = $"Software\\Classes\\{appId}\\DefaultIcon";
                 using var iconKey = Registry.CurrentUser.CreateSubKey(iconKeyPath);
-                iconKey?.SetValue("", IconPath);
-                Logger.Log($"[関連付け設定] アイコン: {IconPath}");
-                Debug.WriteLine($"[関連付け設定] アイコン: {IconPath}");
+                iconKey?.SetValue("", fileIconToUse);
+                Logger.Log($"[関連付け設定] アイコン: {fileIconToUse}");
+                Debug.WriteLine($"[関連付け設定] アイコン: {fileIconToUse}");
             }
 
             var typeKeyPath = $"Software\\Classes\\{appId}";

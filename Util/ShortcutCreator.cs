@@ -14,9 +14,10 @@ public static class ShortcutCreator
     /// <summary>
     /// デスクトップにショートカットを作成する
     /// </summary>
+    /// <param name="compressionFormat">圧縮形式（オプション）</param>
     /// <returns>作成に成功した場合はtrue、失敗した場合はfalse</returns>
     [SupportedOSPlatform("windows")]
-    public static bool CreateDesktopShortcut()
+    public static bool CreateDesktopShortcut(string? compressionFormat = null)
     {
         try
         {
@@ -34,8 +35,19 @@ public static class ShortcutCreator
                 return false;
             }
 
-            var shortcutPath = Path.Combine(desktopPath, "Lhamiel.lnk");
-            return CreateShortcut(exePath, shortcutPath, "Lhamiel - 圧縮・展開ツール");
+            var shortcutName = "Lhamiel.lnk";
+            var description = "Lhamiel - 圧縮・展開ツール";
+
+            // 圧縮形式が指定されている場合は、ショートカット名と説明に反映
+            if (!string.IsNullOrWhiteSpace(compressionFormat))
+            {
+                var formatUpper = compressionFormat.ToUpper();
+                shortcutName = $"Lhamiel ({formatUpper}で圧縮).lnk";
+                description = $"Lhamiel - {formatUpper}で圧縮";
+            }
+
+            var shortcutPath = Path.Combine(desktopPath, shortcutName);
+            return CreateShortcut(exePath, shortcutPath, description);
         }
         catch (Exception ex)
         {

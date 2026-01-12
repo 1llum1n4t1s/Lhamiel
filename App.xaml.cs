@@ -12,11 +12,27 @@ namespace Lhamiel;
 /// </summary>
 public partial class App : Application
 {
+    /// <summary>
+    /// 更新チェックのタイムアウト時間（ミリ秒）
+    /// </summary>
+    private const int UpdateCheckTimeoutMs = 10000;
+
     private readonly UpdateManager? _updateManager;
 
     public App()
     {
-        VelopackApp.Build().Run();
+        try
+        {
+            // Velopackの初期化：インストール、アンインストール、更新などを処理
+            var velopackApp = VelopackApp.Build();
+            velopackApp.Run();
+            Logger.Log("Velopack: 初期化完了");
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"Velopack: 初期化エラー: {ex.Message}");
+        }
+
         _updateManager = InitializeUpdateManager();
     }
 
@@ -28,20 +44,11 @@ public partial class App : Application
     {
         try
         {
-            if (_updateManager != null)
+            // 更新チェックと適用を試行
+            var updateApplied = await CheckAndApplyUpdatesAsync();
+            if (updateApplied)
             {
-                Logger.Log("Velopack: 更新チェックを開始します。");
-                var updateInfo = await _updateManager.CheckForUpdatesAsync();
-                if (updateInfo != null)
-                {
-                    Logger.Log("Velopack: 更新を検出しました。ダウンロードを開始します。");
-                    await _updateManager.DownloadUpdatesAsync(updateInfo);
-                    Logger.Log("Velopack: 更新を適用して再起動します。");
-                    _updateManager.ApplyUpdatesAndRestart(updateInfo);
-                    return;
-                }
-
-                Logger.Log("Velopack: 利用可能な更新はありません。");
+                return;
             }
 
             base.OnStartup(e);
@@ -70,36 +77,89 @@ public partial class App : Application
             Shutdown();
             return;
         }
-        finally
+    }
+
+    /// <summary>
+    /// 更新をチェックして適用する
+    /// </summary>
+    /// <returns>更新が適用された場合はtrue、適用されなかった場合はfalse</returns>
+    private async Task<bool> CheckAndApplyUpdatesAsync()
+    {
+        if (_updateManager == null)
         {
+            return false;
+        }
+
+        try
+        {
+            using var cts = new CancellationTokenSource(UpdateCheckTimeoutMs);
+            Logger.Log("Velopack: 更新チェックを開始します。");
+
+            var updateInfo = await _updateManager.CheckForUpdatesAsync();
+            if (updateInfo == null)
+            {
+                Logger.Log("Velopack: 利用可能な更新はありません。");
+                return false;
+            }
+
+            Logger.Log("Velopack: 新しいバージョンを検出しました。更新をダウンロードしています...");
+
+            await _updateManager.DownloadUpdatesAsync(updateInfo);
+
+            Logger.Log("Velopack: ダウンロード完了。更新を適用して再起動します。");
+            _updateManager.ApplyUpdatesAndRestart(updateInfo);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log("Velopack: 更新チェックがタイムアウトしました。アプリケーションを続行します。");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"Velopack: 更新チェック中にエラーが発生しました: {ex.Message}");
+            return false;
         }
     }
 
+    /// <summary>
+    /// 更新マネージャーを初期化する
+    /// </summary>
+    /// <returns>初期化された更新マネージャー、またはnull</returns>
     private static UpdateManager? InitializeUpdateManager()
     {
-        var settings = Settings.Load();
-        var repoOwner = settings.UpdateRepoOwner;
-        var repoName = settings.UpdateRepoName;
-        var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "release" : settings.UpdateChannel;
-
-        if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName))
+        try
         {
-            Logger.Log("Velopack: 更新元リポジトリが未設定のため更新チェックをスキップします。");
+            var settings = Settings.Load();
+            var repoOwner = settings.UpdateRepoOwner;
+            var repoName = settings.UpdateRepoName;
+            var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "release" : settings.UpdateChannel;
+
+            if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName))
+            {
+                Logger.Log("Velopack: 更新元リポジトリが未設定のため更新チェックをスキップします。");
+                return null;
+            }
+
+            var repoUrl = $"https://github.com/{repoOwner}/{repoName}";
+            var isPrerelease = channel.Equals("prerelease", StringComparison.OrdinalIgnoreCase);
+            var source = new GithubSource(repoUrl, string.Empty, isPrerelease);
+            var updateManager = new UpdateManager(source);
+
+            if (!updateManager.IsInstalled)
+            {
+                Logger.Log("Velopack: 開発実行のため更新チェックをスキップします。");
+                return null;
+            }
+
+            Logger.Log($"Velopack: 初期化完了 - リポジトリ: {repoUrl}, チャンネル: {channel}");
+            return updateManager;
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"Velopack: 初期化エラー: {ex.Message}");
             return null;
         }
-
-        var repoUrl = $"https://github.com/{repoOwner}/{repoName}";
-        var isPrerelease = channel.Equals("prerelease", StringComparison.OrdinalIgnoreCase);
-        var source = new GithubSource(repoUrl, string.Empty, isPrerelease);
-        var updateManager = new UpdateManager(source);
-
-        if (!updateManager.IsInstalled)
-        {
-            Logger.Log("Velopack: 開発実行のため更新チェックをスキップします。");
-            return null;
-        }
-
-        return updateManager;
     }
 
     /// <summary>

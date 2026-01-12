@@ -1,53 +1,189 @@
-name: Velopack Release
+name: Velopack リリース作成
 
 on:
   push:
     branches:
-      - releases
+      - 'release/**'
 
 permissions:
   contents: write
 
 jobs:
   build-release:
+    name: Velopack リリース作成
     runs-on: windows-latest
     steps:
-      - name: Checkout
+      - name: リポジトリをチェックアウト
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Setup .NET
+      - name: .NET SDK をセットアップ
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: '10.0.x'
 
-      - name: Install Velopack CLI
-        run: dotnet tool install -g vpk
+      - name: 依存関係を復元
+        run: dotnet restore Lhamiel.slnx
 
-      - name: Determine version
-        id: version
+      - name: リリースバージョンを設定
         shell: pwsh
         run: |
-          $tag = git describe --tags --abbrev=0 2>$null
-          if (-not $tag) {
-            $dateVersion = Get-Date -Format "yyyy.MM.dd.HHmmss"
-            $shortSha = git rev-parse --short HEAD
-            $version = "$dateVersion+$shortSha"
-          } else {
-            $version = $tag.TrimStart("v")
+          # csproj からバージョンを読み取る
+          $csprojPath = "Lhamiel.csproj"
+          [xml]$xml = Get-Content -Path $csprojPath
+
+          # すべての PropertyGroup から Version を検索
+          $version = $null
+          foreach ($propertyGroup in $xml.Project.PropertyGroup) {
+            if ($propertyGroup.Version) {
+              $version = $propertyGroup.Version
+              break
+            }
           }
-          "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
-      - name: Pack release
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            Write-Error "Version not found in csproj at: $csprojPath"
+            Write-Host "csproj content:"
+            Get-Content -Path $csprojPath | Select-Object -First 30
+            exit 1
+          }
+
+          Write-Host "Setting RELEASE_VERSION=$version"
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "RELEASE_VERSION=$version" -Encoding utf8
+          Write-Host "RELEASE_VERSION=$version"
+
+      - name: アプリを公開ビルド
         shell: pwsh
         run: |
-          $version = "${{ steps.version.outputs.version }}"
-          ./build/pack-velopack.ps1 -Version $version
+          $publishDir = Join-Path "bin" "Release" "net10.0-windows10.0.26100.0" "win-x64" "publish"
+          if (Test-Path $publishDir) {
+            Remove-Item -Path $publishDir -Recurse -Force
+          }
 
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: v${{ steps.version.outputs.version }}
-          files: Releases/*
+          Write-Host "Building and publishing application..."
+          dotnet publish "Lhamiel.csproj" `
+            -c Release `
+            -r win-x64 `
+            --self-contained false
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "dotnet publish failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+
+          Write-Host "Publish directory contents:"
+          Get-ChildItem -Path $publishDir -Recurse -ErrorAction SilentlyContinue | Select-Object -First 20 | ForEach-Object { Write-Host $_.FullName }
+
+          $exePath = Join-Path $publishDir "Lhamiel.exe"
+          if (-not (Test-Path $exePath)) {
+            Write-Error "Lhamiel.exe not found at: $exePath"
+            exit 1
+          }
+          Write-Host "Successfully built: $exePath"
+
+      - name: Velopack CLI をインストール
+        shell: pwsh
+        run: |
+          dotnet tool install --global vpk
+          $toolsPath = "$env:USERPROFILE\.dotnet\tools"
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value $toolsPath -Encoding utf8
+          Write-Host "Velopack CLI installed to: $toolsPath"
+          Write-Host "PATH environment updated"
+
+      - name: Velopack パッケージを作成
+        shell: pwsh
+        run: |
+          $publishDir = Join-Path "bin" "Release" "net10.0-windows10.0.26100.0" "win-x64" "publish"
+          $outputDir = "artifacts"
+          $iconPath = Join-Path "Asset" "icon" "app.ico"
+
+          if (-not (Test-Path $publishDir)) {
+            Write-Error "Publish directory not found: $publishDir"
+            exit 1
+          }
+
+          if (Test-Path $outputDir) {
+            Remove-Item -Path $outputDir -Recurse -Force
+          }
+          New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
+
+          Write-Host "Creating Velopack package..."
+          Write-Host "  Pack ID: Lhamiel"
+          Write-Host "  Version: $env:RELEASE_VERSION"
+          Write-Host "  Title: Lhamiel"
+          Write-Host "  Main EXE: Lhamiel.exe"
+          Write-Host "  Publish Dir: $publishDir"
+          Write-Host "  Output Dir: $outputDir"
+          Write-Host "  Icon: $iconPath"
+
+          vpk pack `
+            --packId Lhamiel `
+            --packVersion $env:RELEASE_VERSION `
+            --packTitle "Lhamiel" `
+            --packAuthors "Lhamiel" `
+            --mainExe Lhamiel.exe `
+            --icon $iconPath `
+            --packDir $publishDir `
+            --outputDir $outputDir `
+            --shortcuts "StartMenu,Desktop"
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "vpk pack failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+
+          Write-Host "Velopack パッケージ作成完了"
+          Write-Host "Artifacts directory contents:"
+          if (Test-Path $outputDir) {
+            Get-ChildItem -Path $outputDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+          } else {
+            Write-Error "Artifacts directory was not created"
+            exit 1
+          }
+
+      - name: GitHub Releases にアップロード
+        shell: pwsh
+        run: |
+          $outputDir = "artifacts"
+
+          if (-not (Test-Path $outputDir)) {
+            Write-Error "Artifacts directory not found: $outputDir"
+            exit 1
+          }
+
+          Write-Host "GitHub Releases へのアップロードを開始..."
+          Write-Host "Repository: ${{ github.repository }}"
+          Write-Host "Version: $env:RELEASE_VERSION"
+          Write-Host "Artifacts directory contents:"
+          if (Get-ChildItem -Path $outputDir -Recurse -ErrorAction SilentlyContinue) {
+            Get-ChildItem -Path $outputDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
+          } else {
+            Write-Host "  (empty)"
+          }
+
+          $repoUrl = "https://github.com/${{ github.repository }}"
+          $releaseName = "Lhamiel $env:RELEASE_VERSION"
+          $tag = "v$env:RELEASE_VERSION"
+
+          Write-Host ""
+          Write-Host "Uploading to GitHub Releases:"
+          Write-Host "  Repository URL: $repoUrl"
+          Write-Host "  Release Name: $releaseName"
+          Write-Host "  Tag: $tag"
+          Write-Host "  Output Dir: $outputDir"
+          Write-Host ""
+
+          vpk upload github `
+            --repoUrl $repoUrl `
+            --token "${{ secrets.GITHUB_TOKEN }}" `
+            --outputDir $outputDir `
+            --channel win `
+            --publish `
+            --releaseName $releaseName `
+            --tag $tag
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "vpk upload failed with exit code $LASTEXITCODE"
+            exit 1
+          }
+
+          Write-Host "GitHub Releases へのアップロード完了"

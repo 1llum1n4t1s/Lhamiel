@@ -151,24 +151,22 @@ public class ArchiveExtractor
     public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<int>? progress = null, System.Windows.Window? parentWindow = null, CancellationToken cancellationToken = default)
     {
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
-        
-        var extractor = new ArchiveExtractor();
 
         cancellationToken.ThrowIfCancellationRequested();
-        
+
         // 上書き確認が必要かどうかを事前にチェック
         var needsOverwriteConfirmation = Directory.Exists(outputPath);
         Logger.Log($"展開先ディレクトリ存在チェック: outputPath={outputPath}, exists={needsOverwriteConfirmation}");
-        
+
         if (needsOverwriteConfirmation && parentWindow != null)
         {
             Logger.Log("上書き確認ダイアログを表示します");
             // UIスレッドで上書き確認を実行
-            var canOverwrite = await parentWindow.Dispatcher.InvokeAsync(() => 
+            var canOverwrite = await parentWindow.Dispatcher.InvokeAsync(() =>
                 FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow));
-            
+
             Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
-            
+
             if (!canOverwrite)
             {
                 throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
@@ -178,56 +176,11 @@ public class ArchiveExtractor
         {
             Logger.Log($"上書き確認ダイアログをスキップ: needsOverwriteConfirmation={needsOverwriteConfirmation}, parentWindow={parentWindow != null}");
         }
-        
-        // アーカイブ内容を事前にチェックして、既存ファイルとの競合を確認
-        if (parentWindow != null)
-        {
-            Logger.Log("アーカイブ内容の事前チェックを開始");
-            try
-            {
-                using var reader = new ArchiveReader(archivePath);
-                var conflictingFiles = CheckForConflictingFiles(reader, outputPath);
-                Logger.Log($"競合ファイルチェック結果: 競合ファイル数={conflictingFiles.Count}");
-                
-                if (conflictingFiles.Any())
-                {
-                    Logger.Log($"競合ファイルを発見: {string.Join(", ", conflictingFiles.Take(5))}");
-                    // UIスレッドで上書き確認を実行
-                    var canOverwrite = await parentWindow.Dispatcher.InvokeAsync(() => 
-                        FileOverwriteDialog.ShowMultipleFilesOverwriteDialog(
-                            conflictingFiles.ToArray(), 
-                            outputPath,
-                            parentWindow));
-                    
-                    Logger.Log($"複数ファイル上書き確認ダイアログ結果: {canOverwrite}");
-                    
-                    if (canOverwrite == OverwriteResult.Cancel)
-                    {
-                        throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
-                    }
-                    else if (canOverwrite == OverwriteResult.No)
-                    {
-                        throw new OperationCanceledException("ユーザーが上書きを拒否しました。");
-                    }
-                }
-                else
-                {
-                    Logger.Log("競合ファイルはありません");
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Log($"アーカイブ内容の事前チェックでエラーが発生しました: {ex.Message}");
-                // エラーが発生した場合は続行
-            }
-        }
-        else
-        {
-            Logger.Log("parentWindowがnullのため、アーカイブ内容の事前チェックをスキップ");
-        }
-        
+
+        // 非同期タスクで展開処理を実行
         await Task.Run(() =>
         {
+            var extractor = new ArchiveExtractor();
             var progressCallback = progress != null ? new Action<int>(p => progress.Report(p)) : null;
             extractor.ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, needsOverwriteConfirmation, cancellationToken);
         }, cancellationToken);

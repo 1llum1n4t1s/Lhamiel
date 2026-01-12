@@ -1,12 +1,12 @@
-﻿<Window x:Class="Lhamiel.View.MainWindow"
+<Window x:Class="Lhamiel.View.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Lhamiel - アーカイブ圧縮・展開ツール"
-        Height="650" Width="900"
-        MinHeight="500" MinWidth="700"
+        Height="450" Width="700"
+        MinHeight="450" MinWidth="700"
         WindowStartupLocation="CenterScreen"
         AllowDrop="True"
         Drop="DropZone_Drop"
@@ -14,235 +14,256 @@
         DragLeave="DropZone_DragLeave">
     <Grid Margin="15">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />  <!-- 操作ボタンエリア -->
-            <RowDefinition Height="Auto" />  <!-- ドラッグ&ドロップゾーン -->
-            <RowDefinition Height="Auto" />  <!-- 出力先設定 -->
-            <RowDefinition Height="*" />      <!-- ファイル関連付け設定 -->
+            <RowDefinition Height="*" />      <!-- タブコンテンツ -->
             <RowDefinition Height="Auto" />  <!-- 下部ボタン -->
         </Grid.RowDefinitions>
 
-        <!-- 操作ボタンエリア -->
-        <Grid Grid.Row="0" Margin="0,0,0,16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <!-- メインアクションボタン -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal">
-                <Button x:Name="CompressButton" Content="📦 ファイル/フォルダを圧縮"
-                        Style="{StaticResource PrimaryButtonStyle}"
-                        Height="40" MinWidth="180"
-                        Click="CompressButton_Click"
-                        AutomationProperties.Name="Compress files or folders"
-                        AutomationProperties.HelpText="Select files or folders to compress into an archive"
-                        ToolTip="ファイルまたはフォルダを選択して圧縮します" />
-                <Button x:Name="ExtractButton" Content="📂 アーカイブを展開"
-                        Style="{StaticResource SuccessButtonStyle}"
-                        Height="40" MinWidth="160"
-                        Margin="12,0,0,0"
-                        Click="ExtractButton_Click"
-                        AutomationProperties.Name="Extract archives"
-                        AutomationProperties.HelpText="Select archive files to extract"
-                        ToolTip="アーカイブファイルを選択して展開します" />
-            </StackPanel>
-
-            <!-- 圧縮形式選択 -->
-            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                <TextBlock Text="圧縮形式:" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="13" />
-                <ComboBox x:Name="CompressionFormatComboBox" Width="85" Height="32"
-                          VerticalContentAlignment="Center"
-                          ToolTip="圧縮時に使用する形式を選択" />
-            </StackPanel>
-        </Grid>
-
-        <!-- ドラッグ&ドロップゾーン -->
-        <Border Grid.Row="1" x:Name="DropZoneBorder"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="2"
-                CornerRadius="8"
-                Background="#F9F9F9"
-                Padding="24"
-                Margin="0,0,0,16"
-                MinHeight="100">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock Text="📁 ここにファイルをドラッグ&amp;ドロップ"
-                           FontSize="16" FontWeight="SemiBold"
-                           HorizontalAlignment="Center"
-                           Foreground="#666666" />
-                <TextBlock Text="またはボタンを使用してファイルを選択"
-                           FontSize="12"
-                           HorizontalAlignment="Center"
-                           Foreground="#999999"
-                           Margin="0,8,0,0" />
-            </StackPanel>
-        </Border>
-
-        <!-- 出力先設定 -->
-        <Grid Grid.Row="2" Margin="0,0,0,16">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="16" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <!-- 展開用出力先設定 -->
-            <GroupBox Grid.Column="0" Header="展開用出力先設定">
+        <!-- タブコンテンツ -->
+        <TabControl Grid.Row="0" Margin="0,0,0,16">
+            <!-- ファイル操作タブ -->
+            <TabItem Header="📁ファイル操作">
                 <Grid Margin="12">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
 
-                    <!-- 出力先パターン選択 -->
-                    <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
-                        <RadioButton x:Name="ExtractionOutputToSameDirectoryRadio"
-                                     Content="元のファイルと同じディレクトリに出力"
-                                     Margin="0,4"
-                                     AutomationProperties.Name="Extract to same directory" />
-                        <RadioButton x:Name="ExtractionOutputToDirectoryRadio"
-                                     Content="ディレクトリを指定する"
-                                     Margin="0,4" IsChecked="True"
-                                     AutomationProperties.Name="Extract to specified directory" />
-                    </StackPanel>
+                    <!-- 操作ボタンエリア -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
 
-                    <!-- ディレクトリ指定 -->
-                    <TextBox x:Name="ExtractionOutputPathTextBox" Grid.Row="1" Grid.Column="0"
-                             VerticalAlignment="Center"
-                             IsReadOnly="True"
-                             Height="32"
-                             VerticalContentAlignment="Center"
-                             AutomationProperties.Name="Extraction output path" />
-                    <Button x:Name="ExtractionBrowseButton" Grid.Row="1" Grid.Column="1"
-                            Content="参照..."
-                            Style="{StaticResource StandardButtonStyle}"
-                            Height="32"
-                            Margin="8,0,0,0"
-                            Click="ExtractionBrowseButton_Click"
-                            ToolTip="展開先フォルダを選択" />
+                        <!-- メインアクションボタン -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <Button x:Name="CompressButton" Content="📦 ファイルを圧縮"
+                                    Style="{StaticResource PrimaryButtonStyle}"
+                                    Height="40" MinWidth="180"
+                                    Click="CompressButton_Click"
+                                    AutomationProperties.Name="Compress files"
+                                    AutomationProperties.HelpText="Select files to compress into an archive"
+                                    ToolTip="ファイルを選択して圧縮します。フォルダはドラッグアンドドロップで圧縮できます" />
+                            <Button x:Name="ExtractButton" Content="📂 アーカイブを展開"
+                                    Style="{StaticResource SuccessButtonStyle}"
+                                    Height="40" MinWidth="160"
+                                    Margin="12,0,0,0"
+                                    Click="ExtractButton_Click"
+                                    AutomationProperties.Name="Extract archives"
+                                    AutomationProperties.HelpText="Select archive files to extract"
+                                    ToolTip="アーカイブファイルを選択して展開します" />
+                        </StackPanel>
+
+                        <!-- 圧縮形式選択 -->
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <TextBlock Text="圧縮形式:" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="13" />
+                            <ComboBox x:Name="CompressionFormatComboBox" Width="85" Height="40"
+                                      VerticalContentAlignment="Center"
+                                      ToolTip="圧縮時に使用する形式を選択" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- ドラッグ&ドロップゾーン -->
+                    <Border Grid.Row="1" x:Name="DropZoneBorder"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="2"
+                            CornerRadius="8"
+                            Background="#F9F9F9"
+                            Padding="24"
+                            MinHeight="100">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="📁 ここにファイルをドラッグ&amp;ドロップ"
+                                       FontSize="16" FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"
+                                       Foreground="#666666" />
+                            <TextBlock Text="またはボタンを使用してファイルを選択"
+                                       FontSize="12"
+                                       HorizontalAlignment="Center"
+                                       Foreground="#999999"
+                                       Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
                 </Grid>
-            </GroupBox>
+            </TabItem>
 
-            <!-- 圧縮用出力先設定 -->
-            <GroupBox Grid.Column="2" Header="圧縮用出力先設定">
+            <!-- 展開用設定タブ -->
+            <TabItem Header="📂 展開用設定">
+                <GroupBox Header="展開用出力先設定" Margin="12">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 出力先パターン選択 -->
+                        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                            <RadioButton x:Name="ExtractionOutputToSameDirectoryRadio"
+                                         Content="元のファイルと同じディレクトリに出力"
+                                         Margin="0,4"
+                                         AutomationProperties.Name="Extract to same directory" />
+                            <RadioButton x:Name="ExtractionOutputToDirectoryRadio"
+                                         Content="ディレクトリを指定する"
+                                         Margin="0,4" IsChecked="True"
+                                         AutomationProperties.Name="Extract to specified directory" />
+                        </StackPanel>
+
+                        <!-- ディレクトリ指定 -->
+                        <TextBox x:Name="ExtractionOutputPathTextBox" Grid.Row="1" Grid.Column="0"
+                                 VerticalAlignment="Center"
+                                 IsReadOnly="True"
+                                 Height="32"
+                                 VerticalContentAlignment="Center"
+                                 AutomationProperties.Name="Extraction output path" />
+                        <Button x:Name="ExtractionBrowseButton" Grid.Row="1" Grid.Column="1"
+                                Content="参照..."
+                                Style="{StaticResource StandardButtonStyle}"
+                                Height="40"
+                                Margin="8,0,0,0"
+                                Click="ExtractionBrowseButton_Click"
+                                ToolTip="展開先フォルダを選択" />
+                    </Grid>
+                </GroupBox>
+            </TabItem>
+
+            <!-- 圧縮用設定タブ -->
+            <TabItem Header="📦 圧縮用設定">
+                <GroupBox Header="圧縮用出力先設定" Margin="12">
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- 出力先パターン選択 -->
+                        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                            <RadioButton x:Name="CompressionOutputToSameDirectoryRadio"
+                                         Content="元のファイルと同じディレクトリに出力"
+                                         Margin="0,4"
+                                         AutomationProperties.Name="Compress to same directory" />
+                            <RadioButton x:Name="CompressionOutputToDirectoryRadio"
+                                         Content="ディレクトリを指定する"
+                                         Margin="0,4" IsChecked="True"
+                                         AutomationProperties.Name="Compress to specified directory" />
+                        </StackPanel>
+
+                        <!-- ディレクトリ指定 -->
+                        <TextBox x:Name="CompressionOutputPathTextBox" Grid.Row="1" Grid.Column="0"
+                                 VerticalAlignment="Center"
+                                 IsReadOnly="True"
+                                 Height="32"
+                                 VerticalContentAlignment="Center"
+                                 AutomationProperties.Name="Compression output path" />
+                        <Button x:Name="CompressionBrowseButton" Grid.Row="1" Grid.Column="1"
+                                Content="参照..."
+                                Style="{StaticResource StandardButtonStyle}"
+                                Height="40"
+                                Margin="8,0,0,0"
+                                Click="CompressionBrowseButton_Click"
+                                ToolTip="圧縮先フォルダを選択" />
+                    </Grid>
+                </GroupBox>
+            </TabItem>
+
+            <!-- ファイル関連付け設定タブ -->
+            <TabItem Header="🔗 関連付け設定">
                 <Grid Margin="12">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
 
-                    <!-- 出力先パターン選択 -->
-                    <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
-                        <RadioButton x:Name="CompressionOutputToSameDirectoryRadio"
-                                     Content="元のファイルと同じディレクトリに出力"
-                                     Margin="0,4"
-                                     AutomationProperties.Name="Compress to same directory" />
-                        <RadioButton x:Name="CompressionOutputToDirectoryRadio"
-                                     Content="ディレクトリを指定する"
-                                     Margin="0,4" IsChecked="True"
-                                     AutomationProperties.Name="Compress to specified directory" />
-                    </StackPanel>
+                    <!-- ボタンエリア -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
 
-                    <!-- ディレクトリ指定 -->
-                    <TextBox x:Name="CompressionOutputPathTextBox" Grid.Row="1" Grid.Column="0"
-                             VerticalAlignment="Center"
-                             IsReadOnly="True"
-                             Height="32"
-                             VerticalContentAlignment="Center"
-                             AutomationProperties.Name="Compression output path" />
-                    <Button x:Name="CompressionBrowseButton" Grid.Row="1" Grid.Column="1"
-                            Content="参照..."
-                            Style="{StaticResource StandardButtonStyle}"
-                            Height="32"
-                            Margin="8,0,0,0"
-                            Click="CompressionBrowseButton_Click"
-                            ToolTip="圧縮先フォルダを選択" />
+                        <!-- 全選択・全解除ボタン -->
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <Button x:Name="SelectAllButton" Content="全選択"
+                                    Style="{StaticResource StandardButtonStyle}"
+                                    Width="70" Height="40"
+                                    Margin="0,0,4,0"
+                                    Click="SelectAllButton_Click"
+                                    ToolTip="すべての形式を選択" />
+                            <Button x:Name="DeselectAllButton" Content="全解除"
+                                    Style="{StaticResource StandardButtonStyle}"
+                                    Width="70" Height="40"
+                                    Click="DeselectAllButton_Click"
+                                    ToolTip="すべての選択を解除" />
+                        </StackPanel>
+
+                        <!-- ショートカット作成エリア -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="16,0,0,0">
+                            <TextBlock Text="ショートカット圧縮形式:" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12" />
+                            <ComboBox x:Name="ShortcutCompressionFormatComboBox" Width="100" Height="40"
+                                      VerticalContentAlignment="Center"
+                                      ToolTip="ショートカットで使用する圧縮形式を選択" />
+                            <Button x:Name="CreateShortcutButton" Content="📌 デスクトップにショートカット作成"
+                                    Style="{StaticResource StandardButtonStyle}"
+                                    Height="40"
+                                    Margin="8,0,0,0"
+                                    Click="CreateShortcutButton_Click"
+                                    ToolTip="デスクトップにアプリケーションのショートカットを作成" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- チェックボックス一覧 -->
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <UniformGrid Columns="3" Margin="12,8">
+                            <CheckBox x:Name="ZipCheckBox" Content="ZIP (.zip)"
+                                      Margin="0,4" AutomationProperties.Name="Associate ZIP files" />
+                            <CheckBox x:Name="SevenZipCheckBox" Content="7-Zip (.7z)"
+                                      Margin="0,4" AutomationProperties.Name="Associate 7-Zip files" />
+                            <CheckBox x:Name="TarCheckBox" Content="TAR (.tar)"
+                                      Margin="0,4" AutomationProperties.Name="Associate TAR files" />
+                            <CheckBox x:Name="GzCheckBox" Content="GZIP (.gz)"
+                                      Margin="0,4" AutomationProperties.Name="Associate GZIP files" />
+                            <CheckBox x:Name="Bz2CheckBox" Content="BZIP2 (.bz2)"
+                                      Margin="0,4" AutomationProperties.Name="Associate BZIP2 files" />
+                            <CheckBox x:Name="LzmaCheckBox" Content="LZMA (.lzma)"
+                                      Margin="0,4" AutomationProperties.Name="Associate LZMA files" />
+                            <CheckBox x:Name="XzCheckBox" Content="XZ (.xz)"
+                                      Margin="0,4" AutomationProperties.Name="Associate XZ files" />
+                            <CheckBox x:Name="RarCheckBox" Content="RAR (.rar)"
+                                      Margin="0,4" AutomationProperties.Name="Associate RAR files" />
+                            <CheckBox x:Name="LzhCheckBox" Content="LZH (.lzh)"
+                                      Margin="0,4" AutomationProperties.Name="Associate LZH files" />
+                            <CheckBox x:Name="CabCheckBox" Content="CAB (.cab)"
+                                      Margin="0,4" AutomationProperties.Name="Associate CAB files" />
+                            <CheckBox x:Name="ArjCheckBox" Content="ARJ (.arj)"
+                                      Margin="0,4" AutomationProperties.Name="Associate ARJ files" />
+                            <CheckBox x:Name="ZCheckBox" Content="Z (.z)"
+                                      Margin="0,4" AutomationProperties.Name="Associate Z files" />
+                        </UniformGrid>
+                    </ScrollViewer>
                 </Grid>
-            </GroupBox>
-        </Grid>
-
-        <!-- ファイル関連付け設定 -->
-        <GroupBox Grid.Row="3" Header="ファイル関連付け設定" Margin="0,0,0,16">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <!-- 全選択・全解除ボタン -->
-                <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,12">
-                    <Button x:Name="SelectAllButton" Content="全選択"
-                            Style="{StaticResource StandardButtonStyle}"
-                            Width="70" Height="28"
-                            Margin="4,0"
-                            Click="SelectAllButton_Click"
-                            ToolTip="すべての形式を選択" />
-                    <Button x:Name="DeselectAllButton" Content="全解除"
-                            Style="{StaticResource StandardButtonStyle}"
-                            Width="70" Height="28"
-                            Margin="4,0"
-                            Click="DeselectAllButton_Click"
-                            ToolTip="すべての選択を解除" />
-                </StackPanel>
-
-                <!-- チェックボックス一覧 -->
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <UniformGrid Columns="3" Margin="12,8">
-                        <CheckBox x:Name="ZipCheckBox" Content="ZIP (.zip)"
-                                  Margin="0,4" AutomationProperties.Name="Associate ZIP files" />
-                        <CheckBox x:Name="SevenZipCheckBox" Content="7-Zip (.7z)"
-                                  Margin="0,4" AutomationProperties.Name="Associate 7-Zip files" />
-                        <CheckBox x:Name="TarCheckBox" Content="TAR (.tar)"
-                                  Margin="0,4" AutomationProperties.Name="Associate TAR files" />
-                        <CheckBox x:Name="GzCheckBox" Content="GZIP (.gz)"
-                                  Margin="0,4" AutomationProperties.Name="Associate GZIP files" />
-                        <CheckBox x:Name="Bz2CheckBox" Content="BZIP2 (.bz2)"
-                                  Margin="0,4" AutomationProperties.Name="Associate BZIP2 files" />
-                        <CheckBox x:Name="LzmaCheckBox" Content="LZMA (.lzma)"
-                                  Margin="0,4" AutomationProperties.Name="Associate LZMA files" />
-                        <CheckBox x:Name="XzCheckBox" Content="XZ (.xz)"
-                                  Margin="0,4" AutomationProperties.Name="Associate XZ files" />
-                        <CheckBox x:Name="RarCheckBox" Content="RAR (.rar)"
-                                  Margin="0,4" AutomationProperties.Name="Associate RAR files" />
-                        <CheckBox x:Name="LzhCheckBox" Content="LZH (.lzh)"
-                                  Margin="0,4" AutomationProperties.Name="Associate LZH files" />
-                        <CheckBox x:Name="CabCheckBox" Content="CAB (.cab)"
-                                  Margin="0,4" AutomationProperties.Name="Associate CAB files" />
-                        <CheckBox x:Name="ArjCheckBox" Content="ARJ (.arj)"
-                                  Margin="0,4" AutomationProperties.Name="Associate ARJ files" />
-                        <CheckBox x:Name="ZCheckBox" Content="Z (.z)"
-                                  Margin="0,4" AutomationProperties.Name="Associate Z files" />
-                    </UniformGrid>
-                </ScrollViewer>
-            </Grid>
-        </GroupBox>
+            </TabItem>
+        </TabControl>
 
         <!-- 下部ボタン -->
-        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-            <Button x:Name="CreateShortcutButton" Content="デスクトップにショートカット作成"
-                    Style="{StaticResource StandardButtonStyle}"
-                    Height="36"
-                    Margin="0,0,8,0"
-                    Click="CreateShortcutButton_Click"
-                    ToolTip="デスクトップにアプリケーションのショートカットを作成" />
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
             <Button x:Name="SaveButton" Content="設定を保存"
                     Style="{StaticResource PrimaryButtonStyle}"
-                    Height="36"
+                    Height="40"
                     MinWidth="100"
                     Margin="0,0,8,0"
                     Click="SaveSettingsButton_Click"
                     ToolTip="現在の設定を保存して閉じる" />
             <Button x:Name="CancelButton" Content="キャンセル"
                     Style="{StaticResource StandardButtonStyle}"
-                    Height="36"
+                    Height="40"
                     MinWidth="100"
                     Click="CancelButton_Click"
                     ToolTip="設定を保存せずに閉じる" />
