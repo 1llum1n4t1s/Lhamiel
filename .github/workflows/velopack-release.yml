@@ -29,15 +29,12 @@ jobs:
         run: |
           # csproj からバージョンを読み取る
           $csprojPath = "Lhamiel.csproj"
-          [xml]$xml = Get-Content -Path $csprojPath
-
-          # すべての PropertyGroup から Version を検索
           $version = $null
-          foreach ($propertyGroup in $xml.Project.PropertyGroup) {
-            if ($propertyGroup.Version) {
-              $version = $propertyGroup.Version
-              break
-            }
+
+          # 正規表現でバージョンを抽出
+          $content = Get-Content -Path $csprojPath -Raw
+          if ($content -match '<Version>([^<]+)</Version>') {
+            $version = $matches[1]
           }
 
           if ([string]::IsNullOrWhiteSpace($version)) {
@@ -47,9 +44,8 @@ jobs:
             exit 1
           }
 
-          Write-Host "Setting RELEASE_VERSION=$version"
+          Write-Host "Version found: $version"
           Add-Content -LiteralPath $env:GITHUB_ENV -Value "RELEASE_VERSION=$version" -Encoding utf8
-          Write-Host "RELEASE_VERSION=$version"
 
       - name: アプリを公開ビルド
         shell: pwsh
@@ -124,6 +120,7 @@ jobs:
             --icon $iconPath `
             --packDir $publishDir `
             --outputDir $outputDir `
+            --createDist false `
             --shortcuts "StartMenu,Desktop"
 
           if ($LASTEXITCODE -ne 0) {
@@ -162,13 +159,11 @@ jobs:
 
           $repoUrl = "https://github.com/${{ github.repository }}"
           $releaseName = "Lhamiel $env:RELEASE_VERSION"
-          $tag = "v$env:RELEASE_VERSION"
 
           Write-Host ""
           Write-Host "Uploading to GitHub Releases:"
           Write-Host "  Repository URL: $repoUrl"
           Write-Host "  Release Name: $releaseName"
-          Write-Host "  Tag: $tag"
           Write-Host "  Output Dir: $outputDir"
           Write-Host ""
 
@@ -178,8 +173,7 @@ jobs:
             --outputDir $outputDir `
             --channel win `
             --publish `
-            --releaseName $releaseName `
-            --tag $tag
+            --releaseName $releaseName
 
           if ($LASTEXITCODE -ne 0) {
             Write-Error "vpk upload failed with exit code $LASTEXITCODE"
