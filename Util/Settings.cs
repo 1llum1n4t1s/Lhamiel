@@ -70,12 +70,12 @@ public class Settings
     /// <summary>
     /// 展開完了後に展開先フォルダを開くかどうか
     /// </summary>
-    public bool OpenExtractionOutputFolder { get; set; }
+    public bool OpenExtractionOutputFolder { get; set; } = true;
 
     /// <summary>
     /// 圧縮完了後に圧縮先フォルダを開くかどうか
     /// </summary>
-    public bool OpenCompressionOutputFolder { get; set; }
+    public bool OpenCompressionOutputFolder { get; set; } = true;
 
     /// <summary>
     /// サポートされている圧縮形式の一覧
@@ -158,8 +158,8 @@ public class Settings
         ExtractionOutputToSameDirectory = false;
         CompressionOutputToSameDirectory = false;
         EnableShortcutCreation = true;
-        OpenExtractionOutputFolder = false;
-        OpenCompressionOutputFolder = false;
+        OpenExtractionOutputFolder = true;
+        OpenCompressionOutputFolder = true;
         UpdateRepoOwner = "1llum1n4t1s";
         UpdateRepoName = "Lhamiel";
         UpdateChannel = "release";
