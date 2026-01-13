@@ -271,6 +271,18 @@
                                       Margin="0,4" AutomationProperties.Name="Associate ARJ files" />
                             <CheckBox x:Name="ZCheckBox" Content="Z (.z)"
                                       Margin="0,4" AutomationProperties.Name="Associate Z files" />
+                            <CheckBox x:Name="TgzCheckBox" Content="TAR.GZ (.tgz)"
+                                      Margin="0,4" AutomationProperties.Name="Associate TAR.GZ files" />
+                            <CheckBox x:Name="Tbz2CheckBox" Content="TAR.BZ2 (.tbz2)"
+                                      Margin="0,4" AutomationProperties.Name="Associate TAR.BZ2 files" />
+                            <CheckBox x:Name="TbzCheckBox" Content="TAR.BZ (.tbz)"
+                                      Margin="0,4" AutomationProperties.Name="Associate TAR.BZ files" />
+                            <CheckBox x:Name="TlzCheckBox" Content="TAR.LZMA (.tlz)"
+                                      Margin="0,4" AutomationProperties.Name="Associate TAR.LZMA files" />
+                            <CheckBox x:Name="TxzCheckBox" Content="TAR.XZ (.txz)"
+                                      Margin="0,4" AutomationProperties.Name="Associate TAR.XZ files" />
+                            <CheckBox x:Name="TZCheckBox" Content="TAR.Z (.tZ)"
+                                      Margin="0,4" AutomationProperties.Name="Associate TAR.Z files" />
                         </UniformGrid>
                     </ScrollViewer>
                 </Grid>

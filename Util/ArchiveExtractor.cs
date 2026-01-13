@@ -17,7 +17,7 @@ public class ArchiveExtractor
     /// <summary>
     /// サポートされている展開形式の一覧
     /// </summary>
-    private static readonly string[] SupportedExtensions = { ".zip", ".7z", ".tar", ".gz", ".bz2", ".lzma", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z", ".exe" };
+    private static readonly string[] SupportedExtensions = { ".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tZ", ".exe" };
 
     /// <summary>
     /// 指定されたファイルがサポートされているアーカイブ形式かどうかを確認する
