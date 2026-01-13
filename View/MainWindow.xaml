@@ -1,17 +1,18 @@
 <Window x:Class="Lhamiel.View.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d"
-        Title="Lhamiel - アーカイブ圧縮・展開ツール"
-        Height="450" Width="700"
-        MinHeight="450" MinWidth="700"
-        WindowStartupLocation="CenterScreen"
-        AllowDrop="True"
-        Drop="DropZone_Drop"
-        DragEnter="DropZone_DragEnter"
-        DragLeave="DropZone_DragLeave">
+       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+       mc:Ignorable="d"
+       Title="Lhamiel - アーカイブ圧縮・展開ツール"
+       Height="500" Width="700"
+       MinHeight="500" MinWidth="700"
+       ResizeMode="NoResize"
+       WindowStartupLocation="CenterScreen"
+       AllowDrop="True"
+       Drop="DropZone_Drop"
+       DragEnter="DropZone_DragEnter"
+       DragLeave="DropZone_DragLeave">
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />      <!-- タブコンテンツ -->
