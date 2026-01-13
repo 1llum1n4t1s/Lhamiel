@@ -46,15 +46,38 @@ jobs:
           Write-Host "Version found: $version"
           Add-Content -LiteralPath $env:GITHUB_ENV -Value "RELEASE_VERSION=$version" -Encoding utf8
 
+      - name: ターゲットフレームワークを取得
+        shell: pwsh
+        run: |
+          # csproj からターゲットフレームワークを読み取る
+          $csprojPath = "Lhamiel.csproj"
+          $targetFramework = $null
+
+          # 正規表現でターゲットフレームワークを抽出
+          $content = Get-Content -Path $csprojPath -Raw
+          if ($content -match '<TargetFramework>([^<]+)</TargetFramework>') {
+            $targetFramework = $matches[1]
+          }
+
+          if ([string]::IsNullOrWhiteSpace($targetFramework)) {
+            Write-Error "TargetFramework not found in csproj"
+            exit 1
+          }
+
+          Write-Host "TargetFramework found: $targetFramework"
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "TARGET_FRAMEWORK=$targetFramework" -Encoding utf8
+
       - name: アプリを公開ビルド
         shell: pwsh
         run: |
-          $publishDir = Join-Path "bin" "Release" "net10.0-windows10.0.26100.0" "win-x64" "publish"
+          $publishDir = Join-Path "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
           if (Test-Path $publishDir) {
             Remove-Item -Path $publishDir -Recurse -Force
           }
 
           Write-Host "Building and publishing application..."
+          Write-Host "Target Framework: $env:TARGET_FRAMEWORK"
+          Write-Host "Publish Dir: $publishDir"
           dotnet publish "Lhamiel.csproj" `
             -c Release `
             -r win-x64 `
@@ -87,7 +110,7 @@ jobs:
       - name: Velopack パッケージを作成
         shell: pwsh
         run: |
-          $publishDir = Join-Path "bin" "Release" "net10.0-windows10.0.26100.0" "win-x64" "publish"
+          $publishDir = Join-Path "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
           $outputDir = "artifacts"
           $iconPath = Join-Path "Asset" "icon" "app.ico"
 
@@ -134,6 +157,42 @@ jobs:
             Write-Error "Artifacts directory was not created"
             exit 1
           }
+
+      - name: 既存リリースを削除
+        shell: pwsh
+        run: |
+          $versionWithoutPrefix = $env:RELEASE_VERSION
+          Write-Host "Checking for existing release with version: $versionWithoutPrefix"
+
+          try {
+            $releases = @(gh release list --repo "${{ github.repository }}" --json tagName,name --limit 100 | ConvertFrom-Json)
+            Write-Host "Total releases found: $($releases.Count)"
+
+            foreach ($release in $releases) {
+              Write-Host "  - Tag: $($release.tagName), Name: $($release.name)"
+            }
+
+            $existingRelease = $releases | Where-Object { $_.tagName -eq $versionWithoutPrefix } | Select-Object -First 1
+
+            if ($existingRelease) {
+              Write-Host "Found existing release: $($existingRelease.name) (tag: $($existingRelease.tagName))"
+              Write-Host "Deleting release: $versionWithoutPrefix"
+              gh release delete $versionWithoutPrefix --repo "${{ github.repository }}" --yes
+              Write-Host "Release deleted successfully"
+            } else {
+              Write-Host "No existing release found for tag: $versionWithoutPrefix"
+              Write-Host "Existing tags:"
+              foreach ($release in $releases) {
+                Write-Host "  - $($release.tagName)"
+              }
+            }
+          } catch {
+            Write-Host "Error checking releases: $_"
+            Write-Host "Attempting to delete release anyway..."
+            gh release delete $versionWithoutPrefix --repo "${{ github.repository }}" --yes --if-exists 2>$null || Write-Host "No release to delete or deletion failed (this may be expected)"
+          }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: GitHub Releases にアップロード
         shell: pwsh
