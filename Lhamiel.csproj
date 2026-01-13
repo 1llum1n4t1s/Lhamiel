@@ -14,7 +14,7 @@
     <DebugType>portable</DebugType>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <!-- Windows固有のAPI使用を明示的に指定 -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <!-- AssemblyInfoの自動生成を無効化 -->
