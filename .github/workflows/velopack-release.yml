@@ -46,15 +46,38 @@ jobs:
           Write-Host "Version found: $version"
           Add-Content -LiteralPath $env:GITHUB_ENV -Value "RELEASE_VERSION=$version" -Encoding utf8
 
+      - name: ターゲットフレームワークを取得
+        shell: pwsh
+        run: |
+          # csproj からターゲットフレームワークを読み取る
+          $csprojPath = "Lhamiel.csproj"
+          $targetFramework = $null
+
+          # 正規表現でターゲットフレームワークを抽出
+          $content = Get-Content -Path $csprojPath -Raw
+          if ($content -match '<TargetFramework>([^<]+)</TargetFramework>') {
+            $targetFramework = $matches[1]
+          }
+
+          if ([string]::IsNullOrWhiteSpace($targetFramework)) {
+            Write-Error "TargetFramework not found in csproj"
+            exit 1
+          }
+
+          Write-Host "TargetFramework found: $targetFramework"
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "TARGET_FRAMEWORK=$targetFramework" -Encoding utf8
+
       - name: アプリを公開ビルド
         shell: pwsh
         run: |
-          $publishDir = Join-Path "bin" "Release" "net10.0-windows10.0.26100.0" "win-x64" "publish"
+          $publishDir = Join-Path "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
           if (Test-Path $publishDir) {
             Remove-Item -Path $publishDir -Recurse -Force
           }
 
           Write-Host "Building and publishing application..."
+          Write-Host "Target Framework: $env:TARGET_FRAMEWORK"
+          Write-Host "Publish Dir: $publishDir"
           dotnet publish "Lhamiel.csproj" `
             -c Release `
             -r win-x64 `
@@ -87,7 +110,7 @@ jobs:
       - name: Velopack パッケージを作成
         shell: pwsh
         run: |
-          $publishDir = Join-Path "bin" "Release" "net10.0-windows10.0.26100.0" "win-x64" "publish"
+          $publishDir = Join-Path "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
           $outputDir = "artifacts"
           $iconPath = Join-Path "Asset" "icon" "app.ico"
 
