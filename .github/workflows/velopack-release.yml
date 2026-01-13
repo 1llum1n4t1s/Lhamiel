@@ -164,16 +164,32 @@ jobs:
           $releaseTag = "v$env:RELEASE_VERSION"
           Write-Host "Checking for existing release with tag: $releaseTag"
 
-          $releases = gh release list --repo "${{ github.repository }}" --json tagName,name | ConvertFrom-Json
-          $existingRelease = $releases | Where-Object { $_.tagName -eq $releaseTag }
+          try {
+            $releases = @(gh release list --repo "${{ github.repository }}" --json tagName,name --limit 100 | ConvertFrom-Json)
+            Write-Host "Total releases found: $($releases.Count)"
 
-          if ($existingRelease) {
-            Write-Host "Found existing release: $($existingRelease.name)"
-            Write-Host "Deleting release: $releaseTag"
-            gh release delete $releaseTag --repo "${{ github.repository }}" --yes
-            Write-Host "Release deleted successfully"
-          } else {
-            Write-Host "No existing release found for tag: $releaseTag"
+            foreach ($release in $releases) {
+              Write-Host "  - Tag: $($release.tagName), Name: $($release.name)"
+            }
+
+            $existingRelease = $releases | Where-Object { $_.tagName -eq $releaseTag } | Select-Object -First 1
+
+            if ($existingRelease) {
+              Write-Host "Found existing release: $($existingRelease.name) (tag: $($existingRelease.tagName))"
+              Write-Host "Deleting release: $releaseTag"
+              gh release delete $releaseTag --repo "${{ github.repository }}" --yes
+              Write-Host "Release deleted successfully"
+            } else {
+              Write-Host "No existing release found for tag: $releaseTag"
+              Write-Host "Existing tags:"
+              foreach ($release in $releases) {
+                Write-Host "  - $($release.tagName)"
+              }
+            }
+          } catch {
+            Write-Host "Error checking releases: $_"
+            Write-Host "Attempting to delete release anyway..."
+            gh release delete $releaseTag --repo "${{ github.repository }}" --yes --if-exists 2>$null || Write-Host "No release to delete or deletion failed (this may be expected)"
           }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
