@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -262,6 +262,12 @@ public partial class App : Application
             if (success)
             {
                 Logger.Log("ファイル展開処理が完了しました");
+
+                // 展開後にフォルダを開く設定を確認
+                if (settings.OpenExtractionOutputFolder)
+                {
+                    FolderOpener.OpenFolder(outputDir);
+                }
             }
             else
             {
@@ -322,6 +328,12 @@ public partial class App : Application
 
             Logger.Log("ファイル圧縮処理が完了しました");
 
+            // 圧縮後にフォルダを開く設定を確認
+            if (settings.OpenCompressionOutputFolder)
+            {
+                FolderOpener.OpenFolder(outputDir);
+            }
+
             // アプリケーションを終了
             Shutdown();
         }
@@ -365,6 +377,12 @@ public partial class App : Application
             if (success)
             {
                 Logger.Log("フォルダ圧縮処理が完了しました");
+
+                // 圧縮後にフォルダを開く設定を確認
+                if (settings.OpenCompressionOutputFolder)
+                {
+                    FolderOpener.OpenFolder(outputDir);
+                }
             }
             else
             {

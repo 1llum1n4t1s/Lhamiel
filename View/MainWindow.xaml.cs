@@ -92,6 +92,10 @@ public partial class MainWindow : Window
             CompressionOutputToSameDirectoryRadio.IsChecked = _settingsManager.Current.CompressionOutputToSameDirectory;
             CompressionOutputToDirectoryRadio.IsChecked = !_settingsManager.Current.CompressionOutputToSameDirectory;
 
+            // フォルダを開く設定の読み込み
+            OpenExtractionOutputFolderCheckBox.IsChecked = _settingsManager.Current.OpenExtractionOutputFolder;
+            OpenCompressionOutputFolderCheckBox.IsChecked = _settingsManager.Current.OpenCompressionOutputFolder;
+
             // 関連付け設定の読み込み
             LoadAssociationStatus();
 
@@ -219,6 +223,12 @@ public partial class MainWindow : Window
                 progressWindow.SetCompleted("圧縮が完了しました。");
                 await Task.Delay(1000);
                 progressWindow.Close();
+
+                // 圧縮後にフォルダを開く設定を確認
+                if (_settingsManager.Current.OpenCompressionOutputFolder)
+                {
+                    FolderOpener.OpenFolder(CompressionOutputPathTextBox.Text);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -265,6 +275,12 @@ public partial class MainWindow : Window
 
                 // 共通化された展開処理を実行
                 await ArchiveProcessor.ExtractArchivesAsync(openFileDialog.FileNames, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
+
+                // 展開後にフォルダを開く設定を確認
+                if (_settingsManager.Current.OpenExtractionOutputFolder)
+                {
+                    FolderOpener.OpenFolder(ExtractionOutputPathTextBox.Text);
+                }
             }
         }
         catch (OperationCanceledException)
@@ -296,6 +312,8 @@ public partial class MainWindow : Window
             _settingsManager.Current.CompressionOutputDirectory = CompressionOutputPathTextBox.Text;
             _settingsManager.Current.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectoryRadio.IsChecked ?? false;
             _settingsManager.Current.CompressionOutputToSameDirectory = CompressionOutputToSameDirectoryRadio.IsChecked ?? false;
+            _settingsManager.Current.OpenExtractionOutputFolder = OpenExtractionOutputFolderCheckBox.IsChecked ?? false;
+            _settingsManager.Current.OpenCompressionOutputFolder = OpenCompressionOutputFolderCheckBox.IsChecked ?? false;
 
             _settingsManager.Save();
 
@@ -630,6 +648,12 @@ public partial class MainWindow : Window
             if (success)
             {
                 MessageService.ShowSuccess("展開が完了しました。");
+
+                // 展開後にフォルダを開く設定を確認
+                if (_settingsManager.Current.OpenExtractionOutputFolder)
+                {
+                    FolderOpener.OpenFolder(ExtractionOutputPathTextBox.Text);
+                }
             }
             else
             {
@@ -711,6 +735,12 @@ public partial class MainWindow : Window
             if (folders.Count > 0 || files.Count > 0)
             {
                 MessageService.ShowSuccess("圧縮が完了しました。");
+
+                // 圧縮後にフォルダを開く設定を確認
+                if (_settingsManager.Current.OpenCompressionOutputFolder)
+                {
+                    FolderOpener.OpenFolder(CompressionOutputPathTextBox.Text);
+                }
             }
         }
         catch (OperationCanceledException)

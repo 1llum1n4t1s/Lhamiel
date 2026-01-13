@@ -88,88 +88,112 @@
 
             <!-- 展開用設定タブ -->
             <TabItem Header="📂 展開用設定">
-                <GroupBox Header="展開用出力先設定" Margin="12">
-                    <Grid Margin="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                <StackPanel Margin="12">
+                    <GroupBox Header="展開用出力先設定">
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                        <!-- 出力先パターン選択 -->
-                        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
-                            <RadioButton x:Name="ExtractionOutputToSameDirectoryRadio"
-                                         Content="元のファイルと同じディレクトリに出力"
-                                         Margin="0,4"
-                                         AutomationProperties.Name="Extract to same directory" />
-                            <RadioButton x:Name="ExtractionOutputToDirectoryRadio"
-                                         Content="ディレクトリを指定する"
-                                         Margin="0,4" IsChecked="True"
-                                         AutomationProperties.Name="Extract to specified directory" />
+                            <!-- 出力先パターン選択 -->
+                            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                                <RadioButton x:Name="ExtractionOutputToSameDirectoryRadio"
+                                             Content="元のファイルと同じディレクトリに出力"
+                                             Margin="0,4"
+                                             AutomationProperties.Name="Extract to same directory" />
+                                <RadioButton x:Name="ExtractionOutputToDirectoryRadio"
+                                             Content="ディレクトリを指定する"
+                                             Margin="0,4" IsChecked="True"
+                                             AutomationProperties.Name="Extract to specified directory" />
+                            </StackPanel>
+
+                            <!-- ディレクトリ指定 -->
+                            <TextBox x:Name="ExtractionOutputPathTextBox" Grid.Row="1" Grid.Column="0"
+                                     VerticalAlignment="Center"
+                                     IsReadOnly="True"
+                                     Height="32"
+                                     VerticalContentAlignment="Center"
+                                     AutomationProperties.Name="Extraction output path" />
+                            <Button x:Name="ExtractionBrowseButton" Grid.Row="1" Grid.Column="1"
+                                    Content="参照..."
+                                    Style="{StaticResource StandardButtonStyle}"
+                                    Height="40"
+                                    Margin="8,0,0,0"
+                                    Click="ExtractionBrowseButton_Click"
+                                    ToolTip="展開先フォルダを選択" />
+                        </Grid>
+                    </GroupBox>
+
+                    <GroupBox Header="展開後の動作設定" Margin="0,12,0,0">
+                        <StackPanel Margin="12">
+                            <CheckBox x:Name="OpenExtractionOutputFolderCheckBox"
+                                      Content="展開後に保存先のフォルダを開く"
+                                      Margin="0,4"
+                                      ToolTip="展開が完了したときに、展開先フォルダを自動的に開きます"
+                                      AutomationProperties.Name="Open extraction output folder after extraction" />
                         </StackPanel>
-
-                        <!-- ディレクトリ指定 -->
-                        <TextBox x:Name="ExtractionOutputPathTextBox" Grid.Row="1" Grid.Column="0"
-                                 VerticalAlignment="Center"
-                                 IsReadOnly="True"
-                                 Height="32"
-                                 VerticalContentAlignment="Center"
-                                 AutomationProperties.Name="Extraction output path" />
-                        <Button x:Name="ExtractionBrowseButton" Grid.Row="1" Grid.Column="1"
-                                Content="参照..."
-                                Style="{StaticResource StandardButtonStyle}"
-                                Height="40"
-                                Margin="8,0,0,0"
-                                Click="ExtractionBrowseButton_Click"
-                                ToolTip="展開先フォルダを選択" />
-                    </Grid>
-                </GroupBox>
+                    </GroupBox>
+                </StackPanel>
             </TabItem>
 
             <!-- 圧縮用設定タブ -->
             <TabItem Header="📦 圧縮用設定">
-                <GroupBox Header="圧縮用出力先設定" Margin="12">
-                    <Grid Margin="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
+                <StackPanel Margin="12">
+                    <GroupBox Header="圧縮用出力先設定">
+                        <Grid Margin="12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
 
-                        <!-- 出力先パターン選択 -->
-                        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
-                            <RadioButton x:Name="CompressionOutputToSameDirectoryRadio"
-                                         Content="元のファイルと同じディレクトリに出力"
-                                         Margin="0,4"
-                                         AutomationProperties.Name="Compress to same directory" />
-                            <RadioButton x:Name="CompressionOutputToDirectoryRadio"
-                                         Content="ディレクトリを指定する"
-                                         Margin="0,4" IsChecked="True"
-                                         AutomationProperties.Name="Compress to specified directory" />
+                            <!-- 出力先パターン選択 -->
+                            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
+                                <RadioButton x:Name="CompressionOutputToSameDirectoryRadio"
+                                             Content="元のファイルと同じディレクトリに出力"
+                                             Margin="0,4"
+                                             AutomationProperties.Name="Compress to same directory" />
+                                <RadioButton x:Name="CompressionOutputToDirectoryRadio"
+                                             Content="ディレクトリを指定する"
+                                             Margin="0,4" IsChecked="True"
+                                             AutomationProperties.Name="Compress to specified directory" />
+                            </StackPanel>
+
+                            <!-- ディレクトリ指定 -->
+                            <TextBox x:Name="CompressionOutputPathTextBox" Grid.Row="1" Grid.Column="0"
+                                     VerticalAlignment="Center"
+                                     IsReadOnly="True"
+                                     Height="32"
+                                     VerticalContentAlignment="Center"
+                                     AutomationProperties.Name="Compression output path" />
+                            <Button x:Name="CompressionBrowseButton" Grid.Row="1" Grid.Column="1"
+                                    Content="参照..."
+                                    Style="{StaticResource StandardButtonStyle}"
+                                    Height="40"
+                                    Margin="8,0,0,0"
+                                    Click="CompressionBrowseButton_Click"
+                                    ToolTip="圧縮先フォルダを選択" />
+                        </Grid>
+                    </GroupBox>
+
+                    <GroupBox Header="圧縮後の動作設定" Margin="0,12,0,0">
+                        <StackPanel Margin="12">
+                            <CheckBox x:Name="OpenCompressionOutputFolderCheckBox"
+                                      Content="圧縮後に保存先のフォルダを開く"
+                                      Margin="0,4"
+                                      ToolTip="圧縮が完了したときに、圧縮先フォルダを自動的に開きます"
+                                      AutomationProperties.Name="Open compression output folder after compression" />
                         </StackPanel>
-
-                        <!-- ディレクトリ指定 -->
-                        <TextBox x:Name="CompressionOutputPathTextBox" Grid.Row="1" Grid.Column="0"
-                                 VerticalAlignment="Center"
-                                 IsReadOnly="True"
-                                 Height="32"
-                                 VerticalContentAlignment="Center"
-                                 AutomationProperties.Name="Compression output path" />
-                        <Button x:Name="CompressionBrowseButton" Grid.Row="1" Grid.Column="1"
-                                Content="参照..."
-                                Style="{StaticResource StandardButtonStyle}"
-                                Height="40"
-                                Margin="8,0,0,0"
-                                Click="CompressionBrowseButton_Click"
-                                ToolTip="圧縮先フォルダを選択" />
-                    </Grid>
-                </GroupBox>
+                    </GroupBox>
+                </StackPanel>
             </TabItem>
 
             <!-- ファイル関連付け設定タブ -->
