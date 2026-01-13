@@ -1,6 +1,7 @@
-using System.Windows;
+﻿using System.Windows;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Lhamiel.Util;
 using Velopack;
 using Velopack.Sources;
@@ -59,8 +60,18 @@ public partial class App : Application
             // コマンドライン引数をチェック
             if (e.Args.Length > 0)
             {
-                // ファイルが指定されている場合は展開処理を実行
-                ProcessCommandLineFile(e.Args[0]);
+                // 引数から圧縮形式とファイルパスを抽出
+                var compressionFormat = "default";
+                var filePath = e.Args[0];
+
+                // --format オプションがある場合は圧縮形式を取得
+                if (e.Args.Length >= 3 && e.Args[0] == "--format")
+                {
+                    compressionFormat = e.Args[1];
+                    filePath = e.Args[2];
+                }
+
+                ProcessCommandLineFile(filePath, compressionFormat);
             }
             else
             {
@@ -166,11 +177,12 @@ public partial class App : Application
     /// コマンドラインで指定されたファイルまたはフォルダの処理を実行
     /// </summary>
     /// <param name="path">処理するファイルまたはフォルダのパス</param>
-    private async void ProcessCommandLineFile(string path)
+    /// <param name="compressionFormat">圧縮形式（"default"の場合は展開、具体的な形式の場合は圧縮）</param>
+    private async void ProcessCommandLineFile(string path, string compressionFormat = "default")
     {
         try
         {
-            Logger.Log($"コマンドラインから処理を開始: {path}");
+            Logger.Log($"コマンドラインから処理を開始: {path}, 圧縮形式: {compressionFormat}");
 
             // パスが存在するかチェック
             if (!File.Exists(path) && !Directory.Exists(path))
@@ -187,15 +199,35 @@ public partial class App : Application
             // ファイルかフォルダかを判定して適切な処理を実行
             if (File.Exists(path))
             {
-                // ファイルの場合は展開処理を実行
-                Logger.Log($"ファイルを展開処理します: {path}");
-                await ProcessFileExtraction(path, settings);
+                // アーカイブファイル形式かどうかを判定
+                if (ArchiveExtractor.IsSupportedArchiveType(path))
+                {
+                    // アーカイブファイルの場合
+                    if (compressionFormat == "default")
+                    {
+                        // 圧縮形式が指定されていない場合は展開処理を実行
+                        Logger.Log($"アーカイブファイルを展開処理します: {path}");
+                        await ProcessFileExtraction(path, settings);
+                    }
+                    else
+                    {
+                        // 圧縮形式が指定されている場合は、アーカイブファイルそのものを圧縮
+                        Logger.Log($"アーカイブファイルを{compressionFormat}で圧縮処理します: {path}");
+                        await ProcessFileCompression(path, settings, compressionFormat);
+                    }
+                }
+                else
+                {
+                    // 通常ファイルの場合は圧縮処理を実行
+                    Logger.Log($"ファイルを圧縮処理します: {path}");
+                    await ProcessFileCompression(path, settings, compressionFormat);
+                }
             }
             else if (Directory.Exists(path))
             {
                 // フォルダの場合は圧縮処理を実行
                 Logger.Log($"フォルダを圧縮処理します: {path}");
-                await ProcessFolderCompression(path, settings);
+                await ProcessFolderCompression(path, settings, compressionFormat);
             }
         }
         catch (Exception ex)
@@ -230,6 +262,12 @@ public partial class App : Application
             if (success)
             {
                 Logger.Log("ファイル展開処理が完了しました");
+
+                // 展開後にフォルダを開く設定を確認
+                if (settings.OpenExtractionOutputFolder)
+                {
+                    FolderOpener.OpenFolder(outputDir);
+                }
             }
             else
             {
@@ -248,17 +286,84 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// フォルダの圧縮処理を実行
+    /// ファイルの圧縮処理を実行
     /// </summary>
-    /// <param name="folderPath">圧縮するフォルダのパス</param>
+    /// <param name="filePath">圧縮するファイルのパス</param>
     /// <param name="settings">アプリケーション設定</param>
-    private async Task ProcessFolderCompression(string folderPath, Settings settings)
+    /// <param name="compressionFormat">圧縮形式（"default"の場合は設定から取得）</param>
+    private async Task ProcessFileCompression(string filePath, Settings settings, string compressionFormat = "default")
     {
         try
         {
             var outputDir = settings.CompressionOutputDirectory;
             var outputToSameDirectory = settings.CompressionOutputToSameDirectory;
-            var format = settings.CompressionFormat;
+            var format = compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
+
+            // 進行状況ウィンドウを表示
+            var progressWindow = new View.ProgressWindow("圧縮");
+            var cancellationTokenSource = new CancellationTokenSource();
+            progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
+            progressWindow.Show();
+
+            // 出力パスを取得
+            var outputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
+
+            // 出力ファイルが既に存在する場合は削除（上書き）
+            if (File.Exists(outputPath))
+            {
+                File.Delete(outputPath);
+            }
+
+            progressWindow.SetFileName(outputPath);
+
+            var progress = new Progress<int>(percentage =>
+            {
+                progressWindow.UpdateProgress(percentage, "ファイルを圧縮中...");
+            });
+
+            await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationTokenSource.Token);
+
+            progressWindow.SetCompleted("圧縮が完了しました。");
+            await Task.Delay(1000);
+
+            Logger.Log("ファイル圧縮処理が完了しました");
+
+            // 圧縮後にフォルダを開く設定を確認
+            if (settings.OpenCompressionOutputFolder)
+            {
+                FolderOpener.OpenFolder(outputDir);
+            }
+
+            // アプリケーションを終了
+            Shutdown();
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log("ファイル圧縮処理がキャンセルされました");
+            MessageBox.Show("圧縮処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
+            Shutdown();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("ファイル圧縮処理でエラーが発生", ex);
+            MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// フォルダの圧縮処理を実行
+    /// </summary>
+    /// <param name="folderPath">圧縮するフォルダのパス</param>
+    /// <param name="settings">アプリケーション設定</param>
+    /// <param name="compressionFormat">圧縮形式（"default"の場合は設定から取得）</param>
+    private async Task ProcessFolderCompression(string folderPath, Settings settings, string compressionFormat = "default")
+    {
+        try
+        {
+            var outputDir = settings.CompressionOutputDirectory;
+            var outputToSameDirectory = settings.CompressionOutputToSameDirectory;
+            var format = compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
 
             // 進行状況ウィンドウを表示
             var progressWindow = new View.ProgressWindow("圧縮");
@@ -272,6 +377,12 @@ public partial class App : Application
             if (success)
             {
                 Logger.Log("フォルダ圧縮処理が完了しました");
+
+                // 圧縮後にフォルダを開く設定を確認
+                if (settings.OpenCompressionOutputFolder)
+                {
+                    FolderOpener.OpenFolder(outputDir);
+                }
             }
             else
             {

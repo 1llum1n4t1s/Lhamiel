@@ -68,6 +68,16 @@ public class Settings
     public string UpdateChannel { get; set; } = "release";
 
     /// <summary>
+    /// 展開完了後に展開先フォルダを開くかどうか
+    /// </summary>
+    public bool OpenExtractionOutputFolder { get; set; } = true;
+
+    /// <summary>
+    /// 圧縮完了後に圧縮先フォルダを開くかどうか
+    /// </summary>
+    public bool OpenCompressionOutputFolder { get; set; } = true;
+
+    /// <summary>
     /// サポートされている圧縮形式の一覧
     /// </summary>
     public static readonly string[] SupportedCompressionFormats = { "7z", "xz", "bz2", "gz", "tar", "zip", "wim", "cab" };
@@ -148,6 +158,8 @@ public class Settings
         ExtractionOutputToSameDirectory = false;
         CompressionOutputToSameDirectory = false;
         EnableShortcutCreation = true;
+        OpenExtractionOutputFolder = true;
+        OpenCompressionOutputFolder = true;
         UpdateRepoOwner = "1llum1n4t1s";
         UpdateRepoName = "Lhamiel";
         UpdateChannel = "release";

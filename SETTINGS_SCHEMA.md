@@ -22,6 +22,8 @@ Lhamielの設定は `settings.json` ファイルに JSON 形式で保存され�
   "extractionOutputToSameDirectory": false,
   "compressionOutputToSameDirectory": false,
   "enableShortcutCreation": true,
+  "openExtractionOutputFolder": true,
+  "openCompressionOutputFolder": true,
   "updateRepoOwner": "1llum1n4t1s",
   "updateRepoName": "Lhamiel",
   "updateChannel": "release"
@@ -140,6 +142,40 @@ Lhamielの設定は `settings.json` ファイルに JSON 形式で保存され�
 
 ---
 
+### openExtractionOutputFolder
+
+**型**: `boolean`
+**デフォルト値**: `true`
+**説明**: 展開完了後に展開先フォルダを自動的に開くかどうか
+
+**動作**:
+- `true`: 展開が完了したときにWindowsエクスプローラーで展開先フォルダを開く
+- `false`: フォルダを自動的に開かない
+
+**例**:
+```json
+"openExtractionOutputFolder": true
+```
+
+---
+
+### openCompressionOutputFolder
+
+**型**: `boolean`
+**デフォルト値**: `true`
+**説明**: 圧縮完了後に圧縮先フォルダを自動的に開くかどうか
+
+**動作**:
+- `true`: 圧縮が完了したときにWindowsエクスプローラーで圧縮先フォルダを開く
+- `false`: フォルダを自動的に開かない
+
+**例**:
+```json
+"openCompressionOutputFolder": true
+```
+
+---
+
 ### updateRepoOwner
 
 **型**: `string`
@@ -242,6 +278,8 @@ Lhamielの設定は `settings.json` ファイルに JSON 形式で保存され�
   "extractionOutputToSameDirectory": true,
   "compressionOutputToSameDirectory": false,
   "enableShortcutCreation": true,
+  "openExtractionOutputFolder": true,
+  "openCompressionOutputFolder": true,
   "updateRepoOwner": "1llum1n4t1s",
   "updateRepoName": "Lhamiel",
   "updateChannel": "release"
@@ -258,6 +296,8 @@ Lhamielの設定は `settings.json` ファイルに JSON 形式で保存され�
   "extractionOutputToSameDirectory": false,
   "compressionOutputToSameDirectory": false,
   "enableShortcutCreation": false,
+  "openExtractionOutputFolder": true,
+  "openCompressionOutputFolder": true,
   "updateRepoOwner": "1llum1n4t1s",
   "updateRepoName": "Lhamiel",
   "updateChannel": "beta"

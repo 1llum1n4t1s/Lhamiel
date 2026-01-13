@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
+    <TargetFramework>net10.0-windows8.0</TargetFramework>
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>x64</Platforms>
     <Nullable>enable</Nullable>
@@ -14,7 +14,7 @@
     <DebugType>portable</DebugType>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <!-- Windows固有のAPI使用を明示的に指定 -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <!-- AssemblyInfoの自動生成を無効化 -->
@@ -43,6 +43,7 @@
     <Compile Include="Util\ArchiveProcessor.cs" />
     <Compile Include="Util\FileAssociation.cs" />
     <Compile Include="Util\FileOverwriteDialog.cs" />
+    <Compile Include="Util\FolderOpener.cs" />
     <Compile Include="Util\Logger.cs" />
     <Compile Include="Util\MessageService.cs" />
     <Compile Include="Util\PartialExtractionHandler.cs" />

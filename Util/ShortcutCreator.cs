@@ -37,6 +37,7 @@ public static class ShortcutCreator
 
             var shortcutName = "Lhamiel.lnk";
             var description = "Lhamiel - 圧縮・展開ツール";
+            var format = "default";
 
             // 圧縮形式が指定されている場合は、ショートカット名と説明に反映
             if (!string.IsNullOrWhiteSpace(compressionFormat))
@@ -44,10 +45,11 @@ public static class ShortcutCreator
                 var formatUpper = compressionFormat.ToUpper();
                 shortcutName = $"Lhamiel ({formatUpper}で圧縮).lnk";
                 description = $"Lhamiel - {formatUpper}で圧縮";
+                format = compressionFormat.ToLowerInvariant();
             }
 
             var shortcutPath = Path.Combine(desktopPath, shortcutName);
-            return CreateShortcut(exePath, shortcutPath, description);
+            return CreateShortcut(exePath, shortcutPath, description, format);
         }
         catch (Exception ex)
         {
@@ -62,9 +64,10 @@ public static class ShortcutCreator
     /// <param name="targetPath">ショートカットのターゲットパス</param>
     /// <param name="shortcutPath">ショートカットファイルの保存パス</param>
     /// <param name="description">ショートカットの説明</param>
+    /// <param name="compressionFormat">圧縮形式（引数として渡す）</param>
     /// <returns>作成に成功した場合はtrue、失敗した場合はfalse</returns>
     [SupportedOSPlatform("windows")]
-    public static bool CreateShortcut(string targetPath, string shortcutPath, string description)
+    public static bool CreateShortcut(string targetPath, string shortcutPath, string description, string? compressionFormat = null)
     {
         try
         {
@@ -128,6 +131,16 @@ public static class ShortcutCreator
                     null,
                     shortcut,
                     new object[] { Path.GetDirectoryName(targetPath) ?? "" });
+
+                // 圧縮形式が指定されている場合は、引数として渡す
+                if (!string.IsNullOrWhiteSpace(compressionFormat))
+                {
+                    shortcutType.InvokeMember("Arguments",
+                        System.Reflection.BindingFlags.SetProperty,
+                        null,
+                        shortcut,
+                        new object[] { $"--format {compressionFormat}" });
+                }
 
                 // Saveメソッドを呼び出し
                 shortcutType.InvokeMember("Save",
