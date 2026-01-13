@@ -158,6 +158,26 @@ jobs:
             exit 1
           }
 
+      - name: 既存リリースを削除
+        shell: pwsh
+        run: |
+          $releaseTag = "v$env:RELEASE_VERSION"
+          Write-Host "Checking for existing release with tag: $releaseTag"
+
+          $releases = gh release list --repo "${{ github.repository }}" --json tagName,name | ConvertFrom-Json
+          $existingRelease = $releases | Where-Object { $_.tagName -eq $releaseTag }
+
+          if ($existingRelease) {
+            Write-Host "Found existing release: $($existingRelease.name)"
+            Write-Host "Deleting release: $releaseTag"
+            gh release delete $releaseTag --repo "${{ github.repository }}" --yes
+            Write-Host "Release deleted successfully"
+          } else {
+            Write-Host "No existing release found for tag: $releaseTag"
+          }
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: GitHub Releases にアップロード
         shell: pwsh
         run: |
@@ -194,8 +214,7 @@ jobs:
             --outputDir $outputDir `
             --channel win `
             --publish `
-            --releaseName $releaseName `
-            --merge
+            --releaseName $releaseName
 
           if ($LASTEXITCODE -ne 0) {
             Write-Error "vpk upload failed with exit code $LASTEXITCODE"
