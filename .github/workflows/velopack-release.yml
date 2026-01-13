@@ -171,7 +171,8 @@ jobs:
             --outputDir $outputDir `
             --channel win `
             --publish `
-            --releaseName $releaseName
+            --releaseName $releaseName `
+            --force
 
           if ($LASTEXITCODE -ne 0) {
             Write-Error "vpk upload failed with exit code $LASTEXITCODE"

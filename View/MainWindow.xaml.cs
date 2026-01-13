@@ -440,6 +440,7 @@ public partial class MainWindow : Window
             if (!_isInitializing)
             {
                 _settingsManager.Current.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "zip";
+                _settingsManager.Save();
             }
         }
 
