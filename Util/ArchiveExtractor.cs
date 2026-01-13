@@ -77,57 +77,40 @@ public class ArchiveExtractor
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
     /// <param name="defaultFileName">デフォルトのファイル名</param>
-    /// <returns>調整されたファイル名</returns>
+    /// <returns>調整されたファイル名（通常は defaultFileName、二重フォルダ防止の場合は空文字列）</returns>
     private static string GetAdjustedFileName(string archivePath, string defaultFileName)
     {
         try
         {
             using var reader = new ArchiveReader(archivePath);
-            
+
             // アーカイブの内容を取得
             var archiveContents = reader.Items.Select(item => item.FullName).ToList();
 
             if (!archiveContents.Any())
                 return defaultFileName;
 
-            // ルートレベルのディレクトリとファイルを取得
-            var rootItems = archiveContents
-                .Where(path => !path.Contains('/') && !path.Contains('\\'))
-                .Select(path => new { Path = path, IsDirectory = path.EndsWith("/") || path.EndsWith("\\") })
-                .ToList();
+            // ルートレベルのアイテムを取得（パスの最初のセパレータまでの要素）
+            var rootItems = GetRootLevelItems(archiveContents);
 
-            // ルートに単一のディレクトリのみがある場合
+            Logger.Log($"ルートレベルのアイテム数: {rootItems.Count}");
+
+            // ルートに単一のフォルダのみがある場合
             if (rootItems.Count == 1 && rootItems[0].IsDirectory)
             {
-                var rootDirName = rootItems[0].Path.TrimEnd('/', '\\');
-                
-                // ルートディレクトリ名がアーカイブファイル名と同じ場合、二重フォルダを避ける
-                if (string.Equals(rootDirName, defaultFileName, StringComparison.OrdinalIgnoreCase))
-                {
-                    // ルートディレクトリ内のアイテムをチェック
-                    var rootDirItems = archiveContents
-                        .Where(path => path.StartsWith(rootDirName + "/") || path.StartsWith(rootDirName + "\\"))
-                        .ToList();
+                var rootDirName = rootItems[0].Name;
 
-                    // ルートディレクトリ内に複数のアイテムがある場合、空文字列を返して二重フォルダを避ける
-                    if (rootDirItems.Count > 1)
-                    {
-                        return "";
-                    }
-                    // ルートディレクトリ内に単一のアイテムがある場合、そのアイテム名を使用
-                    else if (rootDirItems.Count == 1)
-                    {
-                        var innerItemPath = rootDirItems[0];
-                        var innerItemName = Path.GetFileName(innerItemPath.TrimEnd('/', '\\'));
-                        
-                        // 内側のアイテムがディレクトリで、その名前がアーカイブファイル名と同じ場合
-                        if ((innerItemPath.EndsWith("/") || innerItemPath.EndsWith("\\")) && 
-                            string.Equals(innerItemName, defaultFileName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            // 二重フォルダを避けるため、空文字列を返す
-                            return "";
-                        }
-                    }
+                Logger.Log($"ルートにフォルダが1つのみ: {rootDirName}");
+
+                // ルートフォルダ内のアイテムをチェック
+                var itemsInRootFolder = GetItemsInFolder(archiveContents, rootDirName);
+
+                Logger.Log($"ルートフォルダ内のアイテム数: {itemsInRootFolder.Count}");
+
+                // ルートフォルダ内に複数のアイテムがある場合、二重フォルダを避けるため空文字列を返す
+                if (itemsInRootFolder.Count > 0)
+                {
+                    return "";
                 }
             }
 
@@ -138,6 +121,94 @@ public class ArchiveExtractor
             Logger.Log($"アーカイブ内容のチェックでエラーが発生しました: {archivePath}, {ex.Message}");
             return defaultFileName;
         }
+    }
+
+    /// <summary>
+    /// ルートレベルのアイテムを取得する
+    /// </summary>
+    /// <param name="archiveContents">アーカイブの全アイテムパス</param>
+    /// <returns>ルートレベルのアイテムリスト</returns>
+    private static List<(string Name, bool IsDirectory)> GetRootLevelItems(List<string> archiveContents)
+    {
+        var rootItems = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var path in archiveContents)
+        {
+            // パスをノーマライズ（バックスラッシュをスラッシュに統一）
+            var normalizedPath = path.Replace('\\', '/');
+
+            // 末尾のスラッシュを削除
+            normalizedPath = normalizedPath.TrimEnd('/');
+
+            // ルートレベルの要素を抽出
+            var parts = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length > 0)
+            {
+                var rootName = parts[0];
+                var isDirectory = path.EndsWith("/") || path.EndsWith("\\") || parts.Length > 1;
+
+                if (!rootItems.ContainsKey(rootName))
+                {
+                    rootItems[rootName] = isDirectory;
+                }
+            }
+        }
+
+        return rootItems.Select(kvp => (kvp.Key, kvp.Value)).ToList();
+    }
+
+    /// <summary>
+    /// 指定されたフォルダ内のアイテムを取得する
+    /// </summary>
+    /// <param name="archiveContents">アーカイブの全アイテムパス</param>
+    /// <param name="folderName">対象フォルダ名</param>
+    /// <returns>フォルダ内のアイテムリスト</returns>
+    private static List<(string Path, bool IsDirectory)> GetItemsInFolder(List<string> archiveContents, string folderName)
+    {
+        var items = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+        var folderPrefix1 = folderName + "/";
+        var folderPrefix2 = folderName + "\\";
+
+        foreach (var path in archiveContents)
+        {
+            // フォルダプレフィックスをチェック
+            if (!path.StartsWith(folderPrefix1, StringComparison.OrdinalIgnoreCase) &&
+                !path.StartsWith(folderPrefix2, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            // パスをノーマライズ
+            var normalizedPath = path.Replace('\\', '/');
+
+            // フォルダプレフィックスを削除
+            var relativePath = normalizedPath.Substring(folderName.Length).TrimStart('/');
+
+            // 空またはフォルダ自体の場合はスキップ
+            if (string.IsNullOrEmpty(relativePath))
+                continue;
+
+            // 末尾のスラッシュを削除
+            relativePath = relativePath.TrimEnd('/');
+
+            // ルートレベルの要素を抽出
+            var parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length > 0)
+            {
+                var itemName = parts[0];
+                var isDirectory = path.EndsWith("/") || path.EndsWith("\\") || parts.Length > 1;
+
+                if (!items.ContainsKey(itemName))
+                {
+                    items[itemName] = isDirectory;
+                }
+            }
+        }
+
+        return items.Select(kvp => (kvp.Key, kvp.Value)).ToList();
     }
 
     /// <summary>
@@ -197,7 +268,7 @@ public class ArchiveExtractor
     public void ExtractArchive(string archivePath, string outputPath, Action<int>? progressCallback = null, System.Windows.Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default)
     {
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}");
-        
+
         if (!File.Exists(archivePath))
         {
             throw new FileNotFoundException($"アーカイブファイルが見つかりません: {archivePath}");
@@ -211,30 +282,33 @@ public class ArchiveExtractor
             Logger.Log("ExtractArchive内で上書き確認ダイアログを表示します");
             var canOverwrite = FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow);
             Logger.Log($"ExtractArchive内の上書き確認結果: canOverwrite={canOverwrite}");
-                if (!canOverwrite)
-                {
-                    throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
-                }
-                
-                // 上書きが許可された場合は既存ディレクトリを削除
-                try
-                {
-                    RemoveReadOnlyAttributes(outputPath);
-                    Directory.Delete(outputPath, true);
-                }
-                catch (UnauthorizedAccessException ex)
-                {
-                    Logger.Log($"ディレクトリの削除に失敗しました（アクセス拒否）: {outputPath}, {ex.Message}");
-                    throw new InvalidOperationException($"展開先ディレクトリ '{Path.GetFileName(outputPath)}' が他のアプリケーションで使用されているため削除できません。\nディレクトリを閉じてから再度お試しください。", ex);
-                }
-                catch (IOException ex)
-                {
-                    Logger.Log($"ディレクトリの削除に失敗しました（I/Oエラー）: {outputPath}, {ex.Message}");
-                    throw new InvalidOperationException($"展開先ディレクトリ '{Path.GetFileName(outputPath)}' の削除に失敗しました。\nディレクトリ内のファイルが使用中である可能性があります。", ex);
+
+            if (!canOverwrite)
+            {
+                throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
+            }
+
+            // 上書きが許可された場合は既存ディレクトリを削除
+            try
+            {
+                RemoveReadOnlyAttributes(outputPath);
+                Directory.Delete(outputPath, true);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Logger.Log($"ディレクトリの削除に失敗しました（アクセス拒否）: {outputPath}, {ex.Message}");
+                throw new InvalidOperationException($"展開先ディレクトリ '{Path.GetFileName(outputPath)}' が他のアプリケーションで使用されているため削除できません。\nディレクトリを閉じてから再度お試しください。", ex);
+            }
+            catch (IOException ex)
+            {
+                Logger.Log($"ディレクトリの削除に失敗しました（I/Oエラー）: {outputPath}, {ex.Message}");
+                throw new InvalidOperationException($"展開先ディレクトリ '{Path.GetFileName(outputPath)}' の削除に失敗しました。\nディレクトリ内のファイルが使用中である可能性があります。", ex);
             }
         }
 
         var outputPrepared = false;
+        var tempExtractionPath = "";
+
         try
         {
             // 出力ディレクトリを作成
@@ -246,30 +320,56 @@ public class ArchiveExtractor
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            using var reader = new ArchiveReader(archivePath);
+            // 二重フォルダ防止のための一時展開パスを確認
+            tempExtractionPath = GetTemporaryExtractionPath(archivePath, outputPath);
+            var useTempPath = !string.IsNullOrEmpty(tempExtractionPath) && tempExtractionPath != outputPath;
 
-            // 既存ファイルとの競合をチェック（事前チェックで既に処理済みのため、ここではスキップ）
-            // 複数ファイルの上書き確認は ExtractArchiveAsync で事前に処理される
-            
-            // 進捗報告を設定
-            if (progressCallback != null)
+            Logger.Log($"一時展開パス使用: {useTempPath}, パス: {tempExtractionPath}");
+
+            var extractPath = useTempPath ? tempExtractionPath : outputPath;
+
+            using (var reader = new ArchiveReader(archivePath))
             {
-                var progress = new Progress<Report>(report =>
+                // 進捗報告を設定
+                if (progressCallback != null)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var percentage = report.TotalBytes > 0 ? (int)((report.Bytes * 100) / report.TotalBytes) : 0;
-                    progressCallback(percentage);
-                });
+                    var progress = new Progress<Report>(report =>
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var percentage = report.TotalBytes > 0 ? (int)((report.Bytes * 100) / report.TotalBytes) : 0;
+                        progressCallback(percentage);
+                    });
 
-                reader.Save(outputPath, progress);
-            }
-            else
-            {
-                reader.Save(outputPath);
+                    reader.Save(extractPath, progress);
+                }
+                else
+                {
+                    reader.Save(extractPath);
+                }
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            
+
+            // 一時パスから本来のパスにファイルをリフトアップ
+            if (useTempPath && Directory.Exists(tempExtractionPath))
+            {
+                LiftUpFilesFromTemporaryPath(tempExtractionPath, outputPath);
+
+                // 一時ディレクトリを削除
+                try
+                {
+                    RemoveReadOnlyAttributes(tempExtractionPath);
+                    Directory.Delete(tempExtractionPath, true);
+                    Logger.Log($"一時ディレクトリを削除しました: {tempExtractionPath}");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"一時ディレクトリの削除に失敗しました: {tempExtractionPath}, {ex.Message}");
+                }
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
         }
         catch (OperationCanceledException)
@@ -287,6 +387,19 @@ public class ArchiveExtractor
                 }
             }
 
+            if (!string.IsNullOrEmpty(tempExtractionPath) && Directory.Exists(tempExtractionPath))
+            {
+                try
+                {
+                    RemoveReadOnlyAttributes(tempExtractionPath);
+                    Directory.Delete(tempExtractionPath, true);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"キャンセル時の一時ディレクトリ削除に失敗しました: {tempExtractionPath}, {ex.Message}");
+                }
+            }
+
             throw;
         }
         catch (Exception ex)
@@ -295,7 +408,7 @@ public class ArchiveExtractor
             var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath);
             Logger.Log($"アーカイブ展開でエラーが発生しました: {errorInfo.Message}");
             Logger.Log($"エラー詳細: {errorInfo.Details}");
-            
+
             // 破損ファイルの場合は詳細分析を実行
             if (errorInfo.ErrorType == ArchiveErrorType.CorruptedFile)
             {
@@ -303,25 +416,142 @@ public class ArchiveExtractor
                 var corruptionAnalysis = ArchiveErrorHandler.AnalyzeCorruption(archivePath);
                 Logger.Log($"破損分析結果: 破損={corruptionAnalysis.IsCorrupted}, 種類={corruptionAnalysis.CorruptionType}, 回復率={corruptionAnalysis.RecoveryRate:F1}%");
             }
-            
+
             throw;
         }
     }
 
     /// <summary>
-    /// ディレクトリ内のファイルの読み取り専用属性を削除する
+    /// 二重フォルダ防止のための一時展開パスを取得する
     /// </summary>
-    /// <param name="directoryPath">対象ディレクトリのパス</param>
-    private static void RemoveReadOnlyAttributes(string directoryPath)
+    /// <param name="archivePath">アーカイブファイルのパス</param>
+    /// <param name="outputPath">展開先ディレクトリのパス</param>
+    /// <returns>一時展開パス、または二重フォルダ防止が不要な場合は outputPath と同じ値</returns>
+    private static string GetTemporaryExtractionPath(string archivePath, string outputPath)
     {
         try
         {
-            // ディレクトリ内のすべてのファイルとサブディレクトリを再帰的に処理
-            foreach (var filePath in Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories))
+            using var reader = new ArchiveReader(archivePath);
+
+            // アーカイブの内容を取得
+            var archiveContents = reader.Items.Select(item => item.FullName).ToList();
+
+            if (!archiveContents.Any())
+                return outputPath;
+
+            // ルートレベルのアイテムを取得
+            var rootItems = GetRootLevelItems(archiveContents);
+
+            // ルートに単一のフォルダのみがある場合
+            if (rootItems.Count == 1 && rootItems[0].IsDirectory)
+            {
+                var rootDirName = rootItems[0].Name;
+
+                // ルートフォルダ内のアイテムをチェック
+                var itemsInRootFolder = GetItemsInFolder(archiveContents, rootDirName);
+
+                // ルートフォルダ内に複数のアイテムがある場合、一時パスを使用
+                if (itemsInRootFolder.Count > 0)
+                {
+                    // 一時ディレクトリを作成（outputPath の親ディレクトリに）
+                    var parentDir = Path.GetDirectoryName(outputPath) ?? Path.GetTempPath();
+                    var tempDirName = Path.GetFileName(outputPath) + "_temp_" + Guid.NewGuid().ToString().Substring(0, 8);
+                    var tempPath = Path.Combine(parentDir, tempDirName);
+
+                    Logger.Log($"一時展開パスを返す: {tempPath}");
+                    return tempPath;
+                }
+            }
+
+            return outputPath;
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"一時展開パス取得でエラーが発生しました: {archivePath}, {ex.Message}");
+            return outputPath;
+        }
+    }
+
+    /// <summary>
+    /// 一時展開パスからファイルをリフトアップして本来のパスに配置する
+    /// </summary>
+    /// <param name="tempPath">一時展開パス</param>
+    /// <param name="outputPath">本来の展開先パス</param>
+    private static void LiftUpFilesFromTemporaryPath(string tempPath, string outputPath)
+    {
+        try
+        {
+            Logger.Log($"ファイルをリフトアップ開始: {tempPath} -> {outputPath}");
+
+            // 一時パス直下のフォルダを取得
+            var directories = Directory.GetDirectories(tempPath);
+
+            if (directories.Length == 1)
+            {
+                var innerDirPath = directories[0];
+                var innerDirName = Path.GetFileName(innerDirPath);
+
+                Logger.Log($"一時パス内のフォルダ: {innerDirName}");
+
+                // 本来のパスがまだ存在しない場合は作成
+                if (!Directory.Exists(outputPath))
+                {
+                    Directory.CreateDirectory(outputPath);
+                }
+
+                // 内部フォルダのすべてのファイルとフォルダを本来のパスに移動
+                foreach (var file in Directory.GetFiles(innerDirPath))
+                {
+                    var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                    RemoveReadOnlyAttributes(file);
+
+                    if (File.Exists(destFile))
+                    {
+                        File.Delete(destFile);
+                    }
+
+                    File.Move(file, destFile);
+                    Logger.Log($"ファイルを移動: {file} -> {destFile}");
+                }
+
+                foreach (var dir in Directory.GetDirectories(innerDirPath))
+                {
+                    var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+
+                    if (Directory.Exists(destDir))
+                    {
+                        RemoveReadOnlyAttributes(destDir);
+                        Directory.Delete(destDir, true);
+                    }
+
+                    Directory.Move(dir, destDir);
+                    Logger.Log($"ディレクトリを移動: {dir} -> {destDir}");
+                }
+
+                Logger.Log("ファイルのリフトアップが完了しました");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"ファイルのリフトアップでエラーが発生しました: {ex.Message}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// ファイルまたはディレクトリの読み取り専用属性を削除する
+    /// </summary>
+    /// <param name="path">対象のファイルまたはディレクトリパス</param>
+    private static void RemoveReadOnlyAttributes(string path)
+    {
+        try
+        {
+            // ファイルかディレクトリかを判定
+            if (File.Exists(path))
             {
                 try
                 {
-                    var fileInfo = new FileInfo(filePath);
+                    var fileInfo = new FileInfo(path);
                     if ((fileInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
                     {
                         fileInfo.Attributes &= ~FileAttributes.ReadOnly;
@@ -329,27 +559,46 @@ public class ArchiveExtractor
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log($"ファイル属性の変更に失敗しました: {filePath}, {ex.Message}");
+                    Logger.Log($"ファイル属性の変更に失敗しました: {path}, {ex.Message}");
                 }
             }
-
-            // ディレクトリ自体の読み取り専用属性も削除
-            try
+            else if (Directory.Exists(path))
             {
-                var dirInfo = new DirectoryInfo(directoryPath);
-                if ((dirInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+                // ディレクトリ内のすべてのファイルとサブディレクトリを再帰的に処理
+                foreach (var filePath in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
                 {
-                    dirInfo.Attributes &= ~FileAttributes.ReadOnly;
+                    try
+                    {
+                        var fileInfo = new FileInfo(filePath);
+                        if ((fileInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+                        {
+                            fileInfo.Attributes &= ~FileAttributes.ReadOnly;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log($"ファイル属性の変更に失敗しました: {filePath}, {ex.Message}");
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                Logger.Log($"ディレクトリ属性の変更に失敗しました: {directoryPath}, {ex.Message}");
+
+                // ディレクトリ自体の読み取り専用属性も削除
+                try
+                {
+                    var dirInfo = new DirectoryInfo(path);
+                    if ((dirInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+                    {
+                        dirInfo.Attributes &= ~FileAttributes.ReadOnly;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"ディレクトリ属性の変更に失敗しました: {path}, {ex.Message}");
+                }
             }
         }
         catch (Exception ex)
         {
-            Logger.Log($"読み取り専用属性の削除処理でエラーが発生しました: {directoryPath}, {ex.Message}");
+            Logger.Log($"読み取り専用属性の削除処理でエラーが発生しました: {path}, {ex.Message}");
         }
     }
 
