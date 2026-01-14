@@ -9,7 +9,10 @@ namespace Lhamiel.Util;
 /// </summary>
 public sealed class SettingsManager
 {
-    private static readonly Lazy<SettingsManager> _instance = new Lazy<SettingsManager>(() => new SettingsManager());
+    /// <summary>
+    /// SettingsManager のシングルトンインスタンス
+    /// </summary>
+    private static readonly Lazy<SettingsManager> _instance = new(() => new SettingsManager());
     private readonly Settings _settings;
 
     /// <summary>

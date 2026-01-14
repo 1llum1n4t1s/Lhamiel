@@ -15,10 +15,16 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <Version>1.0.5</Version>
+    <AssemblyName>Lhamiel</AssemblyName>
+    <AssemblyTitle>Lhamiel</AssemblyTitle>
+    <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
+    <AssemblyCompany>1llum1n4t1s</AssemblyCompany>
+    <AssemblyProduct>Lhamiel</AssemblyProduct>
+    <AssemblyCopyright>Copyright © 2025-2026 ゆろち</AssemblyCopyright>
     <!-- Windows固有のAPI使用を明示的に指定 -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <!-- AssemblyInfoの自動生成を無効化 -->
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- AssemblyInfoの自動生成を有効化 -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <!-- パフォーマンス最適化設定 -->
     <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
     <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
@@ -34,7 +40,6 @@
 
   <ItemGroup>
     <Compile Include="App.xaml.cs" />
-    <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Util\ArchiveCompressor.cs" />
     <Compile Include="Util\ArchiveConstants.cs" />
     <Compile Include="Util\ArchiveErrorHandler.cs" />

@@ -14,7 +14,7 @@ namespace Lhamiel.View;
 public partial class MainWindow : Window
 {
     private readonly SettingsManager _settingsManager;
-    private readonly bool _isInitializing = true;
+    private bool _isInitializing;
     private readonly Dictionary<string, CheckBox> _associationCheckBoxes;
 
     /// <summary>
@@ -24,6 +24,7 @@ public partial class MainWindow : Window
     {
         try
         {
+            _isInitializing = true;
             InitializeComponent();
             _settingsManager = SettingsManager.Instance;
 
@@ -641,15 +642,6 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// ドロップされたファイルを処理する（単一ファイル用・下位互換性のために残す）
-    /// </summary>
-    /// <param name="filePath">ドロップされたファイルのパス</param>
-    private void ProcessDroppedFile(string filePath)
-    {
-        ProcessDroppedFiles(new[] { filePath });
-    }
-
-    /// <summary>
     /// ドロップされたアーカイブファイルを展開する
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
@@ -831,89 +823,6 @@ public partial class MainWindow : Window
             else
             {
                 MessageService.ShowWarning("圧縮処理が完了しませんでした。");
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            MessageService.ShowInfo("圧縮がキャンセルされました。");
-        }
-        catch (Exception ex)
-        {
-            MessageService.ShowException("圧縮中にエラーが発生しました", ex);
-        }
-        finally
-        {
-            progressWindow?.Close();
-        }
-    }
-
-    /// <summary>
-    /// ドロップされたファイル/フォルダを圧縮する
-    /// </summary>
-    /// <param name="paths">圧縮するファイル/フォルダのパス一覧</param>
-    private async void ProcessDroppedFileForCompression(string[] paths)
-    {
-        ProgressWindow? progressWindow = null;
-        try
-        {
-            var format = CompressionFormatComboBox.SelectedItem?.ToString() ?? "zip";
-            var outputDir = CompressionOutputPathTextBox.Text;
-            var outputToSameDirectory = CompressionOutputToSameDirectoryRadio.IsChecked ?? false;
-
-            progressWindow = new ProgressWindow("圧縮");
-            var cancellationTokenSource = new CancellationTokenSource();
-            progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
-            progressWindow.Show();
-
-            // ファイルとフォルダを分けて処理
-            var files = new List<string>();
-            var folders = new List<string>();
-
-            foreach (var path in paths)
-            {
-                if (File.Exists(path))
-                {
-                    files.Add(path);
-                }
-                else if (Directory.Exists(path))
-                {
-                    folders.Add(path);
-                }
-            }
-
-            // フォルダの圧縮処理
-            if (folders.Count > 0)
-            {
-                await ArchiveProcessor.CompressFoldersAsync(folders.ToArray(), outputDir, outputToSameDirectory, format, progressWindow, cancellationTokenSource.Token);
-            }
-
-            // ファイルの圧縮処理（1つずつ処理）
-            if (files.Count > 0)
-            {
-                // 単一ファイルの場合、同じディレクトリに圧縮する場合は親フォルダを圧縮対象にする
-                // 複数ファイルの場合は、各ファイルの親フォルダを圧縮対象にする
-                var fileParentDirs = files.Select(f => Path.GetDirectoryName(f)).Distinct().ToList();
-
-                foreach (var dir in fileParentDirs)
-                {
-                    if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
-                    {
-                        cancellationTokenSource.Token.ThrowIfCancellationRequested();
-                        // ファイルの親ディレクトリを圧縮対象にして処理
-                        await ArchiveProcessor.CompressFolderAsync(dir, outputDir, outputToSameDirectory, format, progressWindow, cancellationTokenSource.Token);
-                    }
-                }
-            }
-
-            if (folders.Count > 0 || files.Count > 0)
-            {
-                MessageService.ShowSuccess("圧縮が完了しました。");
-
-                // 圧縮後にフォルダを開く設定を確認
-                if (_settingsManager.Current.OpenCompressionOutputFolder)
-                {
-                    FolderOpener.OpenFolder(CompressionOutputPathTextBox.Text);
-                }
             }
         }
         catch (OperationCanceledException)

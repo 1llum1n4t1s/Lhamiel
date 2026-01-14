@@ -41,7 +41,8 @@ public static class Logger
     {
         if (!isConfigured)
         {
-            var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
+            var entryAssembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
+            var logRepository = LogManager.GetRepository(entryAssembly);
             var configFile = new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log4net.config"));
 
             if (configFile.Exists)

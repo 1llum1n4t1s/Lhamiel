@@ -732,13 +732,13 @@ public class ArchiveExtractor
 
         try
         {
-        using var reader = new ArchiveReader(archivePath);
-            
+            using var reader = new ArchiveReader(archivePath);
+
             // 現在のライブラリでは特定ファイル展開は制限されているため、
             // 全体を展開する方法を使用
-        reader.Save(outputPath);
-            
-        progressCallback?.Invoke(100);
+            reader.Save(outputPath);
+
+            progressCallback?.Invoke(100);
             Logger.Log($"特定ファイル展開完了（全体展開）: {string.Join(", ", fileNames)}");
         }
         catch (Exception ex)

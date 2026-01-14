@@ -217,12 +217,11 @@ public class ArchiveCompressor
 
             // ディレクトリ内のファイルを再帰的に取得して個別に追加
             var files = GetFilesRecursively(directoryPath, excludedPatterns);
-            var directoryName = Path.GetFileName(directoryPath);
 
             foreach (var file in files)
             {
                 // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
-                var relativePath = Path.GetRelativePath(Path.GetDirectoryName(directoryPath) ?? "", file);
+                var relativePath = Path.GetRelativePath(directoryPath, file);
                 writer.Add(file, relativePath);
             }
 
