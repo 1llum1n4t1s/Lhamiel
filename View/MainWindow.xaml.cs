@@ -31,9 +31,9 @@ public partial class MainWindow : Window
             // チェックボックスの辞書を初期化
             _associationCheckBoxes = new Dictionary<string, CheckBox>
             {
-                { "ZIP", ZipCheckBox },
-                { "7Z", SevenZipCheckBox },
-                { "TAR", TarCheckBox },
+                { "zip", ZipCheckBox },
+                { "7z", SevenZipCheckBox },
+                { "tar", TarCheckBox },
                 { "gz", GzCheckBox },
                 { "bz2", Bz2CheckBox },
                 { "lzma", LzmaCheckBox },
