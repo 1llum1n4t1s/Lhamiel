@@ -952,7 +952,7 @@ public partial class MainWindow : Window
             // コピーライト情報を取得
             var copyrightAttribute = assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyCopyrightAttribute), false)
                 .FirstOrDefault() as System.Reflection.AssemblyCopyrightAttribute;
-            CopyrightTextBlock.Text = copyrightAttribute?.Copyright ?? "Copyright © 2024";
+            CopyrightTextBlock.Text = copyrightAttribute?.Copyright ?? "Copyright © 2025-2026 ゆろち";
 
             // MITライセンステキストを設定
             LicenseTextBlock.Text = @"MIT License
