@@ -25,7 +25,7 @@ public class Settings
     /// <summary>
     /// 圧縮形式の設定
     /// </summary>
-    public string CompressionFormat { get; set; } = "zip";
+    public string CompressionFormat { get; set; } = "ZIP";
 
     /// <summary>
     /// 展開用出力ディレクトリの設定
@@ -91,17 +91,17 @@ public class Settings
     /// <summary>
     /// サポートされている圧縮形式の一覧
     /// </summary>
-    public static readonly string[] SupportedCompressionFormats = { "zip", "7z", "tar", "lha" };
+    public static readonly string[] SupportedCompressionFormats = { "ZIP", "7z", "TAR", "LHA" };
 
     /// <summary>
     /// サポートされている展開形式の一覧
     /// </summary>
-    public static readonly string[] SupportedExtractionFormats = { "zip", "7z", "tar", "gz", "bz2", "lzma", "xz", "rar", "lzh", "cab", "arj", "z" };
+    public static readonly string[] SupportedExtractionFormats = { "ZIP", "7z", "TAR", "GZ", "BZ2", "LZMA", "XZ", "RAR", "LZH", "CAB", "ARJ", "Z" };
 
     /// <summary>
     /// 展開専用形式の一覧
     /// </summary>
-    public static readonly string[] ExtractOnlyFormats = { "rar", "arj", "z" };
+    public static readonly string[] ExtractOnlyFormats = { "RAR", "ARJ", "Z" };
 
     /// <summary>
     /// 設定をファイルから読み込む
@@ -163,7 +163,7 @@ public class Settings
     /// </summary>
     public void ResetToDefaults()
     {
-        CompressionFormat = "zip";
+        CompressionFormat = "ZIP";
         ExtractionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         CompressionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         ExtractionOutputToSameDirectory = false;

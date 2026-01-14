@@ -31,9 +31,9 @@ public partial class MainWindow : Window
             // チェックボックスの辞書を初期化
             _associationCheckBoxes = new Dictionary<string, CheckBox>
             {
-                { "zip", ZipCheckBox },
-                { "7z", SevenZipCheckBox },
-                { "tar", TarCheckBox },
+                { "ZIP", ZipCheckBox },
+                { "7Z", SevenZipCheckBox },
+                { "TAR", TarCheckBox },
                 { "gz", GzCheckBox },
                 { "bz2", Bz2CheckBox },
                 { "lzma", LzmaCheckBox },
@@ -74,16 +74,16 @@ public partial class MainWindow : Window
             CompressionFormatComboBox.ItemsSource = Settings.SupportedCompressionFormats;
 
             // 設定された圧縮形式がサポートされているかチェックし、見つからない場合はデフォルト値を使用
-            var selectedFormat = _settingsManager.Current.CompressionFormat?.ToLowerInvariant();
+            var selectedFormat = _settingsManager.Current.CompressionFormat?.ToUpperInvariant();
             if (Settings.SupportedCompressionFormats.Contains(selectedFormat))
             {
                 CompressionFormatComboBox.SelectedItem = selectedFormat;
             }
             else
             {
-                // デフォルト値（zip）を選択
-                CompressionFormatComboBox.SelectedItem = "zip";
-                _settingsManager.Current.CompressionFormat = "zip";
+                // デフォルト値（ZIP）を選択
+                CompressionFormatComboBox.SelectedItem = "ZIP";
+                _settingsManager.Current.CompressionFormat = "ZIP";
             }
 
             // 出力ディレクトリの設定
@@ -189,7 +189,7 @@ public partial class MainWindow : Window
                     return;
                 }
 
-                var format = CompressionFormatComboBox.SelectedItem?.ToString() ?? "zip";
+                var format = CompressionFormatComboBox.SelectedItem?.ToString() ?? "ZIP";
                 var outputDir = CompressionOutputPathTextBox.Text;
                 var outputToSameDirectory = CompressionOutputToSameDirectoryRadio.IsChecked ?? false;
 
@@ -314,7 +314,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            _settingsManager.Current.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "zip";
+            _settingsManager.Current.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "ZIP";
             _settingsManager.Current.ExtractionOutputDirectory = ExtractionOutputPathTextBox.Text;
             _settingsManager.Current.CompressionOutputDirectory = CompressionOutputPathTextBox.Text;
             _settingsManager.Current.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectoryRadio.IsChecked ?? false;
@@ -464,7 +464,7 @@ public partial class MainWindow : Window
         {
             if (!_isInitializing)
             {
-                _settingsManager.Current.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "zip";
+                _settingsManager.Current.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "ZIP";
                 _settingsManager.Save();
             }
         }
@@ -700,7 +700,7 @@ public partial class MainWindow : Window
         ProgressWindow? progressWindow = null;
         try
         {
-            var format = CompressionFormatComboBox.SelectedItem?.ToString() ?? "zip";
+            var format = CompressionFormatComboBox.SelectedItem?.ToString() ?? "ZIP";
             var outputDir = CompressionOutputPathTextBox.Text;
             var outputToSameDirectory = CompressionOutputToSameDirectoryRadio.IsChecked ?? false;
 
