@@ -60,6 +60,7 @@
   <ItemGroup>
     <PackageReference Include="7z.Libs" Version="25.1.0" />
     <PackageReference Include="Cube.FileSystem.SevenZip" Version="8.4.1" />
+    <PackageReference Include="log4net" Version="3.0.1" />
     <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
   </ItemGroup>
 
@@ -103,6 +104,9 @@
     <None Update="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <None Update="log4net.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

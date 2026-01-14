@@ -1,5 +1,4 @@
 using Microsoft.Win32;
-using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -133,8 +132,7 @@ public class FileAssociation
     {
         try
         {
-            Logger.Log($"[関連付け設定] 開始: {extension}");
-            Debug.WriteLine($"[関連付け設定] 開始: {extension}");
+            Logger.Log($"[関連付け設定] 開始: {extension}", LogLevel.Debug);
 
             if (!extension.StartsWith("."))
             {
@@ -142,13 +140,11 @@ public class FileAssociation
             }
 
             var userKeyPath = $"Software\\Classes\\{extension}";
-            Logger.Log($"[関連付け設定] レジストリキー作成: {userKeyPath}");
-            Debug.WriteLine($"[関連付け設定] レジストリキー作成: {userKeyPath}");
+            Logger.Log($"[関連付け設定] レジストリキー作成: {userKeyPath}", LogLevel.Debug);
             using var userKey = Registry.CurrentUser.CreateSubKey(userKeyPath);
             var appId = $"Lhamiel{extension}";
             userKey?.SetValue("", appId);
-            Logger.Log($"[関連付け設定] アプリケーション識別子: {appId}");
-            Debug.WriteLine($"[関連付け設定] アプリケーション識別子: {appId}");
+            Logger.Log($"[関連付け設定] アプリケーション識別子: {appId}", LogLevel.Debug);
 
             var appKeyPath = $"Software\\Classes\\{appId}";
             using var appKey = Registry.CurrentUser.CreateSubKey(appKeyPath);
@@ -158,8 +154,7 @@ public class FileAssociation
             using var shellKey = Registry.CurrentUser.CreateSubKey(shellKeyPath);
             var command = $"\"{AppPath}\" \"%1\"";
             shellKey?.SetValue("", command);
-            Logger.Log($"[関連付け設定] シェルコマンド: {command}");
-            Debug.WriteLine($"[関連付け設定] シェルコマンド: {command}");
+            Logger.Log($"[関連付け設定] シェルコマンド: {command}", LogLevel.Debug);
 
             // ファイル関連付けアイコンを設定（file.icoがあれば使用、なければapp.icoを使用）
             var fileIconToUse = File.Exists(FileIconPath) ? FileIconPath : IconPath;
@@ -168,26 +163,22 @@ public class FileAssociation
                 var iconKeyPath = $"Software\\Classes\\{appId}\\DefaultIcon";
                 using var iconKey = Registry.CurrentUser.CreateSubKey(iconKeyPath);
                 iconKey?.SetValue("", fileIconToUse);
-                Logger.Log($"[関連付け設定] アイコン: {fileIconToUse}");
-                Debug.WriteLine($"[関連付け設定] アイコン: {fileIconToUse}");
+                Logger.Log($"[関連付け設定] アイコン: {fileIconToUse}", LogLevel.Debug);
             }
 
             var typeKeyPath = $"Software\\Classes\\{appId}";
             using var typeKey = Registry.CurrentUser.CreateSubKey(typeKeyPath);
             typeKey?.SetValue("", $"{AppName} {extension.ToUpper()} ファイル");
 
-            Logger.Log($"[関連付け設定] エクスプローラーに通知");
-            Debug.WriteLine($"[関連付け設定] エクスプローラーに通知");
+            Logger.Log($"[関連付け設定] エクスプローラーに通知", LogLevel.Debug);
             SafeNotifyExplorer();
 
-            Logger.Log($"[関連付け設定] 完了: {extension}");
-            Debug.WriteLine($"[関連付け設定] 完了: {extension}");
+            Logger.Log($"[関連付け設定] 完了: {extension}", LogLevel.Debug);
             return true;
         }
         catch (Exception ex)
         {
             Logger.LogException($"[関連付け設定] エラー: {extension}", ex);
-            Debug.WriteLine($"[関連付け設定] エラー: {ex.Message}");
             return false;
         }
     }
@@ -203,39 +194,32 @@ public class FileAssociation
     {
         try
         {
-            Logger.Log($"[関連付け解除] 開始: {extension}");
-            Debug.WriteLine($"[関連付け解除] 開始: {extension}");
+            Logger.Log($"[関連付け解除] 開始: {extension}", LogLevel.Debug);
             if (!extension.StartsWith("."))
             {
                 extension = "." + extension;
             }
             var appId = $"Lhamiel{extension}";
             var userKeyPath = $"Software\\Classes\\{extension}";
-            Logger.Log($"[関連付け解除] レジストリキー削除: {userKeyPath}");
-            Debug.WriteLine($"[関連付け解除] レジストリキー削除: {userKeyPath}");
+            Logger.Log($"[関連付け解除] レジストリキー削除: {userKeyPath}", LogLevel.Debug);
             Registry.CurrentUser.DeleteSubKeyTree(userKeyPath, false);
             var appKeyPath = $"Software\\Classes\\{appId}";
-            Logger.Log($"[関連付け解除] アプリケーション識別子キー削除: {appKeyPath}");
-            Debug.WriteLine($"[関連付け解除] アプリケーション識別子キー削除: {appKeyPath}");
+            Logger.Log($"[関連付け解除] アプリケーション識別子キー削除: {appKeyPath}", LogLevel.Debug);
             Registry.CurrentUser.DeleteSubKeyTree(appKeyPath, false);
 
             // OpenWithでの関連付けも削除
             var openWithKeyPath = $"Software\\Classes\\Applications\\{Path.GetFileName(AppPath)}";
-            Logger.Log($"[関連付け解除] OpenWithキー削除: {openWithKeyPath}");
-            Debug.WriteLine($"[関連付け解除] OpenWithキー削除: {openWithKeyPath}");
+            Logger.Log($"[関連付け解除] OpenWithキー削除: {openWithKeyPath}", LogLevel.Debug);
             Registry.CurrentUser.DeleteSubKeyTree(openWithKeyPath, false);
 
-            Logger.Log($"[関連付け解除] エクスプローラーに通知");
-            Debug.WriteLine($"[関連付け解除] エクスプローラーに通知");
+            Logger.Log($"[関連付け解除] エクスプローラーに通知", LogLevel.Debug);
             SafeNotifyExplorer();
-            Logger.Log($"[関連付け解除] 完了: {extension}");
-            Debug.WriteLine($"[関連付け解除] 完了: {extension}");
+            Logger.Log($"[関連付け解除] 完了: {extension}", LogLevel.Debug);
             return true;
         }
         catch (Exception ex)
         {
             Logger.LogException($"[関連付け解除] エラー: {extension}", ex);
-            Debug.WriteLine($"[関連付け解除] エラー: {ex.Message}");
             return false;
         }
     }
@@ -251,8 +235,7 @@ public class FileAssociation
     {
         try
         {
-            Logger.Log($"[関連付け状態取得] 開始: {extension}");
-            Debug.WriteLine($"[関連付け状態取得] 開始: {extension}");
+            Logger.Log($"[関連付け状態取得] 開始: {extension}", LogLevel.Debug);
             if (!extension.StartsWith("."))
             {
                 extension = "." + extension;
@@ -264,8 +247,7 @@ public class FileAssociation
             if (userKey != null)
             {
                 var appId = userKey.GetValue("") as string;
-                Logger.Log($"[関連付け状態取得] アプリケーション識別子: {appId}");
-                Debug.WriteLine($"[関連付け状態取得] アプリケーション識別子: {appId}");
+                Logger.Log($"[関連付け状態取得] アプリケーション識別子: {appId}", LogLevel.Debug);
                 if (!string.IsNullOrEmpty(appId) && appId.StartsWith("Lhamiel"))
                 {
                     var shellKeyPath = $"Software\\Classes\\{appId}\\shell\\open\\command";
@@ -273,38 +255,30 @@ public class FileAssociation
                     if (shellKey != null)
                     {
                         var command = shellKey.GetValue("") as string;
-                        Logger.Log($"[関連付け状態取得] コマンド: {command}");
-                        Debug.WriteLine($"[関連付け状態取得] コマンド: {command}");
-                        Logger.Log($"[関連付け状態取得] AppPath: {AppPath}");
-                        Debug.WriteLine($"[関連付け状態取得] AppPath: {AppPath}");
+                        Logger.Log($"[関連付け状態取得] コマンド: {command}", LogLevel.Debug);
+                        Logger.Log($"[関連付け状態取得] AppPath: {AppPath}", LogLevel.Debug);
                         var isAssociated = command?.Contains(AppPath) == true;
-                        Logger.Log($"[関連付け状態取得] 関連付け状態: {isAssociated}");
-                        Debug.WriteLine($"[関連付け状態取得] 関連付け状態: {isAssociated}");
+                        Logger.Log($"[関連付け状態取得] 関連付け状態: {isAssociated}", LogLevel.Debug);
                         return isAssociated;
                     }
-                    Logger.Log("[関連付け状態取得] シェルキーが見つかりません");
-                    Debug.WriteLine("[関連付け状態取得] シェルキーが見つかりません");
+                    Logger.Log("[関連付け状態取得] シェルキーが見つかりません", LogLevel.Debug);
                 }
                 else
                 {
-                    Logger.Log("[関連付け状態取得] アプリケーション識別子がLhamielではありません");
-                    Debug.WriteLine("[関連付け状態取得] アプリケーション識別子がLhamielではありません");
+                    Logger.Log("[関連付け状態取得] アプリケーション識別子がLhamielではありません", LogLevel.Debug);
                 }
             }
             else
             {
-                Logger.Log("[関連付け状態取得] ユーザーキーが見つかりません");
-                Debug.WriteLine("[関連付け状態取得] ユーザーキーが見つかりません");
+                Logger.Log("[関連付け状態取得] ユーザーキーが見つかりません", LogLevel.Debug);
             }
 
-            Logger.Log($"[関連付け状態取得] 関連付けなし: {extension}");
-            Debug.WriteLine($"[関連付け状態取得] 関連付けなし: {extension}");
+            Logger.Log($"[関連付け状態取得] 関連付けなし: {extension}", LogLevel.Debug);
             return false;
         }
         catch (Exception ex)
         {
             Logger.LogException($"[関連付け状態取得] エラー: {extension}", ex);
-            Debug.WriteLine($"[関連付け状態取得] エラー: {ex.Message}");
             return false;
         }
     }

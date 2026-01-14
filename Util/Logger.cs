@@ -1,6 +1,6 @@
-using System.Diagnostics;
-using System.IO;
-using System.Text;
+using log4net;
+using log4net.Config;
+using System.Reflection;
 
 namespace Lhamiel.Util;
 
@@ -16,19 +16,12 @@ public enum LogLevel
 }
 
 /// <summary>
-/// ログ出力機能を提供するクラス
+/// Log4netを使用したログ出力機能を提供するクラス
 /// </summary>
 public static class Logger
 {
-    /// <summary>
-    /// ログファイルのパス
-    /// </summary>
-    private static readonly string LogFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lhamiel.log");
-
-    /// <summary>
-    /// ログファイルの最大行数
-    /// </summary>
-    private const int MaxLogLines = 1000;
+    private static readonly ILog log = LogManager.GetLogger(typeof(Logger));
+    private static bool isConfigured = false;
 
     /// <summary>
     /// 最小ログレベル（これ以上のレベルのログのみ出力）
@@ -41,6 +34,30 @@ public static class Logger
 #endif
 
     /// <summary>
+    /// Log4netを初期化する
+    /// </summary>
+    public static void Initialize()
+    {
+        if (!isConfigured)
+        {
+            var logRepository = LogManager.GetRepository(Assembly.GetEntryAssembly());
+            var configFile = new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log4net.config"));
+
+            if (configFile.Exists)
+            {
+                XmlConfigurator.Configure(logRepository, configFile);
+            }
+            else
+            {
+                // 設定ファイルがない場合は基本的な設定を使用
+                BasicConfigurator.Configure(logRepository);
+            }
+
+            isConfigured = true;
+        }
+    }
+
+    /// <summary>
     /// ログを出力する
     /// </summary>
     /// <param name="message">ログメッセージ</param>
@@ -50,17 +67,22 @@ public static class Logger
         if (level < MinLogLevel)
             return;
 
-        try
-        {
-            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-            var logMessage = $"[{timestamp}] [{level}] {message}{Environment.NewLine}";
+        Initialize();
 
-            File.AppendAllText(LogFilePath, logMessage, Encoding.UTF8);
-            TrimLogFile();
-        }
-        catch (Exception ex)
+        switch (level)
         {
-            Debug.WriteLine($"ログ出力エラー: {ex.Message}");
+            case LogLevel.Debug:
+                log.Debug(message);
+                break;
+            case LogLevel.Info:
+                log.Info(message);
+                break;
+            case LogLevel.Warning:
+                log.Warn(message);
+                break;
+            case LogLevel.Error:
+                log.Error(message);
+                break;
         }
     }
 
@@ -71,20 +93,11 @@ public static class Logger
     /// <param name="level">ログレベル（デフォルト: Info）</param>
     public static void LogLines(string[] messages, LogLevel level = LogLevel.Info)
     {
-        if (level < MinLogLevel)
-            return;
+        Initialize();
 
-        try
+        foreach (var message in messages)
         {
-            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-            var logLines = messages.Select(message => $"[{timestamp}] [{level}] {message}").ToArray();
-
-            File.AppendAllLines(LogFilePath, logLines, Encoding.UTF8);
-            TrimLogFile();
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"ログ出力エラー: {ex.Message}");
+            Log(message, level);
         }
     }
 
@@ -95,49 +108,9 @@ public static class Logger
     /// <param name="exception">例外オブジェクト</param>
     public static void LogException(string message, Exception exception)
     {
-        try
-        {
-            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-            var logMessage = $"[{timestamp}] [Error] {message}\n例外: {exception.Message}\nスタックトレース: {exception.StackTrace}";
+        Initialize();
 
-            // InnerExceptionも記録
-            if (exception.InnerException != null)
-            {
-                logMessage += $"\nInnerException: {exception.InnerException.Message}\nInnerStackTrace: {exception.InnerException.StackTrace}";
-            }
-
-            logMessage += Environment.NewLine;
-
-            File.AppendAllText(LogFilePath, logMessage, Encoding.UTF8);
-            TrimLogFile();
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"ログ出力エラー: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// ログファイルを最大行数に制限する
-    /// </summary>
-    private static void TrimLogFile()
-    {
-        try
-        {
-            if (File.Exists(LogFilePath))
-            {
-                var lines = File.ReadAllLines(LogFilePath, Encoding.UTF8);
-                if (lines.Length > MaxLogLines)
-                {
-                    var trimmedLines = lines.Skip(lines.Length - MaxLogLines).ToArray();
-                    File.WriteAllLines(LogFilePath, trimmedLines, Encoding.UTF8);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"ログファイル整理エラー: {ex.Message}");
-        }
+        log.Error(message, exception);
     }
 
     /// <summary>
@@ -146,6 +119,8 @@ public static class Logger
     /// <param name="args">コマンドライン引数</param>
     public static void LogStartup(string[] args)
     {
+        Initialize();
+
         var messages = new List<string>
         {
             "=== Lhamiel 起動ログ ===",
