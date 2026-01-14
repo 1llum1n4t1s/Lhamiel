@@ -276,7 +276,7 @@
                                       Margin="0,4" AutomationProperties.Name="Associate TAR.LZMA files" />
                             <CheckBox x:Name="TxzCheckBox" Content="TAR.XZ (.txz)"
                                       Margin="0,4" AutomationProperties.Name="Associate TAR.XZ files" />
-                            <CheckBox x:Name="TZCheckBox" Content="TAR.Z (.tZ)"
+                            <CheckBox x:Name="TZCheckBox" Content="TAR.Z (.tz)"
                                       Margin="0,4" AutomationProperties.Name="Associate TAR.Z files" />
                         </UniformGrid>
                     </ScrollViewer>
