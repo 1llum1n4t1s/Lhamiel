@@ -231,14 +231,9 @@
 
                         <!-- ショートカット作成エリア -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="16,0,0,0">
-                            <TextBlock Text="ショートカット圧縮形式:" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12" />
-                            <ComboBox x:Name="ShortcutCompressionFormatComboBox" Width="100" Height="40"
-                                      VerticalContentAlignment="Center"
-                                      ToolTip="ショートカットで使用する圧縮形式を選択" />
                             <Button x:Name="CreateShortcutButton" Content="📌 デスクトップにショートカット作成"
                                     Style="{StaticResource StandardButtonStyle}"
                                     Height="40"
-                                    Margin="8,0,0,0"
                                     Click="CreateShortcutButton_Click"
                                     ToolTip="デスクトップにアプリケーションのショートカットを作成" />
                         </StackPanel>

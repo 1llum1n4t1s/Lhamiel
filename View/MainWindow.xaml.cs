@@ -77,11 +77,6 @@ public partial class MainWindow : Window
                 _settingsManager.Current.CompressionFormat = "zip";
             }
 
-            // ショートカット用圧縮形式の選択肢を設定
-            ShortcutCompressionFormatComboBox.ItemsSource = Settings.SupportedCompressionFormats;
-            // メイン圧縮形式と同じ値を初期値とする
-            ShortcutCompressionFormatComboBox.SelectedItem = CompressionFormatComboBox.SelectedItem ?? "zip";
-
             // 出力ディレクトリの設定
             ExtractionOutputPathTextBox.Text = _settingsManager.Current.ExtractionOutputDirectory;
             CompressionOutputPathTextBox.Text = _settingsManager.Current.CompressionOutputDirectory;
@@ -469,22 +464,15 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// ショートカット作成ボタンクリック時の処理
-    /// </summary>
-    /// <summary>
     /// デスクトップにショートカット作成ボタンクリック時の処理
     /// </summary>
     private void CreateShortcutButton_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            var selectedFormat = ShortcutCompressionFormatComboBox.SelectedItem as string;
-            if (ShortcutCreator.CreateDesktopShortcut(selectedFormat))
+            if (ShortcutCreator.CreateDesktopShortcut())
             {
-                var message = string.IsNullOrWhiteSpace(selectedFormat)
-                    ? "デスクトップにショートカットを作成しました。"
-                    : $"デスクトップに {selectedFormat.ToUpper()} 圧縮用ショートカットを作成しました。";
-                MessageService.ShowSuccess(message);
+                MessageService.ShowSuccess("デスクトップにショートカットを作成しました。");
             }
             else
             {
