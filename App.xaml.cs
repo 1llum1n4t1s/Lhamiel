@@ -1,4 +1,4 @@
-﻿using System.Windows;
+using System.Windows;
 using System.IO;
 using Lhamiel.Util;
 using Velopack;
@@ -104,12 +104,28 @@ public partial class App : Application
 
         try
         {
+            // 前回チェックからの経過時間をチェック
+            var settings = Settings.Load();
+            if (!string.IsNullOrWhiteSpace(settings.LastUpdateCheckTime) &&
+                DateTime.TryParse(settings.LastUpdateCheckTime, out var lastCheckTime))
+            {
+                var elapsed = DateTime.Now - lastCheckTime;
+                if (elapsed.TotalDays < 7)
+                {
+                    Logger.Log($"Velopack: 前回チェックから{elapsed.TotalDays:F1}日経過しているため、アップデートチェックをスキップします。(次回チェック対象: {lastCheckTime.AddDays(7):yyyy-MM-dd HH:mm:ss})");
+                    return false;
+                }
+            }
+
             using var cts = new CancellationTokenSource(UpdateCheckTimeoutMs);
             Logger.Log("Velopack: 更新チェックを開始します。");
 
             var updateInfo = await _updateManager.CheckForUpdatesAsync();
             if (updateInfo == null)
             {
+                // チェック時刻を記録
+                settings.LastUpdateCheckTime = DateTime.Now.ToString("o");
+                settings.Save();
                 Logger.Log("Velopack: 利用可能な更新はありません。");
                 return false;
             }
@@ -117,6 +133,10 @@ public partial class App : Application
             Logger.Log("Velopack: 新しいバージョンを検出しました。更新をダウンロードしています...");
 
             await _updateManager.DownloadUpdatesAsync(updateInfo);
+
+            // チェック時刻を記録
+            settings.LastUpdateCheckTime = DateTime.Now.ToString("o");
+            settings.Save();
 
             Logger.Log("Velopack: ダウンロード完了。更新を適用して再起動します。");
             _updateManager.ApplyUpdatesAndRestart(updateInfo);

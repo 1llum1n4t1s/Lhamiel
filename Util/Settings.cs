@@ -104,6 +104,11 @@ public class Settings
     public static readonly string[] ExtractOnlyFormats = { "RAR", "ARJ", "Z" };
 
     /// <summary>
+    /// 前回のアップデートチェック時刻（ISO 8601形式）
+    /// </summary>
+    public string? LastUpdateCheckTime { get; set; }
+
+    /// <summary>
     /// 設定をファイルから読み込むメソッド
     /// </summary>
     /// <returns>読み込まれた設定オブジェクト</returns>
