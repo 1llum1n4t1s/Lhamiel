@@ -332,7 +332,7 @@ public class ArchiveCompressor
             ".zip" => (Format.Zip, false),
             ".7z" => (Format.SevenZip, false),
             ".tar" => (Format.Tar, false),
-            ".lha" => (Format.Zip, true), // LHA形式フラグをtrue
+            ".lzh" => (Format.Zip, true), // LHA形式フラグをtrue
             _ => (Format.Zip, false) // デフォルトはZIP
         };
     }
