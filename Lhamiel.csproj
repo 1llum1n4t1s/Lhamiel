@@ -14,7 +14,7 @@
     <DebugType>portable</DebugType>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <Version>1.0.16</Version>
+    <Version>1.0.17</Version>
     <AssemblyTitle>Lhamiel</AssemblyTitle>
     <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
     <AssemblyCompany>1llum1n4t1s</AssemblyCompany>
@@ -23,6 +23,7 @@
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
     <NoWarn>CA1416</NoWarn>
     <Title>Lhamiel</Title>
+    <Authors>ゆろち</Authors>
   </PropertyGroup>
 
   <ItemGroup>

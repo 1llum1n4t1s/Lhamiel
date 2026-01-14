@@ -299,13 +299,20 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="120" />
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
-                                    <TextBlock Text="バージョン:" Grid.Row="0" Grid.Column="0" FontWeight="SemiBold" Margin="0,4" />
-                                    <TextBlock x:Name="VersionTextBlock" Grid.Row="0" Grid.Column="1" Margin="0,4" />
+                                    <TextBlock Text="バージョン:" Grid.Row="0" Grid.Column="0" FontWeight="SemiBold" Margin="0,4" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="VersionTextBlock" Grid.Row="0" Grid.Column="1" Margin="0,4" VerticalAlignment="Center" />
+                                    <Button x:Name="CheckUpdateButton" Grid.Row="0" Grid.Column="2" Content="🔄 アップデート確認"
+                                            Style="{StaticResource StandardButtonStyle}"
+                                            Height="36"
+                                            Margin="12,0,0,0"
+                                            Click="CheckUpdateButton_Click"
+                                            ToolTip="サーバーから最新バージョンをチェック" />
                                 </Grid>
                             </StackPanel>
                         </Border>
