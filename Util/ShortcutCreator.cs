@@ -37,7 +37,7 @@ public static class ShortcutCreator
 
             var shortcutName = "Lhamiel.lnk";
             var description = "Lhamiel - 圧縮・展開ツール";
-            var format = "default";
+            string? format = null;
 
             // 圧縮形式が指定されている場合は、ショートカット名と説明に反映
             if (!string.IsNullOrWhiteSpace(compressionFormat))
