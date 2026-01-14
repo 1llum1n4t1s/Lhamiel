@@ -290,7 +290,7 @@ public class FileAssociation
     [SupportedOSPlatform("windows")]
     public static bool AssociateAllSupportedTypes()
     {
-        var supportedTypes = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".lzma", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z" };
+        var supportedTypes = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".lzma", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tgz", ".tbz2", ".tbz", ".tlz", ".txz", ".tz" };
         var success = true;
 
         foreach (var type in supportedTypes)
@@ -311,7 +311,7 @@ public class FileAssociation
     [SupportedOSPlatform("windows")]
     public static bool DisassociateAllSupportedTypes()
     {
-        var supportedTypes = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".lzma", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z" };
+        var supportedTypes = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".lzma", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tgz", ".tbz2", ".tbz", ".tlz", ".txz", ".tz" };
         var success = true;
 
         foreach (var type in supportedTypes)
@@ -357,7 +357,7 @@ public class FileAssociation
     [SupportedOSPlatform("windows")]
     public static Dictionary<string, bool> GetCurrentAssociationStatus()
     {
-        var supportedTypes = new[] { "zip", "7z", "tar", "gz", "bz2", "lzma", "xz", "rar", "lzh", "cab", "arj", "z" };
+        var supportedTypes = new[] { "zip", "7z", "tar", "gz", "bz2", "lzma", "xz", "rar", "lzh", "cab", "arj", "z", "tgz", "tbz2", "tbz", "tlz", "txz", "tz" };
         var status = new Dictionary<string, bool>();
 
         foreach (var type in supportedTypes)
