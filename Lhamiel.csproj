@@ -15,6 +15,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <Version>1.0.5</Version>
+    <AssemblyInformationalVersion>1.0.5</AssemblyInformationalVersion>
     <AssemblyName>Lhamiel</AssemblyName>
     <AssemblyTitle>Lhamiel</AssemblyTitle>
     <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
