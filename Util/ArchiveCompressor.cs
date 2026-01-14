@@ -3,6 +3,7 @@ using System.IO.Compression;
 using Cube.FileSystem.SevenZip;
 using Cube.FileSystem;
 using System.Threading;
+using System.Text;
 
 namespace Lhamiel.Util;
 
@@ -70,44 +71,73 @@ public class ArchiveCompressor
 
         // 圧縮形式を決定
         var format = GetFormatFromExtension(outputPath);
-        
+
+        // 設定から除外パターンを取得
+        var settings = Settings.Load();
+        var excludedPatterns = settings.ExcludedFilePatterns ?? new List<string>();
+
         var outputCreated = false;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-        // ArchiveWriterを使用して圧縮
-        using var writer = new ArchiveWriter(format);
-        
-        // 圧縮対象のファイルとディレクトリを追加
-        foreach (var sourcePath in sourceList)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
+            // ArchiveWriterを使用して圧縮
+            using var writer = new ArchiveWriter(format);
 
-            if (File.Exists(sourcePath))
+            // UTF-8エンコーディングを設定
+            try
             {
-                writer.Add(sourcePath);
+                writer.Option.CodePage = Encoding.UTF8.CodePage; // UTF-8 (65001)
             }
-            else if (Directory.Exists(sourcePath))
+            catch (Exception ex)
             {
-                writer.Add(sourcePath);
+                Logger.Log($"UTF-8エンコーディング設定の警告: {ex.Message}");
             }
-            else
+
+            // 圧縮対象のファイルとディレクトリを追加
+            foreach (var sourcePath in sourceList)
             {
-                throw new FileNotFoundException($"指定されたパスが見つかりません: {sourcePath}");
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (File.Exists(sourcePath))
+                {
+                    // ファイルが除外対象でない場合のみ追加
+                    if (!ShouldExcludeFile(sourcePath, excludedPatterns))
+                    {
+                        writer.Add(sourcePath);
+                    }
+                }
+                else if (Directory.Exists(sourcePath))
+                {
+                    // ディレクトリの場合、再帰的にファイルを取得して個別に追加
+                    var files = GetFilesRecursively(sourcePath, excludedPatterns);
+                    var directoryName = Path.GetFileName(sourcePath);
+
+                    foreach (var file in files)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
+                        var relativePath = Path.GetRelativePath(Path.GetDirectoryName(sourcePath) ?? "", file);
+                        writer.Add(file, relativePath);
+                    }
+                }
+                else
+                {
+                    throw new FileNotFoundException($"指定されたパスが見つかりません: {sourcePath}");
+                }
             }
-        }
 
             // 進捗報告を設定
             progressCallback?.Invoke(0);
 
-        // 圧縮を実行
-        outputCreated = true;
-        writer.Save(outputPath);
-        
-        // 完了時の進捗報告
+            // 圧縮を実行
+            outputCreated = true;
+            writer.Save(outputPath);
+
+            // 完了時の進捗報告
             progressCallback?.Invoke(100);
-            
+
             Logger.Log($"圧縮完了: {outputPath}");
         }
         catch (OperationCanceledException)
@@ -178,23 +208,45 @@ public class ArchiveCompressor
         // 圧縮形式を決定
         var format = GetFormatFromExtension(outputPath);
 
+        // 設定から除外パターンを取得
+        var settings = Settings.Load();
+        var excludedPatterns = settings.ExcludedFilePatterns ?? new List<string>();
+
         try
         {
             // ArchiveWriterを使用して圧縮
             using var writer = new ArchiveWriter(format);
 
-            // ディレクトリを追加
-            writer.Add(directoryPath);
+            // UTF-8エンコーディングを設定
+            try
+            {
+                writer.Option.CodePage = Encoding.UTF8.CodePage; // UTF-8 (65001)
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"UTF-8エンコーディング設定の警告: {ex.Message}");
+            }
+
+            // ディレクトリ内のファイルを再帰的に取得して個別に追加
+            var files = GetFilesRecursively(directoryPath, excludedPatterns);
+            var directoryName = Path.GetFileName(directoryPath);
+
+            foreach (var file in files)
+            {
+                // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
+                var relativePath = Path.GetRelativePath(Path.GetDirectoryName(directoryPath) ?? "", file);
+                writer.Add(file, relativePath);
+            }
 
             // 進捗報告を設定
             progressCallback?.Invoke(0);
 
             // 圧縮を実行
             writer.Save(outputPath);
-            
+
             // 完了時の進捗報告
             progressCallback?.Invoke(100);
-            
+
             Logger.Log($"ディレクトリ圧縮完了: {directoryPath} -> {outputPath}");
         }
         catch (Exception ex)
@@ -222,8 +274,8 @@ public class ArchiveCompressor
             using var reader = new ArchiveReader(archivePath);
 
             // Items プロパティを使用してアーカイブ内容をチェック
-            return reader.Items.Any(item => 
-                item.IsDirectory && 
+            return reader.Items.Any(item =>
+                item.IsDirectory &&
                 string.Equals(item.FullName, folderName, StringComparison.OrdinalIgnoreCase));
         }
         catch (Exception ex)
@@ -231,5 +283,87 @@ public class ArchiveCompressor
             Logger.Log($"フォルダ構造のチェックに失敗しました: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>
+    /// ファイルが除外パターンに一致するかチェックする
+    /// </summary>
+    /// <param name="path">チェックするパス</param>
+    /// <param name="excludedPatterns">除外パターンのリスト</param>
+    /// <returns>除外すべき場合はtrue</returns>
+    private static bool ShouldExcludeFile(string path, List<string> excludedPatterns)
+    {
+        if (excludedPatterns == null || !excludedPatterns.Any())
+        {
+            return false;
+        }
+
+        var fileName = Path.GetFileName(path);
+        var pathSegments = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        foreach (var pattern in excludedPatterns)
+        {
+            // ファイル名が完全一致する場合
+            if (string.Equals(fileName, pattern, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // パス内に除外パターンが含まれる場合（__MACOSXフォルダなど）
+            if (pathSegments.Any(segment => string.Equals(segment, pattern, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// ディレクトリ内のファイルを再帰的に取得する（除外フィルタ適用）
+    /// </summary>
+    /// <param name="directoryPath">ディレクトリパス</param>
+    /// <param name="excludedPatterns">除外パターンのリスト</param>
+    /// <returns>ファイルパスのリスト</returns>
+    private static IEnumerable<string> GetFilesRecursively(string directoryPath, List<string> excludedPatterns)
+    {
+        var files = new List<string>();
+
+        try
+        {
+            // ディレクトリ自体が除外対象かチェック
+            if (ShouldExcludeFile(directoryPath, excludedPatterns))
+            {
+                return files;
+            }
+
+            // 現在のディレクトリのファイルを取得
+            foreach (var file in Directory.GetFiles(directoryPath))
+            {
+                if (!ShouldExcludeFile(file, excludedPatterns))
+                {
+                    files.Add(file);
+                }
+            }
+
+            // サブディレクトリを再帰的に処理
+            foreach (var directory in Directory.GetDirectories(directoryPath))
+            {
+                if (!ShouldExcludeFile(directory, excludedPatterns))
+                {
+                    files.AddRange(GetFilesRecursively(directory, excludedPatterns));
+                }
+            }
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Logger.Log($"アクセス権限がありません: {directoryPath}, {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"ファイル取得中にエラーが発生しました: {directoryPath}, {ex.Message}");
+        }
+
+        return files;
     }
 }
