@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using Cube.FileSystem.SevenZip;
 
@@ -79,11 +76,6 @@ public enum ArchiveErrorType
     InsufficientDiskSpace,
 
     /// <summary>
-    /// パスワード保護されている
-    /// </summary>
-    PasswordProtected,
-
-    /// <summary>
     /// サポートされていない形式
     /// </summary>
     UnsupportedFormat,
@@ -91,17 +83,7 @@ public enum ArchiveErrorType
     /// <summary>
     /// ファイルが使用中
     /// </summary>
-    FileInUse,
-
-    /// <summary>
-    /// ネットワークエラー
-    /// </summary>
-    NetworkError,
-
-    /// <summary>
-    /// 部分的な展開失敗
-    /// </summary>
-    PartialExtractionFailure
+    FileInUse
 }
 
 /// <summary>

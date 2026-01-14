@@ -1,7 +1,5 @@
 ﻿using System.Windows;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Lhamiel.Util;
 using Velopack;
 using Velopack.Sources;

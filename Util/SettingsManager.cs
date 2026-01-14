@@ -1,5 +1,3 @@
-using System;
-
 namespace Lhamiel.Util;
 
 /// <summary>

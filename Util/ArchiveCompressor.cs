@@ -1,11 +1,7 @@
-using System.IO;
-using System.IO.Compression;
-using Cube.FileSystem.SevenZip;
-using Cube.FileSystem;
-using System.Threading;
-using System.Text;
 using Amiga.FileFormats.LHA;
-using System.Collections.Generic;
+using Cube.FileSystem.SevenZip;
+using System.IO;
+using CompressionMethod = Cube.FileSystem.SevenZip.CompressionMethod;
 
 namespace Lhamiel.Util;
 
@@ -292,19 +288,34 @@ public class ArchiveCompressor
     /// <returns>ArchiveWriterインスタンス</returns>
     private static ArchiveWriter CreateArchiveWriter(Format format)
     {
-        // TAR、7z形式ではCodePageを設定しない
-        if (format == Format.SevenZip || format == Format.Tar)
+        // 形式に応じたオプションを設定
+        if (format == Format.SevenZip)
         {
-            return new ArchiveWriter(format);
-        }
-        else
-        {
-            // ZIP形式などではUTF-8エンコーディングを設定
+            // 7z形式: Ultra圧縮レベル + LZMA2 + CPU コア数と同じスレッド数
             var options = new CompressionOption
             {
+                CompressionLevel = CompressionLevel.Ultra,
+                CompressionMethod = CompressionMethod.Lzma2,
+                ThreadCount = Environment.ProcessorCount
+            };
+            return new ArchiveWriter(format, options);
+        }
+        else if (format == Format.Zip)
+        {
+            // ZIP形式: Fastest圧縮レベル + UTF-8エンコーディング
+            var options = new CompressionOption
+            {
+                CompressionLevel = CompressionLevel.Fast,
+                CompressionMethod = CompressionMethod.Deflate,
+                ThreadCount = Environment.ProcessorCount,
                 CodePage = CodePage.Utf8
             };
             return new ArchiveWriter(format, options);
+        }
+        else
+        {
+            // TAR形式など、その他の形式ではオプションを設定しない
+            return new ArchiveWriter(format);
         }
     }
 
