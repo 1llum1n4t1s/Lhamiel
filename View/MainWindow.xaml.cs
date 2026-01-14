@@ -41,7 +41,13 @@ public partial class MainWindow : Window
                 { "lzh", LzhCheckBox },
                 { "cab", CabCheckBox },
                 { "arj", ArjCheckBox },
-                { "z", ZCheckBox }
+                { "z", ZCheckBox },
+                { "tgz", TgzCheckBox },
+                { "tbz2", Tbz2CheckBox },
+                { "tbz", TbzCheckBox },
+                { "tlz", TlzCheckBox },
+                { "txz", TxzCheckBox },
+                { "tz", TZCheckBox }
             };
 
             InitializeUI();
