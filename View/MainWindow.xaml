@@ -231,14 +231,9 @@
 
                         <!-- ショートカット作成エリア -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="16,0,0,0">
-                            <TextBlock Text="ショートカット圧縮形式:" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12" />
-                            <ComboBox x:Name="ShortcutCompressionFormatComboBox" Width="100" Height="40"
-                                      VerticalContentAlignment="Center"
-                                      ToolTip="ショートカットで使用する圧縮形式を選択" />
                             <Button x:Name="CreateShortcutButton" Content="📌 デスクトップにショートカット作成"
                                     Style="{StaticResource StandardButtonStyle}"
                                     Height="40"
-                                    Margin="8,0,0,0"
                                     Click="CreateShortcutButton_Click"
                                     ToolTip="デスクトップにアプリケーションのショートカットを作成" />
                         </StackPanel>
@@ -286,6 +281,58 @@
                         </UniformGrid>
                     </ScrollViewer>
                 </Grid>
+            </TabItem>
+
+            <!-- バージョン情報タブ -->
+            <TabItem Header="ℹ️ バージョン">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="24">
+                        <!-- アプリケーション情報 -->
+                        <TextBlock Text="Lhamiel" FontSize="32" FontWeight="Bold" Margin="0,0,0,8" />
+                        <TextBlock Text="圧縮・展開ソフトウェア" FontSize="16" Foreground="Gray" Margin="0,0,0,24" />
+
+                        <!-- バージョン情報 -->
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" Padding="16" Margin="0,0,0,16" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="バージョン情報" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Text="バージョン:" Grid.Row="0" Grid.Column="0" FontWeight="SemiBold" Margin="0,4" />
+                                    <TextBlock x:Name="VersionTextBlock" Grid.Row="0" Grid.Column="1" Margin="0,4" />
+
+                                    <TextBlock Text="リリース日:" Grid.Row="1" Grid.Column="0" FontWeight="SemiBold" Margin="0,4" />
+                                    <TextBlock x:Name="ReleaseDateTextBlock" Grid.Row="1" Grid.Column="1" Margin="0,4" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- コピーライト -->
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" Padding="16" Margin="0,0,0,16" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="コピーライト" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBlock x:Name="CopyrightTextBlock" TextWrapping="Wrap" Margin="0,4" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ライセンス -->
+                        <Border BorderBrush="#DDDDDD" BorderThickness="1" Padding="16" CornerRadius="4">
+                            <StackPanel>
+                                <TextBlock Text="ライセンス" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
+                                <TextBlock Text="MIT License" FontWeight="SemiBold" Margin="0,4,0,8" />
+                                <TextBlock x:Name="LicenseTextBlock" TextWrapping="Wrap" FontSize="11" FontFamily="Consolas"
+                                           Foreground="#333333" Margin="0,4" LineHeight="16" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
 

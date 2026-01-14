@@ -77,11 +77,6 @@ public partial class MainWindow : Window
                 _settingsManager.Current.CompressionFormat = "zip";
             }
 
-            // ショートカット用圧縮形式の選択肢を設定
-            ShortcutCompressionFormatComboBox.ItemsSource = Settings.SupportedCompressionFormats;
-            // メイン圧縮形式と同じ値を初期値とする
-            ShortcutCompressionFormatComboBox.SelectedItem = CompressionFormatComboBox.SelectedItem ?? "zip";
-
             // 出力ディレクトリの設定
             ExtractionOutputPathTextBox.Text = _settingsManager.Current.ExtractionOutputDirectory;
             CompressionOutputPathTextBox.Text = _settingsManager.Current.CompressionOutputDirectory;
@@ -98,6 +93,9 @@ public partial class MainWindow : Window
 
             // 関連付け設定の読み込み
             LoadAssociationStatus();
+
+            // バージョン情報を設定
+            LoadVersionInfo();
 
             // イベントハンドラーを追加
             ExtractionOutputToSameDirectoryRadio.Checked += ExtractionOutputPattern_Changed;
@@ -469,22 +467,15 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// ショートカット作成ボタンクリック時の処理
-    /// </summary>
-    /// <summary>
     /// デスクトップにショートカット作成ボタンクリック時の処理
     /// </summary>
     private void CreateShortcutButton_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            var selectedFormat = ShortcutCompressionFormatComboBox.SelectedItem as string;
-            if (ShortcutCreator.CreateDesktopShortcut(selectedFormat))
+            if (ShortcutCreator.CreateDesktopShortcut())
             {
-                var message = string.IsNullOrWhiteSpace(selectedFormat)
-                    ? "デスクトップにショートカットを作成しました。"
-                    : $"デスクトップに {selectedFormat.ToUpper()} 圧縮用ショートカットを作成しました。";
-                MessageService.ShowSuccess(message);
+                MessageService.ShowSuccess("デスクトップにショートカットを作成しました。");
             }
             else
             {
@@ -757,5 +748,62 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// バージョン情報を読み込んでUIに設定する
+    /// </summary>
+    private void LoadVersionInfo()
+    {
+        try
+        {
+            // アセンブリからバージョン情報を取得
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            var version = assembly.GetName().Version;
+            var versionString = version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "1.0.0";
+
+            // バージョン情報を設定
+            VersionTextBlock.Text = versionString;
+
+            // リリース日を設定（ビルド日時から取得）
+            var buildDate = new DateTime(2000, 1, 1).AddDays(version?.Build ?? 0).AddSeconds((version?.Revision ?? 0) * 2);
+            ReleaseDateTextBlock.Text = buildDate.ToString("yyyy年MM月dd日");
+
+            // コピーライト情報を取得
+            var copyrightAttribute = assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyCopyrightAttribute), false)
+                .FirstOrDefault() as System.Reflection.AssemblyCopyrightAttribute;
+            CopyrightTextBlock.Text = copyrightAttribute?.Copyright ?? "Copyright © 2024";
+
+            // MITライセンステキストを設定
+            LicenseTextBlock.Text = @"MIT License
+
+Copyright (c) 2024 Lhamiel
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the ""Software""), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED ""AS IS"", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.";
+
+            Logger.Log($"バージョン情報を読み込みました: Version {versionString}");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("バージョン情報の読み込みでエラーが発生", ex);
+            VersionTextBlock.Text = "不明";
+            ReleaseDateTextBlock.Text = "不明";
+            CopyrightTextBlock.Text = "Copyright © 2024";
+        }
+    }
 
 }

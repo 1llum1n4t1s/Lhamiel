@@ -101,6 +101,35 @@ public class ArchiveExtractorTests
         return zipPath;
     }
 
+    /// <summary>
+    /// テスト用のZIPファイルを作成する（再帰的な同名フォルダのネスト）
+    /// </summary>
+    /// <param name="testDir">テスト用ディレクトリ</param>
+    /// <returns>作成されたZIPファイルのパス</returns>
+    private static string CreateTestZipWithRecursiveNestedFolders(string testDir)
+    {
+        // テスト用の構造：ABC.zip 内に ABC/ABC/ABC/ABC/ABC/中身/ があるケース
+        var level1 = Path.Combine(testDir, "ABC");
+        var level2 = Path.Combine(level1, "ABC");
+        var level3 = Path.Combine(level2, "ABC");
+        var level4 = Path.Combine(level3, "ABC");
+        var level5 = Path.Combine(level4, "ABC");
+        var contentsDir = Path.Combine(level5, "中身");
+
+        Directory.CreateDirectory(contentsDir);
+
+        File.WriteAllText(Path.Combine(contentsDir, "file1.txt"), "File 1");
+        File.WriteAllText(Path.Combine(contentsDir, "file2.txt"), "File 2");
+
+        var zipPath = Path.Combine(testDir, "ABC.zip");
+        ZipFile.CreateFromDirectory(level1, zipPath);
+
+        // テスト用ディレクトリを削除
+        Directory.Delete(level1, true);
+
+        return zipPath;
+    }
+
     [Fact]
     public void IsSupportedArchiveType_WithZipExtension_ReturnsTrue()
     {
@@ -137,6 +166,82 @@ public class ArchiveExtractorTests
             // outputDir の下に dummy というフォルダが作成されるはず
             Assert.Contains("dummy", result);
             Assert.StartsWith(outputDir, result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void GetOutputDirectory_WithDoubleFolderStructure_PreventsDoubleFolders()
+    {
+        // Arrange
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            // 二重フォルダ構造のZIPファイルを作成
+            var zipPath = CreateTestZipWithDoubleFolder(tempDir);
+            var outputDir = Path.Combine(tempDir, "output");
+
+            // Act
+            var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
+
+            // Assert
+            // 二重フォルダ防止により、outputDir が直接返されるはず
+            Assert.Equal(outputDir, result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void GetOutputDirectory_WithMultipleFoldersInRoot_CreatesFolder()
+    {
+        // Arrange
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            // 複数フォルダのZIPファイルを作成
+            var zipPath = CreateTestZipWithMultipleFolders(tempDir);
+            var outputDir = Path.Combine(tempDir, "output");
+
+            // Act
+            var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
+
+            // Assert
+            // 複数フォルダの場合は、通常通りフォルダを作成
+            Assert.Contains("ProjectB", result);
+            Assert.StartsWith(outputDir, result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void GetOutputDirectory_WithRecursiveNestedFolders_PreventsDoubleFolders()
+    {
+        // Arrange
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            // 再帰的な同名フォルダのネストを持つZIPファイルを作成
+            var zipPath = CreateTestZipWithRecursiveNestedFolders(tempDir);
+            var outputDir = Path.Combine(tempDir, "output");
+
+            // Act
+            var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
+
+            // Assert
+            // 再帰的なネストの場合も、二重フォルダ防止により outputDir が直接返されるはず
+            Assert.Equal(outputDir, result);
         }
         finally
         {
