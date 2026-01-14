@@ -22,6 +22,9 @@ public partial class App : Application
 
     public App()
     {
+        // Log4netを早期に初期化
+        Logger.Initialize();
+
         try
         {
             // Velopackの初期化：インストール、アンインストール、更新などを処理
