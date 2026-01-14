@@ -73,12 +73,15 @@ public class ArchiveExtractor
     }
 
     /// <summary>
-    /// アーカイブの内容をチェックして、適切なファイル名を取得する
-    /// 新仕様：ルートレベルのアイテム数が2つ以上の場合はアーカイブ名を返す、1つだけの場合は空文字列を返す
+    /// アーカイブの内容をチェックして、アーカイブ名を取得する
+    /// 仕様：
+    /// ケース1: ルートアイテムが1つ＋フォルダ → アーカイブ名フォルダを返す（リフトアップは展開時に行う）
+    /// ケース2: ルートアイテムが複数 → アーカイブ名フォルダを返す
+    /// ケース3: ルートアイテムが1つ＋ファイル → 空文字列を返す（リフトアップなし）
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
     /// <param name="defaultFileName">デフォルトのファイル名（アーカイブ名）</param>
-    /// <returns>調整されたファイル名（複数ルートアイテムの場合は defaultFileName、単一ルートアイテムの場合は空文字列）</returns>
+    /// <returns>アーカイブ名、または空文字列</returns>
     private static string GetAdjustedFileName(string archivePath, string defaultFileName)
     {
         try
@@ -91,15 +94,19 @@ public class ArchiveExtractor
             if (!archiveContents.Any())
                 return defaultFileName;
 
-            // アーカイブ名のフォルダを作成すべきかをチェック
-            if (ShouldCreateArchiveFolder(archiveContents))
+            // ルートレベルのアイテムを取得
+            var rootItems = GetRootLevelItems(archiveContents);
+
+            // ケース3: ルートアイテムが1つ＋ファイル → 空文字列を返す
+            if (rootItems.Count == 1 && !rootItems[0].IsDirectory)
             {
-                Logger.Log("複数ルートアイテム検出: アーカイブ名のフォルダを作成します");
-                return defaultFileName;
+                Logger.Log($"ケース3: ルートアイテムが1つ＋ファイル。展開先をベースディレクトリにします");
+                return "";
             }
 
-            Logger.Log("単一ルートアイテム検出: フォルダの作成をスキップします");
-            return "";
+            // ケース1 と ケース2: アーカイブ名フォルダを作成
+            Logger.Log($"ケース1またはケース2: アーカイブ名フォルダを作成します: {defaultFileName}");
+            return defaultFileName;
         }
         catch (Exception ex)
         {
@@ -108,75 +115,6 @@ public class ArchiveExtractor
         }
     }
 
-    /// <summary>
-    /// アーカイブ名のフォルダを作成すべきかどうかをチェック
-    /// 新仕様：ルートレベルのアイテム数が2つ以上の場合、アーカイブ名のフォルダを作成
-    /// </summary>
-    /// <param name="archiveContents">アーカイブの全アイテムパス</param>
-    /// <returns>アーカイブ名のフォルダを作成すべき場合はtrue</returns>
-    private static bool ShouldCreateArchiveFolder(List<string> archiveContents)
-    {
-        // ルートレベルのアイテムを取得
-        var rootItems = GetRootLevelItems(archiveContents);
-
-        // ルートレベルのアイテム数が2つ以上の場合、アーカイブ名のフォルダを作成
-        var shouldCreate = rootItems.Count >= 2;
-
-        Logger.Log($"ShouldCreateArchiveFolder: ルートアイテム数={rootItems.Count}, フォルダ作成={shouldCreate}");
-        if (rootItems.Count > 0)
-        {
-            foreach (var item in rootItems.Take(3))
-            {
-                Logger.Log($"  - {item.Name} (IsDirectory={item.IsDirectory})");
-            }
-            if (rootItems.Count > 3)
-            {
-                Logger.Log($"  ... and {rootItems.Count - 3} more");
-            }
-        }
-
-        return shouldCreate;
-    }
-
-    /// <summary>
-    /// ルートレベルのアイテムを取得する
-    /// </summary>
-    /// <param name="archiveContents">アーカイブの全アイテムパス</param>
-    /// <returns>ルートレベルのアイテムリスト</returns>
-    private static List<(string Name, bool IsDirectory)> GetRootLevelItems(List<string> archiveContents)
-    {
-        var rootItems = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var path in archiveContents)
-        {
-            // パスをノーマライズ（バックスラッシュをスラッシュに統一）
-            var normalizedPath = path.Replace('\\', '/');
-
-            // 末尾のスラッシュを削除
-            normalizedPath = normalizedPath.TrimEnd('/');
-
-            // ルートレベルの要素を抽出
-            var parts = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-            if (parts.Length > 0)
-            {
-                var rootName = parts[0];
-                var isDirectory = path.EndsWith("/") || path.EndsWith("\\") || parts.Length > 1;
-
-                if (!rootItems.ContainsKey(rootName))
-                {
-                    rootItems[rootName] = isDirectory;
-                }
-                else
-                {
-                    // isDirectory が true の場合は true に更新（ファイルだと思っていたものがディレクトリだった場合）
-                    rootItems[rootName] = rootItems[rootName] || isDirectory;
-                }
-            }
-        }
-
-        return rootItems.Select(kvp => (kvp.Key, kvp.Value)).ToList();
-    }
 
 
     /// <summary>
@@ -390,12 +328,14 @@ public class ArchiveExtractor
     }
 
     /// <summary>
-    /// ルートフォルダのリフトアップが必要かどうかを確認し、一時展開パスを取得する
-    /// ルートレベルのアイテムが1つだけの場合、そのアイテムの中身をリフトアップするため一時パスを返す
+    /// 一時展開パスが必要かどうかを確認して返す
+    /// ケース1: ルートアイテムが1つ＋フォルダ → リフトアップ用一時パスを返す
+    /// ケース2: ルートアイテムが複数 → アーカイブ名フォルダ作成用一時パスを返す
+    /// ケース3: ルートアイテムが1つ＋ファイル → 直接展開（outputPath を返す）
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
     /// <param name="outputPath">展開先ディレクトリのパス</param>
-    /// <returns>一時展開パス、またはリフトアップが不要な場合は outputPath と同じ値</returns>
+    /// <returns>一時展開パス、または直接展開の場合は outputPath と同じ値</returns>
     private static string GetTemporaryExtractionPath(string archivePath, string outputPath)
     {
         try
@@ -411,31 +351,85 @@ public class ArchiveExtractor
             // ルートレベルのアイテムを取得
             var rootItems = GetRootLevelItems(archiveContents);
 
-            // ルートレベルのアイテムが1つだけの場合、リフトアップが必要
-            if (rootItems.Count == 1)
+            // ケース1: ルートアイテムが1つ＋フォルダ
+            if (rootItems.Count == 1 && rootItems[0].IsDirectory)
             {
-                // 一時ディレクトリを作成（outputPath の親ディレクトリに）
+                // 一時ディレクトリを作成（リフトアップ用）
                 var parentDir = Path.GetDirectoryName(outputPath) ?? Path.GetTempPath();
                 var tempDirName = Path.GetFileName(outputPath) + "_temp_" + Guid.NewGuid().ToString().Substring(0, 8);
                 var tempPath = Path.Combine(parentDir, tempDirName);
 
-                Logger.Log($"ルートフォルダのリフトアップが必要です。一時展開パスを返す: {tempPath}");
+                Logger.Log($"ケース1: ルートアイテムが1つ＋フォルダ。リフトアップが必要です。一時展開パスを返す: {tempPath}");
                 return tempPath;
             }
 
-            Logger.Log($"複数のルートアイテムが検出されました。リフトアップは不要です");
+            // ケース2: ルートアイテムが複数
+            if (rootItems.Count > 1)
+            {
+                // 一時ディレクトリを作成（アーカイブ名フォルダ作成用）
+                var parentDir = Path.GetDirectoryName(outputPath) ?? Path.GetTempPath();
+                var tempDirName = Path.GetFileName(outputPath) + "_temp_" + Guid.NewGuid().ToString().Substring(0, 8);
+                var tempPath = Path.Combine(parentDir, tempDirName);
+
+                Logger.Log($"ケース2: ルートアイテムが複数（{rootItems.Count}個）。アーカイブ名フォルダを作成します。一時展開パスを返す: {tempPath}");
+                return tempPath;
+            }
+
+            // ケース3: ルートアイテムが1つ＋ファイル（直接展開）
+            Logger.Log($"ケース3: ルートアイテムが1つ＋ファイル。直接展開します: {outputPath}");
             return outputPath;
         }
         catch (Exception ex)
         {
-            Logger.Log($"一時展開パス取得でエラーが発生しました: {archivePath}, {ex.Message}");
+            Logger.Log($"展開パス取得でエラーが発生しました: {archivePath}, {ex.Message}");
             return outputPath;
         }
     }
 
     /// <summary>
-    /// 一時展開パスからファイルをリフトアップして本来のパスに配置する
-    /// 新仕様：ルートレベルのアイテムが1つだけの場合、その中身を outputPath に配置する
+    /// ルートレベルのアイテムを取得する
+    /// </summary>
+    /// <param name="archiveContents">アーカイブの全アイテムパス</param>
+    /// <returns>ルートレベルのアイテムリスト</returns>
+    private static List<(string Name, bool IsDirectory)> GetRootLevelItems(List<string> archiveContents)
+    {
+        var rootItems = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var path in archiveContents)
+        {
+            // パスをノーマライズ（バックスラッシュをスラッシュに統一）
+            var normalizedPath = path.Replace('\\', '/');
+
+            // 末尾のスラッシュを削除
+            normalizedPath = normalizedPath.TrimEnd('/');
+
+            // ルートレベルの要素を抽出
+            var parts = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length > 0)
+            {
+                var rootName = parts[0];
+                var isDirectory = path.EndsWith("/") || path.EndsWith("\\") || parts.Length > 1;
+
+                if (!rootItems.ContainsKey(rootName))
+                {
+                    rootItems[rootName] = isDirectory;
+                }
+                else
+                {
+                    // isDirectory が true の場合は true に更新（ファイルだと思っていたものがディレクトリだった場合）
+                    rootItems[rootName] = rootItems[rootName] || isDirectory;
+                }
+            }
+        }
+
+        return rootItems.Select(kvp => (kvp.Key, kvp.Value)).ToList();
+    }
+
+    /// <summary>
+    /// 一時展開パスからファイルをリフトアップまたはアーカイブ名フォルダを作成する
+    /// ケース1: ルートアイテムが1つ＋フォルダ → その中身をリフトアップ
+    /// ケース2: ルートアイテムが複数 → アーカイブ名のフォルダを作成して中身を配置
     /// </summary>
     /// <param name="tempPath">一時展開パス</param>
     /// <param name="outputPath">本来の展開先パス</param>
@@ -443,7 +437,7 @@ public class ArchiveExtractor
     {
         try
         {
-            Logger.Log($"ファイルをリフトアップ開始: {tempPath} -> {outputPath}");
+            Logger.Log($"一時パスの処理を開始: {tempPath} -> {outputPath}");
 
             // tempPath 直下のアイテムを取得
             var directories = Directory.GetDirectories(tempPath);
@@ -451,87 +445,100 @@ public class ArchiveExtractor
 
             Logger.Log($"tempPath 直下: ディレクトリ={directories.Length}個, ファイル={files.Length}個");
 
-            string sourcePath;
-
-            // ルートレベルに1つだけディレクトリがあり、ファイルがない場合
+            // ケース1: ルートアイテムが1つ＋フォルダ → リフトアップ
             if (directories.Length == 1 && files.Length == 0)
             {
-                // そのディレクトリの中身をリフトアップ
-                sourcePath = directories[0];
-                Logger.Log($"リフトアップ元パス（ディレクトリ内）: {sourcePath}");
+                var sourcePath = directories[0];
+                Logger.Log($"ケース1: ルートアイテムが1つ＋フォルダ。リフトアップします: {sourcePath} -> {outputPath}");
+
+                // 本来のパスがまだ存在しない場合は作成
+                if (!Directory.Exists(outputPath))
+                {
+                    Directory.CreateDirectory(outputPath);
+                }
+
+                // sourcePath のすべてのファイルとフォルダを outputPath に移動
+                foreach (var file in Directory.GetFiles(sourcePath))
+                {
+                    var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                    RemoveReadOnlyAttributes(file);
+
+                    if (File.Exists(destFile))
+                    {
+                        File.Delete(destFile);
+                    }
+
+                    File.Move(file, destFile);
+                    Logger.Log($"ファイルを移動: {file} -> {destFile}");
+                }
+
+                foreach (var dir in Directory.GetDirectories(sourcePath))
+                {
+                    var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+
+                    if (Directory.Exists(destDir))
+                    {
+                        RemoveReadOnlyAttributes(destDir);
+                        Directory.Delete(destDir, true);
+                    }
+
+                    Directory.Move(dir, destDir);
+                    Logger.Log($"ディレクトリを移動: {dir} -> {destDir}");
+                }
+
+                Logger.Log("ケース1: リフトアップが完了しました");
             }
-            // ルートレベルに1つだけファイルがあり、ディレクトリがない場合
+            // ケース2: ルートアイテムが複数 → アーカイブ名フォルダを作成
+            else if (directories.Length > 1 || (directories.Length > 0 && files.Length > 0) || files.Length > 1)
+            {
+                Logger.Log($"ケース2: ルートアイテムが複数（ディレクトリ{directories.Length}個, ファイル{files.Length}個）。アーカイブ名フォルダを作成します");
+
+                // 本来のパスがまだ存在しない場合は作成
+                if (!Directory.Exists(outputPath))
+                {
+                    Directory.CreateDirectory(outputPath);
+                }
+
+                // tempPath のすべてのファイルとフォルダを outputPath に移動
+                foreach (var file in Directory.GetFiles(tempPath))
+                {
+                    var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                    RemoveReadOnlyAttributes(file);
+
+                    if (File.Exists(destFile))
+                    {
+                        File.Delete(destFile);
+                    }
+
+                    File.Move(file, destFile);
+                    Logger.Log($"ファイルを移動: {file} -> {destFile}");
+                }
+
+                foreach (var dir in Directory.GetDirectories(tempPath))
+                {
+                    var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+
+                    if (Directory.Exists(destDir))
+                    {
+                        RemoveReadOnlyAttributes(destDir);
+                        Directory.Delete(destDir, true);
+                    }
+
+                    Directory.Move(dir, destDir);
+                    Logger.Log($"ディレクトリを移動: {dir} -> {destDir}");
+                }
+
+                Logger.Log("ケース2: アーカイブ名フォルダの作成が完了しました");
+            }
+            // ケース3: ルートアイテムが1つ＋ファイル → 何もしない（既に outputPath に展開済み）
             else if (files.Length == 1 && directories.Length == 0)
             {
-                // そのファイルを直接 outputPath に移動
-                var file = files[0];
-                var destFile = Path.Combine(Path.GetDirectoryName(outputPath) ?? "", Path.GetFileName(file));
-                
-                RemoveReadOnlyAttributes(file);
-                
-                if (File.Exists(destFile))
-                {
-                    File.Delete(destFile);
-                }
-                
-                File.Move(file, destFile);
-                Logger.Log($"単一ファイルを移動: {file} -> {destFile}");
-                
-                // outputPath ディレクトリは不要なので削除
-                if (Directory.Exists(outputPath) && !Directory.EnumerateFileSystemEntries(outputPath).Any())
-                {
-                    Directory.Delete(outputPath);
-                }
-                
-                return;
+                Logger.Log($"ケース3: ルートアイテムが1つ＋ファイル。何もしません（既に展開済み）");
             }
-            else
-            {
-                // 複数のアイテムがある場合（通常はここには来ない）
-                sourcePath = tempPath;
-                Logger.Log($"リフトアップ元パス（複数アイテム）: {sourcePath}");
-            }
-
-            // 本来のパスがまだ存在しない場合は作成
-            if (!Directory.Exists(outputPath))
-            {
-                Directory.CreateDirectory(outputPath);
-            }
-
-            // sourcePath のすべてのファイルとフォルダを outputPath に移動
-            foreach (var file in Directory.GetFiles(sourcePath))
-            {
-                var destFile = Path.Combine(outputPath, Path.GetFileName(file));
-                RemoveReadOnlyAttributes(file);
-
-                if (File.Exists(destFile))
-                {
-                    File.Delete(destFile);
-                }
-
-                File.Move(file, destFile);
-                Logger.Log($"ファイルを移動: {file} -> {destFile}");
-            }
-
-            foreach (var dir in Directory.GetDirectories(sourcePath))
-            {
-                var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
-
-                if (Directory.Exists(destDir))
-                {
-                    RemoveReadOnlyAttributes(destDir);
-                    Directory.Delete(destDir, true);
-                }
-
-                Directory.Move(dir, destDir);
-                Logger.Log($"ディレクトリを移動: {dir} -> {destDir}");
-            }
-
-            Logger.Log("ファイルのリフトアップが完了しました");
         }
         catch (Exception ex)
         {
-            Logger.Log($"ファイルのリフトアップでエラーが発生しました: {ex.Message}");
+            Logger.Log($"一時パスの処理でエラーが発生しました: {ex.Message}");
             throw;
         }
     }

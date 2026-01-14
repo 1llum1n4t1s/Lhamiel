@@ -182,7 +182,7 @@ public class ArchiveExtractorTests
     }
 
     [Fact]
-    public void GetOutputDirectory_WithSingleFolderInRoot_PreventsDoubleFolders()
+    public void GetOutputDirectory_WithSingleFolderInRoot_CreatesArchiveFolder()
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
@@ -194,7 +194,7 @@ public class ArchiveExtractorTests
             var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ProjectA"
 
             // デバッグ: アーカイブ内容と期待値を出力
-            System.Console.WriteLine("=== Test: GetOutputDirectory_WithSingleFolderInRoot_PreventsDoubleFolders ===");
+            System.Console.WriteLine("=== Test: GetOutputDirectory_WithSingleFolderInRoot_CreatesArchiveFolder ===");
             System.Console.WriteLine($"ZIP file: {zipPath}");
             System.Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
             System.Console.WriteLine($"Output directory: {outputDir}");
@@ -212,17 +212,19 @@ public class ArchiveExtractorTests
             // Act
             var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
 
-            // Assert: ルートレベルに1つだけアイテムがある場合、二重フォルダ防止が必要
-            System.Console.WriteLine($"\n期待値 (Expected): {outputDir}");
+            // Assert: ケース1 - ルートアイテムが1つ＋フォルダ
+            // GetOutputDirectory は アーカイブ名フォルダを返す（リフトアップは展開時に行う）
+            var expectedPath = Path.Combine(outputDir, zipFileName);
+            System.Console.WriteLine($"\n期待値 (Expected): {expectedPath}");
             System.Console.WriteLine($"結果 (Actual):   {result}");
-            System.Console.WriteLine($"一致: {outputDir == result}");
-            System.Console.WriteLine("=== 新仕様での説明 ===");
-            System.Console.WriteLine("ルートレベルに 'ProjectA' フォルダが1つだけある場合、");
-            System.Console.WriteLine("二重フォルダ防止により outputDir が直接返される");
-            System.Console.WriteLine("（展開時は ProjectA の中身が outputDir に配置される）");
+            System.Console.WriteLine($"一致: {expectedPath == result}");
+            System.Console.WriteLine("=== 仕様での説明 ===");
+            System.Console.WriteLine("ケース1: ルートアイテムが1つ＋フォルダ");
+            System.Console.WriteLine("GetOutputDirectory は outputDir/ProjectA を返す");
+            System.Console.WriteLine("展開時に ProjectA/ の中身がリフトアップされて ProjectA/ が削除される");
             System.Console.WriteLine();
 
-            Assert.Equal(outputDir, result);
+            Assert.Equal(expectedPath, result);
         }
         finally
         {
@@ -264,13 +266,15 @@ public class ArchiveExtractorTests
 
             var expectedPath = Path.Combine(outputDir, zipFileName);
 
-            // Assert: ルートレベルに2つ以上のアイテムがある場合、アーカイブ名のフォルダを作成
+            // Assert: ケース2 - ルートレベルに複数のアイテムがある場合
+            // GetOutputDirectory はアーカイブ名フォルダを返す
             System.Console.WriteLine($"\n期待値 (Expected): {expectedPath}");
             System.Console.WriteLine($"結果 (Actual):   {result}");
             System.Console.WriteLine($"一致: {expectedPath == result}");
-            System.Console.WriteLine("=== 新仕様での説明 ===");
-            System.Console.WriteLine("ルートレベルに複数のアイテムがある場合、");
-            System.Console.WriteLine("アーカイブ名のフォルダ（ProjectB）を作成する");
+            System.Console.WriteLine("=== 仕様での説明 ===");
+            System.Console.WriteLine("ケース2: ルートレベルに複数のアイテムがある場合");
+            System.Console.WriteLine("GetOutputDirectory は outputDir/ProjectB を返す");
+            System.Console.WriteLine("展開時に folder1, folder2 がそのまま保持される");
             System.Console.WriteLine();
 
             Assert.Equal(expectedPath, result);
@@ -283,7 +287,7 @@ public class ArchiveExtractorTests
     }
 
     [Fact]
-    public void GetOutputDirectory_WithDeepNestedFolders_PreventsDoubleFolders()
+    public void GetOutputDirectory_WithDeepNestedFolders_CreatesArchiveFolder()
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
@@ -295,7 +299,7 @@ public class ArchiveExtractorTests
             var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ABC"
 
             // デバッグ: アーカイブ内容と期待値を出力
-            System.Console.WriteLine("=== Test: GetOutputDirectory_WithDeepNestedFolders_PreventsDoubleFolders ===");
+            System.Console.WriteLine("=== Test: GetOutputDirectory_WithDeepNestedFolders_CreatesArchiveFolder ===");
             System.Console.WriteLine($"ZIP file: {zipPath}");
             System.Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
             System.Console.WriteLine($"Output directory: {outputDir}");
@@ -313,17 +317,19 @@ public class ArchiveExtractorTests
             // Act
             var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
 
-            // Assert: ルートレベルに1つだけアイテムがある場合
-            System.Console.WriteLine($"\n期待値 (Expected): {outputDir}");
+            // Assert: ケース1 - ルートアイテムが1つ＋フォルダ（ABC フォルダ）
+            // GetOutputDirectory はアーカイブ名フォルダを返す（リフトアップは展開時に行う）
+            var expectedPath = Path.Combine(outputDir, zipFileName);
+            System.Console.WriteLine($"\n期待値 (Expected): {expectedPath}");
             System.Console.WriteLine($"結果 (Actual):   {result}");
-            System.Console.WriteLine($"一致: {outputDir == result}");
-            System.Console.WriteLine("=== 新仕様での説明 ===");
-            System.Console.WriteLine("ルートレベルに 'ABC' フォルダが1つだけある場合、");
-            System.Console.WriteLine("二重フォルダ防止により outputDir が直接返される");
-            System.Console.WriteLine("（展開時は ABC の中身（ABC/ABC/ABC/...）が outputDir に配置される）");
+            System.Console.WriteLine($"一致: {expectedPath == result}");
+            System.Console.WriteLine("=== 仕様での説明 ===");
+            System.Console.WriteLine("ケース1: ルートアイテムが1つ＋フォルダ");
+            System.Console.WriteLine("GetOutputDirectory は outputDir/ABC を返す");
+            System.Console.WriteLine("展開時に ABC/ の中身がリフトアップされて ABC/ が削除される");
             System.Console.WriteLine();
 
-            Assert.Equal(outputDir, result);
+            Assert.Equal(expectedPath, result);
         }
         finally
         {
@@ -333,7 +339,7 @@ public class ArchiveExtractorTests
     }
 
     [Fact]
-    public void ExtractArchive_WithSingleRootFolder_DoesNotCreateArchiveFolder()
+    public void ExtractArchive_WithSingleRootFolder_CreatesArchiveFolder()
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
@@ -341,11 +347,12 @@ public class ArchiveExtractorTests
         {
             // ルートレベルに1つだけフォルダがあるZIPファイルを作成
             var zipPath = CreateTestZipWithDoubleFolder(tempDir);
-            var outputDir = Path.Combine(tempDir, "extract_output");
+            var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ProjectA"
+            var baseOutputDir = Path.Combine(tempDir, "extract_output");
 
-            System.Console.WriteLine("=== Test: ExtractArchive_WithSingleRootFolder_DoesNotCreateArchiveFolder ===");
+            System.Console.WriteLine("=== Test: ExtractArchive_WithSingleRootFolder_CreatesArchiveFolder ===");
             System.Console.WriteLine($"ZIP file: {zipPath}");
-            System.Console.WriteLine($"Output directory: {outputDir}");
+            System.Console.WriteLine($"Base output directory: {baseOutputDir}");
 
             using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
             {
@@ -361,16 +368,19 @@ public class ArchiveExtractorTests
                 }
             }
 
-            // Act
+            // Act: GetOutputDirectory を使用して正しい展開先を決定する
+            var actualOutputDir = ArchiveExtractor.GetOutputDirectory(zipPath, baseOutputDir);
+            System.Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
+
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(zipPath, outputDir);
+            extractor.ExtractArchive(zipPath, actualOutputDir);
 
             // Assert: 展開結果を確認
-            System.Console.WriteLine($"\nExtracted directory: {outputDir}");
-            System.Console.WriteLine($"Directory exists: {Directory.Exists(outputDir)}");
+            System.Console.WriteLine($"Extracted directory: {actualOutputDir}");
+            System.Console.WriteLine($"Directory exists: {Directory.Exists(actualOutputDir)}");
 
-            var topLevelItems = Directory.GetFileSystemEntries(outputDir);
-            System.Console.WriteLine($"Top-level items in output directory ({topLevelItems.Length}):");
+            var topLevelItems = Directory.GetFileSystemEntries(actualOutputDir);
+            System.Console.WriteLine($"Top-level items in extracted directory ({topLevelItems.Length}):");
             foreach (var item in topLevelItems.Take(5))
             {
                 var name = Path.GetFileName(item);
@@ -378,18 +388,19 @@ public class ArchiveExtractorTests
                 System.Console.WriteLine($"  - {name} {isDir}");
             }
 
-            // ルートレベルに「ProjectA」というフォルダが存在しないことを確認
-            // （ルートが1つのフォルダなので、アーカイブ名のフォルダは作成されない）
-            var projectAFolder = Path.Combine(outputDir, "ProjectA");
-            Assert.False(Directory.Exists(projectAFolder), "ProjectA folder should not exist at root level");
+            // ケース1: ルートアイテムが1つ＋フォルダ
+            // ProjectA フォルダの中身が actualOutputDir に直接リフトアップされている
+            // ProjectA/ フォルダ自体は存在しない（削除される）
+            var readmePath = Path.Combine(actualOutputDir, "readme.txt");
+            var filesPath = Path.Combine(actualOutputDir, "files");
 
-            // 代わりに、ProjectA の中身（readme.txt, files フォルダ）が直接 outputDir に配置されているはず
-            var readmePath = Path.Combine(outputDir, "readme.txt");
-            var filesPath = Path.Combine(outputDir, "files");
-            Assert.True(File.Exists(readmePath), "readme.txt should be directly in output directory");
-            Assert.True(Directory.Exists(filesPath), "files folder should be directly in output directory");
+            Assert.True(File.Exists(readmePath), "readme.txt should be lifted up to extracted directory");
+            Assert.True(Directory.Exists(filesPath), "files folder should be lifted up to extracted directory");
+            // ProjectA フォルダ自体は存在しないはず
+            var projectAPath = Path.Combine(actualOutputDir, "ProjectA");
+            Assert.False(Directory.Exists(projectAPath), "ProjectA folder should not exist (lifted up)");
 
-            System.Console.WriteLine("\n✅ Test passed: Single root folder was correctly lifted up (no ProjectA folder created)");
+            System.Console.WriteLine("\n✅ Test passed: Archive folder and its contents were extracted and lifted up correctly");
             System.Console.WriteLine();
         }
         finally
@@ -444,7 +455,8 @@ public class ArchiveExtractorTests
                 System.Console.WriteLine($"  - {name} {isDir}");
             }
 
-            // 複数ルートアイテムなので、folder1 と folder2 が直接存在することを確認
+            // ケース2: ルートアイテムが複数
+            // folder1 と folder2 が直接存在することを確認
             var folder1Path = Path.Combine(actualOutputDir, "folder1");
             var folder2Path = Path.Combine(actualOutputDir, "folder2");
             Assert.True(Directory.Exists(folder1Path), "folder1 should exist in output directory");
