@@ -50,6 +50,8 @@ public partial class MainWindow : Window
                 { "txz", TxzCheckBox },
                 { "tz", TZCheckBox }
             };
+            
+            // 注: 圧縮形式はZIPと7zのみをサポート（展開は複数形式対応）
 
             InitializeUI();
             _isInitializing = false;

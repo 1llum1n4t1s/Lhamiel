@@ -4,6 +4,7 @@ using Cube.FileSystem.SevenZip;
 using Cube.FileSystem;
 using System.Threading;
 using System.Text;
+using Amiga.FileFormats.LHA;
 
 namespace Lhamiel.Util;
 
@@ -81,58 +82,61 @@ public class ArchiveCompressor
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // ArchiveWriterを使用して圧縮（UTF-8エンコーディングを設定）
-            var options = new CompressionOption
+            // LHA形式の場合
+            if (format.isLha)
             {
-                CodePage = CodePage.Utf8
-            };
-            using var writer = new ArchiveWriter(format, options);
-
-            // 圧縮対象のファイルとディレクトリを追加
-            foreach (var sourcePath in sourceList)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (File.Exists(sourcePath))
-                {
-                    // ファイルが除外対象でない場合のみ追加
-                    if (!ShouldExcludeFile(sourcePath, excludedPatterns))
-                    {
-                        writer.Add(sourcePath);
-                    }
-                }
-                else if (Directory.Exists(sourcePath))
-                {
-                    // ディレクトリの場合、再帰的にファイルを取得して個別に追加
-                    var files = GetFilesRecursively(sourcePath, excludedPatterns);
-                    var directoryName = Path.GetFileName(sourcePath);
-
-                    foreach (var file in files)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
-                        var relativePath = Path.GetRelativePath(Path.GetDirectoryName(sourcePath) ?? "", file);
-                        writer.Add(file, relativePath);
-                    }
-                }
-                else
-                {
-                    throw new FileNotFoundException($"指定されたパスが見つかりません: {sourcePath}");
-                }
+                CompressFilesAsLha(sourceList, outputPath, excludedPatterns, progressCallback, cancellationToken);
             }
+            else
+            {
+                // ArchiveWriterを使用して圧縮（形式に応じてオプションを設定）
+                using var writer = CreateArchiveWriter(format.format);
+                // 圧縮対象のファイルとディレクトリを追加
+                foreach (var sourcePath in sourceList)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
 
-            // 進捗報告を設定
-            progressCallback?.Invoke(0);
+                    if (File.Exists(sourcePath))
+                    {
+                        // ファイルが除外対象でない場合のみ追加
+                        if (!ShouldExcludeFile(sourcePath, excludedPatterns))
+                        {
+                            writer.Add(sourcePath);
+                        }
+                    }
+                    else if (Directory.Exists(sourcePath))
+                    {
+                        // ディレクトリの場合、再帰的にファイルを取得して個別に追加
+                        var files = GetFilesRecursively(sourcePath, excludedPatterns);
+                        var directoryName = Path.GetFileName(sourcePath);
 
-            // 圧縮を実行
-            outputCreated = true;
-            writer.Save(outputPath);
+                        foreach (var file in files)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
 
-            // 完了時の進捗報告
-            progressCallback?.Invoke(100);
+                            // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
+                            var relativePath = Path.GetRelativePath(Path.GetDirectoryName(sourcePath) ?? "", file);
+                            writer.Add(file, relativePath);
+                        }
+                    }
+                    else
+                    {
+                        throw new FileNotFoundException($"指定されたパスが見つかりません: {sourcePath}");
+                    }
+                }
 
-            Logger.Log($"圧縮完了: {outputPath}");
+                // 進捗報告を設定
+                progressCallback?.Invoke(0);
+
+                // 圧縮を実行
+                outputCreated = true;
+                writer.Save(outputPath);
+
+                // 完了時の進捗報告
+                progressCallback?.Invoke(100);
+
+                Logger.Log($"圧縮完了: {outputPath}");
+            }
         }
         catch (OperationCanceledException)
         {
@@ -158,24 +162,61 @@ public class ArchiveCompressor
     }
 
     /// <summary>
+    /// ファイルをLHA形式で圧縮する
+    /// </summary>
+    /// <param name="sourcePaths">圧縮対象のパス</param>
+    /// <param name="outputPath">出力アーカイブのパス</param>
+    /// <param name="excludedPatterns">除外パターン</param>
+    /// <param name="progressCallback">進捗コールバック</param>
+    /// <param name="cancellationToken">キャンセルトークン</param>
+    private static void CompressFilesAsLha(IEnumerable<string> sourcePaths, string outputPath, List<string> excludedPatterns, Action<int>? progressCallback, CancellationToken cancellationToken)
+    {
+        progressCallback?.Invoke(0);
+
+        // LHA形式の圧縮は複雑なため、現段階ではログ出力のみ
+        // 本格的な実装にはAmiga.FileFormats.LHAの詳細なAPI調査が必要
+        Logger.Log($"LHA形式への圧縮は現在開発中です: {outputPath}");
+        throw new NotImplementedException("LHA形式の圧縮機能は現在開発中です。");
+    }
+
+    /// <summary>
+    /// ArchiveWriterを作成する
+    /// </summary>
+    /// <param name="format">圧縮形式</param>
+    /// <returns>ArchiveWriterインスタンス</returns>
+    private static ArchiveWriter CreateArchiveWriter(Format format)
+    {
+        // TAR、7z形式ではCodePageを設定しない
+        if (format == Format.SevenZip || format == Format.Tar)
+        {
+            return new ArchiveWriter(format);
+        }
+        else
+        {
+            // ZIP形式などではUTF-8エンコーディングを設定
+            var options = new CompressionOption
+            {
+                CodePage = CodePage.Utf8
+            };
+            return new ArchiveWriter(format, options);
+        }
+    }
+
+    /// <summary>
     /// ファイル拡張子から圧縮形式を取得する
     /// </summary>
     /// <param name="outputPath">出力ファイルパス</param>
     /// <returns>圧縮形式</returns>
-    private static Format GetFormatFromExtension(string outputPath)
+    private static (Format format, bool isLha) GetFormatFromExtension(string outputPath)
     {
         var extension = Path.GetExtension(outputPath).ToLowerInvariant();
         return extension switch
         {
-            ".zip" => Format.Zip,
-            ".7z" => Format.SevenZip,
-            ".tar" => Format.Tar,
-            ".gz" => Format.GZip,
-            ".bz2" => Format.BZip2,
-            ".xz" => Format.XZ,
-            ".cab" => Format.Cab,
-            ".wim" => Format.Wim,
-            _ => Format.Zip // デフォルトはZIP
+            ".zip" => (Format.Zip, false),
+            ".7z" => (Format.SevenZip, false),
+            ".tar" => (Format.Tar, false),
+            ".lha" => (Format.Zip, true), // LHA形式フラグをtrue
+            _ => (Format.Zip, false) // デフォルトはZIP
         };
     }
 
@@ -208,12 +249,15 @@ public class ArchiveCompressor
 
         try
         {
-            // ArchiveWriterを使用して圧縮（UTF-8エンコーディングを設定）
-            var options = new CompressionOption
+            // LHA形式の場合
+            if (format.isLha)
             {
-                CodePage = CodePage.Utf8
-            };
-            using var writer = new ArchiveWriter(format, options);
+                CompressFilesAsLha(new[] { directoryPath }, outputPath, excludedPatterns, progressCallback, CancellationToken.None);
+                return;
+            }
+
+            // ArchiveWriterを使用して圧縮（形式に応じてオプションを設定）
+            using var writer = CreateArchiveWriter(format.format);
 
             // ディレクトリ内のファイルを再帰的に取得して個別に追加
             var files = GetFilesRecursively(directoryPath, excludedPatterns);

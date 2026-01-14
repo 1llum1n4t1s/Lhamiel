@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="7z.Libs" Version="25.1.0" />
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
     <PackageReference Include="Moq" Version="4.20.70" />
@@ -20,5 +21,21 @@
   <ItemGroup>
     <ProjectReference Include="..\Lhamiel.csproj" />
   </ItemGroup>
+
+  <!-- 7z.dllを手動でルートに配置 -->
+  <ItemGroup>
+    <Content Include="$(NuGetPackageRoot)7z.libs\**\runtimes\win-x64\native\7z.dll">
+      <Link>7z.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- ビルド後にx64フォルダを削除し、7z.dllをルートに移動 -->
+  <Target Name="Move7zDllToRoot" AfterTargets="Build">
+    <Move SourceFiles="$(OutputPath)x64\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)x64\7z.dll')" />
+    <RemoveDir Directories="$(OutputPath)x64" Condition="Exists('$(OutputPath)x64')" />
+    <RemoveDir Directories="$(OutputPath)x86" Condition="Exists('$(OutputPath)x86')" />
+    <RemoveDir Directories="$(OutputPath)runtimes" Condition="Exists('$(OutputPath)runtimes')" />
+  </Target>
 
 </Project>

@@ -56,7 +56,9 @@ public class SettingsTests
     [InlineData("zip", true)]
     [InlineData("7z", true)]
     [InlineData("tar", true)]
+    [InlineData("lha", true)]
     [InlineData("rar", false)]
+    [InlineData("gz", false)]
     [InlineData("unknown", false)]
     public void SupportedCompressionFormats_ContainsExpectedFormats(string format, bool shouldBeSupported)
     {

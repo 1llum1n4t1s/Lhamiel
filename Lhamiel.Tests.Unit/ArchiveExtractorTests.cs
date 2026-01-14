@@ -31,7 +31,8 @@ public class ArchiveExtractorTests
     private static string CreateTestZipWithDoubleFolder(string testDir)
     {
         // テスト用の構造：ProjectA.zip 内に ProjectA フォルダがあり、その中に files があるケース
-        var projectDir = Path.Combine(testDir, "ProjectA");
+        var parentDir = Path.Combine(testDir, "temp_for_zip");
+        var projectDir = Path.Combine(parentDir, "ProjectA");
         var innerDir = Path.Combine(projectDir, "files");
         var dataDir = Path.Combine(innerDir, "data");
 
@@ -43,10 +44,11 @@ public class ArchiveExtractorTests
         File.WriteAllText(Path.Combine(dataDir, "data.txt"), "Data content");
 
         var zipPath = Path.Combine(testDir, "ProjectA.zip");
-        ZipFile.CreateFromDirectory(projectDir, zipPath);
+        // 親ディレクトリを圧縮することで、ProjectA/ フォルダを含める
+        ZipFile.CreateFromDirectory(parentDir, zipPath);
 
         // テスト用ディレクトリを削除（ZIPに含めるためだけ）
-        Directory.Delete(projectDir, true);
+        Directory.Delete(parentDir, true);
 
         return zipPath;
     }
@@ -109,7 +111,8 @@ public class ArchiveExtractorTests
     private static string CreateTestZipWithRecursiveNestedFolders(string testDir)
     {
         // テスト用の構造：ABC.zip 内に ABC/ABC/ABC/ABC/ABC/中身/ があるケース
-        var level1 = Path.Combine(testDir, "ABC");
+        var parentDir = Path.Combine(testDir, "temp_for_abc_zip");
+        var level1 = Path.Combine(parentDir, "ABC");
         var level2 = Path.Combine(level1, "ABC");
         var level3 = Path.Combine(level2, "ABC");
         var level4 = Path.Combine(level3, "ABC");
@@ -122,10 +125,11 @@ public class ArchiveExtractorTests
         File.WriteAllText(Path.Combine(contentsDir, "file2.txt"), "File 2");
 
         var zipPath = Path.Combine(testDir, "ABC.zip");
-        ZipFile.CreateFromDirectory(level1, zipPath);
+        // 親ディレクトリを圧縮することで、ABC/ フォルダを含める
+        ZipFile.CreateFromDirectory(parentDir, zipPath);
 
         // テスト用ディレクトリを削除
-        Directory.Delete(level1, true);
+        Directory.Delete(parentDir, true);
 
         return zipPath;
     }
@@ -175,21 +179,46 @@ public class ArchiveExtractorTests
     }
 
     [Fact]
-    public void GetOutputDirectory_WithDoubleFolderStructure_PreventsDoubleFolders()
+    public void GetOutputDirectory_WithSingleFolderInRoot_PreventsDoubleFolders()
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
         try
         {
-            // 二重フォルダ構造のZIPファイルを作成
+            // ルートレベルに1つだけフォルダがあるZIPファイルを作成
             var zipPath = CreateTestZipWithDoubleFolder(tempDir);
             var outputDir = Path.Combine(tempDir, "output");
+            var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ProjectA"
+
+            // デバッグ: アーカイブ内容と期待値を出力
+            System.Console.WriteLine("=== Test: GetOutputDirectory_WithSingleFolderInRoot_PreventsDoubleFolders ===");
+            System.Console.WriteLine($"ZIP file: {zipPath}");
+            System.Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
+            System.Console.WriteLine($"Output directory: {outputDir}");
+
+            using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
+            {
+                var contents = reader.Items.Select(item => item.FullName).ToList();
+                System.Console.WriteLine($"\nArchive contents ({contents.Count} items):");
+                foreach (var item in contents)
+                {
+                    System.Console.WriteLine($"  - '{item}'");
+                }
+            }
 
             // Act
             var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
 
-            // Assert
-            // 二重フォルダ防止により、outputDir が直接返されるはず
+            // Assert: ルートレベルに1つだけアイテムがある場合、二重フォルダ防止が必要
+            System.Console.WriteLine($"\n期待値 (Expected): {outputDir}");
+            System.Console.WriteLine($"結果 (Actual):   {result}");
+            System.Console.WriteLine($"一致: {outputDir == result}");
+            System.Console.WriteLine("=== 新仕様での説明 ===");
+            System.Console.WriteLine("ルートレベルに 'ProjectA' フォルダが1つだけある場合、");
+            System.Console.WriteLine("二重フォルダ防止により outputDir が直接返される");
+            System.Console.WriteLine("（展開時は ProjectA の中身が outputDir に配置される）");
+            System.Console.WriteLine();
+
             Assert.Equal(outputDir, result);
         }
         finally
@@ -209,14 +238,39 @@ public class ArchiveExtractorTests
             // 複数フォルダのZIPファイルを作成
             var zipPath = CreateTestZipWithMultipleFolders(tempDir);
             var outputDir = Path.Combine(tempDir, "output");
+            var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ProjectB"
+
+            // デバッグ: アーカイブ内容と期待値を出力
+            System.Console.WriteLine("=== Test: GetOutputDirectory_WithMultipleFoldersInRoot_CreatesFolder ===");
+            System.Console.WriteLine($"ZIP file: {zipPath}");
+            System.Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
+            System.Console.WriteLine($"Output directory: {outputDir}");
+
+            using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
+            {
+                var contents = reader.Items.Select(item => item.FullName).ToList();
+                System.Console.WriteLine($"\nArchive contents ({contents.Count} items):");
+                foreach (var item in contents)
+                {
+                    System.Console.WriteLine($"  - '{item}'");
+                }
+            }
 
             // Act
             var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
 
-            // Assert
-            // 複数フォルダの場合は、通常通りフォルダを作成
-            Assert.Contains("ProjectB", result);
-            Assert.StartsWith(outputDir, result);
+            var expectedPath = Path.Combine(outputDir, zipFileName);
+
+            // Assert: ルートレベルに2つ以上のアイテムがある場合、アーカイブ名のフォルダを作成
+            System.Console.WriteLine($"\n期待値 (Expected): {expectedPath}");
+            System.Console.WriteLine($"結果 (Actual):   {result}");
+            System.Console.WriteLine($"一致: {expectedPath == result}");
+            System.Console.WriteLine("=== 新仕様での説明 ===");
+            System.Console.WriteLine("ルートレベルに複数のアイテムがある場合、");
+            System.Console.WriteLine("アーカイブ名のフォルダ（ProjectB）を作成する");
+            System.Console.WriteLine();
+
+            Assert.Equal(expectedPath, result);
         }
         finally
         {
@@ -226,21 +280,46 @@ public class ArchiveExtractorTests
     }
 
     [Fact]
-    public void GetOutputDirectory_WithRecursiveNestedFolders_PreventsDoubleFolders()
+    public void GetOutputDirectory_WithDeepNestedFolders_PreventsDoubleFolders()
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
         try
         {
-            // 再帰的な同名フォルダのネストを持つZIPファイルを作成
+            // 深いネストを持つZIPファイルを作成
             var zipPath = CreateTestZipWithRecursiveNestedFolders(tempDir);
             var outputDir = Path.Combine(tempDir, "output");
+            var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ABC"
+
+            // デバッグ: アーカイブ内容と期待値を出力
+            System.Console.WriteLine("=== Test: GetOutputDirectory_WithDeepNestedFolders_PreventsDoubleFolders ===");
+            System.Console.WriteLine($"ZIP file: {zipPath}");
+            System.Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
+            System.Console.WriteLine($"Output directory: {outputDir}");
+
+            using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
+            {
+                var contents = reader.Items.Select(item => item.FullName).ToList();
+                System.Console.WriteLine($"\nArchive contents ({contents.Count} items):");
+                foreach (var item in contents)
+                {
+                    System.Console.WriteLine($"  - '{item}'");
+                }
+            }
 
             // Act
             var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
 
-            // Assert
-            // 再帰的なネストの場合も、二重フォルダ防止により outputDir が直接返されるはず
+            // Assert: ルートレベルに1つだけアイテムがある場合
+            System.Console.WriteLine($"\n期待値 (Expected): {outputDir}");
+            System.Console.WriteLine($"結果 (Actual):   {result}");
+            System.Console.WriteLine($"一致: {outputDir == result}");
+            System.Console.WriteLine("=== 新仕様での説明 ===");
+            System.Console.WriteLine("ルートレベルに 'ABC' フォルダが1つだけある場合、");
+            System.Console.WriteLine("二重フォルダ防止により outputDir が直接返される");
+            System.Console.WriteLine("（展開時は ABC の中身（ABC/ABC/ABC/...）が outputDir に配置される）");
+            System.Console.WriteLine();
+
             Assert.Equal(outputDir, result);
         }
         finally
