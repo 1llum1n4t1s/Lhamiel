@@ -81,8 +81,12 @@ public class ArchiveCompressor
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // ArchiveWriterを使用して圧縮
-            using var writer = new ArchiveWriter(format);
+            // ArchiveWriterを使用して圧縮（UTF-8エンコーディングを設定）
+            var options = new CompressionOption
+            {
+                CodePage = CodePage.Utf8
+            };
+            using var writer = new ArchiveWriter(format, options);
 
             // 圧縮対象のファイルとディレクトリを追加
             foreach (var sourcePath in sourceList)
@@ -204,8 +208,12 @@ public class ArchiveCompressor
 
         try
         {
-            // ArchiveWriterを使用して圧縮
-            using var writer = new ArchiveWriter(format);
+            // ArchiveWriterを使用して圧縮（UTF-8エンコーディングを設定）
+            var options = new CompressionOption
+            {
+                CodePage = CodePage.Utf8
+            };
+            using var writer = new ArchiveWriter(format, options);
 
             // ディレクトリ内のファイルを再帰的に取得して個別に追加
             var files = GetFilesRecursively(directoryPath, excludedPatterns);
