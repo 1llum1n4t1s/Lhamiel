@@ -1,5 +1,5 @@
 using System.IO;
-using System.Text.Json;
+using Newtonsoft.Json;
 
 namespace Lhamiel.Util;
 
@@ -14,12 +14,12 @@ public class Settings
     private static readonly string SettingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
 
     /// <summary>
-    /// JSONシリアライザーオプション
+    /// JSONシリアライザー設定
     /// </summary>
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerSettings JsonSettings = new()
     {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        Formatting = Formatting.Indented,
+        NullValueHandling = NullValueHandling.Ignore
     };
 
     /// <summary>
@@ -104,7 +104,7 @@ public class Settings
     public static readonly string[] ExtractOnlyFormats = { "RAR", "ARJ", "Z" };
 
     /// <summary>
-    /// 設定をファイルから読み込む
+    /// 設定をファイルから読み込むメソッド
     /// </summary>
     /// <returns>読み込まれた設定オブジェクト</returns>
     public static Settings Load()
@@ -114,12 +114,12 @@ public class Settings
             if (File.Exists(SettingsFilePath))
             {
                 var json = File.ReadAllText(SettingsFilePath);
-                var settings = JsonSerializer.Deserialize<Settings>(json, JsonOptions);
+                var settings = JsonConvert.DeserializeObject<Settings>(json, JsonSettings);
                 return settings ?? new Settings();
             }
 
             var defaultSettings = new Settings();
-            var jsonDefault = JsonSerializer.Serialize(defaultSettings, JsonOptions);
+            var jsonDefault = JsonConvert.SerializeObject(defaultSettings, JsonSettings);
             File.WriteAllText(SettingsFilePath, jsonDefault);
             return defaultSettings;
         }
@@ -132,13 +132,13 @@ public class Settings
     }
 
     /// <summary>
-    /// 設定をファイルに保存する
+    /// 設定をファイルに保存するメソッド
     /// </summary>
     public void Save()
     {
         try
         {
-            var json = JsonSerializer.Serialize(this, JsonOptions);
+            var json = JsonConvert.SerializeObject(this, JsonSettings);
             File.WriteAllText(SettingsFilePath, json);
         }
         catch (Exception ex)

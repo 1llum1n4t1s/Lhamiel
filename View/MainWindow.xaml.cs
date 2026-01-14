@@ -3,7 +3,6 @@ using System.Windows.Controls;
 using Microsoft.Win32;
 using System.IO;
 using Lhamiel.Util;
-using System.Threading;
 using System.Windows.Media;
 
 namespace Lhamiel.View;
