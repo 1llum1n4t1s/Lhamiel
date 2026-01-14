@@ -84,16 +84,6 @@ public class ArchiveCompressor
             // ArchiveWriterを使用して圧縮
             using var writer = new ArchiveWriter(format);
 
-            // UTF-8エンコーディングを設定
-            try
-            {
-                writer.Option.CodePage = Encoding.UTF8.CodePage; // UTF-8 (65001)
-            }
-            catch (Exception ex)
-            {
-                Logger.Log($"UTF-8エンコーディング設定の警告: {ex.Message}");
-            }
-
             // 圧縮対象のファイルとディレクトリを追加
             foreach (var sourcePath in sourceList)
             {
@@ -216,16 +206,6 @@ public class ArchiveCompressor
         {
             // ArchiveWriterを使用して圧縮
             using var writer = new ArchiveWriter(format);
-
-            // UTF-8エンコーディングを設定
-            try
-            {
-                writer.Option.CodePage = Encoding.UTF8.CodePage; // UTF-8 (65001)
-            }
-            catch (Exception ex)
-            {
-                Logger.Log($"UTF-8エンコーディング設定の警告: {ex.Message}");
-            }
 
             // ディレクトリ内のファイルを再帰的に取得して個別に追加
             var files = GetFilesRecursively(directoryPath, excludedPatterns);
