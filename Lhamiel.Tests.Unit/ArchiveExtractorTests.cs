@@ -54,15 +54,17 @@ public class ArchiveExtractorTests
     }
 
     /// <summary>
-    /// テスト用のZIPファイルを作成する（複数フォルダあり）
+    /// テスト用のZIPファイルを作成する（複数のルートレベルフォルダあり）
     /// </summary>
     /// <param name="testDir">テスト用ディレクトリ</param>
     /// <returns>作成されたZIPファイルのパス</returns>
     private static string CreateTestZipWithMultipleFolders(string testDir)
     {
-        // テスト用の構造：ProjectB.zip 内に複数のフォルダがあるケース
-        var folder1 = Path.Combine(testDir, "ProjectB", "folder1");
-        var folder2 = Path.Combine(testDir, "ProjectB", "folder2");
+        // テスト用の構造：ProjectB.zip のルートに複数のフォルダがあるケース
+        // folder1/ と folder2/ が ZIP ルートの直下に存在する
+        var parentDir = Path.Combine(testDir, "temp_for_multi_zip");
+        var folder1 = Path.Combine(parentDir, "folder1");
+        var folder2 = Path.Combine(parentDir, "folder2");
 
         Directory.CreateDirectory(folder1);
         Directory.CreateDirectory(folder2);
@@ -71,10 +73,11 @@ public class ArchiveExtractorTests
         File.WriteAllText(Path.Combine(folder2, "file2.txt"), "File 2");
 
         var zipPath = Path.Combine(testDir, "ProjectB.zip");
-        ZipFile.CreateFromDirectory(Path.Combine(testDir, "ProjectB"), zipPath);
+        // 親ディレクトリを圧縮することで、folder1 と folder2 がルートレベルに来る
+        ZipFile.CreateFromDirectory(parentDir, zipPath);
 
         // テスト用ディレクトリを削除
-        Directory.Delete(Path.Combine(testDir, "ProjectB"), true);
+        Directory.Delete(parentDir, true);
 
         return zipPath;
     }
@@ -321,6 +324,140 @@ public class ArchiveExtractorTests
             System.Console.WriteLine();
 
             Assert.Equal(outputDir, result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void ExtractArchive_WithSingleRootFolder_DoesNotCreateArchiveFolder()
+    {
+        // Arrange
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            // ルートレベルに1つだけフォルダがあるZIPファイルを作成
+            var zipPath = CreateTestZipWithDoubleFolder(tempDir);
+            var outputDir = Path.Combine(tempDir, "extract_output");
+
+            System.Console.WriteLine("=== Test: ExtractArchive_WithSingleRootFolder_DoesNotCreateArchiveFolder ===");
+            System.Console.WriteLine($"ZIP file: {zipPath}");
+            System.Console.WriteLine($"Output directory: {outputDir}");
+
+            using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
+            {
+                var contents = reader.Items.Select(item => item.FullName).ToList();
+                System.Console.WriteLine($"\nArchive contents ({contents.Count} items):");
+                foreach (var item in contents.Take(5))
+                {
+                    System.Console.WriteLine($"  - '{item}'");
+                }
+                if (contents.Count > 5)
+                {
+                    System.Console.WriteLine($"  ... and {contents.Count - 5} more items");
+                }
+            }
+
+            // Act
+            var extractor = new ArchiveExtractor();
+            extractor.ExtractArchive(zipPath, outputDir);
+
+            // Assert: 展開結果を確認
+            System.Console.WriteLine($"\nExtracted directory: {outputDir}");
+            System.Console.WriteLine($"Directory exists: {Directory.Exists(outputDir)}");
+
+            var topLevelItems = Directory.GetFileSystemEntries(outputDir);
+            System.Console.WriteLine($"Top-level items in output directory ({topLevelItems.Length}):");
+            foreach (var item in topLevelItems.Take(5))
+            {
+                var name = Path.GetFileName(item);
+                var isDir = Directory.Exists(item) ? "(dir)" : "(file)";
+                System.Console.WriteLine($"  - {name} {isDir}");
+            }
+
+            // ルートレベルに「ProjectA」というフォルダが存在しないことを確認
+            // （ルートが1つのフォルダなので、アーカイブ名のフォルダは作成されない）
+            var projectAFolder = Path.Combine(outputDir, "ProjectA");
+            Assert.False(Directory.Exists(projectAFolder), "ProjectA folder should not exist at root level");
+
+            // 代わりに、ProjectA の中身（readme.txt, files フォルダ）が直接 outputDir に配置されているはず
+            var readmePath = Path.Combine(outputDir, "readme.txt");
+            var filesPath = Path.Combine(outputDir, "files");
+            Assert.True(File.Exists(readmePath), "readme.txt should be directly in output directory");
+            Assert.True(Directory.Exists(filesPath), "files folder should be directly in output directory");
+
+            System.Console.WriteLine("\n✅ Test passed: Single root folder was correctly lifted up (no ProjectA folder created)");
+            System.Console.WriteLine();
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void ExtractArchive_WithMultipleRootItems_CreatesArchiveFolder()
+    {
+        // Arrange
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            // ルートレベルに複数のアイテムがあるZIPファイルを作成
+            var zipPath = CreateTestZipWithMultipleFolders(tempDir);
+            var baseOutputDir = Path.Combine(tempDir, "extract_output");
+
+            System.Console.WriteLine("=== Test: ExtractArchive_WithMultipleRootItems_CreatesArchiveFolder ===");
+            System.Console.WriteLine($"ZIP file: {zipPath}");
+            System.Console.WriteLine($"Base output directory: {baseOutputDir}");
+
+            using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
+            {
+                var contents = reader.Items.Select(item => item.FullName).ToList();
+                System.Console.WriteLine($"\nArchive contents ({contents.Count} items):");
+                foreach (var item in contents)
+                {
+                    System.Console.WriteLine($"  - '{item}'");
+                }
+            }
+
+            // Act: GetOutputDirectory を使用して正しい展開先を決定する
+            var actualOutputDir = ArchiveExtractor.GetOutputDirectory(zipPath, baseOutputDir);
+            System.Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
+
+            var extractor = new ArchiveExtractor();
+            extractor.ExtractArchive(zipPath, actualOutputDir);
+
+            // Assert: 展開結果を確認
+            System.Console.WriteLine($"\nExtracted directory: {actualOutputDir}");
+            System.Console.WriteLine($"Directory exists: {Directory.Exists(actualOutputDir)}");
+
+            var topLevelItems = Directory.GetFileSystemEntries(actualOutputDir);
+            System.Console.WriteLine($"Top-level items in extracted directory ({topLevelItems.Length}):");
+            foreach (var item in topLevelItems)
+            {
+                var name = Path.GetFileName(item);
+                var isDir = Directory.Exists(item) ? "(dir)" : "(file)";
+                System.Console.WriteLine($"  - {name} {isDir}");
+            }
+
+            // 複数ルートアイテムなので、folder1 と folder2 が直接存在することを確認
+            var folder1Path = Path.Combine(actualOutputDir, "folder1");
+            var folder2Path = Path.Combine(actualOutputDir, "folder2");
+            Assert.True(Directory.Exists(folder1Path), "folder1 should exist in output directory");
+            Assert.True(Directory.Exists(folder2Path), "folder2 should exist in output directory");
+
+            // folder1 と folder2 の中身も確認
+            var file1Path = Path.Combine(folder1Path, "file1.txt");
+            var file2Path = Path.Combine(folder2Path, "file2.txt");
+            Assert.True(File.Exists(file1Path), "file1.txt should exist in folder1");
+            Assert.True(File.Exists(file2Path), "file2.txt should exist in folder2");
+
+            System.Console.WriteLine($"\n✅ Test passed: Multiple root items were correctly extracted");
+            System.Console.WriteLine();
         }
         finally
         {

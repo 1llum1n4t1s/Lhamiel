@@ -74,11 +74,11 @@ public class ArchiveExtractor
 
     /// <summary>
     /// アーカイブの内容をチェックして、適切なファイル名を取得する
-    /// 新仕様：ルートレベルのアイテム数が1つだけの場合は空文字列を返す
+    /// 新仕様：ルートレベルのアイテム数が2つ以上の場合はアーカイブ名を返す、1つだけの場合は空文字列を返す
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <param name="defaultFileName">デフォルトのファイル名</param>
-    /// <returns>調整されたファイル名（通常は defaultFileName、二重フォルダ防止の場合は空文字列）</returns>
+    /// <param name="defaultFileName">デフォルトのファイル名（アーカイブ名）</param>
+    /// <returns>調整されたファイル名（複数ルートアイテムの場合は defaultFileName、単一ルートアイテムの場合は空文字列）</returns>
     private static string GetAdjustedFileName(string archivePath, string defaultFileName)
     {
         try
@@ -91,14 +91,15 @@ public class ArchiveExtractor
             if (!archiveContents.Any())
                 return defaultFileName;
 
-            // 二重フォルダ防止が必要かどうかをチェック
-            if (ShouldPreventDoubleFolders(archiveContents))
+            // アーカイブ名のフォルダを作成すべきかをチェック
+            if (ShouldCreateArchiveFolder(archiveContents))
             {
-                Logger.Log("二重フォルダ防止が必要: 空文字列を返します");
-                return "";
+                Logger.Log("複数ルートアイテム検出: アーカイブ名のフォルダを作成します");
+                return defaultFileName;
             }
 
-            return defaultFileName;
+            Logger.Log("単一ルートアイテム検出: フォルダの作成をスキップします");
+            return "";
         }
         catch (Exception ex)
         {
@@ -108,20 +109,20 @@ public class ArchiveExtractor
     }
 
     /// <summary>
-    /// 二重フォルダ防止が必要かどうかをチェック
-    /// 新仕様：ルートレベルのアイテム数が1つだけの場合、二重フォルダ防止が必要
+    /// アーカイブ名のフォルダを作成すべきかどうかをチェック
+    /// 新仕様：ルートレベルのアイテム数が2つ以上の場合、アーカイブ名のフォルダを作成
     /// </summary>
     /// <param name="archiveContents">アーカイブの全アイテムパス</param>
-    /// <returns>二重フォルダ防止が必要な場合はtrue</returns>
-    private static bool ShouldPreventDoubleFolders(List<string> archiveContents)
+    /// <returns>アーカイブ名のフォルダを作成すべき場合はtrue</returns>
+    private static bool ShouldCreateArchiveFolder(List<string> archiveContents)
     {
         // ルートレベルのアイテムを取得
         var rootItems = GetRootLevelItems(archiveContents);
 
-        // ルートレベルのアイテム数が1つだけの場合、二重フォルダ防止が必要
-        var shouldPrevent = rootItems.Count == 1;
+        // ルートレベルのアイテム数が2つ以上の場合、アーカイブ名のフォルダを作成
+        var shouldCreate = rootItems.Count >= 2;
 
-        Logger.Log($"ShouldPreventDoubleFolders: ルートアイテム数={rootItems.Count}, 防止必要={shouldPrevent}");
+        Logger.Log($"ShouldCreateArchiveFolder: ルートアイテム数={rootItems.Count}, フォルダ作成={shouldCreate}");
         if (rootItems.Count > 0)
         {
             foreach (var item in rootItems.Take(3))
@@ -134,7 +135,7 @@ public class ArchiveExtractor
             }
         }
 
-        return shouldPrevent;
+        return shouldCreate;
     }
 
     /// <summary>
@@ -287,7 +288,7 @@ public class ArchiveExtractor
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 二重フォルダ防止のための一時展開パスを確認
+            // ルートフォルダのリフトアップが必要かどうかを確認
             tempExtractionPath = GetTemporaryExtractionPath(archivePath, outputPath);
             var useTempPath = !string.IsNullOrEmpty(tempExtractionPath) && tempExtractionPath != outputPath;
 
@@ -389,11 +390,12 @@ public class ArchiveExtractor
     }
 
     /// <summary>
-    /// 二重フォルダ防止のための一時展開パスを取得する
+    /// ルートフォルダのリフトアップが必要かどうかを確認し、一時展開パスを取得する
+    /// ルートレベルのアイテムが1つだけの場合、そのアイテムの中身をリフトアップするため一時パスを返す
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
     /// <param name="outputPath">展開先ディレクトリのパス</param>
-    /// <returns>一時展開パス、または二重フォルダ防止が不要な場合は outputPath と同じ値</returns>
+    /// <returns>一時展開パス、またはリフトアップが不要な場合は outputPath と同じ値</returns>
     private static string GetTemporaryExtractionPath(string archivePath, string outputPath)
     {
         try
@@ -406,18 +408,22 @@ public class ArchiveExtractor
             if (!archiveContents.Any())
                 return outputPath;
 
-            // 二重フォルダ防止が必要かどうかをチェック
-            if (ShouldPreventDoubleFolders(archiveContents))
+            // ルートレベルのアイテムを取得
+            var rootItems = GetRootLevelItems(archiveContents);
+
+            // ルートレベルのアイテムが1つだけの場合、リフトアップが必要
+            if (rootItems.Count == 1)
             {
                 // 一時ディレクトリを作成（outputPath の親ディレクトリに）
                 var parentDir = Path.GetDirectoryName(outputPath) ?? Path.GetTempPath();
                 var tempDirName = Path.GetFileName(outputPath) + "_temp_" + Guid.NewGuid().ToString().Substring(0, 8);
                 var tempPath = Path.Combine(parentDir, tempDirName);
 
-                Logger.Log($"一時展開パスを返す: {tempPath}");
+                Logger.Log($"ルートフォルダのリフトアップが必要です。一時展開パスを返す: {tempPath}");
                 return tempPath;
             }
 
+            Logger.Log($"複数のルートアイテムが検出されました。リフトアップは不要です");
             return outputPath;
         }
         catch (Exception ex)
