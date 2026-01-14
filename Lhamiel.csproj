@@ -15,40 +15,16 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <Version>1.0.5</Version>
-    <FileVersion>1.0.5.0</FileVersion>
-    <AssemblyVersion>1.0.5.0</AssemblyVersion>
-    <AssemblyInformationalVersion>1.0.5</AssemblyInformationalVersion>
-    <AssemblyName>Lhamiel</AssemblyName>
     <AssemblyTitle>Lhamiel</AssemblyTitle>
     <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
     <AssemblyCompany>1llum1n4t1s</AssemblyCompany>
     <AssemblyProduct>Lhamiel</AssemblyProduct>
     <AssemblyCopyright>Copyright © 2025-2026 ゆろち</AssemblyCopyright>
-    <!-- Windows固有のAPI使用を明示的に指定 -->
-    <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <!-- AssemblyInfoの自動生成を無効化（手動で制御） -->
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <!-- パフォーマンス最適化設定 -->
-    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
-    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
-    <EnableUnsafeUTF7Encoding>false</EnableUnsafeUTF7Encoding>
-    <EventSourceSupport>false</EventSourceSupport>
-    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
-    <InvariantGlobalization>false</InvariantGlobalization>
-    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
-    <!-- SourceLink を無効化してバージョンにハッシュが付かないようにする -->
-    <SourceLink>false</SourceLink>
-    <PublishRepositoryUrl>false</PublishRepositoryUrl>
-    <EmbedUntrackedSources>false</EmbedUntrackedSources>
-    <ContinuousIntegrationBuild>false</ContinuousIntegrationBuild>
-    <Deterministic>false</Deterministic>
-    <!-- CA1416警告を抑制 -->
     <NoWarn>CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="App.xaml.cs" />
     <Compile Include="Util\ArchiveCompressor.cs" />
     <Compile Include="Util\ArchiveConstants.cs" />
@@ -75,7 +51,7 @@
   <ItemGroup>
     <PackageReference Include="7z.Libs" Version="25.1.0" />
     <PackageReference Include="Cube.FileSystem.SevenZip" Version="8.4.1" />
-    <PackageReference Include="log4net" Version="3.0.1" />
+    <PackageReference Include="log4net" Version="3.2.0" />
     <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
   </ItemGroup>
 

@@ -852,7 +852,9 @@ public partial class MainWindow : Window
             // パッケージバージョンをAssemblyInformationalVersionから取得
             var informationalVersionAttribute = assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
                 .FirstOrDefault() as System.Reflection.AssemblyInformationalVersionAttribute;
-            var versionString = informationalVersionAttribute?.InformationalVersion ?? "1.0.0";
+            var rawVersion = informationalVersionAttribute?.InformationalVersion ?? "1.0.0";
+            // ハッシュ部分（+ 以降）を削除して整形
+            var versionString = rawVersion.Contains('+') ? rawVersion.Split('+')[0] : rawVersion;
 
             // バージョン情報を設定
             VersionTextBlock.Text = versionString;
