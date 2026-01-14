@@ -5,6 +5,7 @@ using Cube.FileSystem;
 using System.Threading;
 using System.Text;
 using Amiga.FileFormats.LHA;
+using System.Collections.Generic;
 
 namespace Lhamiel.Util;
 
@@ -27,8 +28,9 @@ public class ArchiveCompressor
             ? Path.GetDirectoryName(sourcePath) ?? "" 
             : outputDirectory;
         var fileName = Path.GetFileNameWithoutExtension(sourcePath);
-        
-        return Path.Combine(directory, $"{fileName}.{extension}");
+        var lowerExtension = extension.ToLowerInvariant();
+
+        return Path.Combine(directory, $"{fileName}.{lowerExtension}");
     }
 
     /// <summary>
@@ -55,6 +57,7 @@ public class ArchiveCompressor
     /// <param name="sourcePaths">圧縮するファイル・フォルダのパス</param>
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="progressCallback">進捗コールバック</param>
+    /// <param name="cancellationToken">キャンセルトークン</param>
     public void CompressFiles(IEnumerable<string> sourcePaths, string outputPath, Action<int>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         var sourceList = sourcePaths.ToList();
@@ -91,7 +94,10 @@ public class ArchiveCompressor
             {
                 // ArchiveWriterを使用して圧縮（形式に応じてオプションを設定）
                 using var writer = CreateArchiveWriter(format.format);
-                // 圧縮対象のファイルとディレクトリを追加
+
+                // ファイルリストを先に準備（並列読み込み対応）
+                var filesToCompress = new List<(string fullPath, string relativePath)>();
+
                 foreach (var sourcePath in sourceList)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -101,22 +107,22 @@ public class ArchiveCompressor
                         // ファイルが除外対象でない場合のみ追加
                         if (!ShouldExcludeFile(sourcePath, excludedPatterns))
                         {
-                            writer.Add(sourcePath);
+                            filesToCompress.Add((sourcePath, sourcePath));
                         }
                     }
                     else if (Directory.Exists(sourcePath))
                     {
                         // ディレクトリの場合、再帰的にファイルを取得して個別に追加
                         var files = GetFilesRecursively(sourcePath, excludedPatterns);
-                        var directoryName = Path.GetFileName(sourcePath);
+                        var parentDir = Path.GetDirectoryName(sourcePath) ?? "";
 
                         foreach (var file in files)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
 
                             // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
-                            var relativePath = Path.GetRelativePath(Path.GetDirectoryName(sourcePath) ?? "", file);
-                            writer.Add(file, relativePath);
+                            var relativePath = Path.GetRelativePath(parentDir, file);
+                            filesToCompress.Add((file, relativePath));
                         }
                     }
                     else
@@ -125,8 +131,20 @@ public class ArchiveCompressor
                     }
                 }
 
-                // 進捗報告を設定
-                progressCallback?.Invoke(0);
+                // ファイルを圧縮アーカイブに追加
+                for (int i = 0; i < filesToCompress.Count; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var (fullPath, relativePath) = filesToCompress[i];
+                    writer.Add(fullPath, relativePath);
+
+                    var progress = (int)((double)i / filesToCompress.Count * 50);
+                    progressCallback?.Invoke(progress);
+                }
+
+                // 進捗報告を設定（圧縮開始時点で 50%）
+                progressCallback?.Invoke(50);
 
                 // 圧縮を実行
                 outputCreated = true;
@@ -135,7 +153,7 @@ public class ArchiveCompressor
                 // 完了時の進捗報告
                 progressCallback?.Invoke(100);
 
-                Logger.Log($"圧縮完了: {outputPath}");
+                Logger.Log($"圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
             }
         }
         catch (OperationCanceledException)

@@ -4,6 +4,7 @@ using System.Threading;
 using System.IO;
 using System.Linq;
 using System.Windows;
+using System.Collections.Generic;
 
 namespace Lhamiel.Util;
 
@@ -139,44 +140,99 @@ public static class ArchiveProcessor
     }
 
     /// <summary>
-    /// 複数のアーカイブファイルの展開処理を実行
+    /// 複数のアーカイブファイルの展開処理を実行（並列処理対応）
     /// </summary>
     /// <param name="filePaths">展開するファイルのパスの配列</param>
     /// <param name="outputDir">出力ディレクトリ</param>
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
     /// <param name="progressWindow">進行状況ウィンドウ</param>
+    /// <param name="cancellationToken">キャンセルトークン</param>
     /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
     public static async Task<bool> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
     {
         try
         {
-            var successCount = 0;
             var totalCount = filePaths.Length;
+            var successCount = 0;
+            var failedFiles = new List<string>();
+            var lockObject = new object();
 
-            foreach (var filePath in filePaths)
+            // 同時実行数を CPU コア数に制限（メモリ保護）
+            var maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 4);
+            var semaphore = new System.Threading.SemaphoreSlim(maxDegreeOfParallelism);
+
+            Logger.Log($"複数ファイル展開開始: {totalCount}個のファイル、最大並列度={maxDegreeOfParallelism}");
+
+            var tasks = filePaths.Select(async (filePath, index) =>
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken);
-                if (success)
+                await semaphore.WaitAsync(cancellationToken);
+                try
                 {
-                    successCount++;
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken);
+
+                    lock (lockObject)
+                    {
+                        if (success)
+                        {
+                            successCount++;
+                        }
+                        else
+                        {
+                            failedFiles.Add(Path.GetFileName(filePath));
+                        }
+
+                        var progress = (int)((double)(index + 1) / totalCount * 100);
+                        progressWindow?.UpdateProgress(progress, $"展開中: {Path.GetFileName(filePath)}");
+                    }
                 }
+                catch (OperationCanceledException)
+                {
+                    Logger.Log($"ファイル展開がキャンセルされました: {filePath}");
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogException($"ファイル展開でエラーが発生: {filePath}", ex);
+                    lock (lockObject)
+                    {
+                        failedFiles.Add(Path.GetFileName(filePath));
+                    }
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            }).ToList();
+
+            try
+            {
+                await Task.WhenAll(tasks);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Log("複数ファイル展開処理が全体でキャンセルされました");
+                throw;
             }
 
             // 完了メッセージを表示
             if (successCount == totalCount)
             {
                 progressWindow?.SetCompleted("展開が完了しました。");
+                Logger.Log($"複数ファイル展開完了: {successCount}/{totalCount}個の展開に成功");
                 await Task.Delay(1000);
                 progressWindow?.Close();
                 return true;
             }
             else
             {
-                progressWindow?.SetCompleted($"{successCount}/{totalCount}個のファイルの展開が完了しました。");
+                var failureMessage = failedFiles.Any() ? $"\n失敗: {string.Join(", ", failedFiles)}" : "";
+                progressWindow?.SetCompleted($"{successCount}/{totalCount}個のファイルの展開が完了しました。{failureMessage}");
+                Logger.Log($"複数ファイル展開完了: {successCount}成功, {totalCount - successCount}失敗");
                 await Task.Delay(1000);
                 progressWindow?.Close();
-                return false;
+                return successCount > 0;
             }
         }
         catch (OperationCanceledException)
@@ -301,45 +357,100 @@ public static class ArchiveProcessor
     }
 
     /// <summary>
-    /// 複数のフォルダの圧縮処理を実行
+    /// 複数のフォルダの圧縮処理を実行（並列処理対応）
     /// </summary>
     /// <param name="folderPaths">圧縮するフォルダのパスの配列</param>
     /// <param name="outputDir">出力ディレクトリ</param>
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
     /// <param name="format">圧縮形式</param>
     /// <param name="progressWindow">進行状況ウィンドウ</param>
+    /// <param name="cancellationToken">キャンセルトークン</param>
     /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
     public static async Task<bool> CompressFoldersAsync(string[] folderPaths, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
     {
         try
         {
-            var successCount = 0;
             var totalCount = folderPaths.Length;
+            var successCount = 0;
+            var failedFolders = new List<string>();
+            var lockObject = new object();
 
-            foreach (var folderPath in folderPaths)
+            // 同時実行数を CPU コア数に制限（メモリ保護）
+            var maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 4);
+            var semaphore = new System.Threading.SemaphoreSlim(maxDegreeOfParallelism);
+
+            Logger.Log($"複数フォルダ圧縮開始: {totalCount}個のフォルダ、最大並列度={maxDegreeOfParallelism}、形式={format}");
+
+            var tasks = folderPaths.Select(async (folderPath, index) =>
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, cancellationToken);
-                if (success)
+                await semaphore.WaitAsync(cancellationToken);
+                try
                 {
-                    successCount++;
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, cancellationToken);
+
+                    lock (lockObject)
+                    {
+                        if (success)
+                        {
+                            successCount++;
+                        }
+                        else
+                        {
+                            failedFolders.Add(Path.GetFileName(folderPath));
+                        }
+
+                        var progress = (int)((double)(index + 1) / totalCount * 100);
+                        progressWindow?.UpdateProgress(progress, $"圧縮中: {Path.GetFileName(folderPath)}");
+                    }
                 }
+                catch (OperationCanceledException)
+                {
+                    Logger.Log($"フォルダ圧縮がキャンセルされました: {folderPath}");
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogException($"フォルダ圧縮でエラーが発生: {folderPath}", ex);
+                    lock (lockObject)
+                    {
+                        failedFolders.Add(Path.GetFileName(folderPath));
+                    }
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            }).ToList();
+
+            try
+            {
+                await Task.WhenAll(tasks);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Log("複数フォルダ圧縮処理が全体でキャンセルされました");
+                throw;
             }
 
             // 完了メッセージを表示
             if (successCount == totalCount)
             {
                 progressWindow?.SetCompleted("圧縮が完了しました。");
+                Logger.Log($"複数フォルダ圧縮完了: {successCount}/{totalCount}個の圧縮に成功");
                 await Task.Delay(1000);
                 progressWindow?.Close();
                 return true;
             }
             else
             {
-                progressWindow?.SetCompleted($"{successCount}/{totalCount}個のフォルダの圧縮が完了しました。");
+                var failureMessage = failedFolders.Any() ? $"\n失敗: {string.Join(", ", failedFolders)}" : "";
+                progressWindow?.SetCompleted($"{successCount}/{totalCount}個のフォルダの圧縮が完了しました。{failureMessage}");
+                Logger.Log($"複数フォルダ圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
                 await Task.Delay(1000);
                 progressWindow?.Close();
-                return false;
+                return successCount > 0;
             }
         }
         catch (OperationCanceledException)

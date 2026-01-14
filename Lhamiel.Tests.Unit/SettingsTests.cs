@@ -15,7 +15,7 @@ public class SettingsTests
         var settings = new Settings();
 
         // Assert
-        Assert.Equal("zip", settings.CompressionFormat);
+        Assert.Equal("ZIP", settings.CompressionFormat);
         Assert.False(settings.ExtractionOutputToSameDirectory);
         Assert.False(settings.CompressionOutputToSameDirectory);
         Assert.True(settings.EnableShortcutCreation);
@@ -43,7 +43,7 @@ public class SettingsTests
         settings.ResetToDefaults();
 
         // Assert
-        Assert.Equal("zip", settings.CompressionFormat);
+        Assert.Equal("ZIP", settings.CompressionFormat);
         Assert.False(settings.ExtractionOutputToSameDirectory);
         Assert.False(settings.CompressionOutputToSameDirectory);
         Assert.True(settings.EnableShortcutCreation);
@@ -53,12 +53,12 @@ public class SettingsTests
     }
 
     [Theory]
-    [InlineData("zip", true)]
+    [InlineData("ZIP", true)]
     [InlineData("7z", true)]
-    [InlineData("tar", true)]
-    [InlineData("lha", true)]
-    [InlineData("rar", false)]
-    [InlineData("gz", false)]
+    [InlineData("TAR", true)]
+    [InlineData("LHA", true)]
+    [InlineData("RAR", false)]
+    [InlineData("GZ", false)]
     [InlineData("unknown", false)]
     public void SupportedCompressionFormats_ContainsExpectedFormats(string format, bool shouldBeSupported)
     {
@@ -70,9 +70,9 @@ public class SettingsTests
     }
 
     [Theory]
-    [InlineData("zip", true)]
+    [InlineData("ZIP", true)]
     [InlineData("7z", true)]
-    [InlineData("rar", true)]
+    [InlineData("RAR", true)]
     [InlineData("unknown", false)]
     public void SupportedExtractionFormats_ContainsExpectedFormats(string format, bool shouldBeSupported)
     {
@@ -84,10 +84,10 @@ public class SettingsTests
     }
 
     [Theory]
-    [InlineData("rar", true)]
-    [InlineData("arj", true)]
-    [InlineData("z", true)]
-    [InlineData("zip", false)]
+    [InlineData("RAR", true)]
+    [InlineData("ARJ", true)]
+    [InlineData("Z", true)]
+    [InlineData("ZIP", false)]
     [InlineData("7z", false)]
     public void ExtractOnlyFormats_ContainsExpectedFormats(string format, bool shouldBeExtractOnly)
     {
