@@ -78,6 +78,17 @@ public class Settings
     public bool OpenCompressionOutputFolder { get; set; } = true;
 
     /// <summary>
+    /// 圧縮時に除外するファイル・フォルダのパターン
+    /// </summary>
+    public List<string> ExcludedFilePatterns { get; set; } = new List<string>
+    {
+        ".DS_Store",
+        "Thumbs.db",
+        "__MACOSX",
+        "desktop.ini"
+    };
+
+    /// <summary>
     /// サポートされている圧縮形式の一覧
     /// </summary>
     public static readonly string[] SupportedCompressionFormats = { "7z", "xz", "bz2", "gz", "tar", "zip", "wim", "cab" };
