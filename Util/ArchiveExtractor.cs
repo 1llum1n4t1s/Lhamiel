@@ -152,6 +152,11 @@ public class ArchiveExtractor
                 {
                     rootItems[rootName] = isDirectory;
                 }
+                else
+                {
+                    // isDirectory が true の場合は true に更新（ファイルだと思っていたものがディレクトリだった場合）
+                    rootItems[rootName] = rootItems[rootName] || isDirectory;
+                }
             }
         }
 
@@ -204,6 +209,11 @@ public class ArchiveExtractor
                 if (!items.ContainsKey(itemName))
                 {
                     items[itemName] = isDirectory;
+                }
+                else
+                {
+                    // isDirectory が true の場合は true に更新（ファイルだと思っていたものがディレクトリだった場合）
+                    items[itemName] = items[itemName] || isDirectory;
                 }
             }
         }

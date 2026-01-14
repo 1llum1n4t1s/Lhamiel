@@ -144,4 +144,55 @@ public class ArchiveExtractorTests
                 Directory.Delete(tempDir, true);
         }
     }
+
+    [Fact]
+    public void GetOutputDirectory_WithDoubleFolderStructure_PreventsDoubleFolders()
+    {
+        // Arrange
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            // 二重フォルダ構造のZIPファイルを作成
+            var zipPath = CreateTestZipWithDoubleFolder(tempDir);
+            var outputDir = Path.Combine(tempDir, "output");
+
+            // Act
+            var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
+
+            // Assert
+            // 二重フォルダ防止により、outputDir が直接返されるはず
+            Assert.Equal(outputDir, result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public void GetOutputDirectory_WithMultipleFoldersInRoot_CreatesFolder()
+    {
+        // Arrange
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            // 複数フォルダのZIPファイルを作成
+            var zipPath = CreateTestZipWithMultipleFolders(tempDir);
+            var outputDir = Path.Combine(tempDir, "output");
+
+            // Act
+            var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
+
+            // Assert
+            // 複数フォルダの場合は、通常通りフォルダを作成
+            Assert.Contains("ProjectB", result);
+            Assert.StartsWith(outputDir, result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
 }
