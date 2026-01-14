@@ -269,7 +269,7 @@ public static class ArchiveProcessor
             }
 
             // 圧縮形式の確認
-            var supportedFormats = new[] { "zip", "7z", "tar", "gz", "bz2", "xz", "cab", "wim", "lha" };
+            var supportedFormats = new[] { "zip", "7z", "tar", "gz", "bz2", "xz", "cab", "wim", "lzh" };
             if (!supportedFormats.Contains(format.ToLowerInvariant()))
             {
                 Logger.Log($"サポートされていない圧縮形式です: {format}");
