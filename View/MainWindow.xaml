@@ -302,14 +302,10 @@
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
                                     <TextBlock Text="バージョン:" Grid.Row="0" Grid.Column="0" FontWeight="SemiBold" Margin="0,4" />
                                     <TextBlock x:Name="VersionTextBlock" Grid.Row="0" Grid.Column="1" Margin="0,4" />
-
-                                    <TextBlock Text="リリース日:" Grid.Row="1" Grid.Column="0" FontWeight="SemiBold" Margin="0,4" />
-                                    <TextBlock x:Name="ReleaseDateTextBlock" Grid.Row="1" Grid.Column="1" Margin="0,4" />
                                 </Grid>
                             </StackPanel>
                         </Border>
