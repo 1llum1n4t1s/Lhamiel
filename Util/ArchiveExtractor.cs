@@ -90,28 +90,11 @@ public class ArchiveExtractor
             if (!archiveContents.Any())
                 return defaultFileName;
 
-            // ルートレベルのアイテムを取得（パスの最初のセパレータまでの要素）
-            var rootItems = GetRootLevelItems(archiveContents);
-
-            Logger.Log($"ルートレベルのアイテム数: {rootItems.Count}");
-
-            // ルートに単一のフォルダのみがある場合
-            if (rootItems.Count == 1 && rootItems[0].IsDirectory)
+            // 二重フォルダ防止が必要かどうかをチェック（再帰的）
+            if (ShouldPreventDoubleFolders(archiveContents, defaultFileName))
             {
-                var rootDirName = rootItems[0].Name;
-
-                Logger.Log($"ルートにフォルダが1つのみ: {rootDirName}");
-
-                // ルートフォルダ内のアイテムをチェック
-                var itemsInRootFolder = GetItemsInFolder(archiveContents, rootDirName);
-
-                Logger.Log($"ルートフォルダ内のアイテム数: {itemsInRootFolder.Count}");
-
-                // ルートフォルダ内に複数のアイテムがある場合、二重フォルダを避けるため空文字列を返す
-                if (itemsInRootFolder.Count > 0)
-                {
-                    return "";
-                }
+                Logger.Log("二重フォルダ防止が必要: 空文字列を返します");
+                return "";
             }
 
             return defaultFileName;
@@ -121,6 +104,97 @@ public class ArchiveExtractor
             Logger.Log($"アーカイブ内容のチェックでエラーが発生しました: {archivePath}, {ex.Message}");
             return defaultFileName;
         }
+    }
+
+    /// <summary>
+    /// 二重フォルダ防止が必要かどうかをチェック（再帰的に同名フォルダをチェック）
+    /// </summary>
+    /// <param name="archiveContents">アーカイブの全アイテムパス</param>
+    /// <param name="expectedFolderName">期待されるフォルダ名（アーカイブ名）</param>
+    /// <returns>二重フォルダ防止が必要な場合はtrue</returns>
+    private static bool ShouldPreventDoubleFolders(List<string> archiveContents, string expectedFolderName)
+    {
+        return ShouldPreventDoubleFoldersRecursive(archiveContents, expectedFolderName, "");
+    }
+
+    /// <summary>
+    /// 二重フォルダ防止が必要かどうかを再帰的にチェック
+    /// </summary>
+    /// <param name="archiveContents">アーカイブの全アイテムパス</param>
+    /// <param name="expectedFolderName">期待されるフォルダ名（アーカイブ名）</param>
+    /// <param name="currentPath">現在のパス（再帰的に深くなる）</param>
+    /// <returns>二重フォルダ防止が必要な場合はtrue</returns>
+    private static bool ShouldPreventDoubleFoldersRecursive(List<string> archiveContents, string expectedFolderName, string currentPath)
+    {
+        Logger.Log($"ShouldPreventDoubleFoldersRecursive: currentPath='{currentPath}'");
+
+        // 現在のパスでのアイテムを取得
+        string? folderName = null;
+        bool isDirectory = false;
+        int itemCount = 0;
+
+        if (string.IsNullOrEmpty(currentPath))
+        {
+            // ルートレベルのアイテムを取得
+            var rootItems = GetRootLevelItems(archiveContents);
+            itemCount = rootItems.Count;
+
+            if (rootItems.Count == 1)
+            {
+                folderName = rootItems[0].Name;
+                isDirectory = rootItems[0].IsDirectory;
+            }
+        }
+        else
+        {
+            // 指定されたフォルダ内のアイテムを取得
+            var items = GetItemsInFolder(archiveContents, currentPath);
+            itemCount = items.Count;
+
+            if (items.Count == 1)
+            {
+                folderName = items[0].Path;
+                isDirectory = items[0].IsDirectory;
+            }
+        }
+
+        Logger.Log($"  itemCount={itemCount}, folderName={folderName}, isDirectory={isDirectory}");
+
+        // アイテムが1つもない場合は防止不要
+        if (itemCount == 0)
+            return false;
+
+        // アイテムが1つだけで、それがディレクトリの場合
+        if (itemCount == 1 && isDirectory && !string.IsNullOrEmpty(folderName))
+        {
+            Logger.Log($"  単一フォルダ: {folderName}");
+
+            // フォルダ名が期待される名前と一致する場合（大文字小文字を区別しない）
+            if (string.Equals(folderName, expectedFolderName, StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.Log($"  フォルダ名が一致: {folderName} == {expectedFolderName}");
+
+                // 次のパスを構築
+                var nextPath = string.IsNullOrEmpty(currentPath)
+                    ? folderName
+                    : currentPath + "/" + folderName;
+
+                // 再帰的にチェック
+                return ShouldPreventDoubleFoldersRecursive(archiveContents, expectedFolderName, nextPath);
+            }
+            else
+            {
+                // フォルダ名が異なる場合、ここで終了
+                // 親階層で同名フォルダがあったなら、二重フォルダ防止が必要
+                Logger.Log($"  フォルダ名が不一致: {folderName} != {expectedFolderName}");
+                return !string.IsNullOrEmpty(currentPath);
+            }
+        }
+
+        // 複数のアイテムがある場合、ここで終了
+        // 親階層で同名フォルダがあったなら、二重フォルダ防止が必要
+        Logger.Log($"  複数アイテムまたはファイル: itemCount={itemCount}");
+        return !string.IsNullOrEmpty(currentPath);
     }
 
     /// <summary>
@@ -449,28 +523,19 @@ public class ArchiveExtractor
             if (!archiveContents.Any())
                 return outputPath;
 
-            // ルートレベルのアイテムを取得
-            var rootItems = GetRootLevelItems(archiveContents);
+            // アーカイブファイル名（拡張子なし）を取得
+            var expectedFolderName = Path.GetFileNameWithoutExtension(archivePath);
 
-            // ルートに単一のフォルダのみがある場合
-            if (rootItems.Count == 1 && rootItems[0].IsDirectory)
+            // 二重フォルダ防止が必要かどうかをチェック（再帰的）
+            if (ShouldPreventDoubleFolders(archiveContents, expectedFolderName))
             {
-                var rootDirName = rootItems[0].Name;
+                // 一時ディレクトリを作成（outputPath の親ディレクトリに）
+                var parentDir = Path.GetDirectoryName(outputPath) ?? Path.GetTempPath();
+                var tempDirName = Path.GetFileName(outputPath) + "_temp_" + Guid.NewGuid().ToString().Substring(0, 8);
+                var tempPath = Path.Combine(parentDir, tempDirName);
 
-                // ルートフォルダ内のアイテムをチェック
-                var itemsInRootFolder = GetItemsInFolder(archiveContents, rootDirName);
-
-                // ルートフォルダ内に複数のアイテムがある場合、一時パスを使用
-                if (itemsInRootFolder.Count > 0)
-                {
-                    // 一時ディレクトリを作成（outputPath の親ディレクトリに）
-                    var parentDir = Path.GetDirectoryName(outputPath) ?? Path.GetTempPath();
-                    var tempDirName = Path.GetFileName(outputPath) + "_temp_" + Guid.NewGuid().ToString().Substring(0, 8);
-                    var tempPath = Path.Combine(parentDir, tempDirName);
-
-                    Logger.Log($"一時展開パスを返す: {tempPath}");
-                    return tempPath;
-                }
+                Logger.Log($"一時展開パスを返す: {tempPath}");
+                return tempPath;
             }
 
             return outputPath;
@@ -483,7 +548,7 @@ public class ArchiveExtractor
     }
 
     /// <summary>
-    /// 一時展開パスからファイルをリフトアップして本来のパスに配置する
+    /// 一時展開パスからファイルをリフトアップして本来のパスに配置する（再帰的に同名フォルダを辿る）
     /// </summary>
     /// <param name="tempPath">一時展開パス</param>
     /// <param name="outputPath">本来の展開先パス</param>
@@ -493,59 +558,93 @@ public class ArchiveExtractor
         {
             Logger.Log($"ファイルをリフトアップ開始: {tempPath} -> {outputPath}");
 
-            // 一時パス直下のフォルダを取得
-            var directories = Directory.GetDirectories(tempPath);
+            // 再帰的に最深の有効なフォルダを見つける
+            var sourcePath = FindDeepestValidFolder(tempPath, Path.GetFileName(outputPath));
 
-            if (directories.Length == 1)
+            Logger.Log($"リフトアップ元パス: {sourcePath}");
+
+            // 本来のパスがまだ存在しない場合は作成
+            if (!Directory.Exists(outputPath))
             {
-                var innerDirPath = directories[0];
-                var innerDirName = Path.GetFileName(innerDirPath);
-
-                Logger.Log($"一時パス内のフォルダ: {innerDirName}");
-
-                // 本来のパスがまだ存在しない場合は作成
-                if (!Directory.Exists(outputPath))
-                {
-                    Directory.CreateDirectory(outputPath);
-                }
-
-                // 内部フォルダのすべてのファイルとフォルダを本来のパスに移動
-                foreach (var file in Directory.GetFiles(innerDirPath))
-                {
-                    var destFile = Path.Combine(outputPath, Path.GetFileName(file));
-                    RemoveReadOnlyAttributes(file);
-
-                    if (File.Exists(destFile))
-                    {
-                        File.Delete(destFile);
-                    }
-
-                    File.Move(file, destFile);
-                    Logger.Log($"ファイルを移動: {file} -> {destFile}");
-                }
-
-                foreach (var dir in Directory.GetDirectories(innerDirPath))
-                {
-                    var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
-
-                    if (Directory.Exists(destDir))
-                    {
-                        RemoveReadOnlyAttributes(destDir);
-                        Directory.Delete(destDir, true);
-                    }
-
-                    Directory.Move(dir, destDir);
-                    Logger.Log($"ディレクトリを移動: {dir} -> {destDir}");
-                }
-
-                Logger.Log("ファイルのリフトアップが完了しました");
+                Directory.CreateDirectory(outputPath);
             }
+
+            // 見つかったフォルダのすべてのファイルとフォルダを本来のパスに移動
+            foreach (var file in Directory.GetFiles(sourcePath))
+            {
+                var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                RemoveReadOnlyAttributes(file);
+
+                if (File.Exists(destFile))
+                {
+                    File.Delete(destFile);
+                }
+
+                File.Move(file, destFile);
+                Logger.Log($"ファイルを移動: {file} -> {destFile}");
+            }
+
+            foreach (var dir in Directory.GetDirectories(sourcePath))
+            {
+                var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+
+                if (Directory.Exists(destDir))
+                {
+                    RemoveReadOnlyAttributes(destDir);
+                    Directory.Delete(destDir, true);
+                }
+
+                Directory.Move(dir, destDir);
+                Logger.Log($"ディレクトリを移動: {dir} -> {destDir}");
+            }
+
+            Logger.Log("ファイルのリフトアップが完了しました");
         }
         catch (Exception ex)
         {
             Logger.Log($"ファイルのリフトアップでエラーが発生しました: {ex.Message}");
             throw;
         }
+    }
+
+    /// <summary>
+    /// 再帰的に最深の有効なフォルダを見つける（同名フォルダのネストを辿る）
+    /// </summary>
+    /// <param name="currentPath">現在のパス</param>
+    /// <param name="expectedFolderName">期待されるフォルダ名</param>
+    /// <returns>最深の有効なフォルダのパス</returns>
+    private static string FindDeepestValidFolder(string currentPath, string expectedFolderName)
+    {
+        Logger.Log($"FindDeepestValidFolder: currentPath={currentPath}, expectedFolderName={expectedFolderName}");
+
+        var directories = Directory.GetDirectories(currentPath);
+
+        // サブディレクトリが1つだけの場合
+        if (directories.Length == 1)
+        {
+            var innerDirPath = directories[0];
+            var innerDirName = Path.GetFileName(innerDirPath);
+
+            Logger.Log($"  サブディレクトリ: {innerDirName}");
+
+            // フォルダ名が期待される名前と一致する場合（大文字小文字を区別しない）
+            if (string.Equals(innerDirName, expectedFolderName, StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.Log($"  フォルダ名が一致: {innerDirName} == {expectedFolderName}、さらに深く探索");
+                // 再帰的にさらに深く探索
+                return FindDeepestValidFolder(innerDirPath, expectedFolderName);
+            }
+            else
+            {
+                // フォルダ名が異なる場合、または複数のアイテムがある場合、このフォルダの中身をリフトアップ
+                Logger.Log($"  フォルダ名が不一致: {innerDirName} != {expectedFolderName}、このフォルダの中身をリフトアップ");
+                return innerDirPath;
+            }
+        }
+
+        // サブディレクトリが0個、または複数ある場合は現在のパスを返す
+        Logger.Log($"  サブディレクトリ数={directories.Length}、現在のパスを返す");
+        return currentPath;
     }
 
     /// <summary>
