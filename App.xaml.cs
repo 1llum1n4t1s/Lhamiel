@@ -287,7 +287,7 @@ public partial class App : Application
                 // 展開後にフォルダを開く設定を確認
                 if (settings.OpenExtractionOutputFolder)
                 {
-                    FolderOpener.OpenFolder(outputDir);
+                    OpenExtractedFolder(filePath, outputDir, outputToSameDirectory);
                 }
             }
             else
@@ -337,9 +337,9 @@ public partial class App : Application
 
             progressWindow.SetFileName(outputPath);
 
-            var progress = new Progress<int>(percentage =>
+            var progress = new Progress<ProgressInfo>(info =>
             {
-                progressWindow.UpdateProgress(percentage, "ファイルを圧縮中...");
+                progressWindow.UpdateProgress(info.Percentage, info.Status);
             });
 
             await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationTokenSource.Token);
@@ -369,6 +369,18 @@ public partial class App : Application
             Logger.LogException("ファイル圧縮処理でエラーが発生", ex);
             MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// 展開されたフォルダを開く
+    /// </summary>
+    private void OpenExtractedFolder(string archivePath, string outputDir, bool outputToSameDirectory)
+    {
+        var extractionPath = ArchiveExtractor.GetOutputDirectory(archivePath, outputDir, outputToSameDirectory);
+        if (!string.IsNullOrWhiteSpace(extractionPath) && Directory.Exists(extractionPath))
+        {
+            FolderOpener.OpenFolder(extractionPath);
         }
     }
 

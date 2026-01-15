@@ -130,7 +130,7 @@
                         </Grid>
                     </GroupBox>
 
-                    <GroupBox Header="展開後の動作設定" Margin="0,12,0,0">
+                    <GroupBox Header="展開後に保存先のフォルダを開く" Margin="0,12,0,0">
                         <StackPanel Margin="12">
                             <CheckBox x:Name="OpenExtractionOutputFolderCheckBox"
                                       Content="展開後に保存先のフォルダを開く"

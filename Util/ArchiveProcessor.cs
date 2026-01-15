@@ -69,9 +69,9 @@ public static class ArchiveProcessor
             cancellationToken.ThrowIfCancellationRequested();
 
             // 展開処理を実行
-            var progress = new Progress<int>(percentage =>
+            var progress = new Progress<ProgressInfo>(info =>
             {
-                progressWindow?.UpdateProgress(percentage, "ファイルを展開中...");
+                progressWindow?.UpdateProgress(info.Percentage, info.Status);
             });
 
             if (enablePartialExtraction)
@@ -319,9 +319,9 @@ public static class ArchiveProcessor
             cancellationToken.ThrowIfCancellationRequested();
 
             // 圧縮処理を実行
-            var progress = new Progress<int>(percentage =>
+            var progress = new Progress<ProgressInfo>(info =>
             {
-                progressWindow?.UpdateProgress(percentage, "フォルダを圧縮中...");
+                progressWindow?.UpdateProgress(info.Percentage, info.Status);
             });
 
             Logger.Log($"ArchiveCompressor.CompressAsyncを呼び出し: folderPath={folderPath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
