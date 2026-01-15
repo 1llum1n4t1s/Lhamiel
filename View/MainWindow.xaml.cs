@@ -219,8 +219,9 @@ public partial class MainWindow : Window
 
                     progressWindow.SetFileName(outputPath);
 
-                    var progress = new Progress<int>(percentage => {
-                        progressWindow.UpdateProgress(percentage, "ファイルを圧縮中...");
+                    var progress = new Progress<ProgressInfo>(info =>
+                    {
+                        progressWindow.UpdateProgress(info.Percentage, info.Status);
                     });
 
                     await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationTokenSource.Token);
@@ -285,7 +286,7 @@ public partial class MainWindow : Window
                 // 展開後にフォルダを開く設定を確認
                 if (_settingsManager.Current.OpenExtractionOutputFolder)
                 {
-                    FolderOpener.OpenFolder(ExtractionOutputPathTextBox.Text);
+                    OpenExtractedFolders(openFileDialog.FileNames, outputDir, outputToSameDirectory);
                 }
             }
         }
@@ -668,7 +669,7 @@ public partial class MainWindow : Window
                 // 展開後にフォルダを開く設定を確認
                 if (_settingsManager.Current.OpenExtractionOutputFolder)
                 {
-                    FolderOpener.OpenFolder(ExtractionOutputPathTextBox.Text);
+                    OpenExtractedFolders(new[] { archivePath }, outputDir, outputToSameDirectory);
                 }
             }
             else
@@ -771,13 +772,13 @@ public partial class MainWindow : Window
                     }
 
                     // 個別の進捗を追跡
-                    var progress = new Progress<int>(percentage =>
+                    var progress = new Progress<ProgressInfo>(info =>
                     {
                         lock (progressLock)
                         {
-                            folderProgress[folderPath] = percentage;
+                            folderProgress[folderPath] = info.Percentage;
                             var totalProgress = folderProgress.Values.Sum() / totalFolders;
-                            progressWindow.UpdateProgress(totalProgress, $"圧縮中... ({completedCount + 1}/{totalFolders})");
+                            progressWindow.UpdateProgress(totalProgress, $"{info.Status} ({completedCount + 1}/{totalFolders})");
                         }
                     });
 
@@ -837,6 +838,28 @@ public partial class MainWindow : Window
         finally
         {
             progressWindow?.Close();
+        }
+    }
+
+    /// <summary>
+    /// 展開されたフォルダを開く
+    /// </summary>
+    private void OpenExtractedFolders(IEnumerable<string> archivePaths, string outputDir, bool outputToSameDirectory)
+    {
+        var openedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var archivePath in archivePaths)
+        {
+            var extractionPath = ArchiveExtractor.GetOutputDirectory(archivePath, outputDir, outputToSameDirectory);
+            if (string.IsNullOrWhiteSpace(extractionPath))
+            {
+                continue;
+            }
+
+            if (Directory.Exists(extractionPath) && openedPaths.Add(extractionPath))
+            {
+                FolderOpener.OpenFolder(extractionPath);
+            }
         }
     }
 

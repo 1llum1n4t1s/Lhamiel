@@ -37,12 +37,12 @@ public class ArchiveCompressor
     /// <param name="format">圧縮形式</param>
     /// <param name="progress">進捗コールバック</param>
     /// <returns>圧縮処理の完了を表すTask</returns>
-    public static async Task CompressAsync(string sourcePath, string outputPath, string format, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+    public static async Task CompressAsync(string sourcePath, string outputPath, string format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
         var compressor = new ArchiveCompressor();
         await Task.Run(() =>
         {
-            var progressCallback = progress != null ? new Action<int>(p => progress.Report(p)) : null;
+            var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
             compressor.CompressFiles(new[] { sourcePath }, outputPath, progressCallback, cancellationToken);
         }, cancellationToken);
     }
@@ -54,7 +54,7 @@ public class ArchiveCompressor
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    public void CompressFiles(IEnumerable<string> sourcePaths, string outputPath, Action<int>? progressCallback = null, CancellationToken cancellationToken = default)
+    public void CompressFiles(IEnumerable<string> sourcePaths, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         var sourceList = sourcePaths.ToList();
         if (!sourceList.Any())
@@ -128,26 +128,26 @@ public class ArchiveCompressor
                 }
 
                 // ファイルを圧縮アーカイブに追加
-                for (int i = 0; i < filesToCompress.Count; i++)
+                var totalFiles = filesToCompress.Count;
+                for (int i = 0; i < totalFiles; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var (fullPath, relativePath) = filesToCompress[i];
                     writer.Add(fullPath, relativePath);
 
-                    var progress = (int)((double)i / filesToCompress.Count * 50);
-                    progressCallback?.Invoke(progress);
+                    var progress = totalFiles > 0 ? (int)Math.Round((i + 1) * 90.0 / totalFiles) : 0;
+                    progressCallback?.Invoke(new ProgressInfo(progress, $"圧縮中: {relativePath}"));
                 }
 
-                // 進捗報告を設定（圧縮開始時点で 50%）
-                progressCallback?.Invoke(50);
+                progressCallback?.Invoke(new ProgressInfo(90, "圧縮中..."));
 
                 // 圧縮を実行
                 outputCreated = true;
                 writer.Save(outputPath);
 
                 // 完了時の進捗報告
-                progressCallback?.Invoke(100);
+                progressCallback?.Invoke(new ProgressInfo(100, "圧縮が完了しました。"));
 
                 Logger.Log($"圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
             }
@@ -183,9 +183,9 @@ public class ArchiveCompressor
     /// <param name="excludedPatterns">除外パターン</param>
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    private static void CompressFilesAsLha(IEnumerable<string> sourcePaths, string outputPath, List<string> excludedPatterns, Action<int>? progressCallback, CancellationToken cancellationToken)
+    private static void CompressFilesAsLha(IEnumerable<string> sourcePaths, string outputPath, List<string> excludedPatterns, Action<ProgressInfo>? progressCallback, CancellationToken cancellationToken)
     {
-        progressCallback?.Invoke(0);
+        progressCallback?.Invoke(new ProgressInfo(0, "圧縮準備中..."));
 
         var sourceList = sourcePaths.ToList();
         var filesToCompress = new List<(string fullPath, string relativePath)>();
@@ -243,8 +243,8 @@ public class ArchiveCompressor
 
                     File.Copy(fullPath, tempFilePath, true);
 
-                    var progress = (int)((double)(i + 1) / filesToCompress.Count * 50);
-                    progressCallback?.Invoke(progress);
+                    var progress = filesToCompress.Count > 0 ? (int)Math.Round((i + 1) * 90.0 / filesToCompress.Count) : 0;
+                    progressCallback?.Invoke(new ProgressInfo(progress, $"圧縮中: {relativePath}"));
                 }
 
                 // LHAWriter.WriteLHAFileを使用してLHA形式で圧縮
@@ -255,7 +255,7 @@ public class ArchiveCompressor
                     throw new InvalidOperationException($"LHA形式の圧縮に失敗しました: {result}");
                 }
 
-                progressCallback?.Invoke(100);
+                progressCallback?.Invoke(new ProgressInfo(100, "圧縮が完了しました。"));
                 Logger.Log($"LHA形式の圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
             }
             finally
@@ -343,7 +343,7 @@ public class ArchiveCompressor
     /// <param name="directoryPath">圧縮するディレクトリのパス</param>
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="progressCallback">進捗コールバック</param>
-    public void CompressDirectory(string directoryPath, string outputPath, Action<int>? progressCallback = null)
+    public void CompressDirectory(string directoryPath, string outputPath, Action<ProgressInfo>? progressCallback = null)
     {
         if (!Directory.Exists(directoryPath))
         {
@@ -387,13 +387,13 @@ public class ArchiveCompressor
             }
 
             // 進捗報告を設定
-            progressCallback?.Invoke(0);
+            progressCallback?.Invoke(new ProgressInfo(0, "圧縮準備中..."));
 
             // 圧縮を実行
             writer.Save(outputPath);
 
             // 完了時の進捗報告
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new ProgressInfo(100, "圧縮が完了しました。"));
 
             Logger.Log($"ディレクトリ圧縮完了: {directoryPath} -> {outputPath}");
         }

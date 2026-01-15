@@ -109,6 +109,39 @@ public class ArchiveExtractor
         }
     }
 
+    /// <summary>
+    /// 進捗レポートから現在処理中のファイル名を取得する
+    /// </summary>
+    private static string GetReportCurrentFileName(Report report)
+    {
+        try
+        {
+            var reportType = report.GetType();
+            var entryProperty = reportType.GetProperty("Entry")
+                ?? reportType.GetProperty("Item")
+                ?? reportType.GetProperty("File");
+            var entry = entryProperty?.GetValue(report);
+            if (entry != null)
+            {
+                var entryType = entry.GetType();
+                var fullNameProperty = entryType.GetProperty("FullName") ?? entryType.GetProperty("Name");
+                var fullName = fullNameProperty?.GetValue(entry)?.ToString();
+                if (!string.IsNullOrWhiteSpace(fullName))
+                {
+                    return fullName;
+                }
+            }
+
+            var nameProperty = reportType.GetProperty("FileName") ?? reportType.GetProperty("Name");
+            return nameProperty?.GetValue(report)?.ToString() ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"進捗レポートのファイル名取得に失敗しました: {ex.Message}", LogLevel.Debug);
+            return string.Empty;
+        }
+    }
+
 
 
     /// <summary>
@@ -119,7 +152,7 @@ public class ArchiveExtractor
     /// <param name="progress">進捗コールバック</param>
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<int>? progress = null, System.Windows.Window? parentWindow = null, CancellationToken cancellationToken = default)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, System.Windows.Window? parentWindow = null, CancellationToken cancellationToken = default)
     {
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
 
@@ -152,7 +185,7 @@ public class ArchiveExtractor
         await Task.Run(() =>
         {
             var extractor = new ArchiveExtractor();
-            var progressCallback = progress != null ? new Action<int>(p => progress.Report(p)) : null;
+            var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
             extractor.ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, needsOverwriteConfirmation, cancellationToken);
         }, cancellationToken);
     }
@@ -165,7 +198,7 @@ public class ArchiveExtractor
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
-    public void ExtractArchive(string archivePath, string outputPath, Action<int>? progressCallback = null, System.Windows.Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default)
+    public void ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, System.Windows.Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default)
     {
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}");
 
@@ -237,7 +270,11 @@ public class ArchiveExtractor
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         var percentage = report.TotalBytes > 0 ? (int)((report.Bytes * 100) / report.TotalBytes) : 0;
-                        progressCallback(percentage);
+                        var currentFileName = GetReportCurrentFileName(report);
+                        var status = string.IsNullOrWhiteSpace(currentFileName)
+                            ? "ファイルを展開中..."
+                            : $"展開中: {currentFileName}";
+                        progressCallback(new ProgressInfo(percentage, status));
                     });
 
                     reader.Save(extractPath, progress);
