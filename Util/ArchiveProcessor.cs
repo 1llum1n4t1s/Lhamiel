@@ -258,9 +258,9 @@ public static class ArchiveProcessor
     /// <param name="outputDir">出力ディレクトリ</param>
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
     /// <param name="format">圧縮形式</param>
-    /// <param name="progressWindow">進行状況ウィンドウ</param>
+    /// <param name="progressWindow">進行状況ウィンドウ（nullの場合はUI更新を行わない）</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressFolderAsync(string folderPath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
+    public static async Task<bool> CompressFolderAsync(string folderPath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow? progressWindow, CancellationToken cancellationToken = default)
     {
         Logger.Log($"ArchiveProcessor.CompressFolderAsync開始: folderPath={folderPath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
 

@@ -765,7 +765,6 @@ public partial class MainWindow : Window
             var folderProgress = new Dictionary<string, int>();
             var folderFileCounts = new Dictionary<string, int>();
             var totalFiles = 0;
-            var completedFilesCount = 0; // 完了したファイル数の合計（スレッドセーフに管理）
             var lastUIUpdateTime = DateTime.MinValue; // UI更新頻度制御用
 
             // 各フォルダのファイル数を事前に計測（UIフリーズ回避のため非同期化）
@@ -816,9 +815,30 @@ public partial class MainWindow : Window
                             Logger.Log($"ユーザーが上書きをキャンセルしました: {folderPath}");
                             lock (progressLock)
                             {
-                                // キャンセルされたフォルダをスキップして、他のタスクを続行
-                                var skippedFileCount = folderFileCounts[folderPath];
-                                var totalProgress = totalFiles > 0 ? (int)Math.Round((completedFilesCount + skippedFileCount) * 100.0 / totalFiles) : 0;
+                                // キャンセルされたフォルダをスキップ（100%として扱う）
+                                folderProgress[folderPath] = 100;
+
+                                // 全フォルダの状態から合計完了ファイル数を算出
+                                double currentTotalCompletedFiles = 0;
+                                foreach (var kvp in folderFileCounts)
+                                {
+                                    var fPath = kvp.Key;
+                                    var count = kvp.Value;
+                                    var percent = folderProgress.ContainsKey(fPath) ? folderProgress[fPath] : 0;
+
+                                    if (percent >= 100)
+                                    {
+                                        currentTotalCompletedFiles += count;
+                                    }
+                                    else
+                                    {
+                                        currentTotalCompletedFiles += count * (percent / 100.0);
+                                    }
+                                }
+
+                                var totalProgress = totalFiles > 0
+                                    ? (int)Math.Clamp((currentTotalCompletedFiles / totalFiles) * 100, 0, 100)
+                                    : 0;
                                 progressWindow.UpdateProgress(totalProgress, $"スキップ: {Path.GetFileName(folderPath)}");
                             }
                         }
@@ -827,38 +847,40 @@ public partial class MainWindow : Window
                         Logger.Log($"既存ファイルを削除: {outputPath}");
                     }
 
-                    // 個別の進捗を追跡（効率化）
+                    // 個別の進捗を追跡
                     var progress = new Progress<ProgressInfo>(info =>
                     {
                         lock (progressLock)
                         {
-                            var previousPercentage = folderProgress[folderPath];
+                            // 1. 個別フォルダの進捗率を更新
                             folderProgress[folderPath] = info.Percentage;
 
-                            // 効率的な全体進捗計算
-                            var currentFolderFileCount = folderFileCounts[folderPath];
-                            var currentFolderProgress = (int)Math.Round(currentFolderFileCount * info.Percentage / 100.0);
-                            var previousFolderProgress = (int)Math.Round(currentFolderFileCount * previousPercentage / 100.0);
+                            // 2. 差分計算をやめ、全フォルダの状態から合計完了ファイル数を算出する
+                            // (完了ファイル数) = Σ (各フォルダのファイル数 * 進捗率 / 100)
+                            double currentTotalCompletedFiles = 0;
+                            foreach (var kvp in folderFileCounts)
+                            {
+                                var fPath = kvp.Key;
+                                var count = kvp.Value;
+                                var percent = folderProgress.ContainsKey(fPath) ? folderProgress[fPath] : 0;
 
-                            // 完了済みファイル数に差分を適用
-                            if (info.Percentage == 100 && previousPercentage < 100)
-                            {
-                                completedFilesCount += currentFolderFileCount;
-                            }
-                            else if (info.Percentage < 100 && previousPercentage == 100)
-                            {
-                                completedFilesCount -= currentFolderFileCount;
-                            }
-                            else
-                            {
-                                completedFilesCount += (currentFolderProgress - previousFolderProgress);
+                                // 完了(100%)のフォルダは全ファイルをカウント、それ以外は進捗率で按分
+                                if (percent >= 100)
+                                {
+                                    currentTotalCompletedFiles += count;
+                                }
+                                else
+                                {
+                                    currentTotalCompletedFiles += count * (percent / 100.0);
+                                }
                             }
 
+                            // 3. 全体進捗率を計算
                             var totalProgress = totalFiles > 0
-                                ? (int)Math.Round(completedFilesCount * 100.0 / totalFiles)
+                                ? (int)Math.Clamp((currentTotalCompletedFiles / totalFiles) * 100, 0, 100)
                                 : 0;
 
-                            Logger.Log($"プログレス更新: {totalProgress}% (完了ファイル数: {completedFilesCount}/{totalFiles}) - {info.Status}");
+                            Logger.Log($"プログレス更新: {totalProgress}% (完了ファイル数: {currentTotalCompletedFiles:F1}/{totalFiles}) - {info.Status}");
 
                             // 現在処理中のファイルを表示
                             var fileName = string.Empty;
@@ -870,7 +892,7 @@ public partial class MainWindow : Window
 
                             // UI更新頻度を抑制（100msに1回）
                             var now = DateTime.Now;
-                            if ((now - lastUIUpdateTime).TotalMilliseconds >= 100)
+                            if ((now - lastUIUpdateTime).TotalMilliseconds >= 100 || totalProgress >= 100)
                             {
                                 lastUIUpdateTime = now;
 
@@ -886,12 +908,13 @@ public partial class MainWindow : Window
 
                     // ★ 最適化: CompressAsync ではなく CompressFolderAsync を使用
                     // これにより、ArchiveCompressor.CompressDirectory が呼ばれ、LHA等の最適化が有効になる
+                    // ★ 並列処理時のUI競合を防ぐため、progressWindowにnullを渡す
                     var success = await ArchiveProcessor.CompressFolderAsync(
                         folderPath,
                         outputDir,
                         outputToSameDirectory,
                         format,
-                        progressWindow,
+                        null, // nullを渡してUI操作を抑制（UI更新はprogressコールバックで行う）
                         cancellationToken
                     );
 

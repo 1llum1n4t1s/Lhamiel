@@ -66,7 +66,8 @@ public class ArchiveExtractor
     {
         try
         {
-            // API制約によりdynamicを使用（Report型にEntryプロパティが直接定義されていないため）
+            // Report型にEntryプロパティが直接定義されていないため、dynamicを使用
+            // dynamicは内部的にリフレクションを使用するが、Cube.FileSystem.SevenZipのAPI制約により必要
             dynamic dynReport = report;
             var entry = dynReport.Entry;
 
@@ -89,9 +90,8 @@ public class ArchiveExtractor
 
             return string.Empty;
         }
-        catch (Exception ex)
+        catch
         {
-            Logger.Log($"進捗レポートのファイル名取得に失敗しました: {ex.Message}", LogLevel.Debug);
             return string.Empty;
         }
     }
