@@ -66,7 +66,7 @@ public class ArchiveExtractor
     {
         try
         {
-            // dynamic を使用してリフレクションを回避（実行時型解決）
+            // API制約によりdynamicを使用（Report型にEntryプロパティが直接定義されていないため）
             dynamic dynReport = report;
             var entry = dynReport.Entry;
 
@@ -345,64 +345,66 @@ public class ArchiveExtractor
     {
         if (!File.Exists(archivePath))
             throw new FileNotFoundException($"アーカイブファイルが見つかりません: {archivePath}");
-            
+
         var fileNameList = fileNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (!fileNameList.Any())
             throw new ArgumentException("展開するファイルが指定されていません。");
-            
+
         if (!Directory.Exists(outputPath))
             Directory.CreateDirectory(outputPath);
 
         try
         {
             using var reader = new ArchiveReader(archivePath);
-            var tempPath = Path.Combine(Path.GetTempPath(), $"lhamiel-{Guid.NewGuid()}");
-            Directory.CreateDirectory(tempPath);
 
-            try
+            // ★ 最適化: 全展開を避け、対象ファイルのインデックスのみを取得
+            var targetIndices = new List<uint>();
+            var targetItems = new Dictionary<string, ArchiveEntity>(StringComparer.OrdinalIgnoreCase);
+            var index = 0u;
+
+            foreach (var item in reader.Items)
             {
-                // ライブラリ制約により全展開が必要だが、少なくともDictionary作成を効率化
-                reader.Save(tempPath);
-
-                // 対象ファイルのみを処理するためのDictionary作成（メモリ効率化）
-                var targetItems = new Dictionary<string, dynamic>(StringComparer.OrdinalIgnoreCase);
-                foreach (var item in reader.Items)
+                if (fileNameList.Contains(item.FullName))
                 {
-                    if (fileNameList.Contains(item.FullName))
+                    targetIndices.Add(index);
+                    targetItems[item.FullName] = item;
+                }
+                index++;
+            }
+
+            if (targetIndices.Count == 0)
+            {
+                Logger.Log("指定されたファイルがアーカイブ内に見つかりません。", LogLevel.Warning);
+                return;
+            }
+
+            // ★ 最適化: 個別展開APIを使用（全展開を回避）
+            // 指定されたインデックスのファイルのみを直接出力先に展開
+            var progress = new Progress<Report>(report =>
+            {
+                // 進捗レポートがある場合は処理
+                if (progressCallback != null && report != null)
+                {
+                    var currentFileName = GetReportCurrentFileName(report);
+                    if (!string.IsNullOrEmpty(currentFileName) && targetItems.ContainsKey(currentFileName))
                     {
-                        targetItems[item.FullName] = item;
+                        // 対象ファイルの処理進捗を計算
+                        var processedCount = targetItems.Count - fileNameList.Count + targetItems.Count(kv => kv.Value != null);
+                        var progressValue = (int)((double)processedCount / fileNameList.Count * 100);
+                        progressCallback(progressValue);
                     }
                 }
+            });
 
-                var matchedCount = 0;
-                var totalTargets = fileNameList.Count;
-                var missingFiles = new List<string>();
+            reader.Save(outputPath, targetIndices.ToArray(), progress);
 
-                foreach (var fileName in fileNameList)
-                {
-                    if (!targetItems.TryGetValue(fileName, out var item))
-                    {
-                        missingFiles.Add(fileName);
-                        continue;
-                    }
-
-                    FileOperations.CopyExtractedItem(tempPath, outputPath, item.FullName, item.IsDirectory);
-                    matchedCount++;
-                    var progress = totalTargets == 0 ? 100 : (int)((double)matchedCount / totalTargets * 100);
-                    progressCallback?.Invoke(progress);
-                }
-
-                if (missingFiles.Any())
-                {
-                    Logger.Log($"指定されたファイルがアーカイブ内に見つかりません: {string.Join(", ", missingFiles)}", LogLevel.Warning);
-                }
-
-                Logger.Log($"特定ファイル展開完了: {string.Join(", ", fileNameList)}");
-            }
-            finally
+            var missingFiles = fileNameList.Where(f => !targetItems.ContainsKey(f)).ToList();
+            if (missingFiles.Any())
             {
-                FileOperations.CleanupTemporaryPath(tempPath, message => Logger.Log(message, LogLevel.Warning));
+                Logger.Log($"指定されたファイルがアーカイブ内に見つかりません: {string.Join(", ", missingFiles)}", LogLevel.Warning);
             }
+
+            Logger.Log($"特定ファイル展開完了: {string.Join(", ", fileNameList)}");
         }
         catch (Exception ex)
         {
@@ -450,41 +452,6 @@ public class ArchiveExtractor
     /// <param name="reader">アーカイブリーダー</param>
     /// <param name="outputPath">出力先ディレクトリ</param>
     /// <returns>競合するファイルのパス一覧</returns>
-    private static List<string> CheckForConflictingFiles(ArchiveReader reader, string outputPath)
-    {
-        Logger.Log($"CheckForConflictingFiles開始: outputPath={outputPath}");
-        var conflictingFiles = new List<string>();
-        
-        try
-        {
-            var itemCount = 0;
-            foreach (var item in reader.Items)
-            {
-                itemCount++;
-                if (!item.IsDirectory)
-                {
-                    // アーカイブ内のファイルパスから、実際の展開先パスを計算
-                    var relativePath = item.FullName;
-                    var targetPath = Path.Combine(outputPath, relativePath);
-                    
-                    Logger.Log($"チェック中: アーカイブ内パス={relativePath}, 展開先パス={targetPath}");
-                    
-                    if (File.Exists(targetPath))
-                    {
-                        conflictingFiles.Add(targetPath);
-                        Logger.Log($"競合ファイルを発見: {targetPath}");
-                    }
-                }
-            }
-            Logger.Log($"CheckForConflictingFiles完了: 総アイテム数={itemCount}, 競合ファイル数={conflictingFiles.Count}");
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"競合ファイルチェックでエラーが発生しました: {ex.Message}");
-        }
-        
-        return conflictingFiles;
-    }
 
     /// <summary>
     /// アーカイブの詳細情報を取得

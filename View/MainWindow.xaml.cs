@@ -793,8 +793,9 @@ public partial class MainWindow : Window
 
             Logger.Log($"全フォルダの総ファイル数: {totalFiles}");
 
-            // 並行圧縮処理を実行
-            var tasks = folders.Select(async folderPath =>
+            // 順次圧縮処理を実行（ArchiveProcessor.CompressFolderAsync はProgressWindowを直接操作するため並行処理不可）
+            var successCount = 0;
+            foreach (var folderPath in folders)
             {
                 try
                 {
@@ -820,7 +821,6 @@ public partial class MainWindow : Window
                                 var totalProgress = totalFiles > 0 ? (int)Math.Round((completedFilesCount + skippedFileCount) * 100.0 / totalFiles) : 0;
                                 progressWindow.UpdateProgress(totalProgress, $"スキップ: {Path.GetFileName(folderPath)}");
                             }
-                            return false;
                         }
 
                         File.Delete(outputPath);
@@ -884,7 +884,16 @@ public partial class MainWindow : Window
                         }
                     });
 
-                    await ArchiveCompressor.CompressAsync(folderPath, outputPath, format, progress, cancellationToken);
+                    // ★ 最適化: CompressAsync ではなく CompressFolderAsync を使用
+                    // これにより、ArchiveCompressor.CompressDirectory が呼ばれ、LHA等の最適化が有効になる
+                    var success = await ArchiveProcessor.CompressFolderAsync(
+                        folderPath,
+                        outputDir,
+                        outputToSameDirectory,
+                        format,
+                        progressWindow,
+                        cancellationToken
+                    );
 
                     lock (progressLock)
                     {
@@ -895,23 +904,18 @@ public partial class MainWindow : Window
                     }
 
                     Logger.Log($"圧縮完了: {folderPath} -> {outputPath}");
-                    return true;
                 }
                 catch (OperationCanceledException)
                 {
                     Logger.Log($"圧縮処理がキャンセルされました: {folderPath}");
-                    return false;
                 }
                 catch (Exception ex)
                 {
                     Logger.LogException($"圧縮処理でエラーが発生: {folderPath}", ex);
-                    return false;
                 }
-            }).ToArray();
+            }
 
-            // すべての圧縮タスクが完了するまで待機
-            var results = await Task.WhenAll(tasks);
-            var successCount = results.Count(r => r);
+            // 圧縮処理の結果を集計（successCount は既に上で定義されている）
 
             Logger.Log($"圧縮処理完了: 成功={successCount}, 失敗/スキップ={totalFolders - successCount}");
 

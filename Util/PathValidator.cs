@@ -166,16 +166,9 @@ public static class PathValidator
 
         try
         {
-            // Path.GetFullPath でパスを正規化し、実際のディレクトリトラバーサルをチェック
+            // ★ 修正: 文字列としての ".." チェックは削除（Report..v1.txt などの正当なファイル名を誤検知するため）
+            // Path.GetFullPath で正規化を試み、有効なパスかどうかのみチェック
             var fullPath = Path.GetFullPath(path);
-
-            // 正規化されたパスに ".." が含まれている場合はディレクトリトラバーサル
-            if (fullPath.Contains(".."))
-            {
-                errorMessage = "パストラバーサルのパターンが検出されました (..)";
-                Logger.Log($"セキュリティ警告: パストラバーサル検出 - 元パス: {path}, 正規化パス: {fullPath}", LogLevel.Warning);
-                return false;
-            }
 
             // 追加のセキュリティチェック: ルートディレクトリ外へのアクセスを防ぐ
             var root = Path.GetPathRoot(fullPath);
