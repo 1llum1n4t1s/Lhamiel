@@ -259,10 +259,6 @@ public class PartialExtractionHandler
     }
 
     /// <summary>
-    /// 一時展開した内容からファイルをコピーする
-    /// </summary>
-
-    /// <summary>
     /// エラー処理方法を決定
     /// </summary>
     private static ErrorHandlingOption DetermineErrorHandling(
