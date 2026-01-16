@@ -233,18 +233,16 @@ public static class ArchiveProcessor
             // 完了メッセージを表示
             if (successCount == totalCount)
             {
-                progressWindow?.SetCompleted("展開が完了しました。");
                 Logger.Log($"複数ファイル展開完了: {successCount}/{totalCount}個の展開に成功");
-                await Task.Delay(1000);
+                await Task.Delay(500);
                 progressWindow?.Close();
                 return true;
             }
             else
             {
                 var failureMessage = failedFiles.Any() ? $"\n失敗: {string.Join(", ", failedFiles)}" : "";
-                progressWindow?.SetCompleted($"{successCount}/{totalCount}個のファイルの展開が完了しました。{failureMessage}");
                 Logger.Log($"複数ファイル展開完了: {successCount}成功, {totalCount - successCount}失敗");
-                await Task.Delay(1000);
+                await Task.Delay(500);
                 progressWindow?.Close();
                 return successCount > 0;
             }
@@ -360,9 +358,7 @@ public static class ArchiveProcessor
 
             Logger.Log($"圧縮処理が完了: {folderPath} -> {outputPath}");
 
-            // 完了メッセージを表示
-            progressWindow?.SetCompleted("圧縮が完了しました。");
-            await Task.Delay(1000);
+            await Task.Delay(500);
             progressWindow?.Close();
 
             return true;
@@ -471,18 +467,16 @@ public static class ArchiveProcessor
             // 完了メッセージを表示
             if (successCount == totalCount)
             {
-                progressWindow?.SetCompleted("圧縮が完了しました。");
                 Logger.Log($"複数フォルダ圧縮完了: {successCount}/{totalCount}個の圧縮に成功");
-                await Task.Delay(1000);
+                await Task.Delay(500);
                 progressWindow?.Close();
                 return true;
             }
             else
             {
                 var failureMessage = failedFolders.Any() ? $"\n失敗: {string.Join(", ", failedFolders)}" : "";
-                progressWindow?.SetCompleted($"{successCount}/{totalCount}個のフォルダの圧縮が完了しました。{failureMessage}");
                 Logger.Log($"複数フォルダ圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
-                await Task.Delay(1000);
+                await Task.Delay(500);
                 progressWindow?.Close();
                 return successCount > 0;
             }

@@ -411,8 +411,7 @@ public partial class App : Application
 
             await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationTokenSource.Token);
 
-            progressWindow.SetCompleted("圧縮が完了しました。");
-            await Task.Delay(1000);
+            await Task.Delay(500);
 
             Logger.Log("ファイル圧縮処理が完了しました");
 

@@ -169,9 +169,6 @@ public class ArchiveCompressor
                 Logger.Log("圧縮処理を開始します");
                 writer.Save(outputPath);
 
-                // 完了時の進捗報告
-                progressCallback?.Invoke(new ProgressInfo(100, "圧縮が完了しました。"));
-
                 Logger.Log($"圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
             }
         }
@@ -260,7 +257,6 @@ public class ArchiveCompressor
                     throw new InvalidOperationException($"LHA形式の圧縮に失敗しました: {result}");
                 }
 
-                progressCallback?.Invoke(new ProgressInfo(100, "圧縮が完了しました。"));
                 Logger.Log($"LHA形式の圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
             }
             finally
@@ -384,7 +380,6 @@ public class ArchiveCompressor
                     throw new InvalidOperationException($"LHA圧縮に失敗しました: {result}");
                 }
 
-                progressCallback?.Invoke(new ProgressInfo(100, "圧縮完了"));
                 Logger.Log($"LHA圧縮完了: {directoryPath} -> {outputPath}");
                 return;
             }
@@ -409,9 +404,6 @@ public class ArchiveCompressor
 
             // 圧縮を実行
             writer.Save(outputPath);
-
-            // 完了時の進捗報告
-            progressCallback?.Invoke(new ProgressInfo(100, "圧縮が完了しました。"));
 
             Logger.Log($"ディレクトリ圧縮完了: {directoryPath} -> {outputPath}");
         }

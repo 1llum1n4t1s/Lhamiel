@@ -231,8 +231,7 @@ public partial class MainWindow : Window
                     await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationToken);
                 }
 
-                progressWindow.SetCompleted("圧縮が完了しました。");
-                await Task.Delay(1000);
+                await Task.Delay(500);
                 progressWindow.Close();
 
                 // 圧縮後にフォルダを開く設定を確認
@@ -673,7 +672,6 @@ public partial class MainWindow : Window
 
             if (success)
             {
-                MessageService.ShowSuccess("展開が完了しました。");
                 if (_settingsManager.Current.OpenExtractionOutputFolder)
                 {
                     OpenExtractedFolders(archivePaths, outputDir, outputToSameDirectory);
@@ -781,7 +779,6 @@ public partial class MainWindow : Window
 
             if (success)
             {
-                MessageService.ShowSuccess("圧縮が完了しました。");
                 if (_settingsManager.Current.OpenCompressionOutputFolder)
                 {
                     FolderOpener.OpenFolder(CompressionOutputPathTextBox.Text);
