@@ -63,32 +63,26 @@ public class ArchiveExtractor
     /// 進捗レポートから現在処理中のファイル名を取得する
     /// </summary>
     /// <remarks>
-    /// Cube.FileSystem.SevenZipのReport型は基底クラスであり、
-    /// 派生型（ArchiveReaderからの進捗レポート）にのみEntryプロパティが存在する。
-    /// ライブラリのAPIが公開していない派生型のプロパティにアクセスするため、
-    /// dynamicを使用してリフレクション経由でアクセスする必要がある。
+    /// Report.Target から現在処理中のエントリ情報を取得する。
+    /// FullName を優先し、取得できない場合は Name を使用する。
     /// </remarks>
     private static string GetReportCurrentFileName(Report report)
     {
         try
         {
-            // Report型にEntryプロパティが直接定義されていないため、dynamicを使用
-            // dynamicは内部的にリフレクションを使用するが、Cube.FileSystem.SevenZipのAPI制約により必要
-            // 型キャストではEntryプロパティにアクセスできないため、dynamicを使用する必要がある
-            dynamic dynReport = report;
-            var entry = dynReport.Entry;
-
-            if (entry != null)
+            // 現在処理中のエントリ情報を取得
+            var target = report.Target;
+            if (target != null)
             {
                 // FullName を優先的に取得
-                var fullName = entry.FullName as string;
+                var fullName = target.FullName;
                 if (!string.IsNullOrWhiteSpace(fullName))
                 {
                     return fullName;
                 }
 
                 // FullName が取得できなかった場合は Name を試す
-                var name = entry.Name as string;
+                var name = target.Name;
                 if (!string.IsNullOrWhiteSpace(name))
                 {
                     return name;

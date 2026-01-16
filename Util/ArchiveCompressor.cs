@@ -345,7 +345,7 @@ public class ArchiveCompressor
     /// <param name="directoryPath">圧縮するディレクトリのパス</param>
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="progressCallback">進捗コールバック</param>
-    public void CompressDirectory(string directoryPath, string outputPath, Action<ProgressInfo>? progressCallback = null)
+    public static void CompressDirectory(string directoryPath, string outputPath, Action<ProgressInfo>? progressCallback = null)
     {
         if (!Directory.Exists(directoryPath))
         {

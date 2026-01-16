@@ -115,8 +115,7 @@ public class ArchiveCompressionTests
             Directory.CreateDirectory(extractDir);
 
             // Act - 圧縮
-            var compressor = new ArchiveCompressor();
-            compressor.CompressDirectory(sourceDir, archivePath);
+            ArchiveCompressor.CompressDirectory(sourceDir, archivePath);
 
             // Assert - 圧縮ファイルが作成されたか
             Assert.True(File.Exists(archivePath), "Zip archive should be created");
@@ -157,8 +156,7 @@ public class ArchiveCompressionTests
             Directory.CreateDirectory(extractDir);
 
             // Act - 圧縮
-            var compressor = new ArchiveCompressor();
-            compressor.CompressDirectory(sourceDir, archivePath);
+            ArchiveCompressor.CompressDirectory(sourceDir, archivePath);
 
             // Assert - 圧縮ファイルが作成されたか
             Assert.True(File.Exists(archivePath), "7z archive should be created");
@@ -199,8 +197,7 @@ public class ArchiveCompressionTests
             Directory.CreateDirectory(extractDir);
 
             // Act - 圧縮
-            var compressor = new ArchiveCompressor();
-            compressor.CompressDirectory(sourceDir, archivePath);
+            ArchiveCompressor.CompressDirectory(sourceDir, archivePath);
 
             // Assert - 圧縮ファイルが作成されたか
             Assert.True(File.Exists(archivePath), "Tar archive should be created");
@@ -243,8 +240,7 @@ public class ArchiveCompressionTests
             Directory.CreateDirectory(extractDir);
 
             // Act - 圧縮
-            var compressor = new ArchiveCompressor();
-            compressor.CompressDirectory(sourceDir, archivePath);
+            ArchiveCompressor.CompressDirectory(sourceDir, archivePath);
 
             // Assert - 圧縮ファイルが作成されたか
             Assert.True(File.Exists(archivePath), $"{extension} archive should be created");
@@ -600,8 +596,7 @@ public class ArchiveCompressionTests
             System.Console.WriteLine($"LHAファイル: {archivePath}");
 
             // Act - 圧縮
-            var compressor = new ArchiveCompressor();
-            compressor.CompressDirectory(sourceDir, archivePath);
+            ArchiveCompressor.CompressDirectory(sourceDir, archivePath);
 
             // Assert - 圧縮ファイルが作成されたか
             Assert.True(File.Exists(archivePath), "LHA archive should be created");

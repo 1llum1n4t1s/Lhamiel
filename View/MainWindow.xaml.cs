@@ -630,10 +630,10 @@ public partial class MainWindow : Window
                 }
             }
 
-            // アーカイブファイルの展開処理（最初の1つのみ、従来の動作を維持）
+            // アーカイブファイルの展開処理（複数対応）
             if (archiveFiles.Count > 0)
             {
-                ProcessDroppedArchive(archiveFiles[0]);
+                ProcessDroppedArchives(archiveFiles.ToArray());
             }
             // 圧縮対象の処理（複数を並行処理）
             else if (compressionTargets.Count > 0)
@@ -648,10 +648,10 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// ドロップされたアーカイブファイルを展開する
+    /// ドロップされた複数のアーカイブファイルを展開する
     /// </summary>
-    /// <param name="archivePath">アーカイブファイルのパス</param>
-    private async void ProcessDroppedArchive(string archivePath)
+    /// <param name="archivePaths">アーカイブファイルのパス配列</param>
+    private async void ProcessDroppedArchives(string[] archivePaths)
     {
         ProgressWindow? progressWindow = null;
         try
@@ -664,21 +664,24 @@ public partial class MainWindow : Window
             progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
 
-            var success = await ArchiveProcessor.ExtractArchiveAsync(archivePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
+            var success = await ArchiveProcessor.ExtractArchivesAsync(
+                archivePaths,
+                outputDir,
+                outputToSameDirectory,
+                progressWindow,
+                cancellationTokenSource.Token);
 
             if (success)
             {
                 MessageService.ShowSuccess("展開が完了しました。");
-
-                // 展開後にフォルダを開く設定を確認
                 if (_settingsManager.Current.OpenExtractionOutputFolder)
                 {
-                    OpenExtractedFolders(new[] { archivePath }, outputDir, outputToSameDirectory);
+                    OpenExtractedFolders(archivePaths, outputDir, outputToSameDirectory);
                 }
             }
             else
             {
-                MessageService.ShowError("展開中にエラーが発生しました。");
+                MessageService.ShowWarning("一部のファイルの展開に失敗したか、キャンセルされました。");
             }
         }
         catch (OperationCanceledException)
@@ -691,7 +694,10 @@ public partial class MainWindow : Window
         }
         finally
         {
-            progressWindow?.Close();
+            if (progressWindow?.IsVisible == true)
+            {
+                progressWindow.Close();
+            }
         }
     }
 
@@ -1150,7 +1156,7 @@ SOFTWARE.";
                         if (updateManager.IsInstalled && updateInfo != null)
                         {
                             Logger.Log("Velopack: 更新をダウンロード中...");
-                            await updateManager.DownloadUpdatesAsync((dynamic)updateInfo);
+                            await updateManager.DownloadUpdatesAsync(updateInfo);
                             Logger.Log("Velopack: ダウンロード完了。更新を適用して再起動します。");
 
                             // チェック時刻を記録
@@ -1158,7 +1164,7 @@ SOFTWARE.";
                             settings.Save();
                             Logger.Log("Velopack: アップデート確認時刻を記録しました");
 
-                            updateManager.ApplyUpdatesAndRestart((dynamic)updateInfo);
+                            updateManager.ApplyUpdatesAndRestart(updateInfo.TargetFullRelease);
                         }
                     }
                 }
@@ -1185,7 +1191,7 @@ SOFTWARE.";
     /// アップデートをチェックして情報を取得する
     /// </summary>
     /// <returns>更新情報オブジェクト。最新の場合はnull</returns>
-    private async Task<object?> PerformUpdateCheckAsync()
+    private async Task<Velopack.UpdateInfo?> PerformUpdateCheckAsync()
     {
         try
         {

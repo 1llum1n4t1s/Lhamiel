@@ -17,7 +17,7 @@ public static class ArchiveProcessor
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="enablePartialExtraction">部分展開を有効にするかどうか</param>
-    /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時はnullを推奨）</param>
+    /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
     public static async Task<bool> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null)
     {
@@ -72,7 +72,7 @@ public static class ArchiveProcessor
 
             // 展開処理を実行
             // 個別進捗が指定されていない場合は、ProgressWindow用の進捗を作成
-            // 並列処理時はindividualProgressにnullを渡すことで、個別進捗を無効化できる
+            // 並列処理時はindividualProgressに空のProgressを渡して、個別進捗のUI更新を無効化する
             IProgress<ProgressInfo>? progress = individualProgress;
             if (progress == null && progressWindow != null)
             {
@@ -346,7 +346,6 @@ public static class ArchiveProcessor
 
             await Task.Run(() =>
             {
-                var compressor = new ArchiveCompressor();
                 var progressCallback = new Action<ProgressInfo>(info =>
                 {
                     // 1. レガシーなProgressWindow更新 (単体実行時用)
@@ -356,7 +355,7 @@ public static class ArchiveProcessor
                     progressReporter?.Report(info);
                 });
 
-                compressor.CompressDirectory(folderPath, outputPath, progressCallback);
+                ArchiveCompressor.CompressDirectory(folderPath, outputPath, progressCallback);
             }, actualCancellationToken);
 
             Logger.Log($"圧縮処理が完了: {folderPath} -> {outputPath}");
