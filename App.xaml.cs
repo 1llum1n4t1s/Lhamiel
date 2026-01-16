@@ -1,5 +1,6 @@
 using System.Windows;
 using System.IO;
+using System.Threading;
 using Lhamiel.Util;
 using Velopack;
 using Velopack.Sources;
@@ -11,6 +12,11 @@ namespace Lhamiel;
 /// </summary>
 public partial class App : Application
 {
+    /// <summary>
+    /// アプリケーションインスタンス管理用の Mutex
+    /// </summary>
+    private static Mutex? _instanceMutex;
+
     /// <summary>
     /// 更新チェックのタイムアウト時間（ミリ秒）
     /// </summary>
@@ -46,6 +52,19 @@ public partial class App : Application
     {
         try
         {
+            // メインウィンドウの多重起動チェック
+            const string mutexName = "Lhamiel_MainWindow_SingleInstance";
+            _instanceMutex = new Mutex(true, mutexName, out var createdNew);
+
+            if (!createdNew)
+            {
+                // 既に起動しているインスタンスがある場合
+                Logger.Log("アプリケーションは既に起動しています。既存のインスタンスをアクティブ化します。");
+                ActivateExistingInstance();
+                Shutdown();
+                return;
+            }
+
             // 更新チェックと適用を試行
             var updateApplied = await CheckAndApplyUpdatesAsync();
             if (updateApplied)
@@ -90,6 +109,50 @@ public partial class App : Application
             return;
         }
     }
+
+    /// <summary>
+    /// 既に起動しているメインウィンドウインスタンスをアクティブ化する
+    /// </summary>
+    private static void ActivateExistingInstance()
+    {
+        try
+        {
+            var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+            var otherProcesses = System.Diagnostics.Process.GetProcessesByName(currentProcess.ProcessName)
+                .Where(p => p.Id != currentProcess.Id)
+                .ToList();
+
+            if (otherProcesses.Count > 0)
+            {
+                var otherProcess = otherProcesses[0];
+                Logger.Log($"既存インスタンスを見つけました。PID: {otherProcess.Id}");
+
+                // メインウィンドウをアクティブ化（NativeMethods を使用）
+                try
+                {
+                    if (otherProcess.MainWindowHandle != IntPtr.Zero)
+                    {
+                        SetForegroundWindow(otherProcess.MainWindowHandle);
+                        Logger.Log("既存インスタンスをアクティブ化しました。");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"既存インスタンスのアクティブ化に失敗: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"既存インスタンスのアクティブ化処理でエラーが発生: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Win32 API: ウィンドウをアクティブ化する
+    /// </summary>
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     /// <summary>
     /// 更新をチェックして適用する
@@ -335,11 +398,15 @@ public partial class App : Application
                 File.Delete(outputPath);
             }
 
-            progressWindow.SetFileName(outputPath);
+            progressWindow.SetFileName(Path.GetFileName(outputPath));
 
             var progress = new Progress<ProgressInfo>(info =>
             {
                 progressWindow.UpdateProgress(info.Percentage, info.Status);
+                if (!string.IsNullOrEmpty(info.CurrentFileName))
+                {
+                    progressWindow.SetFileName(Path.GetFileName(info.CurrentFileName));
+                }
             });
 
             await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationTokenSource.Token);
@@ -440,6 +507,11 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         Logger.Log($"アプリケーション終了: 終了コード = {e.ApplicationExitCode}");
+
+        // Mutex をリリース
+        _instanceMutex?.Dispose();
+
         base.OnExit(e);
     }
 }
+

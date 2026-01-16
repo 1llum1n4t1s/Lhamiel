@@ -39,14 +39,12 @@
                         <!-- メインアクションボタン -->
                         <StackPanel Grid.Column="0" Orientation="Horizontal">
                             <Button x:Name="CompressButton" Content="📦 ファイルを圧縮"
-                                    Style="{StaticResource PrimaryButtonStyle}"
                                     Height="40" MinWidth="180"
                                     Click="CompressButton_Click"
                                     AutomationProperties.Name="Compress files"
                                     AutomationProperties.HelpText="Select files to compress into an archive"
                                     ToolTip="ファイルを選択して圧縮します。フォルダはドラッグアンドドロップで圧縮できます" />
                             <Button x:Name="ExtractButton" Content="📂 アーカイブを展開"
-                                    Style="{StaticResource SuccessButtonStyle}"
                                     Height="40" MinWidth="160"
                                     Margin="12,0,0,0"
                                     Click="ExtractButton_Click"
@@ -66,7 +64,6 @@
 
                     <!-- ドラッグ&ドロップゾーン -->
                     <Border Grid.Row="1" x:Name="DropZoneBorder"
-                            BorderBrush="{StaticResource BorderBrush}"
                             BorderThickness="2"
                             CornerRadius="8"
                             Background="#F9F9F9"
@@ -122,7 +119,6 @@
                                      AutomationProperties.Name="Extraction output path" />
                             <Button x:Name="ExtractionBrowseButton" Grid.Row="1" Grid.Column="1"
                                     Content="参照..."
-                                    Style="{StaticResource StandardButtonStyle}"
                                     Height="40"
                                     Margin="8,0,0,0"
                                     Click="ExtractionBrowseButton_Click"
@@ -177,7 +173,6 @@
                                      AutomationProperties.Name="Compression output path" />
                             <Button x:Name="CompressionBrowseButton" Grid.Row="1" Grid.Column="1"
                                     Content="参照..."
-                                    Style="{StaticResource StandardButtonStyle}"
                                     Height="40"
                                     Margin="8,0,0,0"
                                     Click="CompressionBrowseButton_Click"
@@ -217,13 +212,11 @@
                         <!-- 全選択・全解除ボタン -->
                         <StackPanel Grid.Column="0" Orientation="Horizontal">
                             <Button x:Name="SelectAllButton" Content="全選択"
-                                    Style="{StaticResource StandardButtonStyle}"
                                     Width="70" Height="40"
                                     Margin="0,0,4,0"
                                     Click="SelectAllButton_Click"
                                     ToolTip="すべての形式を選択" />
                             <Button x:Name="DeselectAllButton" Content="全解除"
-                                    Style="{StaticResource StandardButtonStyle}"
                                     Width="70" Height="40"
                                     Click="DeselectAllButton_Click"
                                     ToolTip="すべての選択を解除" />
@@ -232,7 +225,6 @@
                         <!-- ショートカット作成エリア -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="16,0,0,0">
                             <Button x:Name="CreateShortcutButton" Content="📌 デスクトップにショートカット作成"
-                                    Style="{StaticResource StandardButtonStyle}"
                                     Height="40"
                                     Click="CreateShortcutButton_Click"
                                     ToolTip="デスクトップにアプリケーションのショートカットを作成" />
@@ -308,7 +300,6 @@
                                     <TextBlock Text="バージョン:" Grid.Row="0" Grid.Column="0" FontWeight="SemiBold" Margin="0,4" VerticalAlignment="Center" />
                                     <TextBlock x:Name="VersionTextBlock" Grid.Row="0" Grid.Column="1" Margin="0,4" VerticalAlignment="Center" />
                                     <Button x:Name="CheckUpdateButton" Grid.Row="0" Grid.Column="2" Content="🔄 アップデート確認"
-                                            Style="{StaticResource StandardButtonStyle}"
                                             Height="36"
                                             Margin="12,0,0,0"
                                             Click="CheckUpdateButton_Click"
@@ -342,14 +333,12 @@
         <!-- 下部ボタン -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
             <Button x:Name="SaveButton" Content="設定を保存"
-                    Style="{StaticResource PrimaryButtonStyle}"
                     Height="40"
                     MinWidth="100"
                     Margin="0,0,8,0"
                     Click="SaveSettingsButton_Click"
                     ToolTip="現在の設定を保存して閉じる" />
             <Button x:Name="CancelButton" Content="キャンセル"
-                    Style="{StaticResource StandardButtonStyle}"
                     Height="40"
                     MinWidth="100"
                     Click="CancelButton_Click"

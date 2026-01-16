@@ -77,6 +77,7 @@ public sealed class SettingsManager
             _settings.UpdateRepoName = newSettings.UpdateRepoName;
             _settings.UpdateChannel = newSettings.UpdateChannel;
             _settings.LastUpdateCheckTime = newSettings.LastUpdateCheckTime;
+            _settings.LogMaxLines = newSettings.LogMaxLines;
 
             Logger.Log("設定を再読み込みしました", LogLevel.Info);
         }

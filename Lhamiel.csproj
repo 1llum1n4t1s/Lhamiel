@@ -14,7 +14,7 @@
     <DebugType>portable</DebugType>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <Version>1.0.17</Version>
+    <Version>1.0.18</Version>
     <AssemblyTitle>Lhamiel</AssemblyTitle>
     <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
     <AssemblyCompany>1llum1n4t1s</AssemblyCompany>
@@ -28,6 +28,7 @@
 
   <ItemGroup>
     <Compile Include="App.xaml.cs" />
+    <Compile Include="Properties\Settings.Designer.cs" />
     <Compile Include="Util\ArchiveCompressor.cs" />
     <Compile Include="Util\ArchiveConstants.cs" />
     <Compile Include="Util\ArchiveErrorHandler.cs" />
@@ -41,6 +42,7 @@
     <Compile Include="Util\MessageService.cs" />
     <Compile Include="Util\PartialExtractionHandler.cs" />
     <Compile Include="Util\PathValidator.cs" />
+    <Compile Include="Util\ProgressInfo.cs" />
     <Compile Include="Util\Settings.cs" />
     <Compile Include="Util\SettingsManager.cs" />
     <Compile Include="Util\ShortcutCreator.cs" />

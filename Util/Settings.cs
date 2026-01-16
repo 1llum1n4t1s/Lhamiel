@@ -109,6 +109,11 @@ public class Settings
     public string? LastUpdateCheckTime { get; set; }
 
     /// <summary>
+    /// ログファイルの最大行数
+    /// </summary>
+    public int LogMaxLines { get; set; } = 1000;
+
+    /// <summary>
     /// 設定をファイルから読み込むメソッド
     /// </summary>
     /// <returns>読み込まれた設定オブジェクト</returns>
@@ -179,5 +184,6 @@ public class Settings
         UpdateRepoOwner = "1llum1n4t1s";
         UpdateRepoName = "Lhamiel";
         UpdateChannel = "release";
+        LogMaxLines = 1000;
     }
 }

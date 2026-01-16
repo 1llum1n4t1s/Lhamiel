@@ -64,7 +64,7 @@ public static class ArchiveProcessor
             outputPath = ArchiveExtractor.GetOutputDirectory(filePath, outputDir, outputToSameDirectory);
 
             // ファイル名を設定
-            progressWindow?.SetFileName(filePath);
+            progressWindow?.SetFileName($"{Path.GetFileName(filePath)} (展開中)");
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -72,6 +72,12 @@ public static class ArchiveProcessor
             var progress = new Progress<ProgressInfo>(info =>
             {
                 progressWindow?.UpdateProgress(info.Percentage, info.Status);
+                // 展開中のファイル名を表示
+                if (!string.IsNullOrEmpty(info.CurrentFileName))
+                {
+                    Logger.Log($"展開中のファイル: {info.CurrentFileName}");
+                    progressWindow?.SetFileName(Path.GetFileName(info.CurrentFileName));
+                }
             });
 
             if (enablePartialExtraction)
@@ -257,7 +263,10 @@ public static class ArchiveProcessor
     public static async Task<bool> CompressFolderAsync(string folderPath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
     {
         Logger.Log($"ArchiveProcessor.CompressFolderAsync開始: folderPath={folderPath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
-        
+
+        // ProgressWindow からキャンセルトークンを取得（nullの場合は渡されたトークンを使用）
+        var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
+
         try
         {
             // フォルダの存在確認
@@ -286,21 +295,21 @@ public static class ArchiveProcessor
             if (File.Exists(outputPath))
             {
                 Logger.Log($"出力ファイルが既に存在します: {outputPath}");
-                
+
                 if (progressWindow != null)
                 {
                     // UIスレッドで上書き確認を実行
-                    var canOverwrite = await progressWindow.Dispatcher.InvokeAsync(() => 
-                        FileOverwriteDialog.CanOverwriteFile(folderPath, outputPath, progressWindow));
-                    
+                    var canOverwrite = await progressWindow.Dispatcher.InvokeAsync(() =>
+                        FileOverwriteDialog.ShowOverwriteDialog(folderPath, outputPath, progressWindow) == OverwriteResult.Yes);
+
                     Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
-                    
+
                     if (!canOverwrite)
                     {
                         Logger.Log("ユーザーが圧縮処理をキャンセルしました");
                         return false;
                     }
-                    
+
                     // 上書きが許可された場合は既存ファイルを削除
                     File.Delete(outputPath);
                     Logger.Log($"既存ファイルを削除しました: {outputPath}");
@@ -316,7 +325,7 @@ public static class ArchiveProcessor
             // ファイル名を設定
             progressWindow?.SetFileName(outputPath);
 
-            cancellationToken.ThrowIfCancellationRequested();
+            actualCancellationToken.ThrowIfCancellationRequested();
 
             // 圧縮処理を実行
             var progress = new Progress<ProgressInfo>(info =>
@@ -325,15 +334,15 @@ public static class ArchiveProcessor
             });
 
             Logger.Log($"ArchiveCompressor.CompressAsyncを呼び出し: folderPath={folderPath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
-            await ArchiveCompressor.CompressAsync(folderPath, outputPath, format, progress, cancellationToken);
+            await ArchiveCompressor.CompressAsync(folderPath, outputPath, format, progress, actualCancellationToken);
 
             Logger.Log($"圧縮処理が完了: {folderPath} -> {outputPath}");
-            
+
             // 完了メッセージを表示
             progressWindow?.SetCompleted("圧縮が完了しました。");
             await Task.Delay(1000);
             progressWindow?.Close();
-            
+
             return true;
         }
         catch (OperationCanceledException)
@@ -370,6 +379,9 @@ public static class ArchiveProcessor
             var failedFolders = new List<string>();
             var lockObject = new object();
 
+            // ProgressWindow からキャンセルトークンを取得（nullの場合は渡されたトークンを使用）
+            var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
+
             // 同時実行数を CPU コア数に制限（メモリ保護）
             var maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 4);
             var semaphore = new System.Threading.SemaphoreSlim(maxDegreeOfParallelism);
@@ -378,12 +390,12 @@ public static class ArchiveProcessor
 
             var tasks = folderPaths.Select(async (folderPath, index) =>
             {
-                await semaphore.WaitAsync(cancellationToken);
+                await semaphore.WaitAsync(actualCancellationToken);
                 try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    actualCancellationToken.ThrowIfCancellationRequested();
 
-                    var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, cancellationToken);
+                    var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow!, actualCancellationToken);
 
                     lock (lockObject)
                     {

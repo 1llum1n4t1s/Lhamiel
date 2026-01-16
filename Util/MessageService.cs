@@ -8,6 +8,15 @@ namespace Lhamiel.Util;
 public static class MessageService
 {
     /// <summary>
+    /// アクティブなウィンドウを取得する
+    /// </summary>
+    /// <returns>アクティブなウィンドウ、またはnull</returns>
+    private static Window? GetActiveWindow()
+    {
+        return Application.Current?.MainWindow ?? Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive);
+    }
+
+    /// <summary>
     /// エラーメッセージを表示
     /// </summary>
     /// <param name="message">メッセージ本文</param>
@@ -15,7 +24,7 @@ public static class MessageService
     public static void ShowError(string message, string title = "エラー")
     {
         Logger.Log($"エラーメッセージ表示: {title} - {message}", LogLevel.Error);
-        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+        MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.OK, MessageBoxImage.Error);
     }
 
     /// <summary>
@@ -26,7 +35,7 @@ public static class MessageService
     public static void ShowInfo(string message, string title = "情報")
     {
         Logger.Log($"情報メッセージ表示: {title} - {message}", LogLevel.Info);
-        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     /// <summary>
@@ -37,7 +46,7 @@ public static class MessageService
     public static void ShowWarning(string message, string title = "警告")
     {
         Logger.Log($"警告メッセージ表示: {title} - {message}", LogLevel.Warning);
-        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+        MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     /// <summary>
@@ -49,7 +58,7 @@ public static class MessageService
     public static bool ShowConfirmation(string message, string title = "確認")
     {
         Logger.Log($"確認メッセージ表示: {title} - {message}", LogLevel.Info);
-        var result = MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
+        var result = MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
         return result == MessageBoxResult.Yes;
     }
 
@@ -63,7 +72,7 @@ public static class MessageService
     {
         Logger.LogException(context, ex);
         var message = $"{context}\n\n詳細: {ex.Message}";
-        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+        MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.OK, MessageBoxImage.Error);
     }
 
     /// <summary>
@@ -74,6 +83,6 @@ public static class MessageService
     public static void ShowSuccess(string message, string title = "完了")
     {
         Logger.Log($"成功メッセージ表示: {title} - {message}", LogLevel.Info);
-        MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }

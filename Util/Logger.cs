@@ -41,6 +41,9 @@ public static class Logger
     {
         if (!isConfigured)
         {
+            // Log4net初期化前にログファイルをトリミング
+            TruncateLogFileIfNeeded();
+
             var entryAssembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
             var logRepository = LogManager.GetRepository(entryAssembly);
             var configFile = new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log4net.config"));
@@ -56,6 +59,67 @@ public static class Logger
             }
 
             isConfigured = true;
+        }
+    }
+
+    /// <summary>
+    /// ログファイルが設定された最大行数を超えていたら古い行を削除する（起動時に1回のみ実行）
+    /// </summary>
+    public static void TruncateLogFileIfNeeded()
+    {
+        var settings = Settings.Load();
+        var maxLines = settings.LogMaxLines > 0 ? settings.LogMaxLines : 1000;
+        var logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lhamiel.log");
+        var tempFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lhamiel.log.tmp");
+
+        try
+        {
+            if (!File.Exists(logFilePath))
+                return;
+
+            // ファイルサイズで簡易チェック（パフォーマンス改善）
+            var fileInfo = new FileInfo(logFilePath);
+            if (fileInfo.Length < maxLines * 80) // 1行あたり平均80バイトと仮定
+                return;
+
+            // 全行を読み込む
+            var allLines = File.ReadAllLines(logFilePath);
+            var lineCount = allLines.Length;
+
+            if (lineCount <= maxLines)
+                return;
+
+            // 最後のmaxLines行のみを保持
+            var linesToKeep = allLines.Skip(lineCount - maxLines).ToArray();
+            
+            // 一時ファイルに書き込み
+            File.WriteAllLines(tempFilePath, linesToKeep, System.Text.Encoding.UTF8);
+
+            // 元のファイルを削除して一時ファイルをリネーム
+            File.Delete(logFilePath);
+            File.Move(tempFilePath, logFilePath);
+            
+            // コンソールに出力（デバッグ用）
+            Console.WriteLine($"ログファイルをトリミングしました: {lineCount}行 -> {linesToKeep.Length}行（最大行数: {maxLines}行）");
+            System.Diagnostics.Debug.WriteLine($"ログファイルをトリミングしました: {lineCount}行 -> {linesToKeep.Length}行（最大行数: {maxLines}行）");
+        }
+        catch (Exception ex)
+        {
+            // エラーをコンソールに出力
+            Console.WriteLine($"ログファイルのトリミングに失敗しました: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"ログファイルのトリミングに失敗しました: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"スタックトレース: {ex.StackTrace}");
+            
+            // 一時ファイルが残っている場合は削除
+            try
+            {
+                if (File.Exists(tempFilePath))
+                    File.Delete(tempFilePath);
+            }
+            catch
+            {
+                // 無視
+            }
         }
     }
 

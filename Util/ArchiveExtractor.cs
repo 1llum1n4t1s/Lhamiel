@@ -69,13 +69,13 @@ public class ArchiveExtractor
     /// <summary>
     /// アーカイブの内容をチェックして、アーカイブ名を取得する
     /// 仕様：
-    /// ケース1: ルートアイテムが1つ＋フォルダ → アーカイブ名フォルダを返す（リフトアップは展開時に行う）
+    /// ケース1: ルートアイテムが1つ＋フォルダ → ルートフォルダ名を返す（直接展開、二重フォルダ防止）
     /// ケース2: ルートアイテムが複数 → アーカイブ名フォルダを返す
-    /// ケース3: ルートアイテムが1つ＋ファイル → 空文字列を返す（リフトアップなし）
+    /// ケース3: ルートアイテムが1つ＋ファイル → 空文字列を返す（ベースディレクトリに直接展開）
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
     /// <param name="defaultFileName">デフォルトのファイル名（アーカイブ名）</param>
-    /// <returns>アーカイブ名、または空文字列</returns>
+    /// <returns>ルートフォルダ名またはアーカイブ名、または空文字列</returns>
     private static string GetAdjustedFileName(string archivePath, string defaultFileName)
     {
         try
@@ -91,6 +91,14 @@ public class ArchiveExtractor
             // ルートレベルのアイテムを取得
             var rootItems = GetRootLevelItems(archiveContents);
 
+            // ケース1: ルートアイテムが1つ＋フォルダ → ルートフォルダ名を返す
+            if (rootItems.Count == 1 && rootItems[0].IsDirectory)
+            {
+                var rootFolderName = rootItems[0].Name;
+                Logger.Log($"ケース1: ルートアイテムが1つ＋フォルダ。ルートフォルダ名を使用します: {rootFolderName}");
+                return rootFolderName;
+            }
+
             // ケース3: ルートアイテムが1つ＋ファイル → 空文字列を返す
             if (rootItems.Count == 1 && !rootItems[0].IsDirectory)
             {
@@ -98,8 +106,8 @@ public class ArchiveExtractor
                 return "";
             }
 
-            // ケース1 と ケース2: アーカイブ名フォルダを作成
-            Logger.Log($"ケース1またはケース2: アーカイブ名フォルダを作成します: {defaultFileName}");
+            // ケース2: ルートアイテムが複数 → アーカイブ名フォルダを作成
+            Logger.Log($"ケース2: ルートアイテムが複数。アーカイブ名フォルダを作成します: {defaultFileName}");
             return defaultFileName;
         }
         catch (Exception ex)
@@ -117,23 +125,77 @@ public class ArchiveExtractor
         try
         {
             var reportType = report.GetType();
-            var entryProperty = reportType.GetProperty("Entry")
-                ?? reportType.GetProperty("Item")
-                ?? reportType.GetProperty("File");
-            var entry = entryProperty?.GetValue(report);
-            if (entry != null)
+            Logger.Log($"Report型: {reportType.FullName}", LogLevel.Debug);
+
+            // すべてのプロパティをログ出力（デバッグ用）
+            var properties = reportType.GetProperties();
+            foreach (var prop in properties)
             {
-                var entryType = entry.GetType();
-                var fullNameProperty = entryType.GetProperty("FullName") ?? entryType.GetProperty("Name");
-                var fullName = fullNameProperty?.GetValue(entry)?.ToString();
-                if (!string.IsNullOrWhiteSpace(fullName))
+                try
                 {
-                    return fullName;
+                    var value = prop.GetValue(report);
+                    var valueStr = value?.ToString() ?? "(null)";
+                    Logger.Log($"  {prop.Name} = {valueStr}", LogLevel.Debug);
+                }
+                catch
+                {
+                    Logger.Log($"  {prop.Name} = (エラー)", LogLevel.Debug);
                 }
             }
 
-            var nameProperty = reportType.GetProperty("FileName") ?? reportType.GetProperty("Name");
-            return nameProperty?.GetValue(report)?.ToString() ?? string.Empty;
+            // Entry プロパティの中を確認
+            var entryProperty = reportType.GetProperty("Entry");
+            if (entryProperty != null)
+            {
+                var entry = entryProperty.GetValue(report);
+                if (entry != null)
+                {
+                    var entryType = entry.GetType();
+                    Logger.Log($"Entry型: {entryType.FullName}", LogLevel.Debug);
+                    var entryProps = entryType.GetProperties();
+                    foreach (var prop in entryProps)
+                    {
+                        try
+                        {
+                            var value = prop.GetValue(entry);
+                            var valueStr = value?.ToString() ?? "(null)";
+                            if (valueStr.Length > 100)
+                                valueStr = valueStr.Substring(0, 100);
+                            Logger.Log($"  Entry.{prop.Name} = {valueStr}", LogLevel.Debug);
+                        }
+                        catch
+                        {
+                            Logger.Log($"  Entry.{prop.Name} = (エラー)", LogLevel.Debug);
+                        }
+                    }
+
+                    // FullName を取得
+                    var fullNameProperty = entryType.GetProperty("FullName");
+                    if (fullNameProperty != null)
+                    {
+                        var fullName = fullNameProperty.GetValue(entry)?.ToString();
+                        if (!string.IsNullOrWhiteSpace(fullName))
+                        {
+                            Logger.Log($"✓ ファイル名を取得しました: {fullName}", LogLevel.Info);
+                            return fullName;
+                        }
+                    }
+
+                    var nameProperty = entryType.GetProperty("Name");
+                    if (nameProperty != null)
+                    {
+                        var name = nameProperty.GetValue(entry)?.ToString();
+                        if (!string.IsNullOrWhiteSpace(name))
+                        {
+                            Logger.Log($"✓ ファイル名を取得しました（Name）: {name}", LogLevel.Info);
+                            return name;
+                        }
+                    }
+                }
+            }
+
+            Logger.Log("✗ ファイル名を取得できませんでした", LogLevel.Warning);
+            return string.Empty;
         }
         catch (Exception ex)
         {
@@ -263,18 +325,40 @@ public class ArchiveExtractor
 
             using (var reader = new ArchiveReader(archivePath))
             {
+                // アーカイブ内のエントリ情報を取得
+                var entries = reader.Items.ToList();
+                var totalEntries = entries.Count;
+                Logger.Log($"展開するエントリ数: {totalEntries}");
+
                 // 進捗報告を設定
                 if (progressCallback != null)
                 {
+                    var lastIndex = 0;
                     var progress = new Progress<Report>(report =>
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
+                        // キャンセルされている場合は処理をスキップ（スレッドプールから実行されるため、例外をスローしない）
+                        if (cancellationToken.IsCancellationRequested)
+                            return;
+
                         var percentage = report.TotalBytes > 0 ? (int)((report.Bytes * 100) / report.TotalBytes) : 0;
-                        var currentFileName = GetReportCurrentFileName(report);
+
+                        // 進捗に基づいてエントリのインデックスを推測
+                        var estimatedIndex = totalEntries > 0 
+                            ? Math.Min((int)(percentage * totalEntries / 100.0), totalEntries - 1)
+                            : 0;
+
+                        var currentFileName = string.Empty;
+                        if (estimatedIndex >= 0 && estimatedIndex < entries.Count)
+                        {
+                            currentFileName = entries[estimatedIndex].FullName ?? string.Empty;
+                            lastIndex = estimatedIndex;
+                        }
+
                         var status = string.IsNullOrWhiteSpace(currentFileName)
                             ? "ファイルを展開中..."
-                            : $"展開中: {currentFileName}";
-                        progressCallback(new ProgressInfo(percentage, status));
+                            : $"展開中: {Path.GetFileName(currentFileName)}";
+                        Logger.Log($"展開進捗: {percentage}%, エントリ {estimatedIndex + 1}/{totalEntries}, ファイル: {Path.GetFileName(currentFileName)}", LogLevel.Debug);
+                        progressCallback(new ProgressInfo(percentage, status, currentFileName));
                     });
 
                     reader.Save(extractPath, progress);
@@ -360,7 +444,7 @@ public class ArchiveExtractor
 
     /// <summary>
     /// 一時展開パスが必要かどうかを確認して返す
-    /// ケース1: ルートアイテムが1つ＋フォルダ → リフトアップ用一時パスを返す
+    /// ケース1: ルートアイテムが1つ＋フォルダ → 直接展開（outputPath を返す、リフトアップなし）
     /// ケース2: ルートアイテムが複数 → アーカイブ名フォルダ作成用一時パスを返す
     /// ケース3: ルートアイテムが1つ＋ファイル → 直接展開（outputPath を返す）
     /// </summary>
@@ -382,25 +466,24 @@ public class ArchiveExtractor
             // ルートレベルのアイテムを取得
             var rootItems = GetRootLevelItems(archiveContents);
 
-            // ケース1: ルートアイテムが1つ＋フォルダ
+            // ケース1: ルートアイテムが1つ＋フォルダ（直接展開、リフトアップなし）
             if (rootItems.Count == 1 && rootItems[0].IsDirectory)
             {
-                // 一時ディレクトリを作成（リフトアップ用）
-                var parentDir = Path.GetDirectoryName(outputPath) ?? Path.GetTempPath();
-                var tempDirName = Path.GetFileName(outputPath) + "_temp_" + Guid.NewGuid().ToString().Substring(0, 8);
-                var tempPath = Path.Combine(parentDir, tempDirName);
-
-                Logger.Log($"ケース1: ルートアイテムが1つ＋フォルダ。リフトアップが必要です。一時展開パスを返す: {tempPath}");
-                return tempPath;
+                Logger.Log($"ケース1: ルートアイテムが1つ＋フォルダ。直接展開します（リフトアップなし）: {outputPath}");
+                return outputPath;
             }
 
             // ケース2: ルートアイテムが複数
             if (rootItems.Count > 1)
             {
                 // 一時ディレクトリを作成（アーカイブ名フォルダ作成用）
-                var parentDir = Path.GetDirectoryName(outputPath) ?? Path.GetTempPath();
+                var tempBasePath = Path.Combine(Path.GetTempPath(), "Lhamiel");
+                if (!Directory.Exists(tempBasePath))
+                {
+                    Directory.CreateDirectory(tempBasePath);
+                }
                 var tempDirName = Path.GetFileName(outputPath) + "_temp_" + Guid.NewGuid().ToString().Substring(0, 8);
-                var tempPath = Path.Combine(parentDir, tempDirName);
+                var tempPath = Path.Combine(tempBasePath, tempDirName);
 
                 Logger.Log($"ケース2: ルートアイテムが複数（{rootItems.Count}個）。アーカイブ名フォルダを作成します。一時展開パスを返す: {tempPath}");
                 return tempPath;
@@ -458,8 +541,7 @@ public class ArchiveExtractor
     }
 
     /// <summary>
-    /// 一時展開パスからファイルをリフトアップまたはアーカイブ名フォルダを作成する
-    /// ケース1: ルートアイテムが1つ＋フォルダ → その中身をリフトアップ
+    /// 一時展開パスからファイルをアーカイブ名フォルダに配置する
     /// ケース2: ルートアイテムが複数 → アーカイブ名のフォルダを作成して中身を配置
     /// </summary>
     /// <param name="tempPath">一時展開パス</param>
@@ -476,53 +558,10 @@ public class ArchiveExtractor
 
             Logger.Log($"tempPath 直下: ディレクトリ={directories.Length}個, ファイル={files.Length}個");
 
-            // ケース1: ルートアイテムが1つ＋フォルダ → リフトアップ
-            if (directories.Length == 1 && files.Length == 0)
+            // ケース2: 複数のルートアイテム → アーカイブ名フォルダを作成
+            if (directories.Length > 0 || files.Length > 0)
             {
-                var sourcePath = directories[0];
-                Logger.Log($"ケース1: ルートアイテムが1つ＋フォルダ。リフトアップします: {sourcePath} -> {outputPath}");
-
-                // 本来のパスがまだ存在しない場合は作成
-                if (!Directory.Exists(outputPath))
-                {
-                    Directory.CreateDirectory(outputPath);
-                }
-
-                // sourcePath のすべてのファイルとフォルダを outputPath に移動
-                foreach (var file in Directory.GetFiles(sourcePath))
-                {
-                    var destFile = Path.Combine(outputPath, Path.GetFileName(file));
-                    RemoveReadOnlyAttributes(file);
-
-                    if (File.Exists(destFile))
-                    {
-                        File.Delete(destFile);
-                    }
-
-                    File.Move(file, destFile);
-                    Logger.Log($"ファイルを移動: {file} -> {destFile}");
-                }
-
-                foreach (var dir in Directory.GetDirectories(sourcePath))
-                {
-                    var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
-
-                    if (Directory.Exists(destDir))
-                    {
-                        RemoveReadOnlyAttributes(destDir);
-                        Directory.Delete(destDir, true);
-                    }
-
-                    Directory.Move(dir, destDir);
-                    Logger.Log($"ディレクトリを移動: {dir} -> {destDir}");
-                }
-
-                Logger.Log("ケース1: リフトアップが完了しました");
-            }
-            // ケース2: ルートアイテムが複数 → アーカイブ名フォルダを作成
-            else if (directories.Length > 1 || (directories.Length > 0 && files.Length > 0) || files.Length > 1)
-            {
-                Logger.Log($"ケース2: ルートアイテムが複数（ディレクトリ{directories.Length}個, ファイル{files.Length}個）。アーカイブ名フォルダを作成します");
+                Logger.Log($"ケース2: ルートアイテムが複数またはファイルとディレクトリが混在。アーカイブ名フォルダを作成します");
 
                 // 本来のパスがまだ存在しない場合は作成
                 if (!Directory.Exists(outputPath))
@@ -560,11 +599,6 @@ public class ArchiveExtractor
                 }
 
                 Logger.Log("ケース2: アーカイブ名フォルダの作成が完了しました");
-            }
-            // ケース3: ルートアイテムが1つ＋ファイル → 何もしない（既に outputPath に展開済み）
-            else if (files.Length == 1 && directories.Length == 0)
-            {
-                Logger.Log($"ケース3: ルートアイテムが1つ＋ファイル。何もしません（既に展開済み）");
             }
         }
         catch (Exception ex)
