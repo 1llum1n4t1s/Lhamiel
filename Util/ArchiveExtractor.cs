@@ -694,13 +694,45 @@ public class ArchiveExtractor
         try
         {
             using var reader = new ArchiveReader(archivePath);
+            var tempPath = Path.Combine(Path.GetTempPath(), $"lhamiel-{Guid.NewGuid()}");
+            Directory.CreateDirectory(tempPath);
 
-            // 現在のライブラリでは特定ファイル展開は制限されているため、
-            // 全体を展開する方法を使用
-            reader.Save(outputPath);
+            try
+            {
+                // 現在のライブラリでは特定ファイル展開は制限されているため、
+                // 一時展開してから必要なものだけをコピー
+                reader.Save(tempPath);
 
-            progressCallback?.Invoke(100);
-            Logger.Log($"特定ファイル展開完了（全体展開）: {string.Join(", ", fileNames)}");
+                var itemsByName = reader.Items.ToDictionary(x => x.FullName, x => x, StringComparer.OrdinalIgnoreCase);
+                var matchedCount = 0;
+                var totalTargets = fileNameList.Count;
+                var missingFiles = new List<string>();
+
+                foreach (var fileName in fileNameList)
+                {
+                    if (!itemsByName.TryGetValue(fileName, out var item))
+                    {
+                        missingFiles.Add(fileName);
+                        continue;
+                    }
+
+                    FileOperations.CopyExtractedItem(tempPath, outputPath, item.FullName, item.IsDirectory);
+                    matchedCount++;
+                    var progress = totalTargets == 0 ? 100 : (int)((double)matchedCount / totalTargets * 100);
+                    progressCallback?.Invoke(progress);
+                }
+
+                if (missingFiles.Any())
+                {
+                    Logger.Log($"指定されたファイルがアーカイブ内に見つかりません: {string.Join(", ", missingFiles)}", LogLevel.Warning);
+                }
+
+                Logger.Log($"特定ファイル展開完了: {string.Join(", ", fileNameList)}");
+            }
+            finally
+            {
+                FileOperations.CleanupTemporaryPath(tempPath, message => Logger.Log(message, LogLevel.Warning));
+            }
         }
         catch (Exception ex)
         {

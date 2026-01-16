@@ -215,48 +215,60 @@ public static class ArchiveErrorHandler
             // アーカイブの基本情報を取得
             analysis.TotalFiles = reader.Items.Count();
             analysis.TotalSize = 0; // 現在のライブラリではサイズ情報が取得できないため0を設定
+            var tempPath = Path.Combine(Path.GetTempPath(), $"lhamiel-{Guid.NewGuid()}");
+            Directory.CreateDirectory(tempPath);
+            Exception? extractionException = null;
 
-            // 各ファイルの整合性をチェック
-            foreach (var item in reader.Items)
+            try
             {
-                try
+                reader.Save(tempPath);
+            }
+            catch (Exception ex)
+            {
+                extractionException = ex;
+                analysis.ErrorDetails.Add($"一時展開でエラー: {ex.Message}");
+                analysis.IsCorrupted = true;
+            }
+
+            try
+            {
+                // 各ファイルの整合性をチェック
+                foreach (var item in reader.Items)
                 {
-                    // ファイルの整合性チェック（CRCチェック等）
-                    if (item.IsDirectory)
+                    try
                     {
-                        analysis.RecoverableFiles.Add(item.FullName);
-                    }
-                    else
-                    {
-                        // 実際のファイル展開を試行して整合性を確認
-                        var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                        try
+                        var itemPath = Path.Combine(tempPath, item.FullName);
+                        var exists = item.IsDirectory ? Directory.Exists(itemPath) : File.Exists(itemPath);
+
+                        if (exists)
                         {
-                            // 一時的にファイルを展開して整合性をチェック
-                            reader.Save(tempPath);
                             analysis.RecoverableFiles.Add(item.FullName);
                         }
-                        catch
+                        else
                         {
                             analysis.CorruptedFiles.Add(item.FullName);
                             analysis.IsCorrupted = true;
-                        }
-                        finally
-                        {
-                            // 一時ファイルを削除
-                            if (Directory.Exists(tempPath))
+                            if (extractionException != null)
                             {
-                                Directory.Delete(tempPath, true);
+                                analysis.ErrorDetails.Add($"ファイル '{item.FullName}' の展開に失敗: {extractionException.Message}");
+                            }
+                            else
+                            {
+                                analysis.ErrorDetails.Add($"ファイル '{item.FullName}' が一時展開先に見つかりませんでした。");
                             }
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        analysis.CorruptedFiles.Add(item.FullName);
+                        analysis.ErrorDetails.Add($"ファイル '{item.FullName}' でエラー: {ex.Message}");
+                        analysis.IsCorrupted = true;
+                    }
                 }
-                catch (Exception ex)
-                {
-                    analysis.CorruptedFiles.Add(item.FullName);
-                    analysis.ErrorDetails.Add($"ファイル '{item.FullName}' でエラー: {ex.Message}");
-                    analysis.IsCorrupted = true;
-                }
+            }
+            finally
+            {
+                FileOperations.CleanupTemporaryPath(tempPath, message => analysis.ErrorDetails.Add(message));
             }
 
             // 破損の種類を判定

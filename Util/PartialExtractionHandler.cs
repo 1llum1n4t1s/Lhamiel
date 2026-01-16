@@ -143,73 +143,83 @@ public class PartialExtractionHandler
                 Directory.CreateDirectory(outputPath);
             }
 
-            // 各ファイルを個別に展開
-            for (int i = 0; i < items.Count; i++)
+            var (tempPath, extractionException) = ExtractArchiveToTemporaryPath(reader);
+
+            try
             {
-                var item = items[i];
-                var fullName = GetFullName(item);
-                var progress = (int)((double)i / items.Count * 100);
-                progressCallback?.Invoke(progress, $"展開中: {fullName}");
-
-                try
+                // 事前展開済みの内容から個別ファイルをコピー
+                for (int i = 0; i < items.Count; i++)
                 {
-                    // 個別ファイルの展開を試行
-                    await ExtractSingleFile(reader, item, outputPath);
-                    result.SuccessFiles.Add(fullName);
-                    result.SuccessCount++;
+                    var item = items[i];
+                    var fullName = item.FullName ?? string.Empty;
+                    var progress = items.Count == 0 ? 100 : (int)((double)(i + 1) / items.Count * 100);
+                    progressCallback?.Invoke(progress, $"展開中: {fullName}");
 
-                    Logger.Log($"ファイル展開成功: {fullName}", LogLevel.Debug);
-                }
-                catch (Exception ex)
-                {
-                    var failedFile = new FailedFileInfo
+                    try
                     {
-                        FilePath = fullName,
-                        ErrorMessage = ex.Message,
-                        ErrorType = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath).ErrorType,
-                        IsRecoverable = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath).IsRecoverable
-                    };
+                        await Task.Run(() => FileOperations.CopyExtractedItem(tempPath, outputPath, fullName, item.IsDirectory));
+                        result.SuccessFiles.Add(fullName);
+                        result.SuccessCount++;
 
-                    result.FailedFiles.Add(failedFile);
-                    result.FailureCount++;
-
-                    Logger.Log($"ファイル展開失敗: {fullName}, エラー: {ex.Message}", LogLevel.Error);
-
-                    // エラー処理オプションに基づいて処理を決定
-                    var handlingOption = DetermineErrorHandling(failedFile, errorHandling, userChoiceCallback);
-
-                    switch (handlingOption)
+                        Logger.Log($"ファイル展開成功: {fullName}", LogLevel.Debug);
+                    }
+                    catch (Exception ex)
                     {
-                        case ErrorHandlingOption.StopOnError:
-                            Logger.Log("エラーで停止", LogLevel.Error);
-                            result.IsSuccess = false;
-                            return result;
+                        var error = ex is FileNotFoundException && extractionException != null ? extractionException : ex;
+                        var analyzed = ArchiveErrorHandler.AnalyzeError(error, archivePath, outputPath);
+                        var failedFile = new FailedFileInfo
+                        {
+                            FilePath = fullName,
+                            ErrorMessage = error.Message,
+                            ErrorType = analyzed.ErrorType,
+                            IsRecoverable = analyzed.IsRecoverable
+                        };
 
-                        case ErrorHandlingOption.SkipOnError:
-                            result.SkippedFiles.Add(fullName);
-                            result.SkippedCount++;
-                            Logger.Log($"ファイルをスキップ: {fullName}", LogLevel.Warning);
-                            break;
+                        result.FailedFiles.Add(failedFile);
+                        result.FailureCount++;
 
-                        case ErrorHandlingOption.AutoRetry:
-                            // リトライを試行
-                            if (await RetryExtraction(reader, item, outputPath, 3))
-                            {
-                                result.SuccessFiles.Add(fullName);
-                                result.SuccessCount++;
-                                result.FailedFiles.RemoveAt(result.FailedFiles.Count - 1);
-                                result.FailureCount--;
-                                Logger.Log($"リトライ成功: {fullName}", LogLevel.Info);
-                            }
-                            else
-                            {
+                        Logger.Log($"ファイル展開失敗: {fullName}, エラー: {error.Message}", LogLevel.Error);
+
+                        // エラー処理オプションに基づいて処理を決定
+                        var handlingOption = DetermineErrorHandling(failedFile, errorHandling, userChoiceCallback);
+
+                        switch (handlingOption)
+                        {
+                            case ErrorHandlingOption.StopOnError:
+                                Logger.Log("エラーで停止", LogLevel.Error);
+                                result.IsSuccess = false;
+                                return result;
+
+                            case ErrorHandlingOption.SkipOnError:
                                 result.SkippedFiles.Add(fullName);
                                 result.SkippedCount++;
-                                Logger.Log($"リトライ失敗、スキップ: {fullName}", LogLevel.Warning);
-                            }
-                            break;
+                                Logger.Log($"ファイルをスキップ: {fullName}", LogLevel.Warning);
+                                break;
+
+                            case ErrorHandlingOption.AutoRetry:
+                                // リトライを試行
+                                if (await RetryExtraction(tempPath, outputPath, fullName, item.IsDirectory, 3))
+                                {
+                                    result.SuccessFiles.Add(fullName);
+                                    result.SuccessCount++;
+                                    result.FailedFiles.RemoveAt(result.FailedFiles.Count - 1);
+                                    result.FailureCount--;
+                                    Logger.Log($"リトライ成功: {fullName}", LogLevel.Info);
+                                }
+                                else
+                                {
+                                    result.SkippedFiles.Add(fullName);
+                                    result.SkippedCount++;
+                                    Logger.Log($"リトライ失敗、スキップ: {fullName}", LogLevel.Warning);
+                                }
+                                break;
+                        }
                     }
                 }
+            }
+            finally
+            {
+                FileOperations.CleanupTemporaryPath(tempPath, message => Logger.Log(message, LogLevel.Warning));
             }
 
             // 最終結果を判定
@@ -227,79 +237,25 @@ public class PartialExtractionHandler
     }
 
     /// <summary>
-    /// アーカイブアイテムからFullNameプロパティを取得する
+    /// アーカイブを一時ディレクトリに展開する
     /// </summary>
-    /// <param name="item">アーカイブアイテム</param>
-    /// <returns>FullName文字列</returns>
-    private static string GetFullName(object item)
+    private static (string TempPath, Exception? ExtractionException) ExtractArchiveToTemporaryPath(ArchiveReader reader)
     {
+        var tempPath = Path.Combine(Path.GetTempPath(), $"lhamiel-{Guid.NewGuid()}");
+        Directory.CreateDirectory(tempPath);
+        Exception? extractionException = null;
+
         try
         {
-            var fullNameProperty = item.GetType().GetProperty("FullName");
-            if (fullNameProperty != null)
-            {
-                var value = fullNameProperty.GetValue(item);
-                return value?.ToString() ?? string.Empty;
-            }
+            reader.Save(tempPath);
         }
         catch (Exception ex)
         {
-            Logger.Log($"FullNameプロパティの取得に失敗: {ex.Message}", LogLevel.Warning);
+            extractionException = ex;
+            Logger.LogException("一時展開中にエラーが発生しました", ex);
         }
-        return string.Empty;
-    }
 
-    /// <summary>
-    /// 単一ファイルの展開を実行
-    /// </summary>
-    private static async Task ExtractSingleFile(ArchiveReader reader, object item, string outputPath)
-    {
-        await Task.Run(() =>
-        {
-            // PERFORMANCE WARNING: 現在のライブラリ(Cube.FileSystem.SevenZip)では個別ファイル展開が制限されているため、
-            // 全アーカイブを一時ディレクトリに展開してから目的のファイルのみをコピーする非効率な方法を使用しています。
-            // TODO: ライブラリのExtract(item, path)メソッドやSevenZipSharpの直接利用を検討
-            // 大きなアーカイブでは著しくパフォーマンスが低下します。
-            var fullName = GetFullName(item);
-            Logger.Log($"部分展開のため全アーカイブを一時展開中: {fullName}", LogLevel.Warning);
-
-            var tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            try
-            {
-                // 全体を展開してから目的のファイルのみをコピー
-                reader.Save(tempPath);
-
-                var sourceFile = Path.Combine(tempPath, fullName);
-                var targetFile = Path.Combine(outputPath, fullName);
-
-                if (File.Exists(sourceFile))
-                {
-                    var targetDir = Path.GetDirectoryName(targetFile);
-                    if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
-                    {
-                        Directory.CreateDirectory(targetDir);
-                    }
-
-                    File.Copy(sourceFile, targetFile, true);
-                }
-                else if (Directory.Exists(sourceFile))
-                {
-                    var targetDir = Path.Combine(outputPath, fullName);
-                    if (!Directory.Exists(targetDir))
-                    {
-                        Directory.CreateDirectory(targetDir);
-                    }
-                }
-            }
-            finally
-            {
-                // 一時ファイルを削除
-                if (Directory.Exists(tempPath))
-                {
-                    Directory.Delete(tempPath, true);
-                }
-            }
-        });
+        return (tempPath, extractionException);
     }
 
     /// <summary>
@@ -321,19 +277,18 @@ public class PartialExtractionHandler
     /// <summary>
     /// 展開のリトライを実行
     /// </summary>
-    private static async Task<bool> RetryExtraction(ArchiveReader reader, object item, string outputPath, int maxRetries)
+    private static async Task<bool> RetryExtraction(string tempPath, string outputPath, string fullName, bool isDirectory, int maxRetries)
     {
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
-                var fullName = GetFullName(item);
                 Logger.Log($"リトライ試行 {attempt}/{maxRetries}: {fullName}", LogLevel.Info);
 
                 // 少し待機してからリトライ
                 await Task.Delay(1000 * attempt);
 
-                await ExtractSingleFile(reader, item, outputPath);
+                await Task.Run(() => FileOperations.CopyExtractedItem(tempPath, outputPath, fullName, isDirectory));
                 return true;
             }
             catch (Exception ex)
@@ -409,36 +364,58 @@ public class PartialExtractionHandler
         {
             using var reader = new ArchiveReader(archivePath);
             var recoverableFiles = previousResult.FailedFiles.Where(f => f.IsRecoverable).ToList();
+            var (tempPath, extractionException) = ExtractArchiveToTemporaryPath(reader);
 
-            for (int i = 0; i < recoverableFiles.Count; i++)
+            try
             {
-                var failedFile = recoverableFiles[i];
-                var progress = (int)((double)i / recoverableFiles.Count * 100);
-                progressCallback?.Invoke(progress, $"再展開中: {failedFile.FilePath}");
-
-                try
+                for (int i = 0; i < recoverableFiles.Count; i++)
                 {
-                    var item = reader.Items.FirstOrDefault(x => x.FullName == failedFile.FilePath);
-                    if (item != null)
+                    var failedFile = recoverableFiles[i];
+                    var progress = recoverableFiles.Count == 0 ? 100 : (int)((double)(i + 1) / recoverableFiles.Count * 100);
+                    progressCallback?.Invoke(progress, $"再展開中: {failedFile.FilePath}");
+
+                    try
                     {
-                        await ExtractSingleFile(reader, item, outputPath);
-                        retryResult.SuccessFiles.Add(failedFile.FilePath);
-                        retryResult.SuccessCount++;
-                        Logger.Log($"再展開成功: {failedFile.FilePath}");
+                        var item = reader.Items.FirstOrDefault(x => x.FullName == failedFile.FilePath);
+                        if (item != null)
+                        {
+                            await Task.Run(() => FileOperations.CopyExtractedItem(tempPath, outputPath, item.FullName, item.IsDirectory));
+                            retryResult.SuccessFiles.Add(failedFile.FilePath);
+                            retryResult.SuccessCount++;
+                            Logger.Log($"再展開成功: {failedFile.FilePath}");
+                        }
+                        else
+                        {
+                            var errorMessage = "アーカイブ内に対象ファイルが見つかりません。";
+                            retryResult.FailedFiles.Add(new FailedFileInfo
+                            {
+                                FilePath = failedFile.FilePath,
+                                ErrorMessage = errorMessage,
+                                ErrorType = failedFile.ErrorType,
+                                IsRecoverable = false
+                            });
+                            retryResult.FailureCount++;
+                            Logger.Log($"再展開失敗: {failedFile.FilePath}, エラー: {errorMessage}");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        var error = ex is FileNotFoundException && extractionException != null ? extractionException : ex;
+                        retryResult.FailedFiles.Add(new FailedFileInfo
+                        {
+                            FilePath = failedFile.FilePath,
+                            ErrorMessage = error.Message,
+                            ErrorType = failedFile.ErrorType,
+                            IsRecoverable = false
+                        });
+                        retryResult.FailureCount++;
+                        Logger.Log($"再展開失敗: {failedFile.FilePath}, エラー: {error.Message}");
                     }
                 }
-                catch (Exception ex)
-                {
-                    retryResult.FailedFiles.Add(new FailedFileInfo
-                    {
-                        FilePath = failedFile.FilePath,
-                        ErrorMessage = ex.Message,
-                        ErrorType = failedFile.ErrorType,
-                        IsRecoverable = false
-                    });
-                    retryResult.FailureCount++;
-                    Logger.Log($"再展開失敗: {failedFile.FilePath}, エラー: {ex.Message}");
-                }
+            }
+            finally
+            {
+                FileOperations.CleanupTemporaryPath(tempPath, message => Logger.Log(message, LogLevel.Warning));
             }
 
             retryResult.IsSuccess = retryResult.SuccessCount > 0;
