@@ -179,9 +179,11 @@ public static class ArchiveProcessor
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // ★ 修正: 個別ファイルの進捗(バイト単位)は報告させないため、individualProgressにnullを渡す
+                    // ★ 修正: null を渡すと ExtractArchiveAsync 内部で progressWindow を使ってしまうため、
+                    // 「何もしない Progress」を渡して、内部でのUI更新を無効化する。
                     // 並列処理中は「全体の何件目が終わったか」を外側のループで管理しているため、これで十分
-                    var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: null);
+                    var silentProgress = new Progress<ProgressInfo>(_ => { });
+                    var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: silentProgress);
 
                     lock (lockObject)
                     {

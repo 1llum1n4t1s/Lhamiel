@@ -62,6 +62,12 @@ public class ArchiveExtractor
     /// <summary>
     /// 進捗レポートから現在処理中のファイル名を取得する
     /// </summary>
+    /// <remarks>
+    /// Cube.FileSystem.SevenZipのReport型は基底クラスであり、
+    /// 派生型（ArchiveReaderからの進捗レポート）にのみEntryプロパティが存在する。
+    /// ライブラリのAPIが公開していない派生型のプロパティにアクセスするため、
+    /// dynamicを使用してリフレクション経由でアクセスする必要がある。
+    /// </remarks>
     private static string GetReportCurrentFileName(Report report)
     {
         try
@@ -297,8 +303,9 @@ public class ArchiveExtractor
             }
             else if (Directory.Exists(path))
             {
-                // ディレクトリ内のすべてのファイルとサブディレクトリを再帰的に処理
-                foreach (var filePath in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
+                // ★ 修正: GetFiles -> EnumerateFiles に変更してメモリ効率を向上
+                // 大量ファイル処理時に配列を一括確保せず、遅延実行（イテレータ処理）で処理
+                foreach (var filePath in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
                 {
                     try
                     {
