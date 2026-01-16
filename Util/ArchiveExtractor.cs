@@ -14,12 +14,6 @@ public class ArchiveExtractor
     private static readonly string[] SupportedExtensions = { ".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tZ", ".exe" };
 
     /// <summary>
-    /// リフレクションで使用するプロパティ情報をキャッシュ
-    /// </summary>
-    private static System.Reflection.PropertyInfo? _entryProp;
-    private static System.Reflection.PropertyInfo? _fullNameProp;
-
-    /// <summary>
     /// 指定されたファイルがサポートされているアーカイブ形式かどうかを確認する
     /// </summary>
     /// <param name="filePath">確認するファイルのパス</param>
@@ -72,42 +66,24 @@ public class ArchiveExtractor
     {
         try
         {
-            // 初回のみリフレクション情報をキャッシュ
-            if (_entryProp == null)
-            {
-                _entryProp = report.GetType().GetProperty("Entry");
-            }
+            // dynamic を使用してリフレクションを回避（実行時型解決）
+            dynamic dynReport = report;
+            var entry = dynReport.Entry;
 
-            if (_entryProp != null)
+            if (entry != null)
             {
-                var entry = _entryProp.GetValue(report);
-                if (entry != null)
+                // FullName を優先的に取得
+                var fullName = entry.FullName as string;
+                if (!string.IsNullOrWhiteSpace(fullName))
                 {
-                    // FullName プロパティもキャッシュ
-                    if (_fullNameProp == null)
-                    {
-                        _fullNameProp = entry.GetType().GetProperty("FullName");
-                    }
+                    return fullName;
+                }
 
-                    if (_fullNameProp != null)
-                    {
-                        var fullName = _fullNameProp.GetValue(entry)?.ToString();
-                        if (!string.IsNullOrWhiteSpace(fullName))
-                        {
-                            return fullName;
-                        }
-                    }
-
-                    // FullName が取得できなかった場合は Name を試す
-                    var nameProp = entry.GetType().GetProperty("Name");
-                    if (nameProp != null)
-                    {
-                        var name = nameProp.GetValue(entry)?.ToString();
-                        if (!string.IsNullOrWhiteSpace(name))
-                        {
-                            return name;
-                        }
-                    }
+                // FullName が取得できなかった場合は Name を試す
+                var name = entry.Name as string;
+                if (!string.IsNullOrWhiteSpace(name))
+                {
+                    return name;
                 }
             }
 
@@ -385,18 +361,26 @@ public class ArchiveExtractor
 
             try
             {
-                // 現在のライブラリでは特定ファイル展開は制限されているため、
-                // 一時展開してから必要なものだけをコピー
+                // ライブラリ制約により全展開が必要だが、少なくともDictionary作成を効率化
                 reader.Save(tempPath);
 
-                var itemsByName = reader.Items.ToDictionary(x => x.FullName, x => x, StringComparer.OrdinalIgnoreCase);
+                // 対象ファイルのみを処理するためのDictionary作成（メモリ効率化）
+                var targetItems = new Dictionary<string, dynamic>(StringComparer.OrdinalIgnoreCase);
+                foreach (var item in reader.Items)
+                {
+                    if (fileNameList.Contains(item.FullName))
+                    {
+                        targetItems[item.FullName] = item;
+                    }
+                }
+
                 var matchedCount = 0;
                 var totalTargets = fileNameList.Count;
                 var missingFiles = new List<string>();
 
                 foreach (var fileName in fileNameList)
                 {
-                    if (!itemsByName.TryGetValue(fileName, out var item))
+                    if (!targetItems.TryGetValue(fileName, out var item))
                     {
                         missingFiles.Add(fileName);
                         continue;

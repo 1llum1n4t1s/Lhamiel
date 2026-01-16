@@ -768,14 +768,28 @@ public partial class MainWindow : Window
             var completedFilesCount = 0; // 完了したファイル数の合計（スレッドセーフに管理）
             var lastUIUpdateTime = DateTime.MinValue; // UI更新頻度制御用
 
-            // 各フォルダのファイル数を事前に計測
-            foreach (var folder in folders)
+            // 各フォルダのファイル数を事前に計測（UIフリーズ回避のため非同期化）
+            await Task.Run(() =>
             {
-                var fileCount = Directory.GetFiles(folder, "*", SearchOption.AllDirectories).Length;
-                folderFileCounts[folder] = fileCount;
-                totalFiles += fileCount;
-                folderProgress[folder] = 0;
-            }
+                foreach (var folder in folders)
+                {
+                    try
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var fileCount = Directory.GetFiles(folder, "*", SearchOption.AllDirectories).Length;
+                        folderFileCounts[folder] = fileCount;
+                        totalFiles += fileCount;
+                        folderProgress[folder] = 0;
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log($"ファイル数カウント失敗: {folder}, {ex.Message}");
+                        // エラー時は0として扱う
+                        folderFileCounts[folder] = 0;
+                        folderProgress[folder] = 0;
+                    }
+                }
+            }, cancellationToken);
 
             Logger.Log($"全フォルダの総ファイル数: {totalFiles}");
 

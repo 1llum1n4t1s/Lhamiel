@@ -164,28 +164,33 @@ public static class PathValidator
     {
         errorMessage = null;
 
-        // "../" または "..\" パターンをチェック
-        if (path.Contains(".."))
+        try
         {
-            // 正規化されたパスで再度確認
-            try
-            {
-                var fullPath = Path.GetFullPath(path);
-                var normalizedPath = path.Replace('/', Path.DirectorySeparatorChar)
-                                         .Replace('\\', Path.DirectorySeparatorChar);
+            // Path.GetFullPath でパスを正規化し、実際のディレクトリトラバーサルをチェック
+            var fullPath = Path.GetFullPath(path);
 
-                if (normalizedPath.Contains($"..{Path.DirectorySeparatorChar}"))
-                {
-                    errorMessage = "パストラバーサルのパターンが検出されました (..)";
-                    Logger.Log($"セキュリティ警告: パストラバーサル検出 - {path}", LogLevel.Warning);
-                    return false;
-                }
-            }
-            catch (Exception ex)
+            // 正規化されたパスに ".." が含まれている場合はディレクトリトラバーサル
+            if (fullPath.Contains(".."))
             {
-                errorMessage = $"パスの正規化に失敗しました: {ex.Message}";
+                errorMessage = "パストラバーサルのパターンが検出されました (..)";
+                Logger.Log($"セキュリティ警告: パストラバーサル検出 - 元パス: {path}, 正規化パス: {fullPath}", LogLevel.Warning);
                 return false;
             }
+
+            // 追加のセキュリティチェック: ルートディレクトリ外へのアクセスを防ぐ
+            var root = Path.GetPathRoot(fullPath);
+            if (string.IsNullOrEmpty(root) || !fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+            {
+                errorMessage = "不正なパス形式が検出されました";
+                Logger.Log($"セキュリティ警告: 不正なパス形式 - 元パス: {path}, 正規化パス: {fullPath}", LogLevel.Warning);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"パスの検証に失敗しました: {ex.Message}";
+            Logger.Log($"パス検証エラー: {path}, {ex.Message}", LogLevel.Warning);
+            return false;
         }
 
         return true;

@@ -327,14 +327,20 @@ public static class ArchiveProcessor
 
             actualCancellationToken.ThrowIfCancellationRequested();
 
-            // 圧縮処理を実行
-            var progress = new Progress<ProgressInfo>(info =>
-            {
-                progressWindow?.UpdateProgress(info.Percentage, info.Status);
-            });
+            // 圧縮処理を実行（最適化: LHA形式の場合、無駄なコピーを避けるためCompressDirectoryを使用）
+            Logger.Log($"ArchiveCompressor.CompressDirectoryを呼び出し: folderPath={folderPath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
 
-            Logger.Log($"ArchiveCompressor.CompressAsyncを呼び出し: folderPath={folderPath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
-            await ArchiveCompressor.CompressAsync(folderPath, outputPath, format, progress, actualCancellationToken);
+            await Task.Run(() =>
+            {
+                var compressor = new ArchiveCompressor();
+                var progressCallback = new Action<ProgressInfo>(info =>
+                {
+                    // Progress<T>経由でUI更新
+                    progressWindow?.UpdateProgress(info.Percentage, info.Status);
+                });
+
+                compressor.CompressDirectory(folderPath, outputPath, progressCallback);
+            }, actualCancellationToken);
 
             Logger.Log($"圧縮処理が完了: {folderPath} -> {outputPath}");
 
