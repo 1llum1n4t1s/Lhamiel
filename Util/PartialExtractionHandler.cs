@@ -157,7 +157,7 @@ public class PartialExtractionHandler
 
                     try
                     {
-                        await Task.Run(() => CopyExtractedItem(tempPath, outputPath, fullName, item.IsDirectory));
+                        await Task.Run(() => FileOperations.CopyExtractedItem(tempPath, outputPath, fullName, item.IsDirectory));
                         result.SuccessFiles.Add(fullName);
                         result.SuccessCount++;
 
@@ -261,34 +261,6 @@ public class PartialExtractionHandler
     /// <summary>
     /// 一時展開した内容からファイルをコピーする
     /// </summary>
-    private static void CopyExtractedItem(string tempPath, string outputPath, string fullName, bool isDirectory)
-    {
-        var sourcePath = Path.Combine(tempPath, fullName);
-        var targetPath = Path.Combine(outputPath, fullName);
-
-        if (isDirectory)
-        {
-            if (!Directory.Exists(targetPath))
-            {
-                Directory.CreateDirectory(targetPath);
-            }
-            return;
-        }
-
-        if (!File.Exists(sourcePath))
-        {
-            throw new FileNotFoundException("展開されたファイルが見つかりません。", sourcePath);
-        }
-
-        var targetDir = Path.GetDirectoryName(targetPath);
-        if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
-        {
-            Directory.CreateDirectory(targetDir);
-        }
-
-        File.Copy(sourcePath, targetPath, true);
-    }
-
     /// <summary>
     /// 一時ディレクトリを削除する
     /// </summary>
@@ -337,7 +309,7 @@ public class PartialExtractionHandler
                 // 少し待機してからリトライ
                 await Task.Delay(1000 * attempt);
 
-                await Task.Run(() => CopyExtractedItem(tempPath, outputPath, fullName, isDirectory));
+                await Task.Run(() => FileOperations.CopyExtractedItem(tempPath, outputPath, fullName, isDirectory));
                 return true;
             }
             catch (Exception ex)
@@ -428,7 +400,7 @@ public class PartialExtractionHandler
                         var item = reader.Items.FirstOrDefault(x => x.FullName == failedFile.FilePath);
                         if (item != null)
                         {
-                            await Task.Run(() => CopyExtractedItem(tempPath, outputPath, item.FullName, item.IsDirectory));
+                            await Task.Run(() => FileOperations.CopyExtractedItem(tempPath, outputPath, item.FullName, item.IsDirectory));
                             retryResult.SuccessFiles.Add(failedFile.FilePath);
                             retryResult.SuccessCount++;
                             Logger.Log($"再展開成功: {failedFile.FilePath}");
