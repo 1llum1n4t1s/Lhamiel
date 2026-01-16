@@ -166,8 +166,10 @@ public static class ArchiveProcessor
             var failedFiles = new List<string>();
             var lockObject = new object();
 
-            // 同時実行数を CPU コア数に制限（メモリ保護）
-            var maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 4);
+            // ★ 【最適化】 ディスクI/O負荷を考慮し、並列数をCPUコア数ではなく制限
+            // HDDの場合は並列数が多いとシーク多発で逆に遅くなるため、保守的な値に設定
+            // SSDを前提とする場合でも、アーカイブ展開のメモリ使用量を考慮して上限を設定
+            var maxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount / 2, 2, 4);
             var semaphore = new System.Threading.SemaphoreSlim(maxDegreeOfParallelism);
 
             Logger.Log($"複数ファイル展開開始: {totalCount}個のファイル、最大並列度={maxDegreeOfParallelism}");
@@ -197,8 +199,13 @@ public static class ArchiveProcessor
                         }
 
                         // 件数ベースの進捗のみを更新
-                        var progress = (int)((double)(index + 1) / totalCount * 100);
-                        progressWindow?.UpdateProgress(progress, $"展開中: {Path.GetFileName(filePath)}");
+                        var currentCount = successCount + failedFiles.Count;
+                        var progress = (int)((double)currentCount / totalCount * 100);
+                        
+                        // ★ 【バグ修正】 UIスレッド上で更新を実行（クロススレッド操作違反を防ぐ）
+                        progressWindow?.Dispatcher.Invoke(() =>
+                            progressWindow.UpdateProgress(progress, $"展開中 ({currentCount}/{totalCount}): {Path.GetFileName(filePath)}")
+                        );
                     }
                 }
                 catch (OperationCanceledException)

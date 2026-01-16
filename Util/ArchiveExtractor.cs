@@ -231,10 +231,10 @@ public class ArchiveExtractor
 
             using (var reader = new ArchiveReader(archivePath))
             {
-                // アーカイブ内のエントリ情報を取得
-                var entries = reader.Items.ToList();
-                var totalEntries = entries.Count;
-                Logger.Log($"展開するエントリ数: {totalEntries}");
+                // ★ 【最適化】 Items.ToList() を削除
+                // 巨大アーカイブの場合、全エントリをメモリに展開するのはメモリ消費が大きい
+                // ログ出力のためだけに走査するのは効率が悪いため、ここではスキップ
+                Logger.Log($"展開処理開始: {archivePath}");
 
                 // 進捗報告を設定
                 if (progressCallback != null)

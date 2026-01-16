@@ -149,6 +149,13 @@ public class ArchiveCompressor
                 progressCallback?.Invoke(new ProgressInfo(10, $"ファイルを追加中 (0/{totalFiles})..."));
                 const int fileAddProgressMin = 10; // ファイル追加開始は10%
                 const int fileAddProgressMax = 80; // ファイル追加は80%まで
+                
+                // ★ 【最適化】 進捗報告の頻度制御
+                // ファイル数が多い場合、毎ループでprogressCallbackを呼ぶとUI更新の負荷が高くなる
+                // 進捗が1%以上進んだときのみ報告するように制限
+                var lastReportedProgress = 10;
+                const int progressReportInterval = 1; // 1%以上進んだときに報告
+                
                 for (var i = 0; i < totalFiles; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -159,8 +166,14 @@ public class ArchiveCompressor
                     var progress = totalFiles > 0 
                         ? fileAddProgressMin + (int)Math.Round((double)(i + 1) * (fileAddProgressMax - fileAddProgressMin) / totalFiles) 
                         : fileAddProgressMin;
-                    Logger.Log($"ファイル追加進捗: {i + 1}/{totalFiles} ({progress}%) - {relativePath}");
-                    progressCallback?.Invoke(new ProgressInfo(progress, $"ファイル追加中 ({i + 1}/{totalFiles}): {relativePath}", fullPath));
+                    
+                    // 1%以上進んだ場合のみログとコールバックを実行
+                    if (progress - lastReportedProgress >= progressReportInterval || i == totalFiles - 1)
+                    {
+                        Logger.Log($"ファイル追加進捗: {i + 1}/{totalFiles} ({progress}%) - {relativePath}");
+                        progressCallback?.Invoke(new ProgressInfo(progress, $"ファイル追加中 ({i + 1}/{totalFiles}): {relativePath}", fullPath));
+                        lastReportedProgress = progress;
+                    }
                 }
 
                 // 圧縮を実行
