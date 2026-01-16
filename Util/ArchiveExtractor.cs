@@ -179,8 +179,25 @@ public class ArchiveExtractor
             // 上書きが許可された場合は既存ディレクトリを削除
             try
             {
+                // ★ 修正: 読み取り専用属性をすべて解除してからディレクトリ削除を実行
                 RemoveReadOnlyAttributes(outputPath);
-                Directory.Delete(outputPath, true);
+
+                // ★ 修正: ファイルロック解放を待つため、短い遅延を挿入
+                await Task.Delay(100, cancellationToken);
+
+                // リトライロジック（1回目は通常削除、失敗時は第2回を試す）
+                try
+                {
+                    Directory.Delete(outputPath, true);
+                }
+                catch (IOException) when (Directory.Exists(outputPath))
+                {
+                    // ★ 修正: 最初の試行が失敗した場合、再度属性を確認して削除を試みる
+                    Logger.Log($"ディレクトリ削除の1回目が失敗、再試行: {outputPath}");
+                    await Task.Delay(200, cancellationToken);
+                    RemoveReadOnlyAttributes(outputPath);
+                    Directory.Delete(outputPath, true);
+                }
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -191,6 +208,11 @@ public class ArchiveExtractor
             {
                 Logger.Log($"ディレクトリの削除に失敗しました（I/Oエラー）: {outputPath}, {ex.Message}");
                 throw new InvalidOperationException($"展開先ディレクトリ '{Path.GetFileName(outputPath)}' の削除に失敗しました。\nディレクトリ内のファイルが使用中である可能性があります。", ex);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Log($"ディレクトリ削除処理がキャンセルされました: {outputPath}");
+                throw;
             }
         }
 

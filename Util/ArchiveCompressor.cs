@@ -105,11 +105,14 @@ public class ArchiveCompressor
                     progressCallback?.Invoke(new ProgressInfo(2, $"ファイルをスキャン中: {dirName}"));
                     Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
                     
-                    var files = GetFilesRecursively(sourcePath, excludedPatterns);
+                    // ★ 修正: IEnumerable二重スキャンを回避
+                    // GetFilesRecursively は遅延評価のため、Count()と foreach で2回のファイルシステムアクセスが発生
+                    // ToList() で実体化して1回のアクセスに統一
+                    var files = GetFilesRecursively(sourcePath, excludedPatterns).ToList();
                     var parentDir = Path.GetDirectoryName(sourcePath) ?? "";
 
-                    Logger.Log($"スキャン完了: {files.Count()}個のファイルが見つかりました");
-                    progressCallback?.Invoke(new ProgressInfo(3, $"スキャン完了: {files.Count()}個のファイル"));
+                    Logger.Log($"スキャン完了: {files.Count}個のファイルが見つかりました");
+                    progressCallback?.Invoke(new ProgressInfo(3, $"スキャン完了: {files.Count}個のファイル"));
 
                     foreach (var file in files)
                     {
@@ -293,10 +296,12 @@ public class ArchiveCompressor
         // 形式に応じたオプションを設定
         if (format == Format.SevenZip)
         {
-            // 7z形式: Ultra圧縮レベル + LZMA2 + CPU コア数と同じスレッド数
+            // 7z形式: Normal圧縮レベル + LZMA2 + CPU コア数と同じスレッド数
+            // ★ 修正: Ultraは圧縮率向上に対して時間・メモリコストが大きいため、Normalに変更
+            // メモリ消費を抑えてアプリケーションのフリーズを回避しつつ、良好な圧縮率を維持
             var options = new CompressionOption
             {
-                CompressionLevel = CompressionLevel.Ultra,
+                CompressionLevel = CompressionLevel.Normal,
                 CompressionMethod = CompressionMethod.Lzma2,
                 ThreadCount = Environment.ProcessorCount
             };
@@ -388,6 +393,8 @@ public class ArchiveCompressor
             using var writer = CreateArchiveWriter(format.format);
 
             // ディレクトリ内のファイルを再帰的に取得して個別に追加
+            // ★ 修正: IEnumerable二重スキャンを回避（foreach での遅延評価は問題ないため、ここでは ToList() 不要）
+            // ただし、ファイル数情報が必要な場合は .ToList() して実体化すること
             var files = GetFilesRecursively(directoryPath, excludedPatterns);
 
             foreach (var file in files)

@@ -702,6 +702,41 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// ドロップされた複数のファイル/フォルダを圧縮用フォルダに整理する
+    /// </summary>
+    /// <param name="paths">ドロップされたファイル/フォルダのパス配列</param>
+    /// <returns>圧縮対象フォルダの一意なリスト</returns>
+    private List<string> ExtractCompressionTargetFolders(string[] paths)
+    {
+        var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var path in paths)
+        {
+            if (Directory.Exists(path))
+            {
+                Logger.Log($"ディレクトリとして検出: {path}");
+                folders.Add(path);
+            }
+            else if (File.Exists(path))
+            {
+                // ファイルの場合は親ディレクトリを圧縮対象とする
+                var dir = Path.GetDirectoryName(path);
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+                {
+                    Logger.Log($"ファイルとして検出: {path}, 親ディレクトリ: {dir}");
+                    folders.Add(dir);
+                }
+            }
+            else
+            {
+                Logger.Log($"パスが存在しません: {path}");
+            }
+        }
+
+        return folders.ToList();
+    }
+
+    /// <summary>
     /// ドロップされた複数のファイル/フォルダを並行圧縮する
     /// </summary>
     /// <param name="paths">圧縮するファイル/フォルダのパス配列</param>
@@ -711,9 +746,21 @@ public partial class MainWindow : Window
         try
         {
             Logger.Log($"ProcessDroppedFilesForCompression開始: ドロップされたパス数 = {paths.Length}");
-            foreach (var path in paths)
+
+            // ★ 改善: フォルダ整理ロジックを独立したメソッドに分離
+            var folders = ExtractCompressionTargetFolders(paths);
+            
+            if (folders.Count == 0)
             {
-                Logger.Log($"  ドロップされたパス: {path}");
+                Logger.Log("圧縮対象のフォルダが見つかりません");
+                MessageService.ShowWarning("圧縮対象のフォルダが見つかりません。");
+                return;
+            }
+
+            Logger.Log($"圧縮対象フォルダ数: {folders.Count}");
+            foreach (var folder in folders)
+            {
+                Logger.Log($"  圧縮対象: {folder}");
             }
 
             var format = CompressionFormatComboBox.SelectedItem?.ToString() ?? "ZIP";
@@ -725,82 +772,14 @@ public partial class MainWindow : Window
 
             var cancellationToken = progressWindow.GetCancellationToken();
 
-            // ファイルとフォルダを分けて処理
-            var folders = new List<string>();
-            foreach (var path in paths)
-            {
-                if (Directory.Exists(path))
-                {
-                    Logger.Log($"ディレクトリとして検出: {path}");
-                    folders.Add(path);
-                }
-                else if (File.Exists(path))
-                {
-                    // ファイルの場合は親ディレクトリを圧縮対象とする
-                    var dir = Path.GetDirectoryName(path);
-                    Logger.Log($"ファイルとして検出: {path}, 親ディレクトリ: {dir}");
-                    if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir) && !folders.Contains(dir))
-                    {
-                        folders.Add(dir);
-                    }
-                }
-                else
-                {
-                    Logger.Log($"パスが存在しません: {path}");
-                }
-            }
-
-            Logger.Log($"圧縮対象フォルダ数: {folders.Count}");
-            foreach (var folder in folders)
-            {
-                Logger.Log($"  圧縮対象: {folder}");
-            }
-
-            if (folders.Count == 0)
-            {
-                Logger.Log("圧縮対象のフォルダが見つかりません");
-                MessageService.ShowWarning("圧縮対象のフォルダが見つかりません。");
-                progressWindow.Close();
-                return;
-            }
-
-            // 並行処理用の進捗管理（効率化）
+            // 並行処理用の進捗管理（最適化）
             var totalFolders = folders.Count;
-            var completedCount = 0;
             var progressLock = new object();
-            var folderProgress = new Dictionary<string, int>();
-            var folderFileCounts = new Dictionary<string, int>();
-            var totalFiles = 0;
-            var lastUIUpdateTime = DateTime.MinValue; // UI更新頻度制御用
+            var completedFolders = 0;
+            var lastUIUpdateTime = DateTime.MinValue;
 
-            // 各フォルダのファイル数を事前に計測（UIフリーズ回避のため非同期化）
-            await Task.Run(() =>
-            {
-                foreach (var folder in folders)
-                {
-                    try
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        var fileCount = Directory.GetFiles(folder, "*", SearchOption.AllDirectories).Length;
-                        folderFileCounts[folder] = fileCount;
-                        totalFiles += fileCount;
-                        folderProgress[folder] = 0;
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Log($"ファイル数カウント失敗: {folder}, {ex.Message}");
-                        // エラー時は0として扱う
-                        folderFileCounts[folder] = 0;
-                        folderProgress[folder] = 0;
-                    }
-                }
-            }, cancellationToken);
-
-            Logger.Log($"全フォルダの総ファイル数: {totalFiles}");
-
-            // 順次圧縮処理を実行（ArchiveProcessor.CompressFolderAsync はProgressWindowを直接操作するため並行処理不可）
-            var successCount = 0;
-            foreach (var folderPath in folders)
+            // ★ 改善: 複雑なファイル数事前カウントを削除（不要な処理）
+            // 代わりに「件数ベース」の進捗で十分（フォルダ/ファイル単位ではなく、「○個中○個完了」で表示）
             {
                 try
                 {
