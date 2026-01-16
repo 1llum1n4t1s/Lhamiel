@@ -758,10 +758,6 @@ public partial class MainWindow : Window
             }
 
             Logger.Log($"圧縮対象フォルダ数: {folders.Count}");
-            foreach (var folder in folders)
-            {
-                Logger.Log($"  圧縮対象: {folder}");
-            }
 
             var format = CompressionFormatComboBox.SelectedItem?.ToString() ?? "ZIP";
             var outputDir = CompressionOutputPathTextBox.Text;
@@ -769,208 +765,33 @@ public partial class MainWindow : Window
 
             progressWindow = new ProgressWindow("圧縮");
             progressWindow.Show();
+            var cancellationTokenSource = new CancellationTokenSource();
+            progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
 
-            var cancellationToken = progressWindow.GetCancellationToken();
+            // ★ 修正: 複雑な並列処理ロジックを削除し、ArchiveProcessor.CompressFoldersAsync に委譲
+            // これにより、コードの重複を避け、進捗管理を一元化する
+            var success = await ArchiveProcessor.CompressFoldersAsync(
+                folders.ToArray(),
+                outputDir,
+                outputToSameDirectory,
+                format,
+                progressWindow,
+                cancellationTokenSource.Token
+            );
 
-            // 並行処理用の進捗管理（最適化）
-            var totalFolders = folders.Count;
-            var progressLock = new object();
-            var completedFolders = 0;
-            var lastUIUpdateTime = DateTime.MinValue;
-
-            // ★ 改善: 複雑なファイル数事前カウントを削除（不要な処理）
-            // 代わりに「件数ベース」の進捗で十分（フォルダ/ファイル単位ではなく、「○個中○個完了」で表示）
+            if (success)
             {
-                try
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var outputPath = ArchiveCompressor.GetCompressedFileName(folderPath, format, outputDir, outputToSameDirectory);
-                    Logger.Log($"圧縮処理開始: {folderPath} -> {outputPath}");
-
-                    // 出力ファイルが既に存在する場合は上書き確認
-                    if (File.Exists(outputPath))
-                    {
-                        Logger.Log($"出力ファイルが既に存在します: {outputPath}");
-                        var canOverwrite = await progressWindow.Dispatcher.InvokeAsync(() =>
-                            FileOverwriteDialog.CanOverwriteFile(folderPath, outputPath, progressWindow));
-
-                        if (!canOverwrite)
-                        {
-                            Logger.Log($"ユーザーが上書きをキャンセルしました: {folderPath}");
-                            lock (progressLock)
-                            {
-                                // キャンセルされたフォルダをスキップ（100%として扱う）
-                                folderProgress[folderPath] = 100;
-
-                                // 全フォルダの状態から合計完了ファイル数を算出
-                                double currentTotalCompletedFiles = 0;
-                                foreach (var kvp in folderFileCounts)
-                                {
-                                    var fPath = kvp.Key;
-                                    var count = kvp.Value;
-                                    var percent = folderProgress.ContainsKey(fPath) ? folderProgress[fPath] : 0;
-
-                                    if (percent >= 100)
-                                    {
-                                        currentTotalCompletedFiles += count;
-                                    }
-                                    else
-                                    {
-                                        currentTotalCompletedFiles += count * (percent / 100.0);
-                                    }
-                                }
-
-                                var totalProgress = totalFiles > 0
-                                    ? (int)Math.Clamp((currentTotalCompletedFiles / totalFiles) * 100, 0, 100)
-                                    : 0;
-                                progressWindow.UpdateProgress(totalProgress, $"スキップ: {Path.GetFileName(folderPath)}");
-                            }
-                        }
-
-                        File.Delete(outputPath);
-                        Logger.Log($"既存ファイルを削除: {outputPath}");
-                    }
-
-                    // 個別の進捗を追跡
-                    var progress = new Progress<ProgressInfo>(info =>
-                    {
-                        lock (progressLock)
-                        {
-                            // 1. 個別フォルダの進捗率を更新
-                            folderProgress[folderPath] = info.Percentage;
-
-                            // 2. 差分計算をやめ、全フォルダの状態から合計完了ファイル数を算出する
-                            // (完了ファイル数) = Σ (各フォルダのファイル数 * 進捗率 / 100)
-                            double currentTotalCompletedFiles = 0;
-                            foreach (var kvp in folderFileCounts)
-                            {
-                                var fPath = kvp.Key;
-                                var count = kvp.Value;
-                                var percent = folderProgress.ContainsKey(fPath) ? folderProgress[fPath] : 0;
-
-                                // 完了(100%)のフォルダは全ファイルをカウント、それ以外は進捗率で按分
-                                if (percent >= 100)
-                                {
-                                    currentTotalCompletedFiles += count;
-                                }
-                                else
-                                {
-                                    currentTotalCompletedFiles += count * (percent / 100.0);
-                                }
-                            }
-
-                            // 3. 全体進捗率を計算
-                            var totalProgress = totalFiles > 0
-                                ? (int)Math.Clamp((currentTotalCompletedFiles / totalFiles) * 100, 0, 100)
-                                : 0;
-
-                            Logger.Log($"プログレス更新: {totalProgress}% (完了ファイル数: {currentTotalCompletedFiles:F1}/{totalFiles}) - {info.Status}");
-
-                            // 現在処理中のファイルを表示
-                            var fileName = string.Empty;
-                            if (!string.IsNullOrEmpty(info.CurrentFileName))
-                            {
-                                fileName = Path.GetFileName(info.CurrentFileName);
-                                Logger.Log($"ファイル名更新: {fileName}");
-                            }
-
-                            // UI更新頻度を抑制（100msに1回）
-                            var now = DateTime.Now;
-                            if ((now - lastUIUpdateTime).TotalMilliseconds >= 100 || totalProgress >= 100)
-                            {
-                                lastUIUpdateTime = now;
-
-                                // UI 更新を lock の外で行う（Dispatcher 内で lock を持たない）
-                                progressWindow.UpdateProgress(totalProgress, $"{info.Status}");
-                                if (!string.IsNullOrEmpty(fileName))
-                                {
-                                    progressWindow.SetFileName(fileName);
-                                }
-                            }
-                        }
-                    });
-
-                    // ★ 最適化: CompressAsync ではなく CompressFolderAsync を使用
-                    // これにより、ArchiveCompressor.CompressDirectory が呼ばれ、LHA等の最適化が有効になる
-                    // ★ 並列処理時のUI競合を防ぐため、progressWindowにnullを渡し、progressコールバックで進捗を集計
-                    var success = await ArchiveProcessor.CompressFolderAsync(
-                        folderPath,
-                        outputDir,
-                        outputToSameDirectory,
-                        format,
-                        null, // nullを渡してUI操作を抑制（UI更新はprogressコールバックで行う）
-                        progress, // 進捗集計ロジックを渡す
-                        cancellationToken
-                    );
-
-                    lock (progressLock)
-                    {
-                        completedCount++;
-                        var currentCompleted = completedCount;
-                        progressWindow.SetFileName($"{Path.GetFileName(outputPath)} 完了 ({currentCompleted}/{totalFolders})");
-                        progressWindow.AddProcessingFile(outputPath);
-                    }
-
-                    Logger.Log($"圧縮完了: {folderPath} -> {outputPath}");
-                }
-                catch (OperationCanceledException)
-                {
-                    Logger.Log($"圧縮処理がキャンセルされました: {folderPath}");
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogException($"圧縮処理でエラーが発生: {folderPath}", ex);
-                }
-            }
-
-            // 圧縮処理の結果を集計（successCount は既に上で定義されている）
-
-            Logger.Log($"圧縮処理完了: 成功={successCount}, 失敗/スキップ={totalFolders - successCount}");
-
-            if (successCount > 0)
-            {
-                progressWindow.SetCompleted($"圧縮が完了しました。({successCount}/{totalFolders}個成功)");
-                await Task.Delay(1000);
-
-                MessageService.ShowSuccess($"{successCount}/{totalFolders}個のフォルダの圧縮が完了しました。");
-
-                // 圧縮後にフォルダを開く設定を確認
+                MessageService.ShowSuccess("圧縮が完了しました。");
                 if (_settingsManager.Current.OpenCompressionOutputFolder)
                 {
                     FolderOpener.OpenFolder(CompressionOutputPathTextBox.Text);
                 }
             }
-            else
-            {
-                // すべてキャンセルまたはスキップされた場合
-                progressWindow.SetCompleted("圧縮処理がスキップされました。");
-                await Task.Delay(500);
-            }
         }
         catch (OperationCanceledException)
         {
-            Logger.Log("圧縮処理が全体でキャンセルされました");
-            // キャンセル時に処理中のファイルを削除
-            if (progressWindow != null)
-            {
-                var processingFiles = progressWindow.GetProcessingFiles();
-                foreach (var filePath in processingFiles)
-                {
-                    try
-                    {
-                        if (File.Exists(filePath))
-                        {
-                            File.Delete(filePath);
-                            Logger.Log($"キャンセル後に一時ファイルを削除: {filePath}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Log($"一時ファイルの削除に失敗: {filePath}, {ex.Message}");
-                    }
-                }
-            }
+            Logger.Log("圧縮処理がキャンセルされました");
+            MessageService.ShowInfo("圧縮処理をキャンセルしました。");
         }
         catch (Exception ex)
         {
@@ -979,31 +800,6 @@ public partial class MainWindow : Window
         }
         finally
         {
-            // キャンセルされていない場合も、処理中ファイルをクリア
-            if (progressWindow != null)
-            {
-                var processingFiles = progressWindow.GetProcessingFiles();
-                if (progressWindow.GetCancellationToken().IsCancellationRequested)
-                {
-                    // キャンセル状態で完了していないファイルは削除
-                    foreach (var filePath in processingFiles)
-                    {
-                        try
-                        {
-                            if (File.Exists(filePath))
-                            {
-                                File.Delete(filePath);
-                                Logger.Log($"キャンセル後に未完了ファイルを削除: {filePath}");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log($"未完了ファイルの削除に失敗: {filePath}, {ex.Message}");
-                        }
-                    }
-                }
-            }
-
             progressWindow?.Close();
         }
     }

@@ -417,7 +417,9 @@ public static class ArchiveProcessor
                 {
                     actualCancellationToken.ThrowIfCancellationRequested();
 
-                    var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow!, null, actualCancellationToken);
+                    // ★ 修正: progressWindow に null を渡し、個別進捗によるUI更新を抑制する
+                    // 全体の進捗 ("○/○個完了") はこのループ内で管理するため、内部の%更新は不要
+                    var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, null, null, actualCancellationToken);
 
                     lock (lockObject)
                     {
@@ -430,8 +432,11 @@ public static class ArchiveProcessor
                             failedFolders.Add(Path.GetFileName(folderPath));
                         }
 
+                        // 件数ベースで進捗バーを更新（Dispatcher経由で安全に更新）
                         var progress = (int)((double)(index + 1) / totalCount * 100);
-                        progressWindow?.UpdateProgress(progress, $"圧縮中: {Path.GetFileName(folderPath)}");
+                        progressWindow?.Dispatcher.Invoke(() => 
+                            progressWindow.UpdateProgress(progress, $"圧縮中 ({index + 1}/{totalCount}): {Path.GetFileName(folderPath)}")
+                        );
                     }
                 }
                 catch (OperationCanceledException)

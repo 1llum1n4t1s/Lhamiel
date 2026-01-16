@@ -179,23 +179,26 @@ public class ArchiveExtractor
             // 上書きが許可された場合は既存ディレクトリを削除
             try
             {
-                // ★ 修正: 読み取り専用属性をすべて解除してからディレクトリ削除を実行
-                RemoveReadOnlyAttributes(outputPath);
-
-                // ★ 修正: ファイルロック解放を待つため、短い遅延を挿入
-                await Task.Delay(100, cancellationToken);
-
-                // リトライロジック（1回目は通常削除、失敗時は第2回を試す）
+                // ★ 最適化: まずは通常削除を試み、失敗した場合のみ属性解除を行う
+                // これにより、正常系（読み取り専用ファイルがない場合）のパフォーマンスを向上
                 try
                 {
                     Directory.Delete(outputPath, true);
                 }
+                catch (UnauthorizedAccessException)
+                {
+                    // 読み取り専用属性が原因の可能性があるため、属性解除を試行
+                    Logger.Log($"通常の削除に失敗、属性解除を試行: {outputPath}");
+                    RemoveReadOnlyAttributes(outputPath);
+                    await Task.Delay(200, cancellationToken);
+                    Directory.Delete(outputPath, true);
+                }
                 catch (IOException) when (Directory.Exists(outputPath))
                 {
-                    // ★ 修正: 最初の試行が失敗した場合、再度属性を確認して削除を試みる
-                    Logger.Log($"ディレクトリ削除の1回目が失敗、再試行: {outputPath}");
-                    await Task.Delay(200, cancellationToken);
+                    // I/Oエラーの場合も属性解除を試行
+                    Logger.Log($"通常の削除に失敗（I/O）、属性解除を試行: {outputPath}");
                     RemoveReadOnlyAttributes(outputPath);
+                    await Task.Delay(200, cancellationToken);
                     Directory.Delete(outputPath, true);
                 }
             }
