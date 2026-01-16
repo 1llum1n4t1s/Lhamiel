@@ -472,7 +472,7 @@ public partial class App : Application
             progressWindow.Show();
 
             // 共通化された圧縮処理を実行
-            var success = await ArchiveProcessor.CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, cancellationTokenSource.Token);
+            var success = await ArchiveProcessor.CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
 
             if (success)
             {

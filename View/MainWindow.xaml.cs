@@ -908,13 +908,14 @@ public partial class MainWindow : Window
 
                     // ★ 最適化: CompressAsync ではなく CompressFolderAsync を使用
                     // これにより、ArchiveCompressor.CompressDirectory が呼ばれ、LHA等の最適化が有効になる
-                    // ★ 並列処理時のUI競合を防ぐため、progressWindowにnullを渡す
+                    // ★ 並列処理時のUI競合を防ぐため、progressWindowにnullを渡し、progressコールバックで進捗を集計
                     var success = await ArchiveProcessor.CompressFolderAsync(
                         folderPath,
                         outputDir,
                         outputToSameDirectory,
                         format,
                         null, // nullを渡してUI操作を抑制（UI更新はprogressコールバックで行う）
+                        progress, // 進捗集計ロジックを渡す
                         cancellationToken
                     );
 

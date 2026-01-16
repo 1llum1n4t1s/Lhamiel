@@ -68,6 +68,7 @@ public class ArchiveExtractor
         {
             // Report型にEntryプロパティが直接定義されていないため、dynamicを使用
             // dynamicは内部的にリフレクションを使用するが、Cube.FileSystem.SevenZipのAPI制約により必要
+            // 型キャストではEntryプロパティにアクセスできないため、dynamicを使用する必要がある
             dynamic dynReport = report;
             var entry = dynReport.Entry;
 
@@ -445,13 +446,6 @@ public class ArchiveExtractor
         
         return contents;
     }
-
-    /// <summary>
-    /// 既存ファイルとの競合をチェックする
-    /// </summary>
-    /// <param name="reader">アーカイブリーダー</param>
-    /// <param name="outputPath">出力先ディレクトリ</param>
-    /// <returns>競合するファイルのパス一覧</returns>
 
     /// <summary>
     /// アーカイブの詳細情報を取得
