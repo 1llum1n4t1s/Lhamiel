@@ -268,17 +268,7 @@ public static class ArchiveErrorHandler
             }
             finally
             {
-                try
-                {
-                    if (Directory.Exists(tempPath))
-                    {
-                        Directory.Delete(tempPath, true);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    analysis.ErrorDetails.Add($"一時ディレクトリ削除に失敗: {ex.Message}");
-                }
+                FileOperations.CleanupTemporaryPath(tempPath, message => analysis.ErrorDetails.Add(message));
             }
 
             // 破損の種類を判定

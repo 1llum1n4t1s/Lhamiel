@@ -731,17 +731,7 @@ public class ArchiveExtractor
             }
             finally
             {
-                try
-                {
-                    if (Directory.Exists(tempPath))
-                    {
-                        Directory.Delete(tempPath, true);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"一時ディレクトリ削除に失敗しました: {tempPath}, {ex.Message}", LogLevel.Warning);
-                }
+                FileOperations.CleanupTemporaryPath(tempPath, message => Logger.Log(message, LogLevel.Warning));
             }
         }
         catch (Exception ex)

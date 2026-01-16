@@ -37,4 +37,22 @@ internal static class FileOperations
 
         File.Copy(sourcePath, targetPath, true);
     }
+
+    /// <summary>
+    /// 一時ディレクトリを削除する
+    /// </summary>
+    public static void CleanupTemporaryPath(string tempPath, Action<string>? logWarning = null)
+    {
+        try
+        {
+            if (Directory.Exists(tempPath))
+            {
+                Directory.Delete(tempPath, true);
+            }
+        }
+        catch (Exception ex)
+        {
+            logWarning?.Invoke($"一時ディレクトリ削除に失敗しました: {tempPath}, {ex.Message}");
+        }
+    }
 }

@@ -219,7 +219,7 @@ public class PartialExtractionHandler
             }
             finally
             {
-                CleanupTemporaryPath(tempPath);
+                FileOperations.CleanupTemporaryPath(tempPath, message => Logger.Log(message, LogLevel.Warning));
             }
 
             // 最終結果を判定
@@ -261,23 +261,6 @@ public class PartialExtractionHandler
     /// <summary>
     /// 一時展開した内容からファイルをコピーする
     /// </summary>
-    /// <summary>
-    /// 一時ディレクトリを削除する
-    /// </summary>
-    private static void CleanupTemporaryPath(string tempPath)
-    {
-        try
-        {
-            if (Directory.Exists(tempPath))
-            {
-                Directory.Delete(tempPath, true);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"一時ディレクトリの削除に失敗しました: {tempPath}, {ex.Message}", LogLevel.Warning);
-        }
-    }
 
     /// <summary>
     /// エラー処理方法を決定
@@ -436,7 +419,7 @@ public class PartialExtractionHandler
             }
             finally
             {
-                CleanupTemporaryPath(tempPath);
+                FileOperations.CleanupTemporaryPath(tempPath, message => Logger.Log(message, LogLevel.Warning));
             }
 
             retryResult.IsSuccess = retryResult.SuccessCount > 0;
