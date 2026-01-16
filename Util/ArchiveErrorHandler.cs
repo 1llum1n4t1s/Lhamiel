@@ -252,6 +252,10 @@ public static class ArchiveErrorHandler
                             {
                                 analysis.ErrorDetails.Add($"ファイル '{item.FullName}' の展開に失敗: {extractionException.Message}");
                             }
+                            else
+                            {
+                                analysis.ErrorDetails.Add($"ファイル '{item.FullName}' が一時展開先に見つかりませんでした。");
+                            }
                         }
                     }
                     catch (Exception ex)
