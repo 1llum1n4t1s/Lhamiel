@@ -103,7 +103,7 @@ public class ArchiveCompressionTests
     /// ZIP形式で圧縮・展開できるか確認
     /// </summary>
     [Fact]
-    public void CompressAndExtract_WithZipFormat_SucceedsAndPreservesContent()
+    public async Task CompressAndExtract_WithZipFormat_SucceedsAndPreservesContent()
     {
         // Arrange
         var testDir = CreateTemporaryTestDirectory();
@@ -122,7 +122,7 @@ public class ArchiveCompressionTests
 
             // Act - 展開
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(archivePath, extractDir);
+            await extractor.ExtractArchive(archivePath, extractDir);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -144,7 +144,7 @@ public class ArchiveCompressionTests
     /// 7z形式で圧縮・展開できるか確認
     /// </summary>
     [Fact]
-    public void CompressAndExtract_With7zFormat_SucceedsAndPreservesContent()
+    public async Task CompressAndExtract_With7zFormat_SucceedsAndPreservesContent()
     {
         // Arrange
         var testDir = CreateTemporaryTestDirectory();
@@ -163,7 +163,7 @@ public class ArchiveCompressionTests
 
             // Act - 展開
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(archivePath, extractDir);
+            await extractor.ExtractArchive(archivePath, extractDir);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -185,7 +185,7 @@ public class ArchiveCompressionTests
     /// TAR形式で圧縮・展開できるか確認
     /// </summary>
     [Fact]
-    public void CompressAndExtract_WithTarFormat_SucceedsAndPreservesContent()
+    public async Task CompressAndExtract_WithTarFormat_SucceedsAndPreservesContent()
     {
         // Arrange
         var testDir = CreateTemporaryTestDirectory();
@@ -204,7 +204,7 @@ public class ArchiveCompressionTests
 
             // Act - 展開
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(archivePath, extractDir);
+            await extractor.ExtractArchive(archivePath, extractDir);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -228,7 +228,7 @@ public class ArchiveCompressionTests
     [Theory]
     [InlineData(".zip")]
     [InlineData(".7z")]
-    public void CompressAndExtract_WithMultipleFormats_AllSucceed(string extension)
+    public async Task CompressAndExtract_WithMultipleFormats_AllSucceed(string extension)
     {
         // Arrange
         var testDir = CreateTemporaryTestDirectory();
@@ -247,7 +247,7 @@ public class ArchiveCompressionTests
 
             // Act - 展開
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(archivePath, extractDir);
+            await extractor.ExtractArchive(archivePath, extractDir);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -352,7 +352,7 @@ public class ArchiveCompressionTests
     /// 日本語ファイル名がZIP形式で正しく圧縮・展開できるか確認（UTF-8テスト）
     /// </summary>
     [Fact]
-    public void CompressAndExtract_WithJapaneseFilenames_ZipFormat_PreservesEncoding()
+    public async Task CompressAndExtract_WithJapaneseFilenames_ZipFormat_PreservesEncoding()
     {
         // Arrange
         var testDir = CreateTemporaryTestDirectory();
@@ -375,7 +375,7 @@ public class ArchiveCompressionTests
 
             // Act: 展開
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(archivePath, extractDir);
+            await extractor.ExtractArchive(archivePath, extractDir);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
@@ -409,7 +409,7 @@ public class ArchiveCompressionTests
     /// 日本語ファイル名が7z形式で正しく圧縮・展開できるか確認（UTF-8テスト）
     /// </summary>
     [Fact]
-    public void CompressAndExtract_WithJapaneseFilenames_7zFormat_PreservesEncoding()
+    public async Task CompressAndExtract_WithJapaneseFilenames_7zFormat_PreservesEncoding()
     {
         // Arrange
         var testDir = CreateTemporaryTestDirectory();
@@ -432,7 +432,7 @@ public class ArchiveCompressionTests
 
             // Act: 展開
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(archivePath, extractDir);
+            await extractor.ExtractArchive(archivePath, extractDir);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
@@ -466,7 +466,7 @@ public class ArchiveCompressionTests
     /// 日本語ファイル名がTAR形式で正しく圧縮・展開できるか確認（UTF-8テスト）
     /// </summary>
     [Fact]
-    public void CompressAndExtract_WithJapaneseFilenames_TarFormat_PreservesEncoding()
+    public async Task CompressAndExtract_WithJapaneseFilenames_TarFormat_PreservesEncoding()
     {
         // Arrange
         var testDir = CreateTemporaryTestDirectory();
@@ -489,7 +489,7 @@ public class ArchiveCompressionTests
 
             // Act: 展開
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(archivePath, extractDir);
+            await extractor.ExtractArchive(archivePath, extractDir);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
@@ -523,7 +523,7 @@ public class ArchiveCompressionTests
     /// 日本語ファイル名がGZIP形式で正しく圧縮・展開できるか確認（UTF-8テスト）
     /// </summary>
     [Fact]
-    public void CompressAndExtract_WithJapaneseFilenames_GzipFormat_PreservesEncoding()
+    public async Task CompressAndExtract_WithJapaneseFilenames_GzipFormat_PreservesEncoding()
     {
         // Arrange
         var testDir = CreateTemporaryTestDirectory();
@@ -546,7 +546,7 @@ public class ArchiveCompressionTests
 
             // Act: 展開
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(archivePath, extractDir);
+            await extractor.ExtractArchive(archivePath, extractDir);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
@@ -580,7 +580,7 @@ public class ArchiveCompressionTests
     /// LHA形式で圧縮・展開できるか確認
     /// </summary>
     [Fact]
-    public void CompressAndExtract_WithLhaFormat_SucceedsAndPreservesContent()
+    public async Task CompressAndExtract_WithLhaFormat_SucceedsAndPreservesContent()
     {
         // Arrange
         var testDir = CreateTemporaryTestDirectory();
@@ -605,7 +605,7 @@ public class ArchiveCompressionTests
 
             // Act - 展開
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(archivePath, extractDir);
+            await extractor.ExtractArchive(archivePath, extractDir);
 
             System.Console.WriteLine($"✓ 展開成功");
 

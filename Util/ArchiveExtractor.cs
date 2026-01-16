@@ -137,11 +137,11 @@ public class ArchiveExtractor
         }
 
         // 非同期タスクで展開処理を実行
-        await Task.Run(() =>
+        await Task.Run(async () =>
         {
             var extractor = new ArchiveExtractor();
             var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
-            extractor.ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, needsOverwriteConfirmation, cancellationToken);
+            await extractor.ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, needsOverwriteConfirmation, cancellationToken);
         }, cancellationToken);
     }
 
@@ -153,7 +153,7 @@ public class ArchiveExtractor
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
-    public void ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, System.Windows.Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default)
+    public async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, System.Windows.Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default)
     {
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}");
 

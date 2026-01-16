@@ -336,7 +336,7 @@ public class ArchiveExtractorTests
     }
 
     [Fact]
-    public void ExtractArchive_WithSingleRootFolder_CreatesArchiveFolder()
+    public async Task ExtractArchive_WithSingleRootFolder_CreatesArchiveFolder()
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
@@ -370,7 +370,7 @@ public class ArchiveExtractorTests
             System.Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
 
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(zipPath, actualOutputDir);
+            await extractor.ExtractArchive(zipPath, actualOutputDir);
 
             // Assert: 展開結果を確認
             System.Console.WriteLine($"Extracted directory: {actualOutputDir}");
@@ -408,7 +408,7 @@ public class ArchiveExtractorTests
     }
 
     [Fact]
-    public void ExtractArchive_WithMultipleRootItems_CreatesArchiveFolder()
+    public async Task ExtractArchive_WithMultipleRootItems_CreatesArchiveFolder()
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
@@ -437,7 +437,7 @@ public class ArchiveExtractorTests
             System.Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
 
             var extractor = new ArchiveExtractor();
-            extractor.ExtractArchive(zipPath, actualOutputDir);
+            await extractor.ExtractArchive(zipPath, actualOutputDir);
 
             // Assert: 展開結果を確認
             System.Console.WriteLine($"\nExtracted directory: {actualOutputDir}");
