@@ -35,6 +35,7 @@
     <Compile Include="Util\ArchiveExtractor.cs" />
     <Compile Include="Util\ArchiveFormatDetector.cs" />
     <Compile Include="Util\ArchiveProcessor.cs" />
+    <Compile Include="Util\FileOperations.cs" />
     <Compile Include="Util\FileAssociation.cs" />
     <Compile Include="Util\FileOverwriteDialog.cs" />
     <Compile Include="Util\FolderOpener.cs" />

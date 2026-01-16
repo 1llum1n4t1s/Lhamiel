@@ -368,21 +368,19 @@ public class ArchiveCompressor
 
         try
         {
-            // LHA形式の場合
+            // LHA形式の場合（最適化: 直接ディレクトリ指定で一時コピーを回避）
             if (format.isLha)
             {
-                // ファイルリストを準備
-                var filesToCompress = new List<(string fullPath, string relativePath)>();
-                var lhaFiles = GetFilesRecursively(directoryPath, excludedPatterns);
-                var parentDir = Path.GetDirectoryName(directoryPath) ?? "";
+                Logger.Log("LHA圧縮処理を開始します (直接ディレクトリ指定)");
+                var result = LHAWriter.WriteLHAFile(outputPath, directoryPath, "*", Amiga.FileFormats.LHA.CompressionMethod.LH5);
 
-                foreach (var file in lhaFiles)
+                if (result != LHAWriteResult.Success)
                 {
-                    var relativePath = Path.GetRelativePath(parentDir, file);
-                    filesToCompress.Add((file, relativePath));
+                    throw new InvalidOperationException($"LHA圧縮に失敗しました: {result}");
                 }
 
-                CompressFilesAsLha(filesToCompress, outputPath, progressCallback, CancellationToken.None);
+                progressCallback?.Invoke(new ProgressInfo(100, "圧縮完了"));
+                Logger.Log($"LHA圧縮完了: {directoryPath} -> {outputPath}");
                 return;
             }
 
@@ -488,33 +486,23 @@ public class ArchiveCompressor
     /// <returns>ファイルパスのリスト</returns>
     private static IEnumerable<string> GetFilesRecursively(string directoryPath, List<string> excludedPatterns)
     {
-        var files = new List<string>();
-
         try
         {
             // ディレクトリ自体が除外対象かチェック
             if (ShouldExcludeFile(directoryPath, excludedPatterns))
             {
-                return files;
+                return Enumerable.Empty<string>();
             }
 
-            // 現在のディレクトリのファイルを取得
-            foreach (var file in Directory.GetFiles(directoryPath))
+            // Directory.EnumerateFiles を使用して効率的にファイルを取得
+            var enumerationOptions = new EnumerationOptions
             {
-                if (!ShouldExcludeFile(file, excludedPatterns))
-                {
-                    files.Add(file);
-                }
-            }
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true // 権限エラーで止まらないようにする
+            };
 
-            // サブディレクトリを再帰的に処理
-            foreach (var directory in Directory.GetDirectories(directoryPath))
-            {
-                if (!ShouldExcludeFile(directory, excludedPatterns))
-                {
-                    files.AddRange(GetFilesRecursively(directory, excludedPatterns));
-                }
-            }
+            return Directory.EnumerateFiles(directoryPath, "*", enumerationOptions)
+                .Where(file => !ShouldExcludeFile(file, excludedPatterns));
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -525,6 +513,6 @@ public class ArchiveCompressor
             Logger.Log($"ファイル取得中にエラーが発生しました: {directoryPath}, {ex.Message}");
         }
 
-        return files;
+        return Enumerable.Empty<string>();
     }
 }

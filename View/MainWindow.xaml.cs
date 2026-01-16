@@ -758,13 +758,15 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // 並行処理用の進捗管理
+            // 並行処理用の進捗管理（効率化）
             var totalFolders = folders.Count;
             var completedCount = 0;
             var progressLock = new object();
             var folderProgress = new Dictionary<string, int>();
             var folderFileCounts = new Dictionary<string, int>();
             var totalFiles = 0;
+            var completedFilesCount = 0; // 完了したファイル数の合計（スレッドセーフに管理）
+            var lastUIUpdateTime = DateTime.MinValue; // UI更新頻度制御用
 
             // 各フォルダのファイル数を事前に計測
             foreach (var folder in folders)
@@ -800,8 +802,8 @@ public partial class MainWindow : Window
                             lock (progressLock)
                             {
                                 // キャンセルされたフォルダをスキップして、他のタスクを続行
-                                var completedFileCount = folderProgress.Where(x => x.Value == 100).Sum(x => folderFileCounts[x.Key]);
-                                var totalProgress = totalFiles > 0 ? (int)Math.Round(completedFileCount * 100.0 / totalFiles) : 0;
+                                var skippedFileCount = folderFileCounts[folderPath];
+                                var totalProgress = totalFiles > 0 ? (int)Math.Round((completedFilesCount + skippedFileCount) * 100.0 / totalFiles) : 0;
                                 progressWindow.UpdateProgress(totalProgress, $"スキップ: {Path.GetFileName(folderPath)}");
                             }
                             return false;
@@ -811,33 +813,38 @@ public partial class MainWindow : Window
                         Logger.Log($"既存ファイルを削除: {outputPath}");
                     }
 
-                    // 個別の進捗を追跡
+                    // 個別の進捗を追跡（効率化）
                     var progress = new Progress<ProgressInfo>(info =>
                     {
                         lock (progressLock)
                         {
+                            var previousPercentage = folderProgress[folderPath];
                             folderProgress[folderPath] = info.Percentage;
 
-                            // 全体進捗を計算
-                            var completedFileCount = 0;
-                            var currentFolderProgress = 0;
-                            foreach (var kvp in folderProgress)
+                            // 効率的な全体進捗計算
+                            var currentFolderFileCount = folderFileCounts[folderPath];
+                            var currentFolderProgress = (int)Math.Round(currentFolderFileCount * info.Percentage / 100.0);
+                            var previousFolderProgress = (int)Math.Round(currentFolderFileCount * previousPercentage / 100.0);
+
+                            // 完了済みファイル数に差分を適用
+                            if (info.Percentage == 100 && previousPercentage < 100)
                             {
-                                if (kvp.Value == 100)
-                                {
-                                    completedFileCount += folderFileCounts[kvp.Key];
-                                }
-                                else if (kvp.Key == folderPath)
-                                {
-                                    currentFolderProgress = (int)Math.Round(folderFileCounts[kvp.Key] * kvp.Value / 100.0);
-                                }
+                                completedFilesCount += currentFolderFileCount;
+                            }
+                            else if (info.Percentage < 100 && previousPercentage == 100)
+                            {
+                                completedFilesCount -= currentFolderFileCount;
+                            }
+                            else
+                            {
+                                completedFilesCount += (currentFolderProgress - previousFolderProgress);
                             }
 
-                            var totalProgress = totalFiles > 0 
-                                ? (int)Math.Round((completedFileCount + currentFolderProgress) * 100.0 / totalFiles) 
+                            var totalProgress = totalFiles > 0
+                                ? (int)Math.Round(completedFilesCount * 100.0 / totalFiles)
                                 : 0;
 
-                            Logger.Log($"プログレス更新: {totalProgress}% (完了: {completedFileCount}, 処理中: {currentFolderProgress}, 合計: {totalFiles}) - {info.Status}");
+                            Logger.Log($"プログレス更新: {totalProgress}% (完了ファイル数: {completedFilesCount}/{totalFiles}) - {info.Status}");
 
                             // 現在処理中のファイルを表示
                             var fileName = string.Empty;
@@ -847,11 +854,18 @@ public partial class MainWindow : Window
                                 Logger.Log($"ファイル名更新: {fileName}");
                             }
 
-                            // UI 更新を lock の外で行う（Dispatcher 内で lock を持たない）
-                            progressWindow.UpdateProgress(totalProgress, $"{info.Status}");
-                            if (!string.IsNullOrEmpty(fileName))
+                            // UI更新頻度を抑制（100msに1回）
+                            var now = DateTime.Now;
+                            if ((now - lastUIUpdateTime).TotalMilliseconds >= 100)
                             {
-                                progressWindow.SetFileName(fileName);
+                                lastUIUpdateTime = now;
+
+                                // UI 更新を lock の外で行う（Dispatcher 内で lock を持たない）
+                                progressWindow.UpdateProgress(totalProgress, $"{info.Status}");
+                                if (!string.IsNullOrEmpty(fileName))
+                                {
+                                    progressWindow.SetFileName(fileName);
+                                }
                             }
                         }
                     });
