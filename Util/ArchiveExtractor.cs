@@ -694,19 +694,93 @@ public class ArchiveExtractor
         try
         {
             using var reader = new ArchiveReader(archivePath);
+            var tempPath = Path.Combine(Path.GetTempPath(), $"lhamiel-{Guid.NewGuid()}");
+            Directory.CreateDirectory(tempPath);
 
-            // 現在のライブラリでは特定ファイル展開は制限されているため、
-            // 全体を展開する方法を使用
-            reader.Save(outputPath);
+            try
+            {
+                // 現在のライブラリでは特定ファイル展開は制限されているため、
+                // 一時展開してから必要なものだけをコピー
+                reader.Save(tempPath);
 
-            progressCallback?.Invoke(100);
-            Logger.Log($"特定ファイル展開完了（全体展開）: {string.Join(", ", fileNames)}");
+                var items = reader.Items.ToList();
+                var matchedCount = 0;
+                var totalTargets = fileNameList.Count;
+                var missingFiles = new List<string>();
+
+                foreach (var fileName in fileNameList)
+                {
+                    var item = items.FirstOrDefault(x => string.Equals(x.FullName, fileName, StringComparison.OrdinalIgnoreCase));
+                    if (item == null)
+                    {
+                        missingFiles.Add(fileName);
+                        continue;
+                    }
+
+                    CopyExtractedItem(tempPath, outputPath, item.FullName, item.IsDirectory);
+                    matchedCount++;
+                    var progress = totalTargets == 0 ? 100 : (int)((double)matchedCount / totalTargets * 100);
+                    progressCallback?.Invoke(progress);
+                }
+
+                if (missingFiles.Any())
+                {
+                    Logger.Log($"指定されたファイルがアーカイブ内に見つかりません: {string.Join(", ", missingFiles)}", LogLevel.Warning);
+                }
+
+                Logger.Log($"特定ファイル展開完了: {string.Join(", ", fileNameList)}");
+            }
+            finally
+            {
+                try
+                {
+                    if (Directory.Exists(tempPath))
+                    {
+                        Directory.Delete(tempPath, true);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"一時ディレクトリ削除に失敗しました: {tempPath}, {ex.Message}", LogLevel.Warning);
+                }
+            }
         }
         catch (Exception ex)
         {
             Logger.Log($"特定ファイル展開でエラーが発生しました: {ex.Message}");
             throw;
         }
+    }
+
+    /// <summary>
+    /// 一時展開した内容からファイルをコピーする
+    /// </summary>
+    private static void CopyExtractedItem(string tempPath, string outputPath, string fullName, bool isDirectory)
+    {
+        var sourcePath = Path.Combine(tempPath, fullName);
+        var targetPath = Path.Combine(outputPath, fullName);
+
+        if (isDirectory)
+        {
+            if (!Directory.Exists(targetPath))
+            {
+                Directory.CreateDirectory(targetPath);
+            }
+            return;
+        }
+
+        if (!File.Exists(sourcePath))
+        {
+            throw new FileNotFoundException("展開されたファイルが見つかりません。", sourcePath);
+        }
+
+        var targetDir = Path.GetDirectoryName(targetPath);
+        if (!string.IsNullOrEmpty(targetDir) && !Directory.Exists(targetDir))
+        {
+            Directory.CreateDirectory(targetDir);
+        }
+
+        File.Copy(sourcePath, targetPath, true);
     }
 
     /// <summary>
