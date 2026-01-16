@@ -703,15 +703,14 @@ public class ArchiveExtractor
                 // 一時展開してから必要なものだけをコピー
                 reader.Save(tempPath);
 
-                var items = reader.Items.ToList();
+                var itemsByName = reader.Items.ToDictionary(x => x.FullName, x => x, StringComparer.OrdinalIgnoreCase);
                 var matchedCount = 0;
                 var totalTargets = fileNameList.Count;
                 var missingFiles = new List<string>();
 
                 foreach (var fileName in fileNameList)
                 {
-                    var item = items.FirstOrDefault(x => string.Equals(x.FullName, fileName, StringComparison.OrdinalIgnoreCase));
-                    if (item == null)
+                    if (!itemsByName.TryGetValue(fileName, out var item))
                     {
                         missingFiles.Add(fileName);
                         continue;
