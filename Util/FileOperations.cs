@@ -7,13 +7,18 @@ namespace Lhamiel.Util;
 /// </summary>
 internal static class FileOperations
 {
+    private static readonly StringComparison PathComparison =
+        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
     /// <summary>
     /// 一時展開した内容からファイルをコピーする
     /// </summary>
     public static void CopyExtractedItem(string tempPath, string outputPath, string fullName, bool isDirectory)
     {
-        var sourcePath = Path.Combine(tempPath, fullName);
-        var targetPath = Path.Combine(outputPath, fullName);
+        var fullTempPath = Path.GetFullPath(tempPath);
+        var fullOutputPath = Path.GetFullPath(outputPath);
+        var sourcePath = EnsureSafePath(fullTempPath, fullName, "source");
+        var targetPath = EnsureSafePath(fullOutputPath, fullName, "target");
 
         if (isDirectory)
         {
@@ -36,6 +41,18 @@ internal static class FileOperations
         }
 
         File.Copy(sourcePath, targetPath, true);
+    }
+
+    private static string EnsureSafePath(string basePath, string relativePath, string pathLabel)
+    {
+        var combinedPath = Path.GetFullPath(Path.Combine(basePath, relativePath));
+        if (!combinedPath.StartsWith(basePath + Path.DirectorySeparatorChar, PathComparison) &&
+            !string.Equals(combinedPath, basePath, PathComparison))
+        {
+            throw new System.Security.SecurityException($"Path traversal attempt detected in {pathLabel} path.");
+        }
+
+        return combinedPath;
     }
 
     /// <summary>
