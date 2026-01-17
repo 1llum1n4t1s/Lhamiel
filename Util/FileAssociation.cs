@@ -236,19 +236,16 @@ public class FileAssociation
     {
         try
         {
-            Logger.Log($"[関連付け状態取得] 開始: {extension}", LogLevel.Debug);
             if (!extension.StartsWith("."))
             {
                 extension = "." + extension;
             }
 
-            // まず、ユーザーレベルの直接的な関連付けをチェック
             var userKeyPath = $"Software\\Classes\\{extension}";
             using var userKey = Registry.CurrentUser.OpenSubKey(userKeyPath);
             if (userKey != null)
             {
                 var appId = userKey.GetValue("") as string;
-                Logger.Log($"[関連付け状態取得] アプリケーション識別子: {appId}", LogLevel.Debug);
                 if (!string.IsNullOrEmpty(appId) && appId.StartsWith("Lhamiel"))
                 {
                     var shellKeyPath = $"Software\\Classes\\{appId}\\shell\\open\\command";
@@ -256,30 +253,17 @@ public class FileAssociation
                     if (shellKey != null)
                     {
                         var command = shellKey.GetValue("") as string;
-                        Logger.Log($"[関連付け状態取得] コマンド: {command}", LogLevel.Debug);
-                        Logger.Log($"[関連付け状態取得] AppPath: {AppPath}", LogLevel.Debug);
                         var isAssociated = command?.Contains(AppPath) == true;
-                        Logger.Log($"[関連付け状態取得] 関連付け状態: {isAssociated}", LogLevel.Debug);
                         return isAssociated;
                     }
-                    Logger.Log("[関連付け状態取得] シェルキーが見つかりません", LogLevel.Debug);
                 }
-                else
-                {
-                    Logger.Log("[関連付け状態取得] アプリケーション識別子がLhamielではありません", LogLevel.Debug);
-                }
-            }
-            else
-            {
-                Logger.Log("[関連付け状態取得] ユーザーキーが見つかりません", LogLevel.Debug);
             }
 
-            Logger.Log($"[関連付け状態取得] 関連付けなし: {extension}", LogLevel.Debug);
             return false;
         }
         catch (Exception ex)
         {
-            Logger.LogException($"[関連付け状態取得] エラー: {extension}", ex);
+            Logger.LogException($"ファイル関連付け状態の確認に失敗しました: {extension}", ex);
             return false;
         }
     }
