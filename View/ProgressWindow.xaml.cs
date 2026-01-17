@@ -42,12 +42,7 @@ public partial class ProgressWindow : Window
     /// <returns>キャンセルトークン</returns>
     public CancellationToken GetCancellationToken()
     {
-        if (_cancellationTokenSource == null || _cancellationTokenSource.IsCancellationRequested)
-        {
-            return CancellationToken.None;
-        }
-
-        return _cancellationTokenSource.Token;
+        return _cancellationTokenSource?.Token ?? CancellationToken.None;
     }
 
     /// <summary>
@@ -106,6 +101,7 @@ public partial class ProgressWindow : Window
     private void CancelButton_Click(object sender, RoutedEventArgs e)
     {
         CancelButton.IsEnabled = false;
+        Topmost = false; // ダイアログが背面に隠れないように最前面を解除
         _cancellationTokenSource?.Cancel();
         CancelRequested?.Invoke(this, EventArgs.Empty);
     }

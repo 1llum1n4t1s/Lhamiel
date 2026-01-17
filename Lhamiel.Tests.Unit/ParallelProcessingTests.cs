@@ -84,8 +84,7 @@ public class ParallelProcessingTests
             Directory.CreateDirectory(outputDir);
 
             // 複数ファイル展開を実行
-            var result = await ArchiveProcessor.ExtractArchivesAsync(
-                new[] { zipFile1, zipFile2, zipFile3 },
+            var result = await ArchiveProcessor.ExtractArchivesAsync([zipFile1, zipFile2, zipFile3],
                 outputDir,
                 outputToSameDirectory: false,
                 progressWindow: null!,
@@ -243,8 +242,7 @@ public class ParallelProcessingTests
             Directory.CreateDirectory(outputDir);
 
             // 複数フォルダ圧縮を実行
-            var result = await ArchiveProcessor.CompressFoldersAsync(
-                new[] { folder1, folder2, folder3 },
+            var result = await ArchiveProcessor.CompressFoldersAsync([folder1, folder2, folder3],
                 outputDir,
                 outputToSameDirectory: false,
                 format: "zip",
@@ -353,8 +351,7 @@ public class ParallelProcessingTests
             Directory.CreateDirectory(outputDir);
 
             // キャンセルなしで実行
-            var result = await ArchiveProcessor.CompressFoldersAsync(
-                new[] { folder1, folder2 },
+            var result = await ArchiveProcessor.CompressFoldersAsync([folder1, folder2],
                 outputDir,
                 outputToSameDirectory: false,
                 format: "zip",
@@ -394,8 +391,7 @@ public class ParallelProcessingTests
             Directory.CreateDirectory(outputDir);
 
             // 複数ファイル展開を実行（すべて有効）
-            var result = await ArchiveProcessor.ExtractArchivesAsync(
-                new[] { validZip1, validZip2 },
+            var result = await ArchiveProcessor.ExtractArchivesAsync([validZip1, validZip2],
                 outputDir,
                 outputToSameDirectory: false,
                 progressWindow: null!,

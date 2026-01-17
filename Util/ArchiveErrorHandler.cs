@@ -203,9 +203,9 @@ public static class ArchiveErrorHandler
             ArchivePath = archivePath,
             IsCorrupted = false,
             CorruptionType = CorruptionType.None,
-            RecoverableFiles = new List<string>(),
-            CorruptedFiles = new List<string>(),
-            ErrorDetails = new List<string>()
+            RecoverableFiles = [],
+            CorruptedFiles = [],
+            ErrorDetails = []
         };
 
         try
@@ -390,17 +390,17 @@ public class ArchiveCorruptionAnalysis
     /// <summary>
     /// 回復可能なファイル一覧
     /// </summary>
-    public List<string> RecoverableFiles { get; set; } = new();
+    public List<string> RecoverableFiles { get; set; } = [];
 
     /// <summary>
     /// 破損したファイル一覧
     /// </summary>
-    public List<string> CorruptedFiles { get; set; } = new();
+    public List<string> CorruptedFiles { get; set; } = [];
 
     /// <summary>
     /// エラー詳細一覧
     /// </summary>
-    public List<string> ErrorDetails { get; set; } = new();
+    public List<string> ErrorDetails { get; set; } = [];
 
     /// <summary>
     /// 回復可能なファイルの割合

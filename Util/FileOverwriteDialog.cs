@@ -12,113 +12,70 @@ public static class FileOverwriteDialog
     /// ファイル上書き確認ダイアログを表示する
     /// </summary>
     /// <param name="sourceFilePath">コピー元ファイルパス（存在確認用）</param>
-    /// <param name="destinationFilePath">コピー先ファイルパス（存在確認用）</param>
+    /// <param name="destinationPath">コピー先パス（存在確認用）</param>
     /// <param name="parentWindow">親ウィンドウ（nullの場合はデスクトップ）</param>
     /// <returns>ユーザーの選択結果</returns>
-    public static OverwriteResult ShowOverwriteDialog(string sourceFilePath, string destinationFilePath, Window? parentWindow = null)
+    public static OverwriteResult ShowOverwriteDialog(string sourceFilePath, string destinationPath, Window? parentWindow = null)
     {
-        Logger.Log($"ShowOverwriteDialog開始: sourceFilePath={sourceFilePath}, destinationFilePath={destinationFilePath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
+        Logger.Log($"ShowOverwriteDialog開始: sourceFilePath={sourceFilePath}, destinationPath={destinationPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
 
         try
         {
-            Logger.Log($"ShowOverwriteDialog: ファイル存在チェック開始");
+            var isDirectory = Directory.Exists(destinationPath);
+            var isFile = File.Exists(destinationPath);
 
-            // destinationFilePath が存在するかチェック（これが重要）
-            if (!File.Exists(destinationFilePath))
+            if (!isDirectory && !isFile)
             {
-                Logger.Log($"コピー先ファイルが存在しません: {destinationFilePath}");
+                Logger.Log($"コピー先が存在しません: {destinationPath}");
                 return OverwriteResult.Yes;
             }
 
-            Logger.Log($"ShowOverwriteDialog: 出力先ファイルが既に存在します");
+            Logger.Log($"ShowOverwriteDialog: 出力先が既に存在します (isDirectory={isDirectory})");
 
-            var fileName = Path.GetFileName(destinationFilePath);
-            var message = $"ファイル '{fileName}' は既に存在します。\n\n置き換えますか？";
-            var title = "ファイルの置き換え";
+            var name = Path.GetFileName(destinationPath);
+            if (string.IsNullOrEmpty(name)) name = destinationPath;
+
+            var message = isDirectory 
+                ? $"フォルダ '{name}' は既に存在します。\n\n既存のフォルダを削除して上書きしますか？"
+                : $"ファイル '{name}' は既に存在します。\n\n置き換えますか？";
+            
+            var title = isDirectory ? "フォルダの上書き確認" : "ファイルの置き換え";
 
             Logger.Log($"ShowOverwriteDialog: MessageBox表示開始");
-            var result = MessageBox.Show(
-                parentWindow,
-                message,
-                title,
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question,
-                MessageBoxResult.Cancel);
+            
+            // 親ウィンドウがnullの場合の対策
+            var result = parentWindow != null
+                ? MessageBox.Show(parentWindow, message, title, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No)
+                : MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
 
             Logger.Log($"ShowOverwriteDialog: MessageBox結果 = {result}");
 
             return result switch
             {
                 MessageBoxResult.Yes => OverwriteResult.Yes,
-                MessageBoxResult.No => OverwriteResult.Cancel,
+                MessageBoxResult.No => OverwriteResult.No,
                 _ => OverwriteResult.Cancel
             };
         }
         catch (Exception ex)
         {
-            Logger.Log($"ファイル上書き確認ダイアログの表示に失敗しました: {ex.Message}");
-            Logger.Log($"例外の詳細: {ex}");
+            Logger.Log($"上書き確認ダイアログの表示に失敗しました: {ex.Message}");
             return OverwriteResult.No;
         }
     }
 
     /// <summary>
-    /// 複数ファイルの上書き確認ダイアログを表示する
+    /// ファイルまたはフォルダの上書き確認ダイアログを表示する（簡易版）
     /// </summary>
-    /// <param name="sourceFilePaths">コピー元ファイルパスの配列</param>
-    /// <param name="destinationFolder">コピー先フォルダ</param>
-    /// <param name="parentWindow">親ウィンドウ（nullの場合はデスクトップ）</param>
-    /// <returns>ユーザーの選択結果</returns>
-    public static OverwriteResult ShowMultipleFilesOverwriteDialog(string[] sourceFilePaths, string destinationFolder, Window? parentWindow = null)
-    {
-        try
-        {
-            Logger.Log($"ShowMultipleFilesOverwriteDialog開始: ファイル数={sourceFilePaths.Length}, destinationFolder={destinationFolder}");
-
-            if (sourceFilePaths.Length == 0)
-            {
-                Logger.Log("競合ファイルがありません");
-                return OverwriteResult.Yes;
-            }
-
-            // 複数ファイルの場合は、最初のファイルで確認ダイアログを表示
-            var firstSourcePath = sourceFilePaths[0];
-            var firstDestPath = firstSourcePath;
-
-            Logger.Log($"複数ファイル上書き確認ダイアログを表示: {firstSourcePath} -> {firstDestPath}");
-            var result = ShowOverwriteDialog(firstSourcePath, firstDestPath, parentWindow);
-            Logger.Log($"複数ファイル上書き確認ダイアログ結果: {result}");
-            return result;
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"複数ファイル上書き確認ダイアログの表示に失敗しました: {ex.Message}");
-            Logger.Log($"例外の詳細: {ex}");
-            return OverwriteResult.No;
-        }
-    }
-
-    /// <summary>
-    /// ファイル上書き確認ダイアログを表示する（簡易版）
-    /// </summary>
-    /// <param name="sourceFilePath">コピー元ファイルパス</param>
-    /// <param name="destinationFilePath">コピー先ファイルパス</param>
+    /// <param name="sourceFilePath">コピー元パス</param>
+    /// <param name="destinationPath">コピー先パス</param>
     /// <param name="parentWindow">親ウィンドウ（nullの場合はデスクトップ）</param>
     /// <returns>上書き可能な場合はtrue、そうでなければfalse</returns>
-    public static bool CanOverwriteFile(string sourceFilePath, string destinationFilePath, Window? parentWindow = null)
+    public static bool CanOverwriteFile(string sourceFilePath, string destinationPath, Window? parentWindow = null)
     {
-        Logger.Log($"CanOverwriteFile開始: sourceFilePath={sourceFilePath}, destinationFilePath={destinationFilePath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
+        Logger.Log($"CanOverwriteFile開始: sourceFilePath={sourceFilePath}, destinationPath={destinationPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
 
-        // コピー先がディレクトリの場合は、ディレクトリ内のファイルとの競合を確認
-        if (Directory.Exists(destinationFilePath))
-        {
-            Logger.Log($"コピー先がディレクトリです: {destinationFilePath}");
-            // ディレクトリの場合は、常に上書きを許可（実際の競合チェックは別途行う）
-            Logger.Log($"ディレクトリの場合は上書きを許可");
-            return true;
-        }
-
-        var result = ShowOverwriteDialog(sourceFilePath, destinationFilePath, parentWindow);
+        var result = ShowOverwriteDialog(sourceFilePath, destinationPath, parentWindow);
         var canOverwrite = result == OverwriteResult.Yes;
         Logger.Log($"CanOverwriteFile結果: result={result}, canOverwrite={canOverwrite}");
         return canOverwrite;

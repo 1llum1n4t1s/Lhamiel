@@ -13,7 +13,18 @@ public static class MessageService
     /// <returns>アクティブなウィンドウ、またはnull</returns>
     private static Window? GetActiveWindow()
     {
-        return Application.Current?.MainWindow ?? Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive);
+        if (Application.Current == null) return null;
+
+        // 1. アクティブなウィンドウがあればそれを優先（ProgressWindowなど）
+        var activeWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w.IsVisible);
+        if (activeWindow != null) return activeWindow;
+
+        // 2. 最前面のウィンドウがあればそれを使用
+        var topmostWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.Topmost && w.IsVisible);
+        if (topmostWindow != null) return topmostWindow;
+
+        // 3. 最後にMainWindow
+        return Application.Current.MainWindow;
     }
 
     /// <summary>
@@ -47,19 +58,6 @@ public static class MessageService
     {
         Logger.Log($"警告メッセージ表示: {title} - {message}", LogLevel.Warning);
         MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
-    }
-
-    /// <summary>
-    /// 確認メッセージを表示
-    /// </summary>
-    /// <param name="message">メッセージ本文</param>
-    /// <param name="title">タイトル（省略可）</param>
-    /// <returns>ユーザーが「はい」を選択した場合はtrue</returns>
-    public static bool ShowConfirmation(string message, string title = "確認")
-    {
-        Logger.Log($"確認メッセージ表示: {title} - {message}");
-        var result = MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
-        return result == MessageBoxResult.Yes;
     }
 
     /// <summary>

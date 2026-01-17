@@ -11,12 +11,12 @@ public class ArchiveExtractor
     /// <summary>
     /// サポートされている展開形式の一覧
     /// </summary>
-    private static readonly string[] SupportedExtensions = { ".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tZ", ".exe" };
+    private static readonly string[] SupportedExtensions = [".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tZ", ".exe"];
 
     /// <summary>
     /// スマート解凍判定用：無視するシステムディレクトリ名
     /// </summary>
-    private static readonly string[] IgnoredSystemDirectories = { "__MACOSX" };
+    private static readonly string[] IgnoredSystemDirectories = ["__MACOSX"];
 
     /// <summary>
     /// 指定されたファイルがサポートされているアーカイブ形式かどうかを確認する
@@ -94,7 +94,7 @@ public class ArchiveExtractor
             {
                 // パスを正規化（バックスラッシュをスラッシュに）
                 var path = item.FullName.Replace('\\', '/');
-                var parts = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+                var parts = path.Split(['/'], StringSplitOptions.RemoveEmptyEntries);
 
                 if (parts.Length > 0)
                 {
@@ -143,23 +143,37 @@ public class ArchiveExtractor
     /// <param name="outputPath">展開先ディレクトリのパス</param>
     /// <param name="progress">進捗コールバック</param>
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
+    /// <param name="cancellationToken">キャンセルトークン</param>
+    /// <param name="rootItemNameForCleanup">キャンセル時に削除すべき単一ルートアイテム名（スマート解凍用）</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, System.Windows.Window? parentWindow = null, CancellationToken cancellationToken = default)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, System.Windows.Window? parentWindow = null, CancellationToken cancellationToken = default, string? rootItemNameForCleanup = null)
     {
-        Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
+        Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}, rootItem={rootItemNameForCleanup ?? "null"}");
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 上書き確認が必要かどうかを事前にチェック
-        var needsOverwriteConfirmation = Directory.Exists(outputPath);
-        Logger.Log($"展開先ディレクトリ存在チェック: outputPath={outputPath}, exists={needsOverwriteConfirmation}");
+        // 実際の展開先ターゲットを確認（スマート解凍時はベースパス＋ルートアイテム名）
+        var actualTargetDir = rootItemNameForCleanup != null ? Path.Combine(outputPath, rootItemNameForCleanup) : outputPath;
+        
+        // 上書き確認が必要かどうかをチェック
+        var targetExists = Directory.Exists(actualTargetDir) || File.Exists(actualTargetDir);
+        Logger.Log($"展開先存在チェック: actualTargetDir={actualTargetDir}, exists={targetExists}");
 
-        if (needsOverwriteConfirmation && parentWindow != null)
+        var overwriteConfirmed = false;
+
+        if (targetExists && parentWindow != null)
         {
-            Logger.Log("上書き確認ダイアログを表示します");
+            // 保護されたディレクトリ（デスクトップ自体など）の場合は上書き確認（削除）をさせない
+            if (PathValidator.IsProtectedDirectory(actualTargetDir))
+            {
+                Logger.Log($"上書き不可: 保護されたディレクトリです: {actualTargetDir}", LogLevel.Warning);
+                throw new InvalidOperationException($"'{actualTargetDir}' はシステムによって保護されているため、上書き展開できません。別の場所を選択してください。");
+            }
+
+            Logger.Log($"上書き確認ダイアログを表示します: {actualTargetDir}");
             // UIスレッドで上書き確認を実行
             var canOverwrite = await parentWindow.Dispatcher.InvokeAsync(() =>
-                FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow));
+                FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow));
 
             Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
 
@@ -167,10 +181,14 @@ public class ArchiveExtractor
             {
                 throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
             }
+            
+            overwriteConfirmed = true;
         }
-        else
+        else if (targetExists)
         {
-            Logger.Log($"上書き確認ダイアログをスキップ: needsOverwriteConfirmation={needsOverwriteConfirmation}, parentWindow={parentWindow != null}");
+            // parentWindow がない場合は自動的に上書き（または既存仕様に合わせる）
+            Logger.Log($"上書き確認ダイアログをスキップ（parentWindowなし）: {actualTargetDir}");
+            overwriteConfirmed = true;
         }
 
         // 非同期タスクで展開処理を実行
@@ -178,7 +196,7 @@ public class ArchiveExtractor
         {
             var extractor = new ArchiveExtractor();
             var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
-            await extractor.ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, needsOverwriteConfirmation, cancellationToken);
+            await extractor.ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, overwriteConfirmed, cancellationToken, rootItemNameForCleanup);
         }, cancellationToken);
     }
 
@@ -190,9 +208,11 @@ public class ArchiveExtractor
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
-    public async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, System.Windows.Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default)
+    /// <param name="cancellationToken">キャンセルトークン</param>
+    /// <param name="rootItemNameForCleanup">キャンセル時に削除すべき単一ルートアイテム名</param>
+    public async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, System.Windows.Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, string? rootItemNameForCleanup = null)
     {
-        Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}");
+        Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}, rootItem={rootItemNameForCleanup ?? "null"}");
 
         if (!File.Exists(archivePath))
         {
@@ -201,58 +221,51 @@ public class ArchiveExtractor
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 展開先ディレクトリが既に存在する場合は上書き確認
-        if (Directory.Exists(outputPath) && !overwriteConfirmed)
-        {
-            Logger.Log("ExtractArchive内で上書き確認ダイアログを表示します");
-            var canOverwrite = FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow);
-            Logger.Log($"ExtractArchive内の上書き確認結果: canOverwrite={canOverwrite}");
+        // 実際の展開先
+        var actualTargetDir = rootItemNameForCleanup != null ? Path.Combine(outputPath, rootItemNameForCleanup) : outputPath;
 
-            if (!canOverwrite)
+        // 展開先が既に存在する場合の処理
+        if (Directory.Exists(actualTargetDir) || File.Exists(actualTargetDir))
+        {
+            if (!overwriteConfirmed)
             {
-                throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
+                // まだ確認されていない場合はここで確認
+                Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {actualTargetDir}");
+                var canOverwrite = FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow);
+                if (!canOverwrite)
+                {
+                    throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
+                }
             }
 
-            // 上書きが許可された場合は既存ディレクトリを削除
+            // 上書きが許可された（または確認済み）の場合は既存の対象を削除
             try
             {
-                // ★ 最適化: まずは通常削除を試み、失敗した場合のみ属性解除を行う
-                // これにより、正常系（読み取り専用ファイルがない場合）のパフォーマンスを向上
-                try
+                Logger.Log($"既存の展開先を削除します: {actualTargetDir}");
+                if (Directory.Exists(actualTargetDir))
                 {
-                    Directory.Delete(outputPath, true);
+                    try
+                    {
+                        Directory.Delete(actualTargetDir, true);
+                    }
+                    catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+                    {
+                        Logger.Log($"削除再試行（属性解除）: {actualTargetDir}");
+                        RemoveReadOnlyAttributes(actualTargetDir);
+                        await Task.Delay(200, cancellationToken);
+                        Directory.Delete(actualTargetDir, true);
+                    }
                 }
-                catch (UnauthorizedAccessException)
+                else if (File.Exists(actualTargetDir))
                 {
-                    // 読み取り専用属性が原因の可能性があるため、属性解除を試行
-                    Logger.Log($"通常の削除に失敗、属性解除を試行: {outputPath}");
-                    RemoveReadOnlyAttributes(outputPath);
-                    await Task.Delay(200, cancellationToken);
-                    Directory.Delete(outputPath, true);
+                    File.Delete(actualTargetDir);
                 }
-                catch (IOException) when (Directory.Exists(outputPath))
-                {
-                    // I/Oエラーの場合も属性解除を試行
-                    Logger.Log($"通常の削除に失敗（I/O）、属性解除を試行: {outputPath}");
-                    RemoveReadOnlyAttributes(outputPath);
-                    await Task.Delay(200, cancellationToken);
-                    Directory.Delete(outputPath, true);
-                }
+                Logger.Log("既存の対象を正常に削除しました。");
             }
-            catch (UnauthorizedAccessException ex)
+            catch (Exception ex)
             {
-                Logger.Log($"ディレクトリの削除に失敗しました（アクセス拒否）: {outputPath}, {ex.Message}");
-                throw new InvalidOperationException($"展開先ディレクトリ '{Path.GetFileName(outputPath)}' が他のアプリケーションで使用されているため削除できません。\nディレクトリを閉じてから再度お試しください。", ex);
-            }
-            catch (IOException ex)
-            {
-                Logger.Log($"ディレクトリの削除に失敗しました（I/Oエラー）: {outputPath}, {ex.Message}");
-                throw new InvalidOperationException($"展開先ディレクトリ '{Path.GetFileName(outputPath)}' の削除に失敗しました。\nディレクトリ内のファイルが使用中である可能性があります。", ex);
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.Log($"ディレクトリ削除処理がキャンセルされました: {outputPath}");
-                throw;
+                Logger.Log($"既存対象の削除に失敗しました: {actualTargetDir}, {ex.Message}");
+                throw new InvalidOperationException($"展開先 '{Path.GetFileName(actualTargetDir)}' が使用中か、削除権限がありません。", ex);
             }
         }
 
@@ -268,36 +281,18 @@ public class ArchiveExtractor
 
             using (var reader = new ArchiveReader(archivePath))
             {
-                // ★ 【最適化】 Items.ToList() を削除
-                // 巨大アーカイブの場合、全エントリをメモリに展開するのはメモリ消費が大きい
-                // ログ出力のためだけに走査するのは効率が悪いため、ここではスキップ
                 Logger.Log($"展開処理開始: {archivePath}");
 
-                // 進捗報告を設定
                 if (progressCallback != null)
                 {
-                    // ★追加: 前回の進捗情報を保持して、変化がない場合の更新をスキップする
                     var lastPercentage = -1;
-
-                    var progress = new Progress<Report>(report =>
+                    var progress = new CancellableProgress<Report>(report =>
                     {
-                        // キャンセルされている場合は処理をスキップ（スレッドプールから実行されるため、例外をスローしない）
-                        if (cancellationToken.IsCancellationRequested)
-                            return;
-
                         var percentage = report.TotalBytes > 0 ? (int)((report.Bytes * 100) / report.TotalBytes) : 0;
-
-                        // ★追加: 進捗率が変わっていない場合は無視（UI描画負荷の防止）
-                        if (percentage == lastPercentage)
-                        {
-                            return;
-                        }
-
-                        // ★追加: 最新の状態を保存
+                        if (percentage == lastPercentage) return;
                         lastPercentage = percentage;
-
                         progressCallback(new ProgressInfo(percentage, "ファイルを展開中..."));
-                    });
+                    }, cancellationToken);
 
                     reader.Save(outputPath, progress);
                 }
@@ -308,12 +303,40 @@ public class ArchiveExtractor
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
         }
         catch (OperationCanceledException)
         {
-            // キャンセル時は何もクリーンアップしない（直接出力先に展開しているため）
+            // クリーンアップ対象の決定
+            var cleanupPath = rootItemNameForCleanup != null ? Path.Combine(outputPath, rootItemNameForCleanup) : outputPath;
+            
+            Logger.Log($"展開処理がキャンセルされました。クリーンアップを試行: {cleanupPath}");
+            
+            // 保護されたディレクトリは絶対に削除しない
+            if (PathValidator.IsProtectedDirectory(cleanupPath))
+            {
+                Logger.Log($"クリーンアップをスキップ: 保護されたディレクトリです: {cleanupPath}", LogLevel.Warning);
+                throw;
+            }
+
+            try
+            {
+                if (Directory.Exists(cleanupPath))
+                {
+                    RemoveReadOnlyAttributes(cleanupPath);
+                    Directory.Delete(cleanupPath, true);
+                    Logger.Log($"キャンセルされた展開先を削除しました: {cleanupPath}");
+                }
+                else if (File.Exists(cleanupPath))
+                {
+                    File.Delete(cleanupPath);
+                    Logger.Log($"キャンセルされた展開ファイルを削除しました: {cleanupPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"キャンセル時のクリーンアップに失敗しました: {cleanupPath}, {ex.Message}", LogLevel.Warning);
+            }
             throw;
         }
         catch (Exception ex)
@@ -342,7 +365,7 @@ public class ArchiveExtractor
     /// ファイルまたはディレクトリの読み取り専用属性を削除する
     /// </summary>
     /// <param name="path">対象のファイルまたはディレクトリパス</param>
-    private static void RemoveReadOnlyAttributes(string path)
+    internal static void RemoveReadOnlyAttributes(string path)
     {
         try
         {
@@ -404,194 +427,14 @@ public class ArchiveExtractor
     }
 
     /// <summary>
-    /// 特定のファイルを展開する
+    /// キャンセル可能な進捗報告クラス
     /// </summary>
-    /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <param name="outputPath">展開先ディレクトリのパス</param>
-    /// <param name="fileNames">展開するファイル名のリスト</param>
-    /// <param name="progressCallback">進捗コールバック</param>
-    public void ExtractSpecificFiles(string archivePath, string outputPath, IEnumerable<string> fileNames, Action<int>? progressCallback = null)
+    private class CancellableProgress<T>(Action<T> handler, CancellationToken token) : IProgress<T>
     {
-        if (!File.Exists(archivePath))
-            throw new FileNotFoundException($"アーカイブファイルが見つかりません: {archivePath}");
-
-        var fileNameList = fileNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (!fileNameList.Any())
-            throw new ArgumentException("展開するファイルが指定されていません。");
-
-        if (!Directory.Exists(outputPath))
-            Directory.CreateDirectory(outputPath);
-
-        try
+        public void Report(T value)
         {
-            using var reader = new ArchiveReader(archivePath);
-
-            // ★ 最適化: 全展開を避け、対象ファイルのインデックスのみを取得
-            var targetIndices = new List<uint>();
-            var targetItems = new Dictionary<string, ArchiveEntity>(StringComparer.OrdinalIgnoreCase);
-            var index = 0u;
-
-            foreach (var item in reader.Items)
-            {
-                if (fileNameList.Contains(item.FullName))
-                {
-                    targetIndices.Add(index);
-                    targetItems[item.FullName] = item;
-                }
-                index++;
-            }
-
-            if (targetIndices.Count == 0)
-            {
-                Logger.Log("指定されたファイルがアーカイブ内に見つかりません。", LogLevel.Warning);
-                return;
-            }
-
-            // ★ 最適化: 個別展開APIを使用（全展開を回避）
-            // 指定されたインデックスのファイルのみを直接出力先に展開
-            var progress = new Progress<Report>(report =>
-            {
-                // 進捗レポートがある場合は処理
-                if (progressCallback != null && report != null)
-                {
-                    // バイトベースの進捗を計算（簡易的）
-                    var percentage = report.TotalBytes > 0 ? (int)((report.Bytes * 100) / report.TotalBytes) : 0;
-                    progressCallback(percentage);
-                }
-            });
-
-            reader.Save(outputPath, targetIndices.ToArray(), progress);
-
-            var missingFiles = fileNameList.Where(f => !targetItems.ContainsKey(f)).ToList();
-            if (missingFiles.Any())
-            {
-                Logger.Log($"指定されたファイルがアーカイブ内に見つかりません: {string.Join(", ", missingFiles)}", LogLevel.Warning);
-            }
-
-            Logger.Log($"特定ファイル展開完了: {string.Join(", ", fileNameList)}");
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"特定ファイル展開でエラーが発生しました: {ex.Message}");
-            throw;
+            token.ThrowIfCancellationRequested();
+            handler(value);
         }
     }
-
-    /// <summary>
-    /// アーカイブの内容を一覧表示
-    /// </summary>
-    /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <returns>アーカイブ内のファイル一覧</returns>
-    public List<string> ListArchiveContents(string archivePath)
-    {
-        if (!File.Exists(archivePath))
-            throw new FileNotFoundException($"アーカイブファイルが見つかりません: {archivePath}");
-            
-        var contents = new List<string>();
-        
-        try
-        {
-        using var reader = new ArchiveReader(archivePath);
-            
-            // Items プロパティを使用してアーカイブ内容を取得
-            foreach (var item in reader.Items)
-            {
-                contents.Add(item.FullName);
-            }
-            
-            Logger.Log($"アーカイブ内容確認完了: {contents.Count}個のファイル");
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"アーカイブ内容確認でエラーが発生しました: {ex.Message}");
-            throw;
-        }
-        
-        return contents;
-    }
-
-    /// <summary>
-    /// アーカイブの詳細情報を取得
-    /// </summary>
-    /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <returns>アーカイブ内のファイル詳細情報一覧</returns>
-    public List<ArchiveFileInfo> GetArchiveFileInfos(string archivePath)
-    {
-        if (!File.Exists(archivePath))
-            throw new FileNotFoundException($"アーカイブファイルが見つかりません: {archivePath}");
-            
-        var fileInfos = new List<ArchiveFileInfo>();
-        
-        try
-        {
-            using var reader = new ArchiveReader(archivePath);
-            
-            // Items プロパティを使用してアーカイブ内容の詳細情報を取得
-            foreach (var item in reader.Items)
-            {
-                var fileInfo = new ArchiveFileInfo
-                {
-                    Index = (uint)item.Index,
-                    Path = item.FullName,
-                    Name = Path.GetFileName(item.FullName),
-                    IsDirectory = item.IsDirectory,
-                    Size = 0, // 現在のライブラリではサイズ情報が取得できないため0を設定
-                    PackedSize = 0, // 現在のライブラリでは圧縮サイズ情報が取得できないため0を設定
-                    LastWriteTime = item.LastWriteTime
-                };
-                
-                fileInfos.Add(fileInfo);
-            }
-            
-            Logger.Log($"アーカイブ詳細情報取得完了: {fileInfos.Count}個のエントリ");
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"アーカイブ詳細情報取得でエラーが発生しました: {ex.Message}");
-            throw;
-        }
-        
-        return fileInfos;
-    }
-}
-
-/// <summary>
-/// アーカイブ内のファイル情報
-/// </summary>
-public class ArchiveFileInfo
-{
-    /// <summary>
-    /// アイテムインデックス
-    /// </summary>
-    public uint Index { get; set; }
-
-    /// <summary>
-    /// ファイルパス
-    /// </summary>
-    public string Path { get; set; } = "";
-
-    /// <summary>
-    /// ファイル名
-    /// </summary>
-    public string Name { get; set; } = "";
-
-    /// <summary>
-    /// ディレクトリかどうか
-    /// </summary>
-    public bool IsDirectory { get; set; }
-
-    /// <summary>
-    /// ファイルサイズ
-    /// </summary>
-    public ulong Size { get; set; }
-
-    /// <summary>
-    /// 圧縮サイズ
-    /// </summary>
-    public ulong PackedSize { get; set; }
-
-    /// <summary>
-    /// 最終更新日時
-    /// </summary>
-    public DateTime LastWriteTime { get; set; }
 }

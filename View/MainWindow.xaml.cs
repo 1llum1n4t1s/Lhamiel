@@ -13,7 +13,7 @@ namespace Lhamiel.View;
 public partial class MainWindow
 {
     private readonly SettingsManager _settingsManager;
-    private bool _isInitializing;
+    private readonly bool _isInitializing;
     private readonly Dictionary<string, CheckBox> _associationCheckBoxes;
 
     /// <summary>
@@ -203,8 +203,9 @@ public partial class MainWindow
 
                     var outputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
 
-                    // 出力ファイルが既に存在する場合は上書き確認
-                    if (File.Exists(outputPath))
+                    // 出力先が既に存在する場合は上書き確認
+                    var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
+                    if (targetExists)
                     {
                         var canOverwrite = FileOverwriteDialog.CanOverwriteFile(filePath, outputPath, this);
                         if (!canOverwrite)
@@ -213,8 +214,24 @@ public partial class MainWindow
                             continue;
                         }
 
-                        // 上書きが許可された場合は既存ファイルを削除
-                        File.Delete(outputPath);
+                        // 上書きが許可された場合は既存の対象を削除
+                        try
+                        {
+                            if (Directory.Exists(outputPath))
+                            {
+                                Directory.Delete(outputPath, true);
+                            }
+                            else
+                            {
+                                File.Delete(outputPath);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
+                            MessageService.ShowError($"出力先 '{Path.GetFileName(outputPath)}' が使用中か、削除権限がありません。");
+                            continue;
+                        }
                     }
 
                     var progress = new Progress<ProgressInfo>(info =>
@@ -273,12 +290,10 @@ public partial class MainWindow
                 var outputToSameDirectory = ExtractionOutputToSameDirectoryRadio.IsChecked ?? false;
 
                 progressWindow = new ProgressWindow("展開");
-                var cancellationTokenSource = new CancellationTokenSource();
-                progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
                 progressWindow.Show();
 
                 // 共通化された展開処理を実行
-                await ArchiveProcessor.ExtractArchivesAsync(openFileDialog.FileNames, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
+                await ArchiveProcessor.ExtractArchivesAsync(openFileDialog.FileNames, outputDir, outputToSameDirectory, progressWindow, progressWindow.GetCancellationToken());
 
                 // 展開後にフォルダを開く設定を確認
                 if (_settingsManager.Current.OpenExtractionOutputFolder)
@@ -653,8 +668,6 @@ public partial class MainWindow
             var outputToSameDirectory = ExtractionOutputToSameDirectoryRadio.IsChecked ?? false;
 
             progressWindow = new ProgressWindow("展開");
-            var cancellationTokenSource = new CancellationTokenSource();
-            progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
 
             var success = await ArchiveProcessor.ExtractArchivesAsync(
@@ -662,7 +675,7 @@ public partial class MainWindow
                 outputDir,
                 outputToSameDirectory,
                 progressWindow,
-                cancellationTokenSource.Token);
+                progressWindow.GetCancellationToken());
 
             if (success)
             {
@@ -678,7 +691,11 @@ public partial class MainWindow
         }
         catch (OperationCanceledException)
         {
-            MessageService.ShowInfo("展開がキャンセルされました。");
+            if (progressWindow != null)
+            {
+                progressWindow.SetCompleted("キャンセルしました。");
+            }
+            MessageService.ShowInfo("展開処理をキャンセルしました。", "キャンセル");
         }
         catch (Exception ex)
         {
@@ -757,8 +774,6 @@ public partial class MainWindow
 
             progressWindow = new ProgressWindow("圧縮");
             progressWindow.Show();
-            var cancellationTokenSource = new CancellationTokenSource();
-            progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
 
             // ★ 修正: 複雑な並列処理ロジックを削除し、ArchiveProcessor.CompressFoldersAsync に委譲
             // これにより、コードの重複を避け、進捗管理を一元化する
@@ -768,7 +783,7 @@ public partial class MainWindow
                 outputToSameDirectory,
                 format,
                 progressWindow,
-                cancellationTokenSource.Token
+                progressWindow.GetCancellationToken()
             );
 
             if (success)
@@ -782,7 +797,11 @@ public partial class MainWindow
         catch (OperationCanceledException)
         {
             Logger.Log("圧縮処理がキャンセルされました");
-            MessageService.ShowInfo("圧縮処理をキャンセルしました。");
+            if (progressWindow != null)
+            {
+                progressWindow.SetCompleted("キャンセルしました。");
+            }
+            MessageService.ShowInfo("圧縮処理をキャンセルしました。", "キャンセル");
         }
         catch (Exception ex)
         {

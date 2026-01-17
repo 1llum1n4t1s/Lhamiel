@@ -41,7 +41,7 @@ public class ArchiveCompressor
     {
         var compressor = new ArchiveCompressor();
         var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
-        await compressor.CompressFilesAsync(new[] { sourcePath }, outputPath, progressCallback, cancellationToken);
+        await compressor.CompressFilesAsync([sourcePath], outputPath, progressCallback, cancellationToken);
     }
 
     /// <summary>
@@ -71,7 +71,7 @@ public class ArchiveCompressor
 
         // 設定から除外パターンを取得
         var settings = Settings.Load();
-        var excludedPatterns = settings.ExcludedFilePatterns ?? new List<string>();
+        var excludedPatterns = settings.ExcludedFilePatterns ?? [];
 
         var outputCreated = false;
         try
@@ -145,14 +145,14 @@ public class ArchiveCompressor
             outputCreated = true;
             Logger.Log("圧縮処理を開始します");
 
-            var reportProgress = new Progress<Report>(report =>
+            var reportProgress = new CancellableProgress<Report>(report =>
             {
                 // 進捗率をそのまま使用（GetRatio()で0～1を返す）
                 var ratio = report.GetRatio();
                 var percentage = (int)(ratio * 100);
 
                 progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
-            });
+            }, cancellationToken);
 
             await Task.Run(() =>
             {
@@ -263,12 +263,15 @@ public class ArchiveCompressor
     /// <param name="directoryPath">圧縮するディレクトリのパス</param>
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="progressCallback">進捗コールバック</param>
-    public static void CompressDirectory(string directoryPath, string outputPath, Action<ProgressInfo>? progressCallback = null)
+    /// <param name="cancellationToken">キャンセルトークン</param>
+    public static void CompressDirectory(string directoryPath, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         if (!Directory.Exists(directoryPath))
         {
             throw new DirectoryNotFoundException($"ディレクトリが見つかりません: {directoryPath}");
         }
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         // 出力ディレクトリを作成
         var outputDir = Path.GetDirectoryName(outputPath);
@@ -282,7 +285,7 @@ public class ArchiveCompressor
 
         // 設定から除外パターンを取得
         var settings = Settings.Load();
-        var excludedPatterns = settings.ExcludedFilePatterns ?? new List<string>();
+        var excludedPatterns = settings.ExcludedFilePatterns ?? [];
 
         try
         {
@@ -290,6 +293,8 @@ public class ArchiveCompressor
             var files = GetFilesRecursively(directoryPath, excludedPatterns).ToList();
             var totalFiles = files.Count;
             Logger.Log($"圧縮対象のファイル総数: {totalFiles}個");
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             // アーカイブ内の相対パスを計算（ディレクトリ自体をルートに含める）
             var parentDir = Path.GetDirectoryName(directoryPath) ?? "";
@@ -300,25 +305,44 @@ public class ArchiveCompressor
 
             foreach (var item in filesToCompress)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 writer.Add(item.fullPath, item.relativePath);
             }
 
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
             Logger.Log("圧縮処理を開始します");
 
-            var reportProgress = new Progress<Report>(report =>
+            var reportProgress = new CancellableProgress<Report>(report =>
             {
                 // 進捗率をそのまま使用（GetRatio()で0～1を返す）
                 var ratio = report.GetRatio();
                 var percentage = (int)(ratio * 100);
 
                 progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
-            });
+            }, cancellationToken);
 
+            // ★ 修正: 同期的な Save でもキャンセル可能にするために、CancellableProgress を使用。
+            // Cube.FileSystem.SevenZip は Report 呼び出し時に例外がスローされると処理を中断する。
+            
+            cancellationToken.ThrowIfCancellationRequested();
             writer.Save(outputPath, reportProgress);
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(cancellationToken);
+            }
 
             progressCallback?.Invoke(new ProgressInfo(100, "完了"));
             Logger.Log($"ディレクトリ圧縮完了: {directoryPath} -> {outputPath}");
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log($"圧縮処理がキャンセルされました: {directoryPath}");
+            if (File.Exists(outputPath))
+            {
+                try { File.Delete(outputPath); } catch { }
+            }
+            throw;
         }
         catch (Exception ex)
         {
@@ -403,7 +427,7 @@ public class ArchiveCompressor
             // ディレクトリ自体が除外対象かチェック
             if (ShouldExcludeFile(directoryPath, excludedPatterns))
             {
-                return Enumerable.Empty<string>();
+                return [];
             }
 
             // Directory.EnumerateFiles を使用して効率的にファイルを取得
@@ -425,6 +449,18 @@ public class ArchiveCompressor
             Logger.Log($"ファイル取得中にエラーが発生しました: {directoryPath}, {ex.Message}");
         }
 
-        return Enumerable.Empty<string>();
+        return [];
+    }
+
+    /// <summary>
+    /// キャンセル可能な進捗報告クラス
+    /// </summary>
+    private class CancellableProgress<T>(Action<T> handler, CancellationToken token) : IProgress<T>
+    {
+        public void Report(T value)
+        {
+            token.ThrowIfCancellationRequested();
+            handler(value);
+        }
     }
 }

@@ -80,28 +80,29 @@ public class Settings
     /// <summary>
     /// 圧縮時に除外するファイル・フォルダのパターン
     /// </summary>
-    public List<string> ExcludedFilePatterns { get; set; } = new List<string>
-    {
+    public List<string> ExcludedFilePatterns { get; set; } =
+    [
         ".DS_Store",
         "Thumbs.db",
+
         "__MACOSX",
         "desktop.ini"
-    };
+    ];
 
     /// <summary>
     /// サポートされている圧縮形式の一覧
     /// </summary>
-    public static readonly string[] SupportedCompressionFormats = { "ZIP", "7z", "TAR" };
+    public static readonly string[] SupportedCompressionFormats = ["ZIP", "7z", "TAR"];
 
     /// <summary>
     /// サポートされている展開形式の一覧
     /// </summary>
-    public static readonly string[] SupportedExtractionFormats = { "ZIP", "7z", "TAR", "GZ", "BZ2", "LZMA", "XZ", "RAR", "LZH", "CAB", "ARJ", "Z" };
+    public static readonly string[] SupportedExtractionFormats = ["ZIP", "7z", "TAR", "GZ", "BZ2", "LZMA", "XZ", "RAR", "LZH", "CAB", "ARJ", "Z"];
 
     /// <summary>
     /// 展開専用形式の一覧
     /// </summary>
-    public static readonly string[] ExtractOnlyFormats = { "RAR", "ARJ", "Z" };
+    public static readonly string[] ExtractOnlyFormats = ["RAR", "ARJ", "Z"];
 
     /// <summary>
     /// 前回のアップデートチェック時刻（ISO 8601形式）

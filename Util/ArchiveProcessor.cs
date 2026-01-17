@@ -110,7 +110,8 @@ public static class ArchiveProcessor
                     outputPath,
                     PartialExtractionHandler.ErrorHandlingOption.AskUser,
                     (percentage, message) => progressWindow?.UpdateProgress(percentage, message),
-                    (failedFile) => ShowErrorRecoveryDialog(failedFile, progressWindow));
+                    (failedFile) => ShowErrorRecoveryDialog(failedFile, progressWindow),
+                    cancellationToken);
                 
                 // 結果を表示
                 if (result.SuccessCount > 0)
@@ -131,20 +132,16 @@ public static class ArchiveProcessor
             else
             {
                 Logger.Log($"ArchiveExtractor.ExtractArchiveAsyncを呼び出し: filePath={filePath}, outputPath={outputPath}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
-                await ArchiveExtractor.ExtractArchiveAsync(filePath, outputPath, progress, progressWindow, cancellationToken);
+                
+                // スマート解凍（isSingleRoot）の場合、キャンセル時に削除すべきは rootItemName
+                var rootItemName = isSingleRoot ? ArchiveExtractor.GetSingleRootItemName(filePath) : null;
+                await ArchiveExtractor.ExtractArchiveAsync(filePath, outputPath, progress, progressWindow, cancellationToken, rootItemName);
 
                 Logger.Log($"展開処理が完了: {filePath}");
                 return true;
             }
         }
-        catch (OperationCanceledException)
-        {
-            Logger.Log($"展開処理がキャンセルされました: {filePath}");
-            progressWindow?.SetCompleted("キャンセルしました。");
-            MessageBox.Show("展開処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
-            return false;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // 詳細なエラー分析を実行
             var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, filePath, outputPath);
@@ -284,14 +281,7 @@ public static class ArchiveProcessor
                 return successCount > 0;
             }
         }
-        catch (OperationCanceledException)
-        {
-            Logger.Log("複数ファイル展開処理がキャンセルされました");
-            progressWindow?.SetCompleted("キャンセルしました。");
-            MessageBox.Show("展開処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
-            return false;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数ファイル展開処理でエラーが発生", ex);
             MessageBox.Show($"展開中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -340,34 +330,41 @@ public static class ArchiveProcessor
             // 出力ファイル名の取得
             var outputPath = ArchiveCompressor.GetCompressedFileName(folderPath, format, outputDir, outputToSameDirectory);
 
-            // 出力ファイルが既に存在する場合は上書き確認
-            if (File.Exists(outputPath))
+            // 出力先が既に存在する場合は上書き確認
+            var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
+            if (targetExists)
             {
-                Logger.Log($"出力ファイルが既に存在します: {outputPath}");
+                Logger.Log($"出力先が既に存在します: {outputPath}");
 
-                if (progressWindow != null)
+                // UIスレッドで上書き確認を実行
+                var canOverwrite = await (progressWindow?.Dispatcher ?? Application.Current.Dispatcher).InvokeAsync(() =>
+                    FileOverwriteDialog.CanOverwriteFile(folderPath, outputPath, progressWindow));
+
+                Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
+
+                if (!canOverwrite)
                 {
-                    // UIスレッドで上書き確認を実行
-                    var canOverwrite = await progressWindow.Dispatcher.InvokeAsync(() =>
-                        FileOverwriteDialog.ShowOverwriteDialog(folderPath, outputPath, progressWindow) == OverwriteResult.Yes);
-
-                    Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
-
-                    if (!canOverwrite)
-                    {
-                        Logger.Log("ユーザーが圧縮処理をキャンセルしました");
-                        return false;
-                    }
-
-                    // 上書きが許可された場合は既存ファイルを削除
-                    File.Delete(outputPath);
-                    Logger.Log($"既存ファイルを削除しました: {outputPath}");
+                    Logger.Log("ユーザーが圧縮処理をキャンセルしました");
+                    return false;
                 }
-                else
+
+                // 上書きが許可された場合は既存の対象を削除
+                try
                 {
-                    // progressWindowがnullの場合は自動的に上書き
-                    Logger.Log("progressWindowがnullのため、既存ファイルを自動的に上書きします");
-                    File.Delete(outputPath);
+                    if (Directory.Exists(outputPath))
+                    {
+                        Directory.Delete(outputPath, true);
+                    }
+                    else
+                    {
+                        File.Delete(outputPath);
+                    }
+                    Logger.Log($"既存の対象を削除しました: {outputPath}");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
+                    throw new InvalidOperationException($"出力先 '{Path.GetFileName(outputPath)}' が使用中か、アクセス権限がありません。", ex);
                 }
             }
 
@@ -385,7 +382,7 @@ public static class ArchiveProcessor
                     progressReporter?.Report(info);
                 });
 
-                ArchiveCompressor.CompressDirectory(folderPath, outputPath, progressCallback);
+                ArchiveCompressor.CompressDirectory(folderPath, outputPath, progressCallback, actualCancellationToken);
             }, actualCancellationToken);
 
             Logger.Log($"圧縮処理が完了: {folderPath} -> {outputPath}");
@@ -395,14 +392,7 @@ public static class ArchiveProcessor
 
             return true;
         }
-        catch (OperationCanceledException)
-        {
-            Logger.Log($"圧縮処理がキャンセルされました: {folderPath}");
-            progressWindow?.SetCompleted("キャンセルしました。");
-            MessageBox.Show("圧縮処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
-            return false;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException($"圧縮処理でエラーが発生: {folderPath}", ex);
             MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -539,14 +529,7 @@ public static class ArchiveProcessor
                 return successCount > 0;
             }
         }
-        catch (OperationCanceledException)
-        {
-            Logger.Log("複数フォルダ圧縮処理がキャンセルされました");
-            progressWindow?.SetCompleted("キャンセルしました。");
-            MessageBox.Show("圧縮処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
-            return false;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数フォルダ圧縮処理でエラーが発生", ex);
             MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);

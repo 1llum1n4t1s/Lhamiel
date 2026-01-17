@@ -9,7 +9,7 @@ namespace Lhamiel;
 /// <summary>
 /// App.xaml の相互作用ロジック
 /// </summary>
-public partial class App : Application
+public partial class App
 {
     /// <summary>
     /// アプリケーションインスタンス管理用の Mutex

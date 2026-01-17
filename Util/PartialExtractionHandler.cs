@@ -36,17 +36,17 @@ public class PartialExtractionHandler
         /// <summary>
         /// 成功したファイル一覧
         /// </summary>
-        public List<string> SuccessFiles { get; set; } = new();
+        public List<string> SuccessFiles { get; set; } = [];
 
         /// <summary>
         /// 失敗したファイル一覧
         /// </summary>
-        public List<FailedFileInfo> FailedFiles { get; set; } = new();
+        public List<FailedFileInfo> FailedFiles { get; set; } = [];
 
         /// <summary>
         /// スキップされたファイル一覧
         /// </summary>
-        public List<string> SkippedFiles { get; set; } = new();
+        public List<string> SkippedFiles { get; set; } = [];
 
         /// <summary>
         /// 総ファイル数
@@ -119,13 +119,15 @@ public class PartialExtractionHandler
     /// <param name="errorHandling">エラー処理オプション</param>
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="userChoiceCallback">ユーザー選択コールバック（AskUserの場合）</param>
+    /// <param name="cancellationToken"></param>
     /// <returns>展開結果</returns>
     public static async Task<ExtractionResult> ExtractWithPartialFailureHandling(
         string archivePath,
         string outputPath,
         ErrorHandlingOption errorHandling = ErrorHandlingOption.AskUser,
         Action<int, string>? progressCallback = null,
-        Func<FailedFileInfo, ErrorHandlingOption>? userChoiceCallback = null)
+        Func<FailedFileInfo, ErrorHandlingOption>? userChoiceCallback = null,
+        CancellationToken cancellationToken = default)
     {
         var result = new ExtractionResult();
         
@@ -133,6 +135,8 @@ public class PartialExtractionHandler
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using var reader = new ArchiveReader(archivePath);
             var items = reader.Items.ToList();
             result.TotalFiles = items.Count;
@@ -143,13 +147,17 @@ public class PartialExtractionHandler
                 Directory.CreateDirectory(outputPath);
             }
 
-            var (tempPath, extractionException) = ExtractArchiveToTemporaryPath(reader);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var (tempPath, extractionException) = ExtractArchiveToTemporaryPath(reader, cancellationToken);
 
             try
             {
                 // 事前展開済みの内容から個別ファイルをコピー
                 for (int i = 0; i < items.Count; i++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     var item = items[i];
                     var fullName = item.FullName ?? string.Empty;
                     var progress = items.Count == 0 ? 100 : (int)((double)(i + 1) / items.Count * 100);
@@ -157,7 +165,7 @@ public class PartialExtractionHandler
 
                     try
                     {
-                        await Task.Run(() => FileOperations.CopyExtractedItem(tempPath, outputPath, fullName, item.IsDirectory));
+                        await Task.Run(() => FileOperations.CopyExtractedItem(tempPath, outputPath, fullName, item.IsDirectory), cancellationToken);
                         result.SuccessFiles.Add(fullName);
                         result.SuccessCount++;
 
@@ -217,6 +225,32 @@ public class PartialExtractionHandler
                     }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                Logger.Log($"部分展開処理がキャンセルされました。出力先をクリーンアップします: {outputPath}");
+                try
+                {
+                    // 保護されたディレクトリ（デスクトップなど）は絶対に削除しない
+                    if (PathValidator.IsProtectedDirectory(outputPath))
+                    {
+                        Logger.Log($"クリーンアップをスキップ: 保護されたディレクトリです: {outputPath}", LogLevel.Warning);
+                        throw;
+                    }
+
+                    if (Directory.Exists(outputPath))
+                    {
+                        // 読み取り専用属性などを解除してから削除
+                        ArchiveExtractor.RemoveReadOnlyAttributes(outputPath);
+                        Directory.Delete(outputPath, true);
+                        Logger.Log($"キャンセルされた展開先を削除しました: {outputPath}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"キャンセル時のクリーンアップに失敗しました: {outputPath}, {ex.Message}", LogLevel.Warning);
+                }
+                throw;
+            }
             finally
             {
                 FileOperations.CleanupTemporaryPath(tempPath, message => Logger.Log(message, LogLevel.Warning));
@@ -239,7 +273,7 @@ public class PartialExtractionHandler
     /// <summary>
     /// アーカイブを一時ディレクトリに展開する
     /// </summary>
-    private static (string TempPath, Exception? ExtractionException) ExtractArchiveToTemporaryPath(ArchiveReader reader)
+    private static (string TempPath, Exception? ExtractionException) ExtractArchiveToTemporaryPath(ArchiveReader reader, CancellationToken cancellationToken = default)
     {
         var tempPath = Path.Combine(Path.GetTempPath(), $"lhamiel-{Guid.NewGuid()}");
         Directory.CreateDirectory(tempPath);
@@ -247,7 +281,11 @@ public class PartialExtractionHandler
 
         try
         {
-            reader.Save(tempPath);
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            // 進行状況の監視は不要だが、キャンセルは監視したい
+            var progress = new CancellableProgress<Report>(_ => { }, cancellationToken);
+            reader.Save(tempPath, progress);
         }
         catch (Exception ex)
         {
@@ -427,5 +465,17 @@ public class PartialExtractionHandler
         }
 
         return retryResult;
+    }
+
+    /// <summary>
+    /// キャンセル可能な進捗報告クラス
+    /// </summary>
+    private class CancellableProgress<T>(Action<T> handler, CancellationToken token) : IProgress<T>
+    {
+        public void Report(T value)
+        {
+            token.ThrowIfCancellationRequested();
+            handler(value);
+        }
     }
 }

@@ -200,34 +200,4 @@ public static class ArchiveFormatDetector
 
         return false;
     }
-
-    /// <summary>
-    /// バイト配列内でバイトパターンを検索する
-    /// </summary>
-    /// <param name="data">検索対象のバイト配列</param>
-    /// <param name="pattern">検索するパターン</param>
-    /// <returns>パターンが見つかった位置のインデックス。見つからない場合は-1</returns>
-    public static int FindBytePattern(byte[] data, byte[] pattern)
-    {
-        if (data == null || pattern == null || pattern.Length == 0 || data.Length < pattern.Length)
-            return -1;
-
-        for (int i = 0; i <= data.Length - pattern.Length; i++)
-        {
-            bool match = true;
-            for (int j = 0; j < pattern.Length; j++)
-            {
-                if (data[i + j] != pattern[j])
-                {
-                    match = false;
-                    break;
-                }
-            }
-
-            if (match)
-                return i;
-        }
-
-        return -1;
-    }
 }

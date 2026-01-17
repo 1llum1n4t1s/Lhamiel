@@ -269,73 +269,6 @@ public class FileAssociation
     }
 
     /// <summary>
-    /// すべてのサポートされているファイル形式に関連付けを設定する
-    /// </summary>
-    /// <returns>すべての設定が成功した場合はtrue、そうでなければfalse</returns>
-    [SupportedOSPlatform("windows")]
-    public static bool AssociateAllSupportedTypes()
-    {
-        var supportedTypes = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".lzma", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tgz", ".tbz2", ".tbz", ".tlz", ".txz", ".tz" };
-        var success = true;
-
-        foreach (var type in supportedTypes)
-        {
-            if (!AssociateFileType(type))
-            {
-                success = false;
-            }
-        }
-
-        return success;
-    }
-
-    /// <summary>
-    /// すべてのサポートされているファイル形式の関連付けを解除する
-    /// </summary>
-    /// <returns>すべての解除が成功した場合はtrue、そうでなければfalse</returns>
-    [SupportedOSPlatform("windows")]
-    public static bool DisassociateAllSupportedTypes()
-    {
-        var supportedTypes = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".lzma", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tgz", ".tbz2", ".tbz", ".tlz", ".txz", ".tz" };
-        var success = true;
-
-        foreach (var type in supportedTypes)
-        {
-            if (!DisassociateFileType(type))
-            {
-                success = false;
-            }
-        }
-
-        return success;
-    }
-
-    /// <summary>
-    /// レジストリへの書き込み権限があるかどうかを確認する
-    /// </summary>
-    /// <returns>権限がある場合はtrue、そうでなければfalse</returns>
-    [SupportedOSPlatform("windows")]
-    public static bool HasRegistryPermission()
-    {
-        try
-        {
-            var testKeyPath = "Software\\LhamielTest";
-            using var testKey = Registry.CurrentUser.CreateSubKey(testKeyPath);
-            if (testKey != null)
-            {
-                testKey.SetValue("Test", "TestValue");
-                Registry.CurrentUser.DeleteSubKey(testKeyPath);
-                return true;
-            }
-            return false;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    /// <summary>
     /// 現在の関連付け状態を取得する
     /// </summary>
     /// <returns>拡張子と関連付け状態の辞書</returns>
@@ -353,25 +286,4 @@ public class FileAssociation
         return status;
     }
 
-    /// <summary>
-    /// 指定された拡張子の現在の関連付け状態を取得する
-    /// </summary>
-    /// <param name="extension">拡張子</param>
-    /// <returns>関連付けられている場合はtrue、そうでなければfalse</returns>
-    [SupportedOSPlatform("windows")]
-    public static bool GetCurrentAssociationStatus(string extension)
-    {
-        return IsFileTypeAssociated(extension);
-    }
-
-    /// <summary>
-    /// 指定された拡張子の関連付けが完全に設定されているかどうかを確認する
-    /// </summary>
-    /// <param name="extension">拡張子</param>
-    /// <returns>完全に設定されている場合はtrue、そうでなければfalse</returns>
-    [SupportedOSPlatform("windows")]
-    public static bool IsAssociationFullyConfigured(string extension)
-    {
-        return IsFileTypeAssociated(extension);
-    }
 }
