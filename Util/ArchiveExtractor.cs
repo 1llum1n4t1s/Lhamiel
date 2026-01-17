@@ -137,46 +137,6 @@ public class ArchiveExtractor
 
 
     /// <summary>
-    /// 進捗レポートから現在処理中のファイル名を取得する
-    /// </summary>
-    /// <remarks>
-    /// Report.Target から現在処理中のエントリ情報を取得する。
-    /// FullName を優先し、取得できない場合は Name を使用する。
-    /// </remarks>
-    private static string GetReportCurrentFileName(Report report)
-    {
-        try
-        {
-            // 現在処理中のエントリ情報を取得
-            var target = report.Target;
-            if (target != null)
-            {
-                // FullName を優先的に取得
-                var fullName = target.FullName;
-                if (!string.IsNullOrWhiteSpace(fullName))
-                {
-                    return fullName;
-                }
-
-                // FullName が取得できなかった場合は Name を試す
-                var name = target.Name;
-                if (!string.IsNullOrWhiteSpace(name))
-                {
-                    return name;
-                }
-            }
-
-            return string.Empty;
-        }
-        catch
-        {
-            return string.Empty;
-        }
-    }
-
-
-
-    /// <summary>
     /// アーカイブを展開する（非同期版）
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
@@ -318,7 +278,6 @@ public class ArchiveExtractor
                 {
                     // ★追加: 前回の進捗情報を保持して、変化がない場合の更新をスキップする
                     var lastPercentage = -1;
-                    var lastFileName = string.Empty;
 
                     var progress = new Progress<Report>(report =>
                     {
@@ -328,24 +287,16 @@ public class ArchiveExtractor
 
                         var percentage = report.TotalBytes > 0 ? (int)((report.Bytes * 100) / report.TotalBytes) : 0;
 
-                        // より効率的なファイル名取得（リフレクションを使用）
-                        var currentFileName = GetReportCurrentFileName(report);
-
-                        // ★追加: 進捗率もファイル名も変わっていない場合は無視（ログ過多・UI描画負荷の防止）
-                        if (percentage == lastPercentage && string.Equals(currentFileName, lastFileName, StringComparison.Ordinal))
+                        // ★追加: 進捗率が変わっていない場合は無視（UI描画負荷の防止）
+                        if (percentage == lastPercentage)
                         {
                             return;
                         }
 
                         // ★追加: 最新の状態を保存
                         lastPercentage = percentage;
-                        lastFileName = currentFileName;
 
-                        var status = string.IsNullOrWhiteSpace(currentFileName)
-                            ? "ファイルを展開中..."
-                            : $"展開中: {Path.GetFileName(currentFileName)}";
-                        Logger.Log($"展開進捗: {percentage}%, ファイル: {Path.GetFileName(currentFileName)}", LogLevel.Debug);
-                        progressCallback(new ProgressInfo(percentage, status, currentFileName));
+                        progressCallback(new ProgressInfo(percentage, "ファイルを展開中..."));
                     });
 
                     reader.Save(outputPath, progress);
@@ -503,14 +454,9 @@ public class ArchiveExtractor
                 // 進捗レポートがある場合は処理
                 if (progressCallback != null && report != null)
                 {
-                    var currentFileName = GetReportCurrentFileName(report);
-                    if (!string.IsNullOrEmpty(currentFileName) && targetItems.ContainsKey(currentFileName))
-                    {
-                        // 対象ファイルの処理進捗を計算
-                        var processedCount = targetItems.Count - fileNameList.Count + targetItems.Count(kv => kv.Value != null);
-                        var progressValue = (int)((double)processedCount / fileNameList.Count * 100);
-                        progressCallback(progressValue);
-                    }
+                    // バイトベースの進捗を計算（簡易的）
+                    var percentage = report.TotalBytes > 0 ? (int)((report.Bytes * 100) / report.TotalBytes) : 0;
+                    progressCallback(percentage);
                 }
             });
 

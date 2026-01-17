@@ -193,9 +193,8 @@ public class ArchiveCompressor
                     // 進捗率をそのまま使用（GetRatio()で0～1を返す）
                     var ratio = report.GetRatio();
                     var percentage = (int)(ratio * 100);
-                    var status = $"圧縮処理中... {percentage}%";
 
-                    progressCallback?.Invoke(new ProgressInfo(percentage, status));
+                    progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
                 });
 
                 await Task.Run(() => writer.Save(outputPath, reportProgress), cancellationToken);
@@ -253,7 +252,7 @@ public class ArchiveCompressor
             {
                 var totalFiles = filesToCompress.Count;
                 Logger.Log($"LHA圧縮: 圧縮するファイル数: {totalFiles}");
-                progressCallback?.Invoke(new ProgressInfo(10, $"ファイルをコピー中 (0/{totalFiles})..."));
+                progressCallback?.Invoke(new ProgressInfo(10, "ファイルをコピー中..."));
                 const int fileAddProgressMin = 10;
                 const int fileAddProgressMax = 80;
 
@@ -277,8 +276,8 @@ public class ArchiveCompressor
                         ? fileAddProgressMin + (int)Math.Round((double)(i + 1) * (fileAddProgressMax - fileAddProgressMin) / totalFiles)
                         : fileAddProgressMin;
 
-                    Logger.Log($"LHA圧縮ファイル追加進捗: {i + 1}/{totalFiles} ({progress}%) - {relativePath}");
-                    progressCallback?.Invoke(new ProgressInfo(progress, $"ファイル追加中 ({i + 1}/{totalFiles}): {relativePath}", fullPath));
+                    Logger.Log($"LHA圧縮ファイル追加進捗: {i + 1}/{totalFiles} ({progress}%)");
+                    progressCallback?.Invoke(new ProgressInfo(progress, "ファイル追加中..."));
 
                     // 定期的にUIスレッドに処理を戻す（20ファイルごと）
                     if (i % 20 == 0)
@@ -384,8 +383,8 @@ public class ArchiveCompressor
                         ? fileAddProgressMin + (int)Math.Round((double)(i + 1) * (fileAddProgressMax - fileAddProgressMin) / totalFiles)
                         : fileAddProgressMin;
 
-                    Logger.Log($"LHA圧縮ファイル追加進捗: {i + 1}/{totalFiles} ({progress}%) - {relativePath}");
-                    progressCallback?.Invoke(new ProgressInfo(progress, $"ファイル追加中 ({i + 1}/{totalFiles}): {relativePath}", fullPath));
+                    Logger.Log($"LHA圧縮ファイル追加進捗: {i + 1}/{totalFiles} ({progress}%)");
+                    progressCallback?.Invoke(new ProgressInfo(progress, "ファイル追加中..."));
                 }
 
                 // LHAWriter.WriteLHAFileを使用してLHA形式で圧縮
@@ -556,9 +555,8 @@ public class ArchiveCompressor
                 // 進捗率をそのまま使用（GetRatio()で0～1を返す）
                 var ratio = report.GetRatio();
                 var percentage = (int)(ratio * 100);
-                var status = $"圧縮処理中... {percentage}%";
 
-                progressCallback?.Invoke(new ProgressInfo(percentage, status));
+                progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
             });
 
             writer.Save(outputPath, reportProgress);

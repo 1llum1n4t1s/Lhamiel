@@ -217,8 +217,6 @@ public partial class MainWindow : Window
                         File.Delete(outputPath);
                     }
 
-                    progressWindow.SetOperationName("ファイル圧縮中...");
-
                     var progress = new Progress<ProgressInfo>(info =>
                     {
                         progressWindow.UpdateProgress(info.Percentage, info.Status);

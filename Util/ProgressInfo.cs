@@ -5,11 +5,10 @@ namespace Lhamiel.Util;
 /// </summary>
 public class ProgressInfo
 {
-    public ProgressInfo(int percentage, string status, string? currentFileName = null)
+    public ProgressInfo(int percentage, string status)
     {
         Percentage = percentage;
         Status = status;
-        CurrentFileName = currentFileName;
     }
 
     /// <summary>
@@ -18,12 +17,7 @@ public class ProgressInfo
     public int Percentage { get; }
 
     /// <summary>
-    /// ステータスメッセージ
+    /// ステータスメッセージ（内部ログ等で使用）
     /// </summary>
     public string Status { get; }
-
-    /// <summary>
-    /// 現在処理中のファイル名
-    /// </summary>
-    public string? CurrentFileName { get; }
 }

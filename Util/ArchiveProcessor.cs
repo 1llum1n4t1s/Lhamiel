@@ -84,9 +84,6 @@ public static class ArchiveProcessor
                 Logger.Log($"通常解凍: アーカイブ名フォルダを作成 -> {outputPath}");
             }
 
-            // 作業名を設定
-            progressWindow?.SetOperationName("展開中...");
-
             cancellationToken.ThrowIfCancellationRequested();
 
             // 展開処理を実行
@@ -354,30 +351,13 @@ public static class ArchiveProcessor
                 }
             }
 
-            // 作業名を設定（progressWindowがnullでない場合のみ）
-            if (progressWindow != null)
-            {
-                progressWindow.SetOperationName("ファイル集計中...");
-            }
-
-            actualCancellationToken.ThrowIfCancellationRequested();
-
             // 圧縮処理を実行（最適化: LHA形式の場合、無駄なコピーを避けるためCompressDirectoryを使用）
             Logger.Log($"ArchiveCompressor.CompressDirectoryを呼び出し: folderPath={folderPath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
 
             await Task.Run(() =>
             {
-                var operationNameSet = false;
                 var progressCallback = new Action<ProgressInfo>(info =>
                 {
-                    // 最初のReport時に操作名を「圧縮処理中...」に変更
-                    // Report からのコールバック（status が "圧縮処理中..." を含む）を検出
-                    if (!operationNameSet && info.Status.Contains("圧縮処理中"))
-                    {
-                        operationNameSet = true;
-                        progressWindow?.SetOperationName("圧縮処理中...");
-                    }
-
                     // 1. レガシーなProgressWindow更新 (単体実行時用)
                     progressWindow?.UpdateProgress(info.Percentage, info.Status);
 
@@ -450,31 +430,13 @@ public static class ArchiveProcessor
                     IProgress<ProgressInfo>? innerProgress = null;
                     if (totalCount == 1)
                     {
-                        // 単一フォルダ圧縮時は、操作名を設定
-                        progressWindow?.SetOperationName("ファイル集計中...");
-
-                        var operationNameSet = false;
                         innerProgress = new Progress<ProgressInfo>(info =>
                         {
                             progressWindow?.Dispatcher.Invoke(() =>
                             {
-                                // 最初のReport時に操作名を「圧縮処理中...」に変更
-                                if (!operationNameSet && info.Status.Contains("圧縮処理中"))
-                                {
-                                    operationNameSet = true;
-                                    progressWindow.SetOperationName("圧縮処理中...");
-                                }
                                 progressWindow.UpdateProgress(info.Percentage, info.Status);
                             });
                         });
-                    }
-                    else
-                    {
-                        // 複数フォルダ圧縮時は、初回のみ操作名を設定
-                        if (index == 0)
-                        {
-                            progressWindow?.SetOperationName("ファイル集計中...");
-                        }
                     }
 
                     // progressWindowはnullのまま(二重更新防止)、innerProgressを渡す
