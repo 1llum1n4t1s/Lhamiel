@@ -212,15 +212,14 @@ public class ArchiveCompressor
 
                 // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
                 outputCreated = true;
-                progressCallback?.Invoke(new ProgressInfo(90, "圧縮処理中..."));
                 Logger.Log("圧縮処理を開始します");
 
                 var reportProgress = new Progress<Cube.FileSystem.SevenZip.Report>(report =>
                 {
-                    // 進捗率を計算（GetRatio()で0～1を返す）
+                    // 進捗率をそのまま使用（GetRatio()で0～1を返す）
                     var ratio = report.GetRatio();
-                    var percentage = (int)(90 + ratio * 10); // 90～100%の範囲で表示
-                    var status = $"圧縮処理中... {(int)(ratio * 100)}%";
+                    var percentage = (int)(ratio * 100);
+                    var status = $"圧縮処理中... {percentage}%";
 
                     progressCallback?.Invoke(new ProgressInfo(percentage, status));
                 });
@@ -596,15 +595,14 @@ public class ArchiveCompressor
             }
 
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
-            progressCallback?.Invoke(new ProgressInfo(90, "圧縮処理中..."));
             Logger.Log("圧縮処理を開始します");
 
             var reportProgress = new Progress<Cube.FileSystem.SevenZip.Report>(report =>
             {
-                // 進捗率を計算（GetRatio()で0～1を返す）
+                // 進捗率をそのまま使用（GetRatio()で0～1を返す）
                 var ratio = report.GetRatio();
-                var percentage = (int)(90 + ratio * 10); // 90～100%の範囲で表示
-                var status = $"圧縮処理中... {(int)(ratio * 100)}%";
+                var percentage = (int)(ratio * 100);
+                var status = $"圧縮処理中... {percentage}%";
 
                 progressCallback?.Invoke(new ProgressInfo(percentage, status));
             });
