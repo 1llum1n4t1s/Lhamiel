@@ -174,10 +174,8 @@ public static class ArchiveProcessor
             var lockObject = new object();
 
             // ディスクI/O負荷を考慮し、並列数をCPUコア数ではなく制限
-            // HDDの場合は並列数が多いとシーク多発で逆に遅くなるため、保守的な値に設定
-            // SSDを前提とする場合でも、アーカイブ展開のメモリ使用量を考慮して上限を設定
             var maxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount / 2, 2, 4);
-            var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
+            using var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
 
             Logger.Log($"複数ファイル展開開始: {totalCount}個のファイル、最大並列度={maxDegreeOfParallelism}");
 
@@ -195,20 +193,21 @@ public static class ArchiveProcessor
                     {
                         mappedProgress = new Progress<ProgressInfo>(info =>
                         {
-                            progressWindow?.Dispatcher.Invoke(() =>
+                            // BeginInvoke に変更して、UIスレッドの負荷を軽減しデッドロックを回避
+                            progressWindow?.Dispatcher.BeginInvoke(new Action(() =>
                                 progressWindow.UpdateProgress(info.Percentage)
-                            );
+                            ));
                         });
                     }
                     else
                     {
                         mappedProgress = new Progress<ProgressInfo>(info =>
                         {
-                            progressWindow?.Dispatcher.Invoke(() =>
+                            progressWindow?.Dispatcher.BeginInvoke(new Action(() =>
                             {
                                 var overallProgress = (int)((double)index / totalCount * 100 + (double)info.Percentage / totalCount);
                                 progressWindow.UpdateProgress(overallProgress);
-                            });
+                            }));
                         });
                     }
 
@@ -268,15 +267,16 @@ public static class ArchiveProcessor
             if (successCount == totalCount)
             {
                 Logger.Log($"複数ファイル展開完了: {successCount}/{totalCount}個の展開に成功");
-                await Task.Delay(500);
-                progressWindow?.Close();
+                
+                // UIスレッド上で安全にクローズ
+                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
                 return true;
             }
             else
             {
                 Logger.Log($"複数ファイル展開完了: {successCount}成功, {totalCount - successCount}失敗");
-                await Task.Delay(500);
-                progressWindow?.Close();
+                
+                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
                 return successCount > 0;
             }
         }
@@ -337,8 +337,15 @@ public static class ArchiveProcessor
                 Logger.Log($"出力先が既に存在します: {outputPath}");
 
                 // UIスレッドで上書き確認を実行
-                var canOverwrite = await (progressWindow?.Dispatcher ?? Application.Current.Dispatcher).InvokeAsync(() =>
-                    FileOverwriteDialog.CanOverwriteFile(sourcePath, outputPath, progressWindow));
+                // 以前のデバッグで判明した通り、同期 Invoke ではなく await InvokeAsync を使用して
+                // スレッド間の切り替えを円滑にし、ExecutionEngineException を防ぐ
+                var dispatcher = progressWindow?.Dispatcher ?? Application.Current.Dispatcher;
+                
+                // 呼び出し前にスレッドを一度譲り、コンテキストを安定させる
+                await Task.Yield();
+                
+                var canOverwrite = await dispatcher.InvokeAsync(() =>
+                    FileOverwriteDialog.CanOverwriteFile(sourcePath, outputPath, progressWindow)).Task;
 
                 Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
 
@@ -390,8 +397,8 @@ public static class ArchiveProcessor
 
             if (progressReporter == null)
             {
-                await Task.Delay(500);
-                progressWindow?.Close();
+                // UIスレッド上で安全にクローズ
+                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
             }
 
             return true;
@@ -426,11 +433,10 @@ public static class ArchiveProcessor
             // ProgressWindow からキャンセルトークンを取得（nullの場合は渡されたトークンを使用）
             var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
 
-            // ★最適化: 並列処理時のCPUコア数を制限（圧縮処理自体がマルチスレッドなため）
-            var maxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount / 2, 1, 4);
-            var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
+            var maxDegreeOfParallelism = 2;
+            using var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
 
-            Logger.Log($"複数対象圧縮開始: {totalCount}個の対象、最大並列度={maxDegreeOfParallelism}、形式={format}");
+            Logger.Log($"複数対象圧縮開始: {totalCount}個の対象、並列制限={maxDegreeOfParallelism}、形式={format}");
 
             var tasks = sourcePaths.Select(async (sourcePath, index) =>
             {
@@ -480,9 +486,9 @@ public static class ArchiveProcessor
 
                         // 各対象完了時に確実に進捗を更新
                         var completedProgress = (int)((double)(index + 1) / totalCount * 100);
-                        progressWindow?.Dispatcher.Invoke(() =>
+                        progressWindow?.Dispatcher.BeginInvoke(new Action(() =>
                             progressWindow.UpdateProgress(completedProgress)
-                        );
+                        ));
                     }
                 }
                 catch (OperationCanceledException)
@@ -518,15 +524,16 @@ public static class ArchiveProcessor
             if (successCount == totalCount)
             {
                 Logger.Log($"複数対象圧縮完了: {successCount}/{totalCount}個の圧縮に成功");
-                await Task.Delay(500);
-                progressWindow?.Close();
+                
+                // UIスレッド上で安全にクローズ
+                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
                 return true;
             }
             else
             {
                 Logger.Log($"複数対象圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
-                await Task.Delay(500);
-                progressWindow?.Close();
+                
+                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
                 return successCount > 0;
             }
         }

@@ -514,8 +514,16 @@ public partial class MainWindow
             var outputDir = ExtractionOutputPathTextBox.Text;
             var outputToSameDirectory = ExtractionOutputToSameDirectoryRadio.IsChecked ?? false;
 
-            progressWindow = new ProgressWindow("展開");
+            progressWindow = new ProgressWindow("展開")
+            {
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
             progressWindow.Show();
+            progressWindow.Activate();
+
+            // UIスレッドに描画を完了させる隙を与える
+            await Task.Yield();
 
             var success = await ArchiveProcessor.ExtractArchivesAsync(
                 archivePaths,
@@ -626,8 +634,16 @@ public partial class MainWindow
             var outputDir = CompressionOutputPathTextBox.Text;
             var outputToSameDirectory = CompressionOutputToSameDirectoryRadio.IsChecked ?? false;
 
-            progressWindow = new ProgressWindow("圧縮");
+            progressWindow = new ProgressWindow("圧縮")
+            {
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
             progressWindow.Show();
+            progressWindow.Activate();
+
+            // UIスレッドに描画を完了させる隙を与える
+            await Task.Yield();
 
             // 修正: CompressFoldersAsync から CompressItemsAsync に変更
             var success = await ArchiveProcessor.CompressItemsAsync(

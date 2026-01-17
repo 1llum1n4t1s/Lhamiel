@@ -91,19 +91,32 @@ public static class FileOverwriteDialog
     {
         if (Application.Current == null) return null;
 
-        return Application.Current.Dispatcher.Invoke(() =>
+        // すでにUIスレッドにいる場合は直接実行、そうでなければInvokeしてデッドロックを防ぐ
+        if (Application.Current.Dispatcher.CheckAccess())
         {
-            // 1. アクティブなウィンドウがあればそれを優先（ProgressWindowなど）
-            var activeWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w.IsVisible);
-            if (activeWindow != null) return activeWindow;
+            return GetBestParentWindowInternal();
+        }
+        else
+        {
+            return Application.Current.Dispatcher.Invoke(GetBestParentWindowInternal);
+        }
+    }
 
-            // 2. 最前面のウィンドウがあればそれを使用（ProgressWindowは通常Topmost）
-            var topmostWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.Topmost && w.IsVisible);
-            if (topmostWindow != null) return topmostWindow;
+    /// <summary>
+    /// UIスレッド上で親ウィンドウを探索する実体
+    /// </summary>
+    private static Window? GetBestParentWindowInternal()
+    {
+        // 1. アクティブなウィンドウがあればそれを優先（ProgressWindowなど）
+        var activeWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w.IsVisible);
+        if (activeWindow != null) return activeWindow;
 
-            // 3. 最後にMainWindow
-            return Application.Current.MainWindow;
-        });
+        // 2. アクティブなウィンドウがない場合は、最後に表示された表示中のウィンドウを探す
+        var lastVisibleWindow = Application.Current.Windows.OfType<Window>().LastOrDefault(w => w.IsVisible);
+        if (lastVisibleWindow != null) return lastVisibleWindow;
+
+        // 3. 最後にMainWindow
+        return Application.Current.MainWindow;
     }
 }
 

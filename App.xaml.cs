@@ -374,9 +374,16 @@ public partial class App
 
             // 進行状況ウィンドウを表示
             var progressWindow = new View.ProgressWindow("展開");
+            progressWindow.Owner = MainWindow;
+            progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
+            
             var cancellationTokenSource = new CancellationTokenSource();
             progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
+            progressWindow.Activate();
+
+            // UIスレッドに一度制御を戻し、ウィンドウの描画と初期化を完了させる
+            await Task.Yield();
 
             // 共通化された展開処理を実行
             var success = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
@@ -430,9 +437,16 @@ public partial class App
 
             // 進行状況ウィンドウを表示
             var progressWindow = new View.ProgressWindow("圧縮");
+            progressWindow.Owner = MainWindow;
+            progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
+            
             var cancellationTokenSource = new CancellationTokenSource();
             progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
+            progressWindow.Activate();
+
+            // UIスレッドに一度制御を戻し、ウィンドウの描画と初期化を完了させる
+            await Task.Yield();
 
             // 出力パスを取得
             var outputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
@@ -449,8 +463,6 @@ public partial class App
             });
 
             await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationTokenSource.Token);
-
-            await Task.Delay(500);
 
             Logger.Log("ファイル圧縮処理が完了しました");
 
@@ -515,9 +527,16 @@ public partial class App
 
             // 進行状況ウィンドウを表示
             var progressWindow = new View.ProgressWindow("圧縮");
+            progressWindow.Owner = MainWindow;
+            progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
+            
             var cancellationTokenSource = new CancellationTokenSource();
             progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
+            progressWindow.Activate();
+
+            // UIスレッドに一度制御を戻し、ウィンドウの描画と初期化を完了させる
+            await Task.Yield();
 
             // 共通化された圧縮処理を実行
             var success = await ArchiveProcessor.CompressItemAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);

@@ -252,7 +252,8 @@ public class ArchiveExtractor
                     {
                         Logger.Log($"削除再試行（属性解除）: {actualTargetDir}");
                         RemoveReadOnlyAttributes(actualTargetDir);
-                        await Task.Delay(200, cancellationToken);
+                        // OSのファイルロック解除を少し待機
+                        await Task.Delay(100, cancellationToken);
                         Directory.Delete(actualTargetDir, true);
                     }
                 }
@@ -300,6 +301,9 @@ public class ArchiveExtractor
                 {
                     reader.Save(outputPath);
                 }
+
+                // ネイティブ側（Cube.FileSystem.SevenZip）の参照を確実に保持
+                GC.KeepAlive(reader);
             }
 
             cancellationToken.ThrowIfCancellationRequested();

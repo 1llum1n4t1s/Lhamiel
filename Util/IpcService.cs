@@ -95,8 +95,8 @@ public static class IpcService
                 if (!cancellationToken.IsCancellationRequested)
                 {
                     Logger.Log($"IPCサーバーエラー: {ex.Message}");
-                    // エラー時は少し待機してリトライ
-                    await Task.Delay(1000, cancellationToken);
+                    // エラー時は少し待機してリトライ（頻繁なリトライを防ぐ）
+                    await Task.Delay(100, cancellationToken);
                 }
             }
         }

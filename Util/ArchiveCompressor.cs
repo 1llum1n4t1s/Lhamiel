@@ -112,10 +112,10 @@ public class ArchiveCompressor
                         var relativePath = Path.GetRelativePath(parentDir, file);
                         filesToCompress.Add((file, relativePath));
 
-                        // 定期的にUIスレッドに処理を戻す
+                        // 定期的に他のタスクに実行権を譲る
                         if (i % 100 == 0)
                         {
-                            await Task.Delay(0, cancellationToken);
+                            await Task.Yield();
                         }
                     }
                 }
@@ -157,6 +157,11 @@ public class ArchiveCompressor
             {
                 writer.Save(outputPath, reportProgress);
             }, cancellationToken);
+
+            // 重要なオブジェクトを延命させ、ネイティブ側からの不意なコールバックによる
+            // ExecutionEngineException を防止する
+            GC.KeepAlive(writer);
+            GC.KeepAlive(reportProgress);
 
             Logger.Log($"圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
         }

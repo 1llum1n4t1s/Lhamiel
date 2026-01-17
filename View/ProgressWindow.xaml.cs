@@ -35,9 +35,8 @@ public partial class ProgressWindow : Window
         Title = $"{operationType} - Lhamiel";
         _cancellationTokenSource = new CancellationTokenSource();
 
-        // 最初の表示時だけ最前面に来るようにし、描画されたら解除する
-        Topmost = true;
-        ContentRendered += (s, e) => Topmost = false;
+        // 所有者が設定されている場合はその中央に、そうでなければ画面中央に表示
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
     }
 
     /// <summary>
@@ -57,6 +56,10 @@ public partial class ProgressWindow : Window
     {
         try
         {
+            // すでに閉じているか閉じようとしている場合は無視
+            if (!IsLoaded || Dispatcher.HasShutdownStarted)
+                return;
+
             var now = DateTime.Now;
             
             // 重要な進捗（90%、100%）は必ず更新
@@ -68,15 +71,26 @@ public partial class ProgressWindow : Window
 
             _lastProgressUpdate = now;
 
+            // 非同期でUIを更新
             Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
             {
-                ProgressBar.Value = percentage;
-                ProgressTextBlock.Text = $"{percentage}%";
+                try
+                {
+                    // ラムダ式実行時にまだウィンドウが生きているか再確認
+                    if (!IsLoaded) return;
+
+                    ProgressBar.Value = percentage;
+                    ProgressTextBlock.Text = $"{percentage}%";
+                }
+                catch
+                {
+                    // 実行中のエラー（ウィンドウが閉じられた等）は無視
+                }
             });
         }
         catch (Exception)
         {
-            // ウィンドウがクローズされた場合は無視
+            // ウィンドウの状態チェック中のエラーなどは無視
         }
     }
 
@@ -88,11 +102,18 @@ public partial class ProgressWindow : Window
     {
         try
         {
-            Dispatcher.Invoke(() =>
+            if (!IsLoaded || Dispatcher.HasShutdownStarted)
+                return;
+
+            Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
             {
-                ProgressBar.Value = 100;
-                ProgressTextBlock.Text = "100%";
-                Topmost = false;
+                try
+                {
+                    if (!IsLoaded) return;
+                    ProgressBar.Value = 100;
+                    ProgressTextBlock.Text = "100%";
+                }
+                catch { }
             });
         }
         catch (Exception)
@@ -104,35 +125,8 @@ public partial class ProgressWindow : Window
     private void CancelButton_Click(object sender, RoutedEventArgs e)
     {
         CancelButton.IsEnabled = false;
-        Topmost = false; // ダイアログが背面に隠れないように最前面を解除
         _cancellationTokenSource?.Cancel();
         CancelRequested?.Invoke(this, EventArgs.Empty);
-    }
-
-    /// <summary>
-    /// ウィンドウをクローズする際、保留中のDispatcher作業を完了させてからクローズする
-    /// </summary>
-    public new void Close()
-    {
-        try
-        {
-            if (!Dispatcher.HasShutdownStarted)
-            {
-                try
-                {
-                    Dispatcher.Invoke(() => { }, DispatcherPriority.Background);
-                }
-                catch
-                {
-                }
-
-                base.Close();
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"ProgressWindow.Close() でエラー: {ex.Message}", LogLevel.Warning);
-        }
     }
 
     /// <summary>
@@ -141,7 +135,6 @@ public partial class ProgressWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         base.OnClosed(e);
-        _cancellationTokenSource?.Dispose();
-        _cancellationTokenSource = null;
+        // CTSの破棄はここでは行わない（バックグラウンドスレッドがまだTokenを参照している可能性があるため）
     }
 }

@@ -15,13 +15,19 @@ public static class MessageService
     {
         if (Application.Current == null) return null;
 
+        // UIスレッド以外から呼ばれた場合はInvokeして安全に取得
+        if (!Application.Current.Dispatcher.CheckAccess())
+        {
+            return Application.Current.Dispatcher.Invoke(GetActiveWindow);
+        }
+
         // 1. アクティブなウィンドウがあればそれを優先（ProgressWindowなど）
         var activeWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w.IsVisible);
         if (activeWindow != null) return activeWindow;
 
-        // 2. 最前面のウィンドウがあればそれを使用
-        var topmostWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.Topmost && w.IsVisible);
-        if (topmostWindow != null) return topmostWindow;
+        // 2. アクティブなウィンドウがない場合は、最後に表示された表示中のウィンドウを探す
+        var lastVisibleWindow = Application.Current.Windows.OfType<Window>().LastOrDefault(w => w.IsVisible);
+        if (lastVisibleWindow != null) return lastVisibleWindow;
 
         // 3. 最後にMainWindow
         return Application.Current.MainWindow;
