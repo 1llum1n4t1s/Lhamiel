@@ -440,9 +440,26 @@ public static class ArchiveProcessor
                 {
                     actualCancellationToken.ThrowIfCancellationRequested();
 
-                    // ★ 修正: progressWindow に null を渡し、個別進捗によるUI更新を抑制する
-                    // 全体の進捗 ("○/○個完了") はこのループ内で管理するため、内部の%更新は不要
-                    var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, null, null, actualCancellationToken);
+                    // ★修正ここから: 単一フォルダの場合は詳細な進捗を表示するためのReporterを作成
+                    IProgress<ProgressInfo>? innerProgress = null;
+                    if (totalCount == 1)
+                    {
+                        innerProgress = new Progress<ProgressInfo>(info =>
+                        {
+                            progressWindow?.Dispatcher.Invoke(() =>
+                            {
+                                progressWindow.UpdateProgress(info.Percentage, info.Status);
+                                if (!string.IsNullOrEmpty(info.CurrentFileName))
+                                {
+                                    progressWindow.SetFileName(Path.GetFileName(info.CurrentFileName));
+                                }
+                            });
+                        });
+                    }
+
+                    // progressWindowはnullのまま(二重更新防止)、innerProgressを渡す
+                    var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, null, innerProgress, actualCancellationToken);
+                    // ★修正ここまで
 
                     lock (lockObject)
                     {
@@ -457,7 +474,7 @@ public static class ArchiveProcessor
 
                         // 件数ベースで進捗バーを更新（Dispatcher経由で安全に更新）
                         var progress = (int)((double)(index + 1) / totalCount * 100);
-                        progressWindow?.Dispatcher.Invoke(() => 
+                        progressWindow?.Dispatcher.Invoke(() =>
                             progressWindow.UpdateProgress(progress, $"圧縮中 ({index + 1}/{totalCount}): {Path.GetFileName(folderPath)}")
                         );
                     }

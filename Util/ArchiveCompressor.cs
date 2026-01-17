@@ -534,6 +534,7 @@ public class ArchiveCompressor
             if (format.isLha)
             {
                 Logger.Log("LHA圧縮処理を開始します (直接ディレクトリ指定)");
+                progressCallback?.Invoke(new ProgressInfo(0, "ファイルをスキャン中..."));
                 var result = LHAWriter.WriteLHAFile(outputPath, directoryPath, "*", Amiga.FileFormats.LHA.CompressionMethod.LH5);
 
                 if (result != LHAWriteResult.Success)
@@ -542,31 +543,56 @@ public class ArchiveCompressor
                 }
 
                 Logger.Log($"LHA圧縮完了: {directoryPath} -> {outputPath}");
+                progressCallback?.Invoke(new ProgressInfo(100, "完了"));
                 return;
             }
 
             // ArchiveWriterを使用して圧縮（形式に応じてオプションを設定）
             using var writer = CreateArchiveWriter(format.format);
 
-            // ディレクトリ内のファイルを再帰的に取得して個別に追加
-            // ★ 修正: IEnumerable二重スキャンを回避（foreach での遅延評価は問題ないため、ここでは ToList() 不要）
-            // ただし、ファイル数情報が必要な場合は .ToList() して実体化すること
-            var files = GetFilesRecursively(directoryPath, excludedPatterns);
+            // ★修正ここから: ファイルをリスト化して総数を取得し、ループで進捗報告を行う
+            progressCallback?.Invoke(new ProgressInfo(0, "ファイルをスキャン中..."));
 
-            foreach (var file in files)
+            // ToList() で実体化して件数を確定させる
+            var files = GetFilesRecursively(directoryPath, excludedPatterns).ToList();
+            var totalFiles = files.Count;
+
+            Logger.Log($"圧縮対象のファイル総数: {totalFiles}個");
+            progressCallback?.Invoke(new ProgressInfo(5, $"圧縮準備完了: {totalFiles}個のファイル"));
+
+            // 進捗の範囲設定 (追加処理で 10% -> 90% まで進める)
+            const int progressMin = 10;
+            const int progressMax = 90;
+            var lastReportedProgress = 0;
+
+            for (var i = 0; i < totalFiles; i++)
             {
-                // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
+                var file = files[i];
                 var relativePath = Path.GetRelativePath(directoryPath, file);
+
                 writer.Add(file, relativePath);
+
+                // 進捗計算と報告 (負荷軽減のため1%刻みまたは最後のファイルで報告)
+                var currentPercent = totalFiles > 0
+                    ? progressMin + (int)((double)(i + 1) / totalFiles * (progressMax - progressMin))
+                    : progressMin;
+
+                if (currentPercent > lastReportedProgress || i == totalFiles - 1)
+                {
+                    progressCallback?.Invoke(new ProgressInfo(currentPercent, $"ファイル追加中 ({i + 1}/{totalFiles}): {relativePath}", file));
+                    lastReportedProgress = currentPercent;
+                }
             }
 
-            // 進捗報告を設定
-            progressCallback?.Invoke(new ProgressInfo(0, "圧縮準備中..."));
+            // 圧縮を実行 (Saveメソッドはブロッキングだが、ここまでに90%まで進む)
+            progressCallback?.Invoke(new ProgressInfo(90, "圧縮処理中..."));
+            Logger.Log("圧縮処理を開始します");
 
-            // 圧縮を実行
             writer.Save(outputPath);
 
+            progressCallback?.Invoke(new ProgressInfo(100, "完了"));
             Logger.Log($"ディレクトリ圧縮完了: {directoryPath} -> {outputPath}");
+            // ★修正ここまで
         }
         catch (Exception ex)
         {
