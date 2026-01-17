@@ -62,8 +62,27 @@ public static class ArchiveProcessor
 
             Logger.Log($"展開処理を開始: {filePath}");
 
-            // 出力先ディレクトリの取得
-            outputPath = ArchiveExtractor.GetOutputDirectory(filePath, outputDir, outputToSameDirectory);
+            // 展開先パスの決定ロジック（二重フォルダ防止）
+            // 基準となる出力ディレクトリ（ユーザー指定の場所 または アーカイブと同じ場所）
+            var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(filePath, outputDir, outputToSameDirectory);
+
+            // アーカイブの中身をチェックして、展開先を決定
+            var isSingleRoot = ArchiveExtractor.HasSingleRootItem(filePath);
+            
+            if (isSingleRoot)
+            {
+                // 単一要素の場合：アーカイブ名フォルダを作らず、基準ディレクトリに直接展開
+                // 結果として、中身の単一要素名でフォルダ/ファイルが作成される
+                outputPath = baseDirectory;
+                Logger.Log($"スマート解凍適用: 単一ルート要素のため直下に展開 -> {outputPath}");
+            }
+            else
+            {
+                // 複数要素の場合：アーカイブ名フォルダを作成して、その中に展開
+                var fileName = Path.GetFileNameWithoutExtension(filePath);
+                outputPath = Path.Combine(baseDirectory, fileName);
+                Logger.Log($"通常解凍: アーカイブ名フォルダを作成 -> {outputPath}");
+            }
 
             // ファイル名を設定
             progressWindow?.SetFileName($"{Path.GetFileName(filePath)} (展開中)");
@@ -407,8 +426,9 @@ public static class ArchiveProcessor
             // ProgressWindow からキャンセルトークンを取得（nullの場合は渡されたトークンを使用）
             var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
 
-            // 同時実行数を CPU コア数に制限（メモリ保護）
-            var maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 4);
+            // ★最適化: 並列処理時のCPUコア数を制限（圧縮処理自体がマルチスレッドなため）
+            // 7-Zip等は内部で全コアを使うため、タスク並列数を抑えめにする
+            var maxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount / 2, 1, 4);
             var semaphore = new System.Threading.SemaphoreSlim(maxDegreeOfParallelism);
 
             Logger.Log($"複数フォルダ圧縮開始: {totalCount}個のフォルダ、最大並列度={maxDegreeOfParallelism}、形式={format}");

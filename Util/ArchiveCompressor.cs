@@ -135,6 +135,31 @@ public class ArchiveCompressor
             // LHA形式の場合
             if (format.isLha)
             {
+                // ★LHA最適化: 単一ディレクトリかつ除外ファイルがない場合は直接圧縮（コピー回避）
+                if (sourceList.Count == 1 && Directory.Exists(sourceList[0]))
+                {
+                    // 除外パターンがない、または除外されるファイルがない場合は直接CompressDirectoryを呼ぶ
+                    var hasExcludedFiles = excludedPatterns.Any() && 
+                        Directory.EnumerateFiles(sourceList[0], "*", SearchOption.AllDirectories)
+                            .Any(f => ShouldExcludeFile(f, excludedPatterns));
+                    
+                    if (!hasExcludedFiles)
+                    {
+                        Logger.Log("LHA圧縮処理を開始します (直接ディレクトリ指定)");
+                        progressCallback?.Invoke(new ProgressInfo(90, "圧縮処理中..."));
+                        var result = LHAWriter.WriteLHAFile(outputPath, sourceList[0], "*", Amiga.FileFormats.LHA.CompressionMethod.LH5);
+
+                        if (result != LHAWriteResult.Success)
+                        {
+                            throw new InvalidOperationException($"LHA圧縮に失敗しました: {result}");
+                        }
+
+                        Logger.Log($"LHA圧縮完了: {sourceList[0]} -> {outputPath}");
+                        return;
+                    }
+                }
+                
+                // 除外ファイルがある場合は従来通りの処理
                 CompressFilesAsLha(filesToCompress, outputPath, progressCallback, cancellationToken);
             }
             else
@@ -296,23 +321,27 @@ public class ArchiveCompressor
     }
 
     /// <summary>
-    /// ArchiveWriterを作成する
+    /// ArchiveWriterを作成する（スレッド数制御追加）
     /// </summary>
     /// <param name="format">圧縮形式</param>
+    /// <param name="maxThreads">最大スレッド数（0または負の値で自動設定）</param>
     /// <returns>ArchiveWriterインスタンス</returns>
-    private static ArchiveWriter CreateArchiveWriter(Format format)
+    private static ArchiveWriter CreateArchiveWriter(Format format, int maxThreads = -1)
     {
+        // デフォルトはプロセッサ数、制限がある場合はその値
+        var threadCount = maxThreads > 0 ? maxThreads : Environment.ProcessorCount;
+
         // 形式に応じたオプションを設定
         if (format == Format.SevenZip)
         {
-            // 7z形式: Normal圧縮レベル + LZMA2 + CPU コア数と同じスレッド数
+            // 7z形式: Normal圧縮レベル + LZMA2 + スレッド数制御
             // ★ 修正: Ultraは圧縮率向上に対して時間・メモリコストが大きいため、Normalに変更
             // メモリ消費を抑えてアプリケーションのフリーズを回避しつつ、良好な圧縮率を維持
             var options = new CompressionOption
             {
                 CompressionLevel = CompressionLevel.Normal,
                 CompressionMethod = CompressionMethod.Lzma2,
-                ThreadCount = Environment.ProcessorCount
+                ThreadCount = threadCount
             };
             return new ArchiveWriter(format, options);
         }
@@ -323,7 +352,7 @@ public class ArchiveCompressor
             {
                 CompressionLevel = CompressionLevel.Fast,
                 CompressionMethod = CompressionMethod.Deflate,
-                ThreadCount = Environment.ProcessorCount,
+                ThreadCount = threadCount,
                 CodePage = CodePage.Utf8
             };
             return new ArchiveWriter(format, options);

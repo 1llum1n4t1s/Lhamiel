@@ -14,6 +14,11 @@ public class ArchiveExtractor
     private static readonly string[] SupportedExtensions = { ".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tZ", ".exe" };
 
     /// <summary>
+    /// スマート解凍判定用：無視するシステムディレクトリ名
+    /// </summary>
+    private static readonly string[] IgnoredSystemDirectories = { "__MACOSX" };
+
+    /// <summary>
     /// 指定されたファイルがサポートされているアーカイブ形式かどうかを確認する
     /// </summary>
     /// <param name="filePath">確認するファイルのパス</param>
@@ -42,20 +47,83 @@ public class ArchiveExtractor
     /// <param name="archivePath">アーカイブファイルのパス</param>
     /// <param name="defaultOutputDir">デフォルトの出力ディレクトリ</param>
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
-    /// <returns>展開先ディレクトリのパス</returns>
+    /// <returns>展開先ディレクトリのパス（アーカイブ名フォルダを含む）</returns>
     public static string GetOutputDirectory(string archivePath, string defaultOutputDir, bool outputToSameDirectory = false)
     {
-        var directory = Path.GetDirectoryName(archivePath) ?? "";
+        var baseDir = GetBaseOutputDirectory(archivePath, defaultOutputDir, outputToSameDirectory);
         var fileName = Path.GetFileNameWithoutExtension(archivePath);
+
+        // 基本動作：アーカイブ名フォルダを作成
+        return Path.Combine(baseDir, fileName);
+    }
+
+    /// <summary>
+    /// 基準となる出力ディレクトリを取得（アーカイブ名フォルダを含まない）
+    /// </summary>
+    /// <param name="archivePath">アーカイブファイルのパス</param>
+    /// <param name="defaultOutputDir">デフォルトの出力ディレクトリ</param>
+    /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
+    /// <returns>基準となる出力ディレクトリのパス</returns>
+    public static string GetBaseOutputDirectory(string archivePath, string defaultOutputDir, bool outputToSameDirectory = false)
+    {
+        var directory = Path.GetDirectoryName(archivePath) ?? "";
         var baseDirectory = outputToSameDirectory ? directory : defaultOutputDir;
 
         if (string.IsNullOrWhiteSpace(baseDirectory))
         {
             baseDirectory = directory;
         }
+        return baseDirectory;
+    }
 
-        // 直接展開するため、アーカイブ名フォルダを作成
-        return Path.Combine(baseDirectory, fileName);
+    /// <summary>
+    /// アーカイブのルート要素が単一かどうかを判定する
+    /// </summary>
+    /// <param name="archivePath">アーカイブファイルのパス</param>
+    /// <returns>ルート要素が単一の場合はtrue</returns>
+    public static bool HasSingleRootItem(string archivePath)
+    {
+        if (!File.Exists(archivePath)) return false;
+
+        try
+        {
+            using var reader = new ArchiveReader(archivePath);
+            var rootItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in reader.Items)
+            {
+                // パスを正規化（バックスラッシュをスラッシュに）
+                var path = item.FullName.Replace('\\', '/');
+                var parts = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+
+                if (parts.Length > 0)
+                {
+                    var rootItem = parts[0];
+
+                    // システム管理用フォルダ（__MACOSXなど）は無視
+                    if (IgnoredSystemDirectories.Contains(rootItem))
+                    {
+                        continue;
+                    }
+
+                    rootItems.Add(rootItem);
+
+                    // 2つ以上見つかった時点でfalse確定
+                    if (rootItems.Count > 1)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return rootItems.Count == 1;
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"アーカイブ構造解析エラー: {ex.Message}");
+            // エラー時は安全のためfalse（通常フォルダ作成）を返す
+            return false;
+        }
     }
 
 
