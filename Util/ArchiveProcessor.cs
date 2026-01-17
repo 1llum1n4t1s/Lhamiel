@@ -453,10 +453,17 @@ public static class ArchiveProcessor
                         // 単一フォルダ圧縮時は、操作名を設定
                         progressWindow?.SetOperationName("ファイル集計中...");
 
+                        var operationNameSet = false;
                         innerProgress = new Progress<ProgressInfo>(info =>
                         {
                             progressWindow?.Dispatcher.Invoke(() =>
                             {
+                                // 最初のReport時に操作名を「圧縮処理中...」に変更
+                                if (!operationNameSet && info.Status.Contains("圧縮処理中"))
+                                {
+                                    operationNameSet = true;
+                                    progressWindow.SetOperationName("圧縮処理中...");
+                                }
                                 progressWindow.UpdateProgress(info.Percentage, info.Status);
                             });
                         });
