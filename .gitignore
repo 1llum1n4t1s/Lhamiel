@@ -1,3 +1,5 @@
+.cursor/
+.git/
 .idea/
 .vs/
 .vscode/

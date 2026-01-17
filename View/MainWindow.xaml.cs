@@ -217,15 +217,11 @@ public partial class MainWindow : Window
                         File.Delete(outputPath);
                     }
 
-                    progressWindow.SetFileName(Path.GetFileName(outputPath));
+                    progressWindow.SetOperationName("ファイル圧縮中...");
 
                     var progress = new Progress<ProgressInfo>(info =>
                     {
                         progressWindow.UpdateProgress(info.Percentage, info.Status);
-                        if (!string.IsNullOrEmpty(info.CurrentFileName))
-                        {
-                            progressWindow.SetFileName(Path.GetFileName(info.CurrentFileName));
-                        }
                     });
 
                     await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationToken);

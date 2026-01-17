@@ -84,8 +84,8 @@ public static class ArchiveProcessor
                 Logger.Log($"通常解凍: アーカイブ名フォルダを作成 -> {outputPath}");
             }
 
-            // ファイル名を設定
-            progressWindow?.SetFileName($"{Path.GetFileName(filePath)} (展開中)");
+            // 作業名を設定
+            progressWindow?.SetOperationName("展開中...");
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -98,12 +98,6 @@ public static class ArchiveProcessor
                 progress = new Progress<ProgressInfo>(info =>
                 {
                     progressWindow.UpdateProgress(info.Percentage, info.Status);
-                    // 展開中のファイル名を表示
-                    if (!string.IsNullOrEmpty(info.CurrentFileName))
-                    {
-                        Logger.Log($"展開中のファイル: {info.CurrentFileName}");
-                        progressWindow.SetFileName(Path.GetFileName(info.CurrentFileName));
-                    }
                 });
             }
 
@@ -360,8 +354,8 @@ public static class ArchiveProcessor
                 }
             }
 
-            // ファイル名を設定
-            progressWindow?.SetFileName(outputPath);
+            // 作業名を設定
+            progressWindow?.SetOperationName("圧縮処理中...");
 
             actualCancellationToken.ThrowIfCancellationRequested();
 
@@ -449,10 +443,6 @@ public static class ArchiveProcessor
                             progressWindow?.Dispatcher.Invoke(() =>
                             {
                                 progressWindow.UpdateProgress(info.Percentage, info.Status);
-                                if (!string.IsNullOrEmpty(info.CurrentFileName))
-                                {
-                                    progressWindow.SetFileName(Path.GetFileName(info.CurrentFileName));
-                                }
                             });
                         });
                     }

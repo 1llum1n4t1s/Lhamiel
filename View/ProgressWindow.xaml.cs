@@ -21,19 +21,14 @@ public partial class ProgressWindow : Window
     private CancellationTokenSource? _cancellationTokenSource;
 
     /// <summary>
-    /// 処理中の出力ファイルパスリスト
+    /// 最新の作業名（UI 更新用）
     /// </summary>
-    private readonly List<string> _processingFiles = new();
+    private string? _pendingOperationName;
 
     /// <summary>
-    /// 最新のファイル名（UI 更新用）
+    /// 作業名 UI 更新用の lock オブジェクト
     /// </summary>
-    private string? _pendingFileName;
-
-    /// <summary>
-    /// ファイル名 UI 更新用の lock オブジェクト
-    /// </summary>
-    private readonly object _fileNameUpdateLock = new object();
+    private readonly object _operationNameUpdateLock = new object();
 
     /// <summary>
     /// 最後のプログレス更新時刻
@@ -67,76 +62,37 @@ public partial class ProgressWindow : Window
     }
 
     /// <summary>
-    /// ファイル名を設定する
+    /// 作業名を設定する
     /// </summary>
-    /// <param name="fileName">ファイル名（パスまたはファイル名）</param>
-    public void SetFileName(string fileName)
+    /// <param name="operationName">作業名（例：「ファイル追加中」「圧縮処理中」）</param>
+    public void SetOperationName(string operationName)
     {
         try
         {
-            // パス区切り文字が含まれている場合のみPath.GetFileNameを呼ぶ
-            var shortName = fileName.Contains(Path.DirectorySeparatorChar) || fileName.Contains(Path.AltDirectorySeparatorChar)
-                ? Path.GetFileName(fileName)
-                : fileName;
-            
-            Logger.Log($"ProgressWindow.SetFileName 呼び出し: {shortName}");
+            Logger.Log($"ProgressWindow.SetOperationName 呼び出し: {operationName}");
 
-            lock (_fileNameUpdateLock)
+            lock (_operationNameUpdateLock)
             {
-                _pendingFileName = shortName;
+                _pendingOperationName = operationName;
             }
 
-            // UI 更新を実行（最新の値のみが表示される）
+            // UI 更新を実行
             Dispatcher.BeginInvoke(DispatcherPriority.Render, () =>
             {
-                lock (_fileNameUpdateLock)
+                lock (_operationNameUpdateLock)
                 {
-                    if (_pendingFileName != null)
+                    if (_pendingOperationName != null)
                     {
-                        Logger.Log($"ProgressWindow.FileNameTextBlock 更新: {_pendingFileName}");
-                        FileNameTextBlock.Text = _pendingFileName;
-                        _pendingFileName = null;
+                        Logger.Log($"ProgressWindow.OperationNameTextBlock 更新: {_pendingOperationName}");
+                        FileNameTextBlock.Text = _pendingOperationName;
+                        _pendingOperationName = null;
                     }
                 }
             });
         }
         catch (Exception ex)
         {
-            Logger.Log($"ProgressWindow.SetFileName エラー: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// 処理中のファイルを記録する
-    /// </summary>
-    /// <param name="filePath">ファイルパス</param>
-    public void AddProcessingFile(string filePath)
-    {
-        try
-        {
-            Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
-            {
-                if (!_processingFiles.Contains(filePath))
-                {
-                    _processingFiles.Add(filePath);
-                }
-            });
-        }
-        catch (Exception)
-        {
-            // ウィンドウがクローズされた場合は無視
-        }
-    }
-
-    /// <summary>
-    /// 処理中のファイルを取得する
-    /// </summary>
-    /// <returns>処理中のファイルパスのリスト</returns>
-    public List<string> GetProcessingFiles()
-    {
-        lock (_processingFiles)
-        {
-            return new List<string>(_processingFiles);
+            Logger.Log($"ProgressWindow.SetOperationName エラー: {ex.Message}");
         }
     }
 

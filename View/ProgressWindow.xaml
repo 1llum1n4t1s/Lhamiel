@@ -19,7 +19,7 @@
 
         <!-- ファイル名 -->
         <TextBlock Grid.Row="0" x:Name="FileNameTextBlock"
-                   Text="ファイル名" Margin="0,0,0,15"
+                   Margin="0,0,0,15"
                    TextTrimming="CharacterEllipsis" />
 
         <!-- 進行状況バー -->
