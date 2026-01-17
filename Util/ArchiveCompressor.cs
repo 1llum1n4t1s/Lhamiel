@@ -195,8 +195,15 @@ public class ArchiveCompressor
                 outputCreated = true;
                 Logger.Log("圧縮処理を開始します");
 
+                var isFirstReport = true;
                 var reportProgress = new Progress<Cube.FileSystem.SevenZip.Report>(report =>
                 {
+                    // 最初のReport時に操作名を変更
+                    if (isFirstReport)
+                    {
+                        isFirstReport = false;
+                    }
+
                     // 進捗率をそのまま使用（GetRatio()で0～1を返す）
                     var ratio = report.GetRatio();
                     var percentage = (int)(ratio * 100);

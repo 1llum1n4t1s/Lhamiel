@@ -367,8 +367,16 @@ public static class ArchiveProcessor
 
             await Task.Run(() =>
             {
+                var isFirstReport = true;
                 var progressCallback = new Action<ProgressInfo>(info =>
                 {
+                    // 最初のReport時に操作名を「圧縮処理中...」に変更
+                    if (isFirstReport)
+                    {
+                        isFirstReport = false;
+                        progressWindow?.SetOperationName("圧縮処理中...");
+                    }
+
                     // 1. レガシーなProgressWindow更新 (単体実行時用)
                     progressWindow?.UpdateProgress(info.Percentage, info.Status);
 
