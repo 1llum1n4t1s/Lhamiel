@@ -204,6 +204,39 @@ public partial class ProgressWindow : Window
     }
 
     /// <summary>
+    /// ウィンドウをクローズする際、保留中のDispatcher作業を完了させてからクローズする
+    /// </summary>
+    /// <remarks>
+    /// Dispatcher.BeginInvoke で登録されたアクションが実行中にウィンドウがクローズされると、
+    /// ExecutionEngineException が発生する可能性があるため、ウィンドウをクローズする前に
+    /// Dispatcher の作業完了を待機する必要がある。
+    /// </remarks>
+    public new void Close()
+    {
+        try
+        {
+            if (!Dispatcher.HasShutdownStarted)
+            {
+                // 保留中のDispatcher作業を完了させる（バックグラウンド優先度）
+                try
+                {
+                    Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+                }
+                catch
+                {
+                    // Invokeに失敗した場合（既にシャットダウン中など）は無視
+                }
+
+                base.Close();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"ProgressWindow.Close() でエラー: {ex.Message}", LogLevel.Warning);
+        }
+    }
+
+    /// <summary>
     /// リソースをクリーンアップする
     /// </summary>
     protected override void OnClosed(EventArgs e)

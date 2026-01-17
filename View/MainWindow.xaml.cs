@@ -797,7 +797,27 @@ public partial class MainWindow : Window
         }
         finally
         {
-            progressWindow?.Close();
+            if (progressWindow != null)
+            {
+                try
+                {
+                    // ProgressWindowのDispatcher内で保留中のアクションをフラッシュ
+                    progressWindow.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+                }
+                catch
+                {
+                    // ウィンドウが既にクローズされている可能性
+                }
+
+                try
+                {
+                    progressWindow.Close();
+                }
+                catch
+                {
+                    // ウィンドウのクローズに失敗した場合は無視
+                }
+            }
         }
     }
 
