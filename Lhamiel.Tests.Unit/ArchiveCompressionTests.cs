@@ -362,16 +362,16 @@ public class ArchiveCompressionTests
             var archivePath = Path.Combine(testDir, "日本語テスト.zip");
             var extractDir = Path.Combine(testDir, "extracted_zip");
 
-            System.Console.WriteLine("=== ZIP形式 日本語ファイル名テスト ===");
-            System.Console.WriteLine($"元のディレクトリ: {sourceDir}");
-            System.Console.WriteLine($"ZIPファイル: {archivePath}");
+            Console.WriteLine("=== ZIP形式 日本語ファイル名テスト ===");
+            Console.WriteLine($"元のディレクトリ: {sourceDir}");
+            Console.WriteLine($"ZIPファイル: {archivePath}");
 
             // Act: 圧縮
             var compressor = new ArchiveCompressor();
             compressor.CompressFiles(new[] { sourceDir }, archivePath);
 
             Assert.True(File.Exists(archivePath), "ZIP archive should be created");
-            System.Console.WriteLine($"✓ 圧縮成功");
+            Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
             var extractor = new ArchiveExtractor();
@@ -379,11 +379,11 @@ public class ArchiveCompressionTests
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
-            System.Console.WriteLine($"\n展開されたファイル ({extractedFiles.Length}個):");
+            Console.WriteLine($"\n展開されたファイル ({extractedFiles.Length}個):");
             foreach (var file in extractedFiles)
             {
                 var relativePath = Path.GetRelativePath(extractDir, file);
-                System.Console.WriteLine($"  - {relativePath}");
+                Console.WriteLine($"  - {relativePath}");
             }
 
             // 日本語ファイル名が正しく保持されているか確認
@@ -396,7 +396,7 @@ public class ArchiveCompressionTests
             var extractedDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories);
             Assert.True(extractedDirs.Any(d => d.Contains("日本語フォルダ") || d.Contains("サブフォルダ")), "日本語フォルダ名が保持されているべき");
 
-            System.Console.WriteLine($"\n✅ ZIP形式: 日本語ファイル名のエンコーディングが正しく保持されました");
+            Console.WriteLine($"\n✅ ZIP形式: 日本語ファイル名のエンコーディングが正しく保持されました");
         }
         finally
         {
@@ -419,16 +419,16 @@ public class ArchiveCompressionTests
             var archivePath = Path.Combine(testDir, "日本語テスト.7z");
             var extractDir = Path.Combine(testDir, "extracted_7z");
 
-            System.Console.WriteLine("=== 7z形式 日本語ファイル名テスト ===");
-            System.Console.WriteLine($"元のディレクトリ: {sourceDir}");
-            System.Console.WriteLine($"7zファイル: {archivePath}");
+            Console.WriteLine("=== 7z形式 日本語ファイル名テスト ===");
+            Console.WriteLine($"元のディレクトリ: {sourceDir}");
+            Console.WriteLine($"7zファイル: {archivePath}");
 
             // Act: 圧縮
             var compressor = new ArchiveCompressor();
             compressor.CompressFiles(new[] { sourceDir }, archivePath);
 
             Assert.True(File.Exists(archivePath), "7z archive should be created");
-            System.Console.WriteLine($"✓ 圧縮成功");
+            Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
             var extractor = new ArchiveExtractor();
@@ -436,11 +436,11 @@ public class ArchiveCompressionTests
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
-            System.Console.WriteLine($"\n展開されたファイル ({extractedFiles.Length}個):");
+            Console.WriteLine($"\n展開されたファイル ({extractedFiles.Length}個):");
             foreach (var file in extractedFiles)
             {
                 var relativePath = Path.GetRelativePath(extractDir, file);
-                System.Console.WriteLine($"  - {relativePath}");
+                Console.WriteLine($"  - {relativePath}");
             }
 
             // 日本語ファイル名が正しく保持されているか確認
@@ -453,7 +453,7 @@ public class ArchiveCompressionTests
             var extractedDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories);
             Assert.True(extractedDirs.Any(d => d.Contains("日本語フォルダ") || d.Contains("サブフォルダ")), "日本語フォルダ名が保持されているべき");
 
-            System.Console.WriteLine($"\n✅ 7z形式: 日本語ファイル名のエンコーディングが正しく保持されました");
+            Console.WriteLine($"\n✅ 7z形式: 日本語ファイル名のエンコーディングが正しく保持されました");
         }
         finally
         {
@@ -476,16 +476,16 @@ public class ArchiveCompressionTests
             var archivePath = Path.Combine(testDir, "日本語テスト.tar");
             var extractDir = Path.Combine(testDir, "extracted_tar");
 
-            System.Console.WriteLine("=== TAR形式 日本語ファイル名テスト ===");
-            System.Console.WriteLine($"元のディレクトリ: {sourceDir}");
-            System.Console.WriteLine($"TARファイル: {archivePath}");
+            Console.WriteLine("=== TAR形式 日本語ファイル名テスト ===");
+            Console.WriteLine($"元のディレクトリ: {sourceDir}");
+            Console.WriteLine($"TARファイル: {archivePath}");
 
             // Act: 圧縮
             var compressor = new ArchiveCompressor();
             compressor.CompressFiles(new[] { sourceDir }, archivePath);
 
             Assert.True(File.Exists(archivePath), "TAR archive should be created");
-            System.Console.WriteLine($"✓ 圧縮成功");
+            Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
             var extractor = new ArchiveExtractor();
@@ -493,11 +493,11 @@ public class ArchiveCompressionTests
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
-            System.Console.WriteLine($"\n展開されたファイル ({extractedFiles.Length}個):");
+            Console.WriteLine($"\n展開されたファイル ({extractedFiles.Length}個):");
             foreach (var file in extractedFiles)
             {
                 var relativePath = Path.GetRelativePath(extractDir, file);
-                System.Console.WriteLine($"  - {relativePath}");
+                Console.WriteLine($"  - {relativePath}");
             }
 
             // 日本語ファイル名が正しく保持されているか確認
@@ -510,7 +510,7 @@ public class ArchiveCompressionTests
             var extractedDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories);
             Assert.True(extractedDirs.Any(d => d.Contains("日本語フォルダ") || d.Contains("サブフォルダ")), "日本語フォルダ名が保持されているべき");
 
-            System.Console.WriteLine($"\n✅ TAR形式: 日本語ファイル名のエンコーディングが正しく保持されました");
+            Console.WriteLine($"\n✅ TAR形式: 日本語ファイル名のエンコーディングが正しく保持されました");
         }
         finally
         {
@@ -533,16 +533,16 @@ public class ArchiveCompressionTests
             var archivePath = Path.Combine(testDir, "日本語テスト.tar");
             var extractDir = Path.Combine(testDir, "extracted_tar");
 
-            System.Console.WriteLine("=== TAR形式（GZIP互換） 日本語ファイル名テスト ===");
-            System.Console.WriteLine($"元のディレクトリ: {sourceDir}");
-            System.Console.WriteLine($"TARファイル: {archivePath}");
+            Console.WriteLine("=== TAR形式（GZIP互換） 日本語ファイル名テスト ===");
+            Console.WriteLine($"元のディレクトリ: {sourceDir}");
+            Console.WriteLine($"TARファイル: {archivePath}");
 
             // Act: 圧縮
             var compressor = new ArchiveCompressor();
             compressor.CompressFiles(new[] { sourceDir }, archivePath);
 
             Assert.True(File.Exists(archivePath), "TAR archive should be created");
-            System.Console.WriteLine($"✓ 圧縮成功");
+            Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
             var extractor = new ArchiveExtractor();
@@ -550,11 +550,11 @@ public class ArchiveCompressionTests
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
-            System.Console.WriteLine($"\n展開されたファイル ({extractedFiles.Length}個):");
+            Console.WriteLine($"\n展開されたファイル ({extractedFiles.Length}個):");
             foreach (var file in extractedFiles)
             {
                 var relativePath = Path.GetRelativePath(extractDir, file);
-                System.Console.WriteLine($"  - {relativePath}");
+                Console.WriteLine($"  - {relativePath}");
             }
 
             // 日本語ファイル名が正しく保持されているか確認
@@ -567,141 +567,7 @@ public class ArchiveCompressionTests
             var extractedDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories);
             Assert.True(extractedDirs.Any(d => d.Contains("日本語フォルダ") || d.Contains("サブフォルダ")), "日本語フォルダ名が保持されているべき");
 
-            System.Console.WriteLine($"\n✅ TAR形式: 日本語ファイル名のエンコーディングが正しく保持されました");
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-                Directory.Delete(testDir, true);
-        }
-    }
-
-    /// <summary>
-    /// LHA形式で圧縮・展開できるか確認
-    /// </summary>
-    [Fact]
-    public async Task CompressAndExtract_WithLhaFormat_SucceedsAndPreservesContent()
-    {
-        // Arrange
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var sourceDir = CreateTestFileStructure(testDir);
-            var archivePath = Path.Combine(testDir, "archive.lha");
-            var extractDir = Path.Combine(testDir, "extracted_lha");
-            Directory.CreateDirectory(extractDir);
-
-            System.Console.WriteLine("=== LHA形式 圧縮・展開テスト ===");
-            System.Console.WriteLine($"元のディレクトリ: {sourceDir}");
-            System.Console.WriteLine($"LHAファイル: {archivePath}");
-
-            // Act - 圧縮
-            ArchiveCompressor.CompressDirectory(sourceDir, archivePath);
-
-            // Assert - 圧縮ファイルが作成されたか
-            Assert.True(File.Exists(archivePath), "LHA archive should be created");
-            Assert.True(new FileInfo(archivePath).Length > 0, "LHA archive should have content");
-            System.Console.WriteLine($"✓ 圧縮成功（サイズ: {new FileInfo(archivePath).Length} bytes）");
-
-            // Act - 展開
-            var extractor = new ArchiveExtractor();
-            await extractor.ExtractArchive(archivePath, extractDir);
-
-            System.Console.WriteLine($"✓ 展開成功");
-
-            // Assert - 内容を検証
-            var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories).ToList();
-            System.Console.WriteLine($"\n展開されたファイル ({extractedFiles.Count}個):");
-            foreach (var file in extractedFiles)
-            {
-                var relativePath = Path.GetRelativePath(extractDir, file);
-                System.Console.WriteLine($"  - {relativePath}");
-            }
-
-            Assert.True(extractedFiles.Count > 0, $"No files extracted from LHA. Directory: {GetDirectoryStructure(extractDir)}");
-
-            // readme.txtが展開されたか確認
-            var readmeFile = extractedFiles.FirstOrDefault(f => f.EndsWith("readme.txt"));
-            Assert.NotNull(readmeFile);
-            Assert.Equal("This is a readme file", File.ReadAllText(readmeFile));
-
-            System.Console.WriteLine($"\n✅ LHA形式: 圧縮・展開が成功し、ファイル内容が保持されました");
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-                Directory.Delete(testDir, true);
-        }
-    }
-
-    /// <summary>
-    /// LHA形式で単一ファイルを圧縮できるか確認
-    /// </summary>
-    [Fact]
-    public void CompressFile_WithLhaFormat_Succeeds()
-    {
-        // Arrange
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var testFile = Path.Combine(testDir, "testfile.txt");
-            File.WriteAllText(testFile, "Test file content for LHA");
-
-            var archivePath = Path.Combine(testDir, "single_file.lha");
-
-            System.Console.WriteLine("=== LHA形式 単一ファイル圧縮テスト ===");
-            System.Console.WriteLine($"テストファイル: {testFile}");
-            System.Console.WriteLine($"LHAファイル: {archivePath}");
-
-            // Act
-            var compressor = new ArchiveCompressor();
-            compressor.CompressFiles(new[] { testFile }, archivePath);
-
-            // Assert
-            Assert.True(File.Exists(archivePath), "LHA archive should be created");
-            Assert.True(new FileInfo(archivePath).Length > 0, "LHA archive should have content");
-
-            System.Console.WriteLine($"✅ LHA形式での単一ファイル圧縮成功（サイズ: {new FileInfo(archivePath).Length} bytes）");
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-                Directory.Delete(testDir, true);
-        }
-    }
-
-    /// <summary>
-    /// LHA形式で複数ファイルを圧縮できるか確認
-    /// </summary>
-    [Fact]
-    public void CompressMultipleFiles_WithLhaFormat_Succeeds()
-    {
-        // Arrange
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var file1 = Path.Combine(testDir, "file1.txt");
-            var file2 = Path.Combine(testDir, "file2.txt");
-            var file3 = Path.Combine(testDir, "file3.txt");
-
-            File.WriteAllText(file1, "Content 1");
-            File.WriteAllText(file2, "Content 2");
-            File.WriteAllText(file3, "Content 3");
-
-            var archivePath = Path.Combine(testDir, "multiple_files.lha");
-
-            System.Console.WriteLine("=== LHA形式 複数ファイル圧縮テスト ===");
-            System.Console.WriteLine($"LHAファイル: {archivePath}");
-
-            // Act
-            var compressor = new ArchiveCompressor();
-            compressor.CompressFiles(new[] { file1, file2, file3 }, archivePath);
-
-            // Assert
-            Assert.True(File.Exists(archivePath), "LHA archive with multiple files should be created");
-            Assert.True(new FileInfo(archivePath).Length > 0, "LHA archive should have content");
-
-            System.Console.WriteLine($"✅ LHA形式での複数ファイル圧縮成功（サイズ: {new FileInfo(archivePath).Length} bytes）");
+            Console.WriteLine($"\n✅ TAR形式: 日本語ファイル名のエンコーディングが正しく保持されました");
         }
         finally
         {

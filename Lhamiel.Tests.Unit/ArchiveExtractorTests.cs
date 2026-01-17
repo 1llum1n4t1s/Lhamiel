@@ -191,18 +191,18 @@ public class ArchiveExtractorTests
             var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ProjectA"
 
             // デバッグ: アーカイブ内容と期待値を出力
-            System.Console.WriteLine("=== Test: GetOutputDirectory_WithSingleFolderInRoot_CreatesArchiveFolder ===");
-            System.Console.WriteLine($"ZIP file: {zipPath}");
-            System.Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
-            System.Console.WriteLine($"Output directory: {outputDir}");
+            Console.WriteLine("=== Test: GetOutputDirectory_WithSingleFolderInRoot_CreatesArchiveFolder ===");
+            Console.WriteLine($"ZIP file: {zipPath}");
+            Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
+            Console.WriteLine($"Output directory: {outputDir}");
 
             using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
             {
                 var contents = reader.Items.Select(item => item.FullName).ToList();
-                System.Console.WriteLine($"\nArchive contents ({contents.Count} items):");
+                Console.WriteLine($"\nArchive contents ({contents.Count} items):");
                 foreach (var item in contents)
                 {
-                    System.Console.WriteLine($"  - '{item}'");
+                    Console.WriteLine($"  - '{item}'");
                 }
             }
 
@@ -212,14 +212,14 @@ public class ArchiveExtractorTests
             // Assert: ケース1 - ルートアイテムが1つ＋フォルダ
             // GetOutputDirectory は アーカイブ名フォルダを返す（リフトアップは展開時に行う）
             var expectedPath = Path.Combine(outputDir, zipFileName);
-            System.Console.WriteLine($"\n期待値 (Expected): {expectedPath}");
-            System.Console.WriteLine($"結果 (Actual):   {result}");
-            System.Console.WriteLine($"一致: {expectedPath == result}");
-            System.Console.WriteLine("=== 仕様での説明 ===");
-            System.Console.WriteLine("ケース1: ルートアイテムが1つ＋フォルダ");
-            System.Console.WriteLine("GetOutputDirectory は outputDir/ProjectA を返す");
-            System.Console.WriteLine("展開時に ProjectA/ の中身がリフトアップされて ProjectA/ が削除される");
-            System.Console.WriteLine();
+            Console.WriteLine($"\n期待値 (Expected): {expectedPath}");
+            Console.WriteLine($"結果 (Actual):   {result}");
+            Console.WriteLine($"一致: {expectedPath == result}");
+            Console.WriteLine("=== 仕様での説明 ===");
+            Console.WriteLine("ケース1: ルートアイテムが1つ＋フォルダ");
+            Console.WriteLine("GetOutputDirectory は outputDir/ProjectA を返す");
+            Console.WriteLine("展開時に ProjectA/ の中身がリフトアップされて ProjectA/ が削除される");
+            Console.WriteLine();
 
             Assert.Equal(expectedPath, result);
         }
@@ -243,18 +243,18 @@ public class ArchiveExtractorTests
             var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ProjectB"
 
             // デバッグ: アーカイブ内容と期待値を出力
-            System.Console.WriteLine("=== Test: GetOutputDirectory_WithMultipleFoldersInRoot_CreatesFolder ===");
-            System.Console.WriteLine($"ZIP file: {zipPath}");
-            System.Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
-            System.Console.WriteLine($"Output directory: {outputDir}");
+            Console.WriteLine("=== Test: GetOutputDirectory_WithMultipleFoldersInRoot_CreatesFolder ===");
+            Console.WriteLine($"ZIP file: {zipPath}");
+            Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
+            Console.WriteLine($"Output directory: {outputDir}");
 
             using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
             {
                 var contents = reader.Items.Select(item => item.FullName).ToList();
-                System.Console.WriteLine($"\nArchive contents ({contents.Count} items):");
+                Console.WriteLine($"\nArchive contents ({contents.Count} items):");
                 foreach (var item in contents)
                 {
-                    System.Console.WriteLine($"  - '{item}'");
+                    Console.WriteLine($"  - '{item}'");
                 }
             }
 
@@ -265,14 +265,14 @@ public class ArchiveExtractorTests
 
             // Assert: ケース2 - ルートレベルに複数のアイテムがある場合
             // GetOutputDirectory はアーカイブ名フォルダを返す
-            System.Console.WriteLine($"\n期待値 (Expected): {expectedPath}");
-            System.Console.WriteLine($"結果 (Actual):   {result}");
-            System.Console.WriteLine($"一致: {expectedPath == result}");
-            System.Console.WriteLine("=== 仕様での説明 ===");
-            System.Console.WriteLine("ケース2: ルートレベルに複数のアイテムがある場合");
-            System.Console.WriteLine("GetOutputDirectory は outputDir/ProjectB を返す");
-            System.Console.WriteLine("展開時に folder1, folder2 がそのまま保持される");
-            System.Console.WriteLine();
+            Console.WriteLine($"\n期待値 (Expected): {expectedPath}");
+            Console.WriteLine($"結果 (Actual):   {result}");
+            Console.WriteLine($"一致: {expectedPath == result}");
+            Console.WriteLine("=== 仕様での説明 ===");
+            Console.WriteLine("ケース2: ルートレベルに複数のアイテムがある場合");
+            Console.WriteLine("GetOutputDirectory は outputDir/ProjectB を返す");
+            Console.WriteLine("展開時に folder1, folder2 がそのまま保持される");
+            Console.WriteLine();
 
             Assert.Equal(expectedPath, result);
         }
@@ -296,18 +296,18 @@ public class ArchiveExtractorTests
             var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ABC"
 
             // デバッグ: アーカイブ内容と期待値を出力
-            System.Console.WriteLine("=== Test: GetOutputDirectory_WithDeepNestedFolders_CreatesArchiveFolder ===");
-            System.Console.WriteLine($"ZIP file: {zipPath}");
-            System.Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
-            System.Console.WriteLine($"Output directory: {outputDir}");
+            Console.WriteLine("=== Test: GetOutputDirectory_WithDeepNestedFolders_CreatesArchiveFolder ===");
+            Console.WriteLine($"ZIP file: {zipPath}");
+            Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
+            Console.WriteLine($"Output directory: {outputDir}");
 
             using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
             {
                 var contents = reader.Items.Select(item => item.FullName).ToList();
-                System.Console.WriteLine($"\nArchive contents ({contents.Count} items):");
+                Console.WriteLine($"\nArchive contents ({contents.Count} items):");
                 foreach (var item in contents)
                 {
-                    System.Console.WriteLine($"  - '{item}'");
+                    Console.WriteLine($"  - '{item}'");
                 }
             }
 
@@ -317,14 +317,14 @@ public class ArchiveExtractorTests
             // Assert: ケース1 - ルートアイテムが1つ＋フォルダ（ABC フォルダ）
             // GetOutputDirectory はアーカイブ名フォルダを返す（リフトアップは展開時に行う）
             var expectedPath = Path.Combine(outputDir, zipFileName);
-            System.Console.WriteLine($"\n期待値 (Expected): {expectedPath}");
-            System.Console.WriteLine($"結果 (Actual):   {result}");
-            System.Console.WriteLine($"一致: {expectedPath == result}");
-            System.Console.WriteLine("=== 仕様での説明 ===");
-            System.Console.WriteLine("ケース1: ルートアイテムが1つ＋フォルダ");
-            System.Console.WriteLine("GetOutputDirectory は outputDir/ABC を返す");
-            System.Console.WriteLine("展開時に ABC/ の中身がリフトアップされて ABC/ が削除される");
-            System.Console.WriteLine();
+            Console.WriteLine($"\n期待値 (Expected): {expectedPath}");
+            Console.WriteLine($"結果 (Actual):   {result}");
+            Console.WriteLine($"一致: {expectedPath == result}");
+            Console.WriteLine("=== 仕様での説明 ===");
+            Console.WriteLine("ケース1: ルートアイテムが1つ＋フォルダ");
+            Console.WriteLine("GetOutputDirectory は outputDir/ABC を返す");
+            Console.WriteLine("展開時に ABC/ の中身がリフトアップされて ABC/ が削除される");
+            Console.WriteLine();
 
             Assert.Equal(expectedPath, result);
         }
@@ -344,45 +344,45 @@ public class ArchiveExtractorTests
         {
             // ルートレベルに1つだけフォルダがあるZIPファイルを作成
             var zipPath = CreateTestZipWithDoubleFolder(tempDir);
-            var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ProjectA"
+            Path.GetFileNameWithoutExtension(zipPath);
             var baseOutputDir = Path.Combine(tempDir, "extract_output");
 
-            System.Console.WriteLine("=== Test: ExtractArchive_WithSingleRootFolder_CreatesArchiveFolder ===");
-            System.Console.WriteLine($"ZIP file: {zipPath}");
-            System.Console.WriteLine($"Base output directory: {baseOutputDir}");
+            Console.WriteLine("=== Test: ExtractArchive_WithSingleRootFolder_CreatesArchiveFolder ===");
+            Console.WriteLine($"ZIP file: {zipPath}");
+            Console.WriteLine($"Base output directory: {baseOutputDir}");
 
             using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
             {
                 var contents = reader.Items.Select(item => item.FullName).ToList();
-                System.Console.WriteLine($"\nArchive contents ({contents.Count} items):");
+                Console.WriteLine($"\nArchive contents ({contents.Count} items):");
                 foreach (var item in contents.Take(5))
                 {
-                    System.Console.WriteLine($"  - '{item}'");
+                    Console.WriteLine($"  - '{item}'");
                 }
                 if (contents.Count > 5)
                 {
-                    System.Console.WriteLine($"  ... and {contents.Count - 5} more items");
+                    Console.WriteLine($"  ... and {contents.Count - 5} more items");
                 }
             }
 
             // Act: GetOutputDirectory を使用して正しい展開先を決定する
             var actualOutputDir = ArchiveExtractor.GetOutputDirectory(zipPath, baseOutputDir);
-            System.Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
+            Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
 
             var extractor = new ArchiveExtractor();
             await extractor.ExtractArchive(zipPath, actualOutputDir);
 
             // Assert: 展開結果を確認
-            System.Console.WriteLine($"Extracted directory: {actualOutputDir}");
-            System.Console.WriteLine($"Directory exists: {Directory.Exists(actualOutputDir)}");
+            Console.WriteLine($"Extracted directory: {actualOutputDir}");
+            Console.WriteLine($"Directory exists: {Directory.Exists(actualOutputDir)}");
 
             var topLevelItems = Directory.GetFileSystemEntries(actualOutputDir);
-            System.Console.WriteLine($"Top-level items in extracted directory ({topLevelItems.Length}):");
+            Console.WriteLine($"Top-level items in extracted directory ({topLevelItems.Length}):");
             foreach (var item in topLevelItems.Take(5))
             {
                 var name = Path.GetFileName(item);
                 var isDir = Directory.Exists(item) ? "(dir)" : "(file)";
-                System.Console.WriteLine($"  - {name} {isDir}");
+                Console.WriteLine($"  - {name} {isDir}");
             }
 
             // ケース1: ルートアイテムが1つ＋フォルダ
@@ -397,8 +397,8 @@ public class ArchiveExtractorTests
             var projectAPath = Path.Combine(actualOutputDir, "ProjectA");
             Assert.False(Directory.Exists(projectAPath), "ProjectA folder should not exist (lifted up)");
 
-            System.Console.WriteLine("\n✅ Test passed: Archive folder and its contents were extracted and lifted up correctly");
-            System.Console.WriteLine();
+            Console.WriteLine("\n✅ Test passed: Archive folder and its contents were extracted and lifted up correctly");
+            Console.WriteLine();
         }
         finally
         {
@@ -418,38 +418,38 @@ public class ArchiveExtractorTests
             var zipPath = CreateTestZipWithMultipleFolders(tempDir);
             var baseOutputDir = Path.Combine(tempDir, "extract_output");
 
-            System.Console.WriteLine("=== Test: ExtractArchive_WithMultipleRootItems_CreatesArchiveFolder ===");
-            System.Console.WriteLine($"ZIP file: {zipPath}");
-            System.Console.WriteLine($"Base output directory: {baseOutputDir}");
+            Console.WriteLine("=== Test: ExtractArchive_WithMultipleRootItems_CreatesArchiveFolder ===");
+            Console.WriteLine($"ZIP file: {zipPath}");
+            Console.WriteLine($"Base output directory: {baseOutputDir}");
 
             using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
             {
                 var contents = reader.Items.Select(item => item.FullName).ToList();
-                System.Console.WriteLine($"\nArchive contents ({contents.Count} items):");
+                Console.WriteLine($"\nArchive contents ({contents.Count} items):");
                 foreach (var item in contents)
                 {
-                    System.Console.WriteLine($"  - '{item}'");
+                    Console.WriteLine($"  - '{item}'");
                 }
             }
 
             // Act: GetOutputDirectory を使用して正しい展開先を決定する
             var actualOutputDir = ArchiveExtractor.GetOutputDirectory(zipPath, baseOutputDir);
-            System.Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
+            Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
 
             var extractor = new ArchiveExtractor();
             await extractor.ExtractArchive(zipPath, actualOutputDir);
 
             // Assert: 展開結果を確認
-            System.Console.WriteLine($"\nExtracted directory: {actualOutputDir}");
-            System.Console.WriteLine($"Directory exists: {Directory.Exists(actualOutputDir)}");
+            Console.WriteLine($"\nExtracted directory: {actualOutputDir}");
+            Console.WriteLine($"Directory exists: {Directory.Exists(actualOutputDir)}");
 
             var topLevelItems = Directory.GetFileSystemEntries(actualOutputDir);
-            System.Console.WriteLine($"Top-level items in extracted directory ({topLevelItems.Length}):");
+            Console.WriteLine($"Top-level items in extracted directory ({topLevelItems.Length}):");
             foreach (var item in topLevelItems)
             {
                 var name = Path.GetFileName(item);
                 var isDir = Directory.Exists(item) ? "(dir)" : "(file)";
-                System.Console.WriteLine($"  - {name} {isDir}");
+                Console.WriteLine($"  - {name} {isDir}");
             }
 
             // ケース2: ルートアイテムが複数
@@ -465,8 +465,8 @@ public class ArchiveExtractorTests
             Assert.True(File.Exists(file1Path), "file1.txt should exist in folder1");
             Assert.True(File.Exists(file2Path), "file2.txt should exist in folder2");
 
-            System.Console.WriteLine($"\n✅ Test passed: Multiple root items were correctly extracted");
-            System.Console.WriteLine();
+            Console.WriteLine($"\n✅ Test passed: Multiple root items were correctly extracted");
+            Console.WriteLine();
         }
         finally
         {

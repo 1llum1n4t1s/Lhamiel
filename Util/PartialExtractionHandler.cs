@@ -204,7 +204,7 @@ public class PartialExtractionHandler
                                     result.SuccessCount++;
                                     result.FailedFiles.RemoveAt(result.FailedFiles.Count - 1);
                                     result.FailureCount--;
-                                    Logger.Log($"リトライ成功: {fullName}", LogLevel.Info);
+                                    Logger.Log($"リトライ成功: {fullName}");
                                 }
                                 else
                                 {
@@ -283,7 +283,7 @@ public class PartialExtractionHandler
         {
             try
             {
-                Logger.Log($"リトライ試行 {attempt}/{maxRetries}: {fullName}", LogLevel.Info);
+                Logger.Log($"リトライ試行 {attempt}/{maxRetries}: {fullName}");
 
                 // 少し待機してからリトライ
                 await Task.Delay(1000 * attempt);

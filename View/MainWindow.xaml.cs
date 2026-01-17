@@ -10,7 +10,7 @@ namespace Lhamiel.View;
 /// <summary>
 /// MainWindow.xaml の相互作用ロジック
 /// </summary>
-public partial class MainWindow : Window
+public partial class MainWindow
 {
     private readonly SettingsManager _settingsManager;
     private bool _isInitializing;
@@ -263,7 +263,7 @@ public partial class MainWindow : Window
             var openFileDialog = new OpenFileDialog
             {
                 Title = "展開するアーカイブファイルを選択",
-                Filter = "アーカイブファイル|*.zip;*.7z;*.tar;*.gz;*.bz2;*.xz;*.rar;*.lzh;*.cab;*.arj;*.z|すべてのファイル|*.*",
+                Filter = "アーカイブファイル|*.zip;*.7z;*.tar;*.gz;*.bz2;*.xz;*.rar;*.cab;*.arj;*.z|すべてのファイル|*.*",
                 Multiselect = true
             };
 
@@ -353,7 +353,7 @@ public partial class MainWindow : Window
                     // 関連付けを設定
                     if (FileAssociation.AssociateFileType(extension))
                     {
-                        Logger.Log($"関連付け設定成功: {extension}", LogLevel.Info);
+                        Logger.Log($"関連付け設定成功: {extension}");
                     }
                     else
                     {
@@ -365,7 +365,7 @@ public partial class MainWindow : Window
                     // 関連付けを解除
                     if (FileAssociation.DisassociateFileType(extension))
                     {
-                        Logger.Log($"関連付け解除成功: {extension}", LogLevel.Info);
+                        Logger.Log($"関連付け解除成功: {extension}");
                     }
                     else
                     {
@@ -374,7 +374,7 @@ public partial class MainWindow : Window
                 }
             }
 
-            Logger.Log("関連付け設定の適用が完了しました", LogLevel.Info);
+            Logger.Log("関連付け設定の適用が完了しました");
         }
         catch (Exception ex)
         {
@@ -387,7 +387,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void ExtractionBrowseButton_Click(object sender, RoutedEventArgs e)
     {
-        var folderDialog = new Microsoft.Win32.OpenFolderDialog
+        var folderDialog = new OpenFolderDialog
         {
             Title = "展開先ディレクトリを選択"
         };
@@ -403,7 +403,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void CompressionBrowseButton_Click(object sender, RoutedEventArgs e)
     {
-        var folderDialog = new Microsoft.Win32.OpenFolderDialog
+        var folderDialog = new OpenFolderDialog
         {
             Title = "圧縮先ディレクトリを選択"
         };

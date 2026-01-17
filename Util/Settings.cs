@@ -91,7 +91,7 @@ public class Settings
     /// <summary>
     /// サポートされている圧縮形式の一覧
     /// </summary>
-    public static readonly string[] SupportedCompressionFormats = { "ZIP", "7z", "TAR", "LZH" };
+    public static readonly string[] SupportedCompressionFormats = { "ZIP", "7z", "TAR" };
 
     /// <summary>
     /// サポートされている展開形式の一覧

@@ -81,7 +81,7 @@ public static class ArchiveFormatDetector
                         DetectRarSignature(scanBytes) ||
                         DetectArchiveKeywords(scanBytes))
                     {
-                        Logger.Log($"自己展開圧縮ファイルを確認: {filePath}", LogLevel.Info);
+                        Logger.Log($"自己展開圧縮ファイルを確認: {filePath}");
                         return true;
                     }
                 }

@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Lhamiel.Util;
@@ -122,7 +121,7 @@ public partial class ProgressWindow : Window
             {
                 try
                 {
-                    Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+                    Dispatcher.Invoke(() => { }, DispatcherPriority.Background);
                 }
                 catch
                 {

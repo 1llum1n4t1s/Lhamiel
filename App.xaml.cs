@@ -1,7 +1,5 @@
 using System.Windows;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Lhamiel.Util;
 using Velopack;
 using Velopack.Sources;
@@ -27,6 +25,17 @@ public partial class App : Application
 
     public App()
     {
+        // プロセス全体の優先度を下げる（低スペックPCでのフリーズ防止、ハイスペックPCでも影響なし）
+        try
+        {
+            System.Diagnostics.Process.GetCurrentProcess().PriorityClass = System.Diagnostics.ProcessPriorityClass.BelowNormal;
+        }
+        catch (Exception ex)
+        {
+            // 優先度の設定に失敗しても続行（権限の問題など）
+            System.Diagnostics.Debug.WriteLine($"Failed to set process priority: {ex.Message}");
+        }
+
         // Log4netを早期に初期化
         Logger.Initialize();
 
@@ -52,7 +61,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         // 1. UIスレッド（画面操作など）で発生した未処理の例外をキャッチする
-        this.DispatcherUnhandledException += App_DispatcherUnhandledException;
+        DispatcherUnhandledException += App_DispatcherUnhandledException;
 
         // 2. バックグラウンドタスク（Task.Runなど）で発生した例外をキャッチする
         TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;

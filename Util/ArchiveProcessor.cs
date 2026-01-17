@@ -38,7 +38,7 @@ public static class ArchiveProcessor
 
             // ファイル拡張子の確認
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
-            var supportedExtensions = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z", ".exe" };
+            var supportedExtensions = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".xz", ".rar", ".cab", ".arj", ".z", ".exe" };
             
             if (!supportedExtensions.Contains(extension))
             {
@@ -57,7 +57,7 @@ public static class ArchiveProcessor
                     MessageBox.Show($"実行可能ファイルですが、自己展開圧縮ファイルではありません。\n{filePath}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
                     return false;
                 }
-                Logger.Log($"自己展開圧縮ファイルを確認: {filePath}", LogLevel.Info);
+                Logger.Log($"自己展開圧縮ファイルを確認: {filePath}");
             }
 
             Logger.Log($"展開処理を開始: {filePath}");
@@ -180,7 +180,7 @@ public static class ArchiveProcessor
             // HDDの場合は並列数が多いとシーク多発で逆に遅くなるため、保守的な値に設定
             // SSDを前提とする場合でも、アーカイブ展開のメモリ使用量を考慮して上限を設定
             var maxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount / 2, 2, 4);
-            var semaphore = new System.Threading.SemaphoreSlim(maxDegreeOfParallelism);
+            var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
 
             Logger.Log($"複数ファイル展開開始: {totalCount}個のファイル、最大並列度={maxDegreeOfParallelism}");
 
@@ -277,7 +277,7 @@ public static class ArchiveProcessor
             }
             else
             {
-                var failureMessage = failedFiles.Any() ? $"\n失敗: {string.Join(", ", failedFiles)}" : "";
+                _ = failedFiles.Any() ? $"\n失敗: {string.Join(", ", failedFiles)}" : "";
                 Logger.Log($"複数ファイル展開完了: {successCount}成功, {totalCount - successCount}失敗");
                 await Task.Delay(500);
                 progressWindow?.Close();
@@ -327,7 +327,7 @@ public static class ArchiveProcessor
             }
 
             // 圧縮形式の確認
-            var supportedFormats = new[] { "zip", "7z", "tar", "gz", "bz2", "xz", "cab", "wim", "lzh" };
+            var supportedFormats = new[] { "zip", "7z", "tar", "gz", "bz2", "xz", "cab", "wim" };
             if (!supportedFormats.Contains(format.ToLowerInvariant()))
             {
                 Logger.Log($"サポートされていない圧縮形式です: {format}");
@@ -371,7 +371,7 @@ public static class ArchiveProcessor
                 }
             }
 
-            // 圧縮処理を実行（最適化: LHA形式の場合、無駄なコピーを避けるためCompressDirectoryを使用）
+            // 圧縮処理を実行
             Logger.Log($"ArchiveCompressor.CompressDirectoryを呼び出し: folderPath={folderPath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
 
             await Task.Run(() =>
@@ -435,7 +435,7 @@ public static class ArchiveProcessor
             // ★最適化: 並列処理時のCPUコア数を制限（圧縮処理自体がマルチスレッドなため）
             // 7-Zip等は内部で全コアを使うため、タスク並列数を抑えめにする
             var maxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount / 2, 1, 4);
-            var semaphore = new System.Threading.SemaphoreSlim(maxDegreeOfParallelism);
+            var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
 
             Logger.Log($"複数フォルダ圧縮開始: {totalCount}個のフォルダ、最大並列度={maxDegreeOfParallelism}、形式={format}");
 
@@ -532,7 +532,7 @@ public static class ArchiveProcessor
             }
             else
             {
-                var failureMessage = failedFolders.Any() ? $"\n失敗: {string.Join(", ", failedFolders)}" : "";
+                _ = failedFolders.Any() ? $"\n失敗: {string.Join(", ", failedFolders)}" : "";
                 Logger.Log($"複数フォルダ圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
                 await Task.Delay(500);
                 progressWindow?.Close();

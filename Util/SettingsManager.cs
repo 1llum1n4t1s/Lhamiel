@@ -31,7 +31,7 @@ public sealed class SettingsManager
         try
         {
             _settings = Settings.Load();
-            Logger.Log("設定を読み込みました", LogLevel.Info);
+            Logger.Log("設定を読み込みました");
         }
         catch (Exception ex)
         {
@@ -48,7 +48,7 @@ public sealed class SettingsManager
         try
         {
             _settings.Save();
-            Logger.Log("設定を保存しました", LogLevel.Info);
+            Logger.Log("設定を保存しました");
         }
         catch (Exception ex)
         {
@@ -79,7 +79,7 @@ public sealed class SettingsManager
             _settings.LastUpdateCheckTime = newSettings.LastUpdateCheckTime;
             _settings.LogMaxLines = newSettings.LogMaxLines;
 
-            Logger.Log("設定を再読み込みしました", LogLevel.Info);
+            Logger.Log("設定を再読み込みしました");
         }
         catch (Exception ex)
         {
@@ -96,7 +96,7 @@ public sealed class SettingsManager
         try
         {
             _settings.ResetToDefaults();
-            Logger.Log("設定をデフォルト値にリセットしました", LogLevel.Info);
+            Logger.Log("設定をデフォルト値にリセットしました");
         }
         catch (Exception ex)
         {
