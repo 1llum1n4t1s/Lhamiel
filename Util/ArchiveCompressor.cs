@@ -134,30 +134,6 @@ public class ArchiveCompressor
             // LHA形式の場合
             if (format.isLha)
             {
-                // ★LHA最適化: 単一ディレクトリかつ除外ファイルがない場合は直接圧縮（コピー回避）
-                if (sourceList.Count == 1 && Directory.Exists(sourceList[0]))
-                {
-                    // 除外パターンがない、または除外されるファイルがない場合は直接CompressDirectoryを呼ぶ
-                    var hasExcludedFiles = excludedPatterns.Any() &&
-                        await Task.Run(() => Directory.EnumerateFiles(sourceList[0], "*", SearchOption.AllDirectories)
-                            .Any(f => ShouldExcludeFile(f, excludedPatterns)), cancellationToken);
-
-                    if (!hasExcludedFiles)
-                    {
-                        Logger.Log("LHA圧縮処理を開始します (直接ディレクトリ指定)");
-                        var result = await Task.Run(() => LHAWriter.WriteLHAFile(outputPath, sourceList[0], "*", Amiga.FileFormats.LHA.CompressionMethod.LH5), cancellationToken);
-
-                        if (result != LHAWriteResult.Success)
-                        {
-                            throw new InvalidOperationException($"LHA圧縮に失敗しました: {result}");
-                        }
-
-                        Logger.Log($"LHA圧縮完了: {sourceList[0]} -> {outputPath}");
-                        return;
-                    }
-                }
-
-                // 除外ファイルがある場合は従来通りの処理
                 outputCreated = true;
                 await CompressFilesAsLhaAsync(filesToCompress, outputPath, progressCallback, cancellationToken);
             }
@@ -170,18 +146,10 @@ public class ArchiveCompressor
                 var totalFiles = filesToCompress.Count;
                 Logger.Log($"圧縮するファイル数: {totalFiles}");
 
-                for (var i = 0; i < totalFiles; i++)
+                foreach (var (fullPath, relativePath) in filesToCompress)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-
-                    var (fullPath, relativePath) = filesToCompress[i];
                     writer.Add(fullPath, relativePath);
-
-                    // 定期的にUIスレッドに処理を戻す（100ファイルごと）
-                    if (i % 100 == 0)
-                    {
-                        await Task.Delay(0, cancellationToken);
-                    }
                 }
 
                 // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
@@ -276,13 +244,24 @@ public class ArchiveCompressor
                     }
                 }
 
-                Logger.Log("LHA圧縮処理を開始します");
+                Logger.Log($"LHA圧縮処理を開始します: outputPath={outputPath}, tempDirectory={tempDirectory}");
                 // 実際の圧縮開始時に 0% を明示
                 progressCallback?.Invoke(new ProgressInfo(0, "圧縮処理中..."));
-                var result = await Task.Run(() => LHAWriter.WriteLHAFile(outputPath, tempDirectory, "*", Amiga.FileFormats.LHA.CompressionMethod.LH5), cancellationToken);
+                
+                LHAWriteResult result;
+                try
+                {
+                    result = await Task.Run(() => LHAWriter.WriteLHAFile(outputPath, tempDirectory, "*", Amiga.FileFormats.LHA.CompressionMethod.LH5), cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"LHAWriter.WriteLHAFile で例外が発生しました: {ex.Message}");
+                    throw;
+                }
 
                 if (result != LHAWriteResult.Success)
                 {
+                    Logger.Log($"LHA圧縮に失敗しました: result={result}");
                     throw new InvalidOperationException($"LHA形式の圧縮に失敗しました: {result}");
                 }
 
@@ -369,12 +348,23 @@ public class ArchiveCompressor
                 }
 
                 // LHAWriter.WriteLHAFileを使用してLHA形式で圧縮
+                Logger.Log($"LHA圧縮処理を開始します: outputPath={outputPath}, tempDirectory={tempDirectory}");
                 progressCallback?.Invoke(new ProgressInfo(0, "圧縮処理中..."));
-                Logger.Log("LHA圧縮処理を開始します");
-                var result = LHAWriter.WriteLHAFile(outputPath, tempDirectory, "*", Amiga.FileFormats.LHA.CompressionMethod.LH5);
+                
+                LHAWriteResult result;
+                try
+                {
+                    result = LHAWriter.WriteLHAFile(outputPath, tempDirectory, "*", Amiga.FileFormats.LHA.CompressionMethod.LH5);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"LHAWriter.WriteLHAFile で例外が発生しました: {ex.Message}");
+                    throw;
+                }
 
                 if (result != LHAWriteResult.Success)
                 {
+                    Logger.Log($"LHA圧縮に失敗しました: result={result}");
                     throw new InvalidOperationException($"LHA形式の圧縮に失敗しました: {result}");
                 }
 
@@ -495,38 +485,29 @@ public class ArchiveCompressor
 
         try
         {
-            // LHA形式の場合（最適化: 直接ディレクトリ指定で一時コピーを回避）
+            // 1. 圧縮対象のファイルを再帰的に取得（除外パターンを適用）
+            var files = GetFilesRecursively(directoryPath, excludedPatterns).ToList();
+            var totalFiles = files.Count;
+            Logger.Log($"圧縮対象のファイル総数: {totalFiles}個");
+
+            // アーカイブ内の相対パスを計算（ディレクトリ自体をルートに含める）
+            var parentDir = Path.GetDirectoryName(directoryPath) ?? "";
+            var filesToCompress = files.Select(f => (fullPath: f, relativePath: Path.GetRelativePath(parentDir, f))).ToList();
+
+            // 2. LHA形式の場合
             if (format.isLha)
             {
-                Logger.Log("LHA圧縮処理を開始します (直接ディレクトリ指定)");
-                progressCallback?.Invoke(new ProgressInfo(0, "ファイルをスキャン中..."));
-                var result = LHAWriter.WriteLHAFile(outputPath, directoryPath, "*", Amiga.FileFormats.LHA.CompressionMethod.LH5);
-
-                if (result != LHAWriteResult.Success)
-                {
-                    throw new InvalidOperationException($"LHA圧縮に失敗しました: {result}");
-                }
-
-                Logger.Log($"LHA圧縮完了: {directoryPath} -> {outputPath}");
-                progressCallback?.Invoke(new ProgressInfo(100, "完了"));
+                Logger.Log("LHA圧縮処理を開始します");
+                CompressFilesAsLha(filesToCompress, outputPath, progressCallback, CancellationToken.None);
                 return;
             }
 
-            // ArchiveWriterを使用して圧縮（形式に応じてオプションを設定）
+            // 3. その他の形式（ArchiveWriterを使用）
             using var writer = CreateArchiveWriter(format.format);
 
-            // ToList() で実体化して件数を確定させる
-            var files = GetFilesRecursively(directoryPath, excludedPatterns).ToList();
-            var totalFiles = files.Count;
-
-            Logger.Log($"圧縮対象のファイル総数: {totalFiles}個");
-
-            for (var i = 0; i < totalFiles; i++)
+            foreach (var item in filesToCompress)
             {
-                var file = files[i];
-                var relativePath = Path.GetRelativePath(directoryPath, file);
-
-                writer.Add(file, relativePath);
+                writer.Add(item.fullPath, item.relativePath);
             }
 
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
@@ -545,7 +526,6 @@ public class ArchiveCompressor
 
             progressCallback?.Invoke(new ProgressInfo(100, "完了"));
             Logger.Log($"ディレクトリ圧縮完了: {directoryPath} -> {outputPath}");
-            // ★修正ここまで
         }
         catch (Exception ex)
         {
