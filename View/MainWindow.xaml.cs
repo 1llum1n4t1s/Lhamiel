@@ -810,15 +810,50 @@ public partial class MainWindow : Window
 
         foreach (var archivePath in archivePaths)
         {
-            var extractionPath = ArchiveExtractor.GetOutputDirectory(archivePath, outputDir, outputToSameDirectory);
-            if (string.IsNullOrWhiteSpace(extractionPath))
-            {
-                continue;
-            }
+            // 基準となる出力先（デスクトップなど）
+            var baseDir = ArchiveExtractor.GetBaseOutputDirectory(archivePath, outputDir, outputToSameDirectory);
+            var targetPath = baseDir; // デフォルトは基準ディレクトリ
 
-            if (Directory.Exists(extractionPath) && openedPaths.Add(extractionPath))
+            try
             {
-                FolderOpener.OpenFolder(extractionPath);
+                // スマート展開（単一ルート要素）かどうかを確認
+                var rootItemName = ArchiveExtractor.GetSingleRootItemName(archivePath);
+
+                if (!string.IsNullOrEmpty(rootItemName))
+                {
+                    // Case 1: スマート展開（単一ルート要素）の場合
+                    // アーカイブの中身（ProjectA）が基準ディレクトリ直下に展開されている
+                    var possibleDir = Path.Combine(baseDir, rootItemName);
+
+                    // そのルート要素がフォルダとして存在する場合、そのフォルダを開く
+                    // （ファイルだった場合は親であるbaseDirを開くのが自然なので何もしない）
+                    if (Directory.Exists(possibleDir))
+                    {
+                        targetPath = possibleDir;
+                    }
+                }
+                else
+                {
+                    // Case 2: 通常展開（複数要素）の場合
+                    // アーカイブ名のフォルダが作成され、その中に展開されている
+                    var fileName = Path.GetFileNameWithoutExtension(archivePath);
+                    var possibleDir = Path.Combine(baseDir, fileName);
+
+                    if (Directory.Exists(possibleDir))
+                    {
+                        targetPath = possibleDir;
+                    }
+                }
+
+                // 決定したパスが存在し、かつまだ開いていない場合に開く
+                if (Directory.Exists(targetPath) && openedPaths.Add(targetPath))
+                {
+                    FolderOpener.OpenFolder(targetPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogException($"展開先フォルダを開く処理でエラー: {archivePath}", ex);
             }
         }
     }

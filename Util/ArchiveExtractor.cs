@@ -77,13 +77,13 @@ public class ArchiveExtractor
     }
 
     /// <summary>
-    /// アーカイブのルート要素が単一かどうかを判定する
+    /// アーカイブのルート要素が単一かどうかを判定し、その名前を取得する
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <returns>ルート要素が単一の場合はtrue</returns>
-    public static bool HasSingleRootItem(string archivePath)
+    /// <returns>単一のルート要素名（見つからないか複数の場合はnull）</returns>
+    public static string? GetSingleRootItemName(string archivePath)
     {
-        if (!File.Exists(archivePath)) return false;
+        if (!File.Exists(archivePath)) return null;
 
         try
         {
@@ -108,22 +108,31 @@ public class ArchiveExtractor
 
                     rootItems.Add(rootItem);
 
-                    // 2つ以上見つかった時点でfalse確定
+                    // 2つ以上見つかった時点でnull確定
                     if (rootItems.Count > 1)
                     {
-                        return false;
+                        return null;
                     }
                 }
             }
 
-            return rootItems.Count == 1;
+            return rootItems.Count == 1 ? rootItems.First() : null;
         }
         catch (Exception ex)
         {
             Logger.Log($"アーカイブ構造解析エラー: {ex.Message}");
-            // エラー時は安全のためfalse（通常フォルダ作成）を返す
-            return false;
+            return null;
         }
+    }
+
+    /// <summary>
+    /// アーカイブのルート要素が単一かどうかを判定する
+    /// </summary>
+    /// <param name="archivePath">アーカイブファイルのパス</param>
+    /// <returns>ルート要素が単一の場合はtrue</returns>
+    public static bool HasSingleRootItem(string archivePath)
+    {
+        return !string.IsNullOrEmpty(GetSingleRootItemName(archivePath));
     }
 
 
@@ -307,6 +316,10 @@ public class ArchiveExtractor
                 // 進捗報告を設定
                 if (progressCallback != null)
                 {
+                    // ★追加: 前回の進捗情報を保持して、変化がない場合の更新をスキップする
+                    var lastPercentage = -1;
+                    var lastFileName = string.Empty;
+
                     var progress = new Progress<Report>(report =>
                     {
                         // キャンセルされている場合は処理をスキップ（スレッドプールから実行されるため、例外をスローしない）
@@ -317,6 +330,16 @@ public class ArchiveExtractor
 
                         // より効率的なファイル名取得（リフレクションを使用）
                         var currentFileName = GetReportCurrentFileName(report);
+
+                        // ★追加: 進捗率もファイル名も変わっていない場合は無視（ログ過多・UI描画負荷の防止）
+                        if (percentage == lastPercentage && string.Equals(currentFileName, lastFileName, StringComparison.Ordinal))
+                        {
+                            return;
+                        }
+
+                        // ★追加: 最新の状態を保存
+                        lastPercentage = percentage;
+                        lastFileName = currentFileName;
 
                         var status = string.IsNullOrWhiteSpace(currentFileName)
                             ? "ファイルを展開中..."

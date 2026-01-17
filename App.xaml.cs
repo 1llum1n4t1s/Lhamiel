@@ -1,6 +1,7 @@
 using System.Windows;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using Lhamiel.Util;
 using Velopack;
 using Velopack.Sources;
@@ -50,6 +51,15 @@ public partial class App : Application
     /// <param name="e">起動イベント引数</param>
     protected override async void OnStartup(StartupEventArgs e)
     {
+        // 1. UIスレッド（画面操作など）で発生した未処理の例外をキャッチする
+        this.DispatcherUnhandledException += App_DispatcherUnhandledException;
+
+        // 2. バックグラウンドタスク（Task.Runなど）で発生した例外をキャッチする
+        TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
+
+        // 3. それ以外の場所で発生した致命的な例外をキャッチする
+        AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
         try
         {
             // メインウィンドウの多重起動チェック
@@ -496,6 +506,51 @@ public partial class App : Application
             Logger.LogException("フォルダ圧縮処理でエラーが発生", ex);
             MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
+        }
+    }
+
+    /// <summary>
+    /// UIスレッドで発生した未処理の例外をハンドル
+    /// </summary>
+    /// <param name="sender">イベント送信元</param>
+    /// <param name="e">ディスパッチャー未処理例外イベント引数</param>
+    private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+    {
+        // エラー内容をログに保存（これで本当の原因がわかります）
+        Logger.LogException("UIスレッドで未処理の例外が発生しました", e.Exception);
+
+        // ユーザーにエラーを通知
+        MessageBox.Show($"予期しないエラーが発生しました。\n\n詳細: {e.Exception.Message}", 
+                        "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+
+        // ★重要: これを true にすると、アプリがクラッシュして消えるのを防げます
+        e.Handled = true;
+    }
+
+    /// <summary>
+    /// バックグラウンドタスクで発生した未処理の例外をハンドル
+    /// </summary>
+    /// <param name="sender">イベント送信元</param>
+    /// <param name="e">未観察のタスク例外イベント引数</param>
+    private void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        Logger.LogException("バックグラウンドタスクで未処理の例外が発生しました", e.Exception);
+
+        // エラーを「確認済み」にすることで、プロセスの強制終了を防ぎます
+        e.SetObserved();
+    }
+
+    /// <summary>
+    /// その他の致命的なエラーをハンドル
+    /// </summary>
+    /// <param name="sender">イベント送信元</param>
+    /// <param name="e">未処理例外イベント引数</param>
+    private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        if (e.ExceptionObject is Exception ex)
+        {
+            Logger.LogException("致命的なエラーが発生しました（AppDomain）", ex);
+            // このレベルのエラーは回復不能な場合が多いですが、ログには残します
         }
     }
 
