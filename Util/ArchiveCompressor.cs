@@ -210,11 +210,22 @@ public class ArchiveCompressor
                     }
                 }
 
-                // 圧縮を実行
+                // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
                 outputCreated = true;
                 progressCallback?.Invoke(new ProgressInfo(90, "圧縮処理中..."));
                 Logger.Log("圧縮処理を開始します");
-                await Task.Run(() => writer.Save(outputPath), cancellationToken);
+
+                var reportProgress = new Progress<Cube.FileSystem.SevenZip.Report>(report =>
+                {
+                    // 進捗率を計算（GetRatio()で0～1を返す）
+                    var ratio = report.GetRatio();
+                    var percentage = (int)(90 + ratio * 10); // 90～100%の範囲で表示
+                    var status = $"圧縮処理中... {(int)(ratio * 100)}%";
+
+                    progressCallback?.Invoke(new ProgressInfo(percentage, status));
+                });
+
+                await Task.Run(() => writer.Save(outputPath, reportProgress), cancellationToken);
 
                 Logger.Log($"圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
             }
@@ -584,11 +595,21 @@ public class ArchiveCompressor
                 }
             }
 
-            // 圧縮を実行 (Saveメソッドはブロッキングだが、ここまでに90%まで進む)
+            // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
             progressCallback?.Invoke(new ProgressInfo(90, "圧縮処理中..."));
             Logger.Log("圧縮処理を開始します");
 
-            writer.Save(outputPath);
+            var reportProgress = new Progress<Cube.FileSystem.SevenZip.Report>(report =>
+            {
+                // 進捗率を計算（GetRatio()で0～1を返す）
+                var ratio = report.GetRatio();
+                var percentage = (int)(90 + ratio * 10); // 90～100%の範囲で表示
+                var status = $"圧縮処理中... {(int)(ratio * 100)}%";
+
+                progressCallback?.Invoke(new ProgressInfo(percentage, status));
+            });
+
+            writer.Save(outputPath, reportProgress);
 
             progressCallback?.Invoke(new ProgressInfo(100, "完了"));
             Logger.Log($"ディレクトリ圧縮完了: {directoryPath} -> {outputPath}");
