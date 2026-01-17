@@ -5,3 +5,4 @@
 *.suo
 bin/
 obj/
+build_output.txt
