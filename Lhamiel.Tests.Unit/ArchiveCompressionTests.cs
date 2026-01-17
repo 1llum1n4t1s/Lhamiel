@@ -281,8 +281,7 @@ public class ArchiveCompressionTests
             var archivePath = Path.Combine(testDir, "single_file.zip");
 
             // Act
-            var compressor = new ArchiveCompressor();
-            compressor.CompressFiles([testFile], archivePath);
+            ArchiveCompressor.CompressFiles([testFile], archivePath);
 
             // Assert
             Assert.True(File.Exists(archivePath), "Zip archive should be created");
@@ -315,8 +314,7 @@ public class ArchiveCompressionTests
             var archivePath = Path.Combine(testDir, "multiple_files.zip");
 
             // Act
-            var compressor = new ArchiveCompressor();
-            compressor.CompressFiles([file1, file2, file3], archivePath);
+            ArchiveCompressor.CompressFiles([file1, file2, file3], archivePath);
 
             // Assert
             Assert.True(File.Exists(archivePath), "Zip archive with multiple files should be created");
@@ -367,8 +365,7 @@ public class ArchiveCompressionTests
             Console.WriteLine($"ZIPファイル: {archivePath}");
 
             // Act: 圧縮
-            var compressor = new ArchiveCompressor();
-            compressor.CompressFiles([sourceDir], archivePath);
+            ArchiveCompressor.CompressFiles([sourceDir], archivePath);
 
             Assert.True(File.Exists(archivePath), "ZIP archive should be created");
             Console.WriteLine($"✓ 圧縮成功");
@@ -424,8 +421,7 @@ public class ArchiveCompressionTests
             Console.WriteLine($"7zファイル: {archivePath}");
 
             // Act: 圧縮
-            var compressor = new ArchiveCompressor();
-            compressor.CompressFiles([sourceDir], archivePath);
+            ArchiveCompressor.CompressFiles([sourceDir], archivePath);
 
             Assert.True(File.Exists(archivePath), "7z archive should be created");
             Console.WriteLine($"✓ 圧縮成功");
@@ -481,8 +477,7 @@ public class ArchiveCompressionTests
             Console.WriteLine($"TARファイル: {archivePath}");
 
             // Act: 圧縮
-            var compressor = new ArchiveCompressor();
-            compressor.CompressFiles([sourceDir], archivePath);
+            ArchiveCompressor.CompressFiles([sourceDir], archivePath);
 
             Assert.True(File.Exists(archivePath), "TAR archive should be created");
             Console.WriteLine($"✓ 圧縮成功");
@@ -538,8 +533,7 @@ public class ArchiveCompressionTests
             Console.WriteLine($"TARファイル: {archivePath}");
 
             // Act: 圧縮
-            var compressor = new ArchiveCompressor();
-            compressor.CompressFiles([sourceDir], archivePath);
+            ArchiveCompressor.CompressFiles([sourceDir], archivePath);
 
             Assert.True(File.Exists(archivePath), "TAR archive should be created");
             Console.WriteLine($"✓ 圧縮成功");

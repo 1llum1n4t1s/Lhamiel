@@ -2,7 +2,6 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
 namespace Lhamiel.Util;
@@ -14,14 +13,6 @@ namespace Lhamiel.Util;
 [SupportedOSPlatform("windows")]
 public class FileAssociation
 {
-    // Windows APIの定数
-    private const int SHCNE_ASSOCCHANGED = 0x08000000;
-    private const int SHCNF_IDLIST = 0x0000;
-
-    // Windows API関数の宣言
-    [DllImport("shell32.dll")]
-    private static extern void SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);
-
     /// <summary>
     /// アプリケーションの実行ファイルパス
     /// 現在実行中のアプリケーションのパスを取得
@@ -113,7 +104,7 @@ public class FileAssociation
     {
         try
         {
-            SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+            NativeMethods.SHChangeNotify(NativeMethods.SHCNE_ASSOCCHANGED, NativeMethods.SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
             Thread.Sleep(200);
         }
         catch (Exception ex)

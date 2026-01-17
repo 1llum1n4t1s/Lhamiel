@@ -151,7 +151,7 @@ public partial class App
                 {
                     if (otherProcess.MainWindowHandle != IntPtr.Zero)
                     {
-                        SetForegroundWindow(otherProcess.MainWindowHandle);
+                        NativeMethods.SetForegroundWindow(otherProcess.MainWindowHandle);
                         Logger.Log("既存インスタンスをアクティブ化しました。");
                     }
                 }
@@ -166,12 +166,6 @@ public partial class App
             Logger.Log($"既存インスタンスのアクティブ化処理でエラーが発生: {ex.Message}");
         }
     }
-
-    /// <summary>
-    /// Win32 API: ウィンドウをアクティブ化する
-    /// </summary>
-    [System.Runtime.InteropServices.DllImport("user32.dll")]
-    private static extern bool SetForegroundWindow(IntPtr hWnd);
 
     /// <summary>
     /// 更新をチェックして適用する

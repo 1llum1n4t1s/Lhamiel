@@ -39,9 +39,8 @@ public class ArchiveCompressor
     /// <returns>圧縮処理の完了を表すTask</returns>
     public static async Task CompressAsync(string sourcePath, string outputPath, string format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
-        var compressor = new ArchiveCompressor();
         var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
-        await compressor.CompressFilesAsync([sourcePath], outputPath, progressCallback, cancellationToken);
+        await CompressFilesAsync([sourcePath], outputPath, progressCallback, cancellationToken);
     }
 
     /// <summary>
@@ -51,7 +50,7 @@ public class ArchiveCompressor
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    public async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
+    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         var sourceList = sourcePaths.ToList();
         if (!sourceList.Any())
@@ -191,7 +190,7 @@ public class ArchiveCompressor
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    public void CompressFiles(IEnumerable<string> sourcePaths, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
+    public static void CompressFiles(IEnumerable<string> sourcePaths, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         CompressFilesAsync(sourcePaths, outputPath, progressCallback, cancellationToken).GetAwaiter().GetResult();
     }
@@ -357,7 +356,7 @@ public class ArchiveCompressor
     /// <param name="archivePath">アーカイブパス</param>
     /// <param name="folderName">チェックするフォルダ名</param>
     /// <returns>同名フォルダが存在するかどうか</returns>
-    public bool HasFolderWithSameName(string archivePath, string folderName)
+    public static bool HasFolderWithSameName(string archivePath, string folderName)
     {
         if (!File.Exists(archivePath))
         {

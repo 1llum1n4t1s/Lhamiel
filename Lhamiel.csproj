@@ -41,6 +41,7 @@
     <Compile Include="Util\FolderOpener.cs" />
     <Compile Include="Util\Logger.cs" />
     <Compile Include="Util\MessageService.cs" />
+    <Compile Include="Util\NativeMethods.cs" />
     <Compile Include="Util\PartialExtractionHandler.cs" />
     <Compile Include="Util\PathValidator.cs" />
     <Compile Include="Util\ProgressInfo.cs" />
