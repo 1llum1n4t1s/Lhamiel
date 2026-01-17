@@ -192,10 +192,30 @@ public static class ArchiveProcessor
                     cancellationToken.ThrowIfCancellationRequested();
 
                     // ★ 修正: null を渡すと ExtractArchiveAsync 内部で progressWindow を使ってしまうため、
-                    // 「何もしない Progress」を渡して、内部でのUI更新を無効化する。
-                    // 並列処理中は「全体の何件目が終わったか」を外側のループで管理しているため、これで十分
-                    var silentProgress = new Progress<ProgressInfo>(_ => { });
-                    var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: silentProgress);
+                    // 「全体進捗にマッピングする Progress」を渡して、UI更新を行う。
+                    IProgress<ProgressInfo> mappedProgress;
+                    if (totalCount == 1)
+                    {
+                        mappedProgress = new Progress<ProgressInfo>(info =>
+                        {
+                            progressWindow?.Dispatcher.Invoke(() =>
+                                progressWindow.UpdateProgress(info.Percentage, info.Status)
+                            );
+                        });
+                    }
+                    else
+                    {
+                        mappedProgress = new Progress<ProgressInfo>(info =>
+                        {
+                            progressWindow?.Dispatcher.Invoke(() =>
+                            {
+                                var overallProgress = (int)((double)index / totalCount * 100 + (double)info.Percentage / totalCount);
+                                progressWindow.UpdateProgress(overallProgress, info.Status);
+                            });
+                        });
+                    }
+
+                    var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress);
 
                     lock (lockObject)
                     {
@@ -208,13 +228,13 @@ public static class ArchiveProcessor
                             failedFiles.Add(Path.GetFileName(filePath));
                         }
 
-                        // 件数ベースの進捗のみを更新
+                        // 件数ベースの進捗を最終更新
                         var currentCount = successCount + failedFiles.Count;
                         var progress = (int)((double)currentCount / totalCount * 100);
                         
                         // ★ 【バグ修正】 UIスレッド上で更新を実行（クロススレッド操作違反を防ぐ）
                         progressWindow?.Dispatcher.Invoke(() =>
-                            progressWindow.UpdateProgress(progress, $"展開中 ({currentCount}/{totalCount}): {Path.GetFileName(filePath)}")
+                            progressWindow.UpdateProgress(progress, $"展開完了 ({currentCount}/{totalCount}): {Path.GetFileName(filePath)}")
                         );
                     }
                 }
@@ -438,6 +458,18 @@ public static class ArchiveProcessor
                             });
                         });
                     }
+                    else
+                    {
+                        // 複数フォルダ圧縮時は、個別進捗を全体進捗にマッピングして表示
+                        innerProgress = new Progress<ProgressInfo>(info =>
+                        {
+                            progressWindow?.Dispatcher.Invoke(() =>
+                            {
+                                var overallProgress = (int)((double)index / totalCount * 100 + (double)info.Percentage / totalCount);
+                                progressWindow.UpdateProgress(overallProgress, info.Status);
+                            });
+                        });
+                    }
 
                     // progressWindowはnullのまま(二重更新防止)、innerProgressを渡す
                     var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, null, innerProgress, actualCancellationToken);
@@ -454,10 +486,10 @@ public static class ArchiveProcessor
                             failedFolders.Add(Path.GetFileName(folderPath));
                         }
 
-                        // 件数ベースで進捗バーを更新（Dispatcher経由で安全に更新）
-                        var progress = (int)((double)(index + 1) / totalCount * 100);
+                        // 各フォルダ完了時に確実に進捗を更新
+                        var completedProgress = (int)((double)(index + 1) / totalCount * 100);
                         progressWindow?.Dispatcher.Invoke(() =>
-                            progressWindow.UpdateProgress(progress, $"圧縮中 ({index + 1}/{totalCount}): {Path.GetFileName(folderPath)}")
+                            progressWindow.UpdateProgress(completedProgress, $"圧縮完了 ({index + 1}/{totalCount}): {Path.GetFileName(folderPath)}")
                         );
                     }
                 }

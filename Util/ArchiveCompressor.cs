@@ -252,9 +252,6 @@ public class ArchiveCompressor
             {
                 var totalFiles = filesToCompress.Count;
                 Logger.Log($"LHA圧縮: 圧縮するファイル数: {totalFiles}");
-                progressCallback?.Invoke(new ProgressInfo(10, "ファイルをコピー中..."));
-                const int fileAddProgressMin = 10;
-                const int fileAddProgressMax = 80;
 
                 for (var i = 0; i < totalFiles; i++)
                 {
@@ -272,13 +269,6 @@ public class ArchiveCompressor
                     // ファイルコピーを非同期で実行
                     await Task.Run(() => File.Copy(fullPath, tempFilePath, true), cancellationToken);
 
-                    var progress = totalFiles > 0
-                        ? fileAddProgressMin + (int)Math.Round((double)(i + 1) * (fileAddProgressMax - fileAddProgressMin) / totalFiles)
-                        : fileAddProgressMin;
-
-                    Logger.Log($"LHA圧縮ファイル追加進捗: {i + 1}/{totalFiles} ({progress}%)");
-                    progressCallback?.Invoke(new ProgressInfo(progress, "ファイル追加中..."));
-
                     // 定期的にUIスレッドに処理を戻す（20ファイルごと）
                     if (i % 20 == 0)
                     {
@@ -286,9 +276,9 @@ public class ArchiveCompressor
                     }
                 }
 
-                // LHAWriter.WriteLHAFileを使用してLHA形式で圧縮
-                progressCallback?.Invoke(new ProgressInfo(90, "圧縮処理中..."));
                 Logger.Log("LHA圧縮処理を開始します");
+                // 実際の圧縮開始時に 0% を明示
+                progressCallback?.Invoke(new ProgressInfo(0, "圧縮処理中..."));
                 var result = await Task.Run(() => LHAWriter.WriteLHAFile(outputPath, tempDirectory, "*", Amiga.FileFormats.LHA.CompressionMethod.LH5), cancellationToken);
 
                 if (result != LHAWriteResult.Success)
@@ -297,6 +287,7 @@ public class ArchiveCompressor
                 }
 
                 Logger.Log($"LHA形式の圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
+                progressCallback?.Invoke(new ProgressInfo(100, "完了"));
             }
             finally
             {
@@ -360,9 +351,6 @@ public class ArchiveCompressor
             {
                 var totalFiles = filesToCompress.Count;
                 Logger.Log($"LHA圧縮: 圧縮するファイル数: {totalFiles}");
-                progressCallback?.Invoke(new ProgressInfo(10, $"ファイルをコピー中 (0/{totalFiles})..."));
-                const int fileAddProgressMin = 10;
-                const int fileAddProgressMax = 80;
 
                 for (var i = 0; i < totalFiles; i++)
                 {
@@ -378,17 +366,10 @@ public class ArchiveCompressor
                     }
 
                     File.Copy(fullPath, tempFilePath, true);
-
-                    var progress = totalFiles > 0
-                        ? fileAddProgressMin + (int)Math.Round((double)(i + 1) * (fileAddProgressMax - fileAddProgressMin) / totalFiles)
-                        : fileAddProgressMin;
-
-                    Logger.Log($"LHA圧縮ファイル追加進捗: {i + 1}/{totalFiles} ({progress}%)");
-                    progressCallback?.Invoke(new ProgressInfo(progress, "ファイル追加中..."));
                 }
 
                 // LHAWriter.WriteLHAFileを使用してLHA形式で圧縮
-                progressCallback?.Invoke(new ProgressInfo(90, "圧縮処理中..."));
+                progressCallback?.Invoke(new ProgressInfo(0, "圧縮処理中..."));
                 Logger.Log("LHA圧縮処理を開始します");
                 var result = LHAWriter.WriteLHAFile(outputPath, tempDirectory, "*", Amiga.FileFormats.LHA.CompressionMethod.LH5);
 
@@ -398,6 +379,7 @@ public class ArchiveCompressor
                 }
 
                 Logger.Log($"LHA形式の圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
+                progressCallback?.Invoke(new ProgressInfo(100, "完了"));
             }
             finally
             {
