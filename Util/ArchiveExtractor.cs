@@ -425,16 +425,4 @@ public class ArchiveExtractor
             Logger.Log($"読み取り専用属性の削除処理でエラーが発生しました: {path}, {ex.Message}");
         }
     }
-
-    /// <summary>
-    /// キャンセル可能な進捗報告クラス
-    /// </summary>
-    private class CancellableProgress<T>(Action<T> handler, CancellationToken token) : IProgress<T>
-    {
-        public void Report(T value)
-        {
-            token.ThrowIfCancellationRequested();
-            handler(value);
-        }
-    }
 }

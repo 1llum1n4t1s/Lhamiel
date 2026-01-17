@@ -450,16 +450,4 @@ public class ArchiveCompressor
 
         return [];
     }
-
-    /// <summary>
-    /// キャンセル可能な進捗報告クラス
-    /// </summary>
-    private class CancellableProgress<T>(Action<T> handler, CancellationToken token) : IProgress<T>
-    {
-        public void Report(T value)
-        {
-            token.ThrowIfCancellationRequested();
-            handler(value);
-        }
-    }
 }
