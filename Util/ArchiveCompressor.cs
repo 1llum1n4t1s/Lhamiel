@@ -171,18 +171,11 @@ public class ArchiveCompressor
             else
             {
                 // ArchiveWriterを使用して圧縮（形式に応じてオプションを設定）
-                progressCallback?.Invoke(new ProgressInfo(5, "圧縮エンジンを初期化中..."));
                 using var writer = CreateArchiveWriter(format.format);
 
                 // ファイルを圧縮アーカイブに追加
                 var totalFiles = filesToCompress.Count;
                 Logger.Log($"圧縮するファイル数: {totalFiles}");
-                progressCallback?.Invoke(new ProgressInfo(10, $"ファイルを追加中 (0/{totalFiles})..."));
-                const int fileAddProgressMin = 10;
-                const int fileAddProgressMax = 80;
-
-                var lastReportedProgress = 10;
-                const int progressReportInterval = 1;
 
                 for (var i = 0; i < totalFiles; i++)
                 {
@@ -190,18 +183,6 @@ public class ArchiveCompressor
 
                     var (fullPath, relativePath) = filesToCompress[i];
                     writer.Add(fullPath, relativePath);
-
-                    var progress = totalFiles > 0
-                        ? fileAddProgressMin + (int)Math.Round((double)(i + 1) * (fileAddProgressMax - fileAddProgressMin) / totalFiles)
-                        : fileAddProgressMin;
-
-                    // 1%以上進んだ場合のみログとコールバックを実行
-                    if (progress - lastReportedProgress >= progressReportInterval || i == totalFiles - 1)
-                    {
-                        Logger.Log($"ファイル追加進捗: {i + 1}/{totalFiles} ({progress}%) - {relativePath}");
-                        progressCallback?.Invoke(new ProgressInfo(progress, $"ファイル追加中 ({i + 1}/{totalFiles}): {relativePath}", fullPath));
-                        lastReportedProgress = progress;
-                    }
 
                     // 定期的にUIスレッドに処理を戻す（100ファイルごと）
                     if (i % 100 == 0)
@@ -568,12 +549,6 @@ public class ArchiveCompressor
             var totalFiles = files.Count;
 
             Logger.Log($"圧縮対象のファイル総数: {totalFiles}個");
-            progressCallback?.Invoke(new ProgressInfo(5, $"圧縮準備完了: {totalFiles}個のファイル"));
-
-            // 進捗の範囲設定 (追加処理で 10% -> 90% まで進める)
-            const int progressMin = 10;
-            const int progressMax = 90;
-            var lastReportedProgress = 0;
 
             for (var i = 0; i < totalFiles; i++)
             {
@@ -581,17 +556,6 @@ public class ArchiveCompressor
                 var relativePath = Path.GetRelativePath(directoryPath, file);
 
                 writer.Add(file, relativePath);
-
-                // 進捗計算と報告 (負荷軽減のため1%刻みまたは最後のファイルで報告)
-                var currentPercent = totalFiles > 0
-                    ? progressMin + (int)((double)(i + 1) / totalFiles * (progressMax - progressMin))
-                    : progressMin;
-
-                if (currentPercent > lastReportedProgress || i == totalFiles - 1)
-                {
-                    progressCallback?.Invoke(new ProgressInfo(currentPercent, $"ファイル追加中 ({i + 1}/{totalFiles}): {relativePath}", file));
-                    lastReportedProgress = currentPercent;
-                }
             }
 
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
