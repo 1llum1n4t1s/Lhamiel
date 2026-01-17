@@ -25,8 +25,8 @@ Lhamielの現在の実装では**基本的な非同期処理は実装されて�
 |---------|---------|------|
 | `ArchiveProcessor.cs` | `ExtractArchiveAsync` | 単一アーカイブの展開（非同期） |
 | `ArchiveProcessor.cs` | `ExtractArchivesAsync` | 複数アーカイブの展開（順序実行） |
-| `ArchiveProcessor.cs` | `CompressFolderAsync` | フォルダ圧縮（非同期） |
-| `ArchiveProcessor.cs` | `CompressFoldersAsync` | 複数フォルダ圧縮（順序実行） |
+| `ArchiveProcessor.cs` | `CompressItemAsync` | フォルダ圧縮（非同期） |
+| `ArchiveProcessor.cs` | `CompressItemsAsync` | 複数フォルダ圧縮（順序実行） |
 | `ArchiveExtractor.cs` | `ExtractArchiveAsync` | アーカイブ展開実装 |
 | `ArchiveCompressor.cs` | `CompressAsync` | 圧縮実装 |
 | `PartialExtractionHandler.cs` | `ExtractWithPartialFailureHandling` | 部分展開（ファイル単位） |

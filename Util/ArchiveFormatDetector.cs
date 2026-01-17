@@ -107,7 +107,7 @@ public static class ArchiveFormatDetector
     /// </summary>
     private static bool DetectZipSignature(byte[] scanBytes, long startOffset)
     {
-        for (int i = 0; i < scanBytes.Length - 3; i++)
+        for (int i = 0; i <= scanBytes.Length - 4; i++)
         {
             if (scanBytes[i] == ArchiveConstants.PkHeaderFirstByte &&
                 scanBytes[i + 1] == ArchiveConstants.PkHeaderSecondByte &&
@@ -161,7 +161,7 @@ public static class ArchiveFormatDetector
     /// </summary>
     private static bool MatchSignature(byte[] scanBytes, byte[] signature)
     {
-        for (int i = 0; i < scanBytes.Length - signature.Length; i++)
+        for (int i = 0; i <= scanBytes.Length - signature.Length; i++)
         {
             bool match = true;
             for (int j = 0; j < signature.Length; j++)

@@ -34,6 +34,10 @@ public partial class ProgressWindow : Window
         InitializeComponent();
         Title = $"{operationType} - Lhamiel";
         _cancellationTokenSource = new CancellationTokenSource();
+
+        // 最初の表示時だけ最前面に来るようにし、描画されたら解除する
+        Topmost = true;
+        ContentRendered += (s, e) => Topmost = false;
     }
 
     /// <summary>

@@ -32,7 +32,7 @@ public static class ArchiveProcessor
             if (!File.Exists(filePath))
             {
                 Logger.Log($"指定されたファイルが存在しません: {filePath}");
-                MessageBox.Show($"指定されたファイルが見つかりません。\n{filePath}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageService.ShowError($"指定されたファイルが見つかりません。\n{filePath}");
                 return false;
             }
 
@@ -43,7 +43,7 @@ public static class ArchiveProcessor
             if (!supportedExtensions.Contains(extension))
             {
                 Logger.Log($"サポートされていないファイル形式です: {extension}");
-                MessageBox.Show($"サポートされていないファイル形式です。\n{extension}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageService.ShowError($"サポートされていないファイル形式です。\n{extension}");
                 return false;
             }
 
@@ -54,7 +54,7 @@ public static class ArchiveProcessor
                 if (!ArchiveFormatDetector.IsSelfExtractingArchive(filePath))
                 {
                     Logger.Log($"実行可能ファイルですが、自己展開圧縮ファイルではありません: {filePath}", LogLevel.Warning);
-                    MessageBox.Show($"実行可能ファイルですが、自己展開圧縮ファイルではありません。\n{filePath}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageService.ShowError($"実行可能ファイルですが、自己展開圧縮ファイルではありません。\n{filePath}");
                     return false;
                 }
                 Logger.Log($"自己展開圧縮ファイルを確認: {filePath}");
@@ -149,7 +149,7 @@ public static class ArchiveProcessor
             
             // エラーダイアログを表示
             var errorMessage = $"{errorInfo.Message}\n\n詳細: {errorInfo.Details}\n\n推奨対処法: {errorInfo.RecommendedAction}";
-            MessageBox.Show(errorMessage, "展開エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowError(errorMessage, "展開エラー");
             
             return false;
         }
@@ -283,35 +283,36 @@ public static class ArchiveProcessor
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数ファイル展開処理でエラーが発生", ex);
-            MessageBox.Show($"展開中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowError($"展開中にエラーが発生しました。\n{ex.Message}");
             return false;
         }
     }
 
     /// <summary>
-    /// フォルダの圧縮処理を実行
+    /// ファイルまたはフォルダの圧縮処理を実行
     /// </summary>
-    /// <param name="folderPath">圧縮するフォルダのパス</param>
+    /// <param name="sourcePath">圧縮する対象（ファイルまたはフォルダ）のパス</param>
     /// <param name="outputDir">出力ディレクトリ</param>
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
     /// <param name="format">圧縮形式</param>
     /// <param name="progressWindow">進行状況ウィンドウ（nullの場合はUI更新を行わない）</param>
     /// <param name="progressReporter">外部からの進捗報告用（並列処理時などに使用）</param>
+    /// <param name="cancellationToken">キャンセルトークン</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressFolderAsync(string folderPath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default)
+    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default)
     {
-        Logger.Log($"ArchiveProcessor.CompressFolderAsync開始: folderPath={folderPath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
+        Logger.Log($"ArchiveProcessor.CompressItemAsync開始: sourcePath={sourcePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
 
         // ProgressWindow からキャンセルトークンを取得（nullの場合は渡されたトークンを使用）
         var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
 
         try
         {
-            // フォルダの存在確認
-            if (!Directory.Exists(folderPath))
+            // 対象の存在確認
+            if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
             {
-                Logger.Log($"指定されたフォルダが存在しません: {folderPath}");
-                MessageBox.Show($"指定されたフォルダが見つかりません。\n{folderPath}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                Logger.Log($"指定された対象が存在しません: {sourcePath}");
+                MessageService.ShowError($"指定されたファイルまたはフォルダが見つかりません。\n{sourcePath}");
                 return false;
             }
 
@@ -320,14 +321,14 @@ public static class ArchiveProcessor
             if (!supportedFormats.Contains(format.ToLowerInvariant()))
             {
                 Logger.Log($"サポートされていない圧縮形式です: {format}");
-                MessageBox.Show($"サポートされていない圧縮形式です。\n{format}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageService.ShowError($"サポートされていない圧縮形式です。\n{format}");
                 return false;
             }
 
-            Logger.Log($"圧縮処理を開始: {folderPath}");
+            Logger.Log($"圧縮処理を開始: {sourcePath}");
 
             // 出力ファイル名の取得
-            var outputPath = ArchiveCompressor.GetCompressedFileName(folderPath, format, outputDir, outputToSameDirectory);
+            var outputPath = ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
 
             // 出力先が既に存在する場合は上書き確認
             var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
@@ -337,7 +338,7 @@ public static class ArchiveProcessor
 
                 // UIスレッドで上書き確認を実行
                 var canOverwrite = await (progressWindow?.Dispatcher ?? Application.Current.Dispatcher).InvokeAsync(() =>
-                    FileOverwriteDialog.CanOverwriteFile(folderPath, outputPath, progressWindow));
+                    FileOverwriteDialog.CanOverwriteFile(sourcePath, outputPath, progressWindow));
 
                 Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
 
@@ -368,74 +369,77 @@ public static class ArchiveProcessor
             }
 
             // 圧縮処理を実行
-            Logger.Log($"ArchiveCompressor.CompressDirectoryを呼び出し: folderPath={folderPath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
+            Logger.Log($"ArchiveCompressor.CompressAsyncを呼び出し: sourcePath={sourcePath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
 
-            await Task.Run(() =>
+            var progress = new Progress<ProgressInfo>(info =>
             {
-                var progressCallback = new Action<ProgressInfo>(info =>
+                // 1. レガシーなProgressWindow更新 (単体実行時用)
+                // progressReporter がある場合は、そちらで全体進捗を管理しているため、ここでは更新しない
+                if (progressReporter == null)
                 {
-                    // 1. レガシーなProgressWindow更新 (単体実行時用)
                     progressWindow?.UpdateProgress(info.Percentage);
+                }
 
-                    // 2. 外部から渡された進捗レポーターへの報告 (並列実行時用)
-                    progressReporter?.Report(info);
-                });
+                // 2. 外部から渡された進捗レポーターへの報告 (並列実行時用)
+                progressReporter?.Report(info);
+            });
 
-                ArchiveCompressor.CompressDirectory(folderPath, outputPath, progressCallback, actualCancellationToken);
-            }, actualCancellationToken);
+            await ArchiveCompressor.CompressAsync(sourcePath, outputPath, format, progress, actualCancellationToken);
 
-            Logger.Log($"圧縮処理が完了: {folderPath} -> {outputPath}");
+            Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
 
-            await Task.Delay(500);
-            progressWindow?.Close();
+            if (progressReporter == null)
+            {
+                await Task.Delay(500);
+                progressWindow?.Close();
+            }
 
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Logger.LogException($"圧縮処理でエラーが発生: {folderPath}", ex);
-            MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            Logger.LogException($"圧縮処理でエラーが発生: {sourcePath}", ex);
+            MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
             return false;
         }
     }
 
     /// <summary>
-    /// 複数のフォルダの圧縮処理を実行（並列処理対応）
+    /// 複数のファイルまたはフォルダの圧縮処理を実行（並列処理対応）
     /// </summary>
-    /// <param name="folderPaths">圧縮するフォルダのパスの配列</param>
+    /// <param name="sourcePaths">圧縮する対象（ファイルまたはフォルダ）のパスの配列</param>
     /// <param name="outputDir">出力ディレクトリ</param>
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
     /// <param name="format">圧縮形式</param>
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressFoldersAsync(string[] folderPaths, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
+    public static async Task<bool> CompressItemsAsync(string[] sourcePaths, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
     {
         try
         {
-            var totalCount = folderPaths.Length;
+            var totalCount = sourcePaths.Length;
             var successCount = 0;
-            var failedFolders = new List<string>();
+            var failedPaths = new List<string>();
             var lockObject = new object();
 
             // ProgressWindow からキャンセルトークンを取得（nullの場合は渡されたトークンを使用）
             var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
 
             // ★最適化: 並列処理時のCPUコア数を制限（圧縮処理自体がマルチスレッドなため）
-            // 7-Zip等は内部で全コアを使うため、タスク並列数を抑えめにする
             var maxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount / 2, 1, 4);
             var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
 
-            Logger.Log($"複数フォルダ圧縮開始: {totalCount}個のフォルダ、最大並列度={maxDegreeOfParallelism}、形式={format}");
+            Logger.Log($"複数対象圧縮開始: {totalCount}個の対象、最大並列度={maxDegreeOfParallelism}、形式={format}");
 
-            var tasks = folderPaths.Select(async (folderPath, index) =>
+            var tasks = sourcePaths.Select(async (sourcePath, index) =>
             {
                 await semaphore.WaitAsync(actualCancellationToken);
                 try
                 {
                     actualCancellationToken.ThrowIfCancellationRequested();
 
-                    // ★修正ここから: 単一フォルダの場合は詳細な進捗を表示するためのReporterを作成
+                    // 単一対象の場合は詳細な進捗を表示するためのReporterを作成
                     IProgress<ProgressInfo>? innerProgress = null;
                     if (totalCount == 1)
                     {
@@ -449,7 +453,7 @@ public static class ArchiveProcessor
                     }
                     else
                     {
-                        // 複数フォルダ圧縮時は、個別進捗を全体進捗にマッピングして表示
+                        // 複数対象圧縮時は、個別進捗を全体進捗にマッピングして表示
                         innerProgress = new Progress<ProgressInfo>(info =>
                         {
                             progressWindow?.Dispatcher.Invoke(() =>
@@ -460,9 +464,8 @@ public static class ArchiveProcessor
                         });
                     }
 
-                    // progressWindowはnullのまま(二重更新防止)、innerProgressを渡す
-                    var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, null, innerProgress, actualCancellationToken);
-                    // ★修正ここまで
+                    // 共通化された圧縮処理を実行
+                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken);
 
                     lock (lockObject)
                     {
@@ -472,10 +475,10 @@ public static class ArchiveProcessor
                         }
                         else
                         {
-                            failedFolders.Add(Path.GetFileName(folderPath));
+                            failedPaths.Add(Path.GetFileName(sourcePath));
                         }
 
-                        // 各フォルダ完了時に確実に進捗を更新
+                        // 各対象完了時に確実に進捗を更新
                         var completedProgress = (int)((double)(index + 1) / totalCount * 100);
                         progressWindow?.Dispatcher.Invoke(() =>
                             progressWindow.UpdateProgress(completedProgress)
@@ -484,15 +487,15 @@ public static class ArchiveProcessor
                 }
                 catch (OperationCanceledException)
                 {
-                    Logger.Log($"フォルダ圧縮がキャンセルされました: {folderPath}");
+                    Logger.Log($"圧縮がキャンセルされました: {sourcePath}");
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogException($"フォルダ圧縮でエラーが発生: {folderPath}", ex);
+                    Logger.LogException($"圧縮でエラーが発生: {sourcePath}", ex);
                     lock (lockObject)
                     {
-                        failedFolders.Add(Path.GetFileName(folderPath));
+                        failedPaths.Add(Path.GetFileName(sourcePath));
                     }
                 }
                 finally
@@ -507,21 +510,21 @@ public static class ArchiveProcessor
             }
             catch (OperationCanceledException)
             {
-                Logger.Log("複数フォルダ圧縮処理が全体でキャンセルされました");
+                Logger.Log("複数対象圧縮処理が全体でキャンセルされました");
                 throw;
             }
 
             // 完了メッセージを表示
             if (successCount == totalCount)
             {
-                Logger.Log($"複数フォルダ圧縮完了: {successCount}/{totalCount}個の圧縮に成功");
+                Logger.Log($"複数対象圧縮完了: {successCount}/{totalCount}個の圧縮に成功");
                 await Task.Delay(500);
                 progressWindow?.Close();
                 return true;
             }
             else
             {
-                Logger.Log($"複数フォルダ圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
+                Logger.Log($"複数対象圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
                 await Task.Delay(500);
                 progressWindow?.Close();
                 return successCount > 0;
@@ -529,8 +532,8 @@ public static class ArchiveProcessor
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Logger.LogException("複数フォルダ圧縮処理でエラーが発生", ex);
-            MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            Logger.LogException("複数対象圧縮処理でエラーが発生", ex);
+            MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
             return false;
         }
     }

@@ -238,7 +238,7 @@ ProjectD/ (展開先フォルダ)
 
 ### 並列圧縮の最適化
 
-**場所**: `Util/ArchiveProcessor.cs` の `CompressFoldersAsync()`
+**場所**: `Util/ArchiveProcessor.cs` の `CompressItemsAsync()`
 
 **最適化内容**:
 - 並列度を`Environment.ProcessorCount / 2`に制限（最小1、最大4）

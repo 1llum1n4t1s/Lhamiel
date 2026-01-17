@@ -41,7 +41,7 @@ public partial class App
         catch (Exception ex)
         {
             // 優先度の設定に失敗しても続行（権限の問題など）
-            System.Diagnostics.Debug.WriteLine($"Failed to set process priority: {ex.Message}");
+            Logger.Log($"Failed to set process priority: {ex.Message}", LogLevel.Warning);
         }
 
         // Log4netを早期に初期化
@@ -303,7 +303,7 @@ public partial class App
             if (!File.Exists(path) && !Directory.Exists(path))
             {
                 Logger.Log($"指定されたパスが存在しません: {path}");
-                MessageBox.Show($"指定されたファイルまたはフォルダが見つかりません。\n{path}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageService.ShowError($"指定されたファイルまたはフォルダが見つかりません。\n{path}");
                 if (shouldShutdown)
                 {
                     Shutdown();
@@ -351,7 +351,7 @@ public partial class App
         catch (Exception ex)
         {
             Logger.LogException("コマンドライン処理でエラーが発生", ex);
-            MessageBox.Show($"処理中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowError($"処理中にエラーが発生しました。\n{ex.Message}");
             if (shouldShutdown)
             {
                 Shutdown();
@@ -405,7 +405,7 @@ public partial class App
         catch (Exception ex)
         {
             Logger.LogException("ファイル展開処理でエラーが発生", ex);
-            MessageBox.Show($"展開中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowError($"展開中にエラーが発生しました。\n{ex.Message}");
             if (shouldShutdown)
             {
                 Shutdown();
@@ -469,7 +469,7 @@ public partial class App
         catch (OperationCanceledException)
         {
             Logger.Log("ファイル圧縮処理がキャンセルされました");
-            MessageBox.Show("圧縮処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageService.ShowInfo("圧縮処理をキャンセルしました。", "キャンセル");
             if (shouldShutdown)
             {
                 Shutdown();
@@ -478,7 +478,7 @@ public partial class App
         catch (Exception ex)
         {
             Logger.LogException("ファイル圧縮処理でエラーが発生", ex);
-            MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
             if (shouldShutdown)
             {
                 Shutdown();
@@ -520,7 +520,7 @@ public partial class App
             progressWindow.Show();
 
             // 共通化された圧縮処理を実行
-            var success = await ArchiveProcessor.CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
+            var success = await ArchiveProcessor.CompressItemAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
 
             if (success)
             {
@@ -546,7 +546,7 @@ public partial class App
         catch (Exception ex)
         {
             Logger.LogException("フォルダ圧縮処理でエラーが発生", ex);
-            MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
             if (shouldShutdown)
             {
                 Shutdown();
@@ -605,8 +605,7 @@ public partial class App
         Logger.LogException("UIスレッドで未処理の例外が発生しました", e.Exception);
 
         // ユーザーにエラーを通知
-        MessageBox.Show($"予期しないエラーが発生しました。\n\n詳細: {e.Exception.Message}", 
-                        "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        MessageService.ShowError($"予期しないエラーが発生しました。\n\n詳細: {e.Exception.Message}");
 
         // これを true にすると、アプリがクラッシュして消えるのを防げます
         e.Handled = true;

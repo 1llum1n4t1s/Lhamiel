@@ -228,7 +228,7 @@ public class ParallelProcessingTests
     /// 複数フォルダの並列圧縮が正しく実行されることを確認
     /// </summary>
     [Fact]
-    public async Task CompressFoldersAsync_MultipleFolders_AllCompressedSuccessfully()
+    public async Task CompressItemsAsync_MultipleFolders_AllCompressedSuccessfully()
     {
         var testDir = CreateTemporaryTestDirectory();
         try
@@ -242,7 +242,7 @@ public class ParallelProcessingTests
             Directory.CreateDirectory(outputDir);
 
             // 複数フォルダ圧縮を実行
-            var result = await ArchiveProcessor.CompressFoldersAsync([folder1, folder2, folder3],
+            var result = await ArchiveProcessor.CompressItemsAsync([folder1, folder2, folder3],
                 outputDir,
                 outputToSameDirectory: false,
                 format: "zip",
@@ -277,7 +277,7 @@ public class ParallelProcessingTests
     /// 複数フォルダの並列圧縮が並列実行されていることを確認
     /// </summary>
     [Fact]
-    public async Task CompressFoldersAsync_MultipleFolders_ParallelExecution()
+    public async Task CompressItemsAsync_MultipleFolders_ParallelExecution()
     {
         var testDir = CreateTemporaryTestDirectory();
         try
@@ -305,7 +305,7 @@ public class ParallelProcessingTests
             // 並列実行のタイミングを測定
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            var result = await ArchiveProcessor.CompressFoldersAsync(
+            var result = await ArchiveProcessor.CompressItemsAsync(
                 folders.ToArray(),
                 outputDir,
                 outputToSameDirectory: false,
@@ -338,7 +338,7 @@ public class ParallelProcessingTests
     /// キャンセルトークンが複数フォルダ圧縮で正しく受け取られることを確認
     /// </summary>
     [Fact]
-    public async Task CompressFoldersAsync_CancellationToken_IsRespected()
+    public async Task CompressItemsAsync_CancellationToken_IsRespected()
     {
         var testDir = CreateTemporaryTestDirectory();
         try
@@ -351,7 +351,7 @@ public class ParallelProcessingTests
             Directory.CreateDirectory(outputDir);
 
             // キャンセルなしで実行
-            var result = await ArchiveProcessor.CompressFoldersAsync([folder1, folder2],
+            var result = await ArchiveProcessor.CompressItemsAsync([folder1, folder2],
                 outputDir,
                 outputToSameDirectory: false,
                 format: "zip",

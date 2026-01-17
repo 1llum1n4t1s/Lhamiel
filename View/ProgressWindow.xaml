@@ -6,8 +6,7 @@
         xmlns:local="clr-namespace:Lhamiel.View"
         mc:Ignorable="d"
         Title="処理中..." Height="200" Width="400"
-        WindowStartupLocation="CenterScreen"
-        Topmost="True">
+        WindowStartupLocation="CenterScreen">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

@@ -13,10 +13,13 @@ public static class FileOverwriteDialog
     /// </summary>
     /// <param name="sourceFilePath">コピー元ファイルパス（存在確認用）</param>
     /// <param name="destinationPath">コピー先パス（存在確認用）</param>
-    /// <param name="parentWindow">親ウィンドウ（nullの場合はデスクトップ）</param>
+    /// <param name="parentWindow">親ウィンドウ（nullの場合は自動検索）</param>
     /// <returns>ユーザーの選択結果</returns>
     public static OverwriteResult ShowOverwriteDialog(string sourceFilePath, string destinationPath, Window? parentWindow = null)
     {
+        // 親ウィンドウが未指定の場合は、現在のアクティブなウィンドウまたは最前面のウィンドウを探す
+        parentWindow ??= GetBestParentWindow();
+
         Logger.Log($"ShowOverwriteDialog開始: sourceFilePath={sourceFilePath}, destinationPath={destinationPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
 
         try
@@ -43,7 +46,7 @@ public static class FileOverwriteDialog
 
             Logger.Log($"ShowOverwriteDialog: MessageBox表示開始");
             
-            // 親ウィンドウがnullの場合の対策
+            // 親ウィンドウを指定してダイアログを表示（親がTopmostならダイアログもTopmostになる）
             var result = parentWindow != null
                 ? MessageBox.Show(parentWindow, message, title, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No)
                 : MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
@@ -69,7 +72,7 @@ public static class FileOverwriteDialog
     /// </summary>
     /// <param name="sourceFilePath">コピー元パス</param>
     /// <param name="destinationPath">コピー先パス</param>
-    /// <param name="parentWindow">親ウィンドウ（nullの場合はデスクトップ）</param>
+    /// <param name="parentWindow">親ウィンドウ（nullの場合は自動検索）</param>
     /// <returns>上書き可能な場合はtrue、そうでなければfalse</returns>
     public static bool CanOverwriteFile(string sourceFilePath, string destinationPath, Window? parentWindow = null)
     {
@@ -79,6 +82,28 @@ public static class FileOverwriteDialog
         var canOverwrite = result == OverwriteResult.Yes;
         Logger.Log($"CanOverwriteFile結果: result={result}, canOverwrite={canOverwrite}");
         return canOverwrite;
+    }
+
+    /// <summary>
+    /// ダイアログを表示するための最適な親ウィンドウを取得する
+    /// </summary>
+    private static Window? GetBestParentWindow()
+    {
+        if (Application.Current == null) return null;
+
+        return Application.Current.Dispatcher.Invoke(() =>
+        {
+            // 1. アクティブなウィンドウがあればそれを優先（ProgressWindowなど）
+            var activeWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w.IsVisible);
+            if (activeWindow != null) return activeWindow;
+
+            // 2. 最前面のウィンドウがあればそれを使用（ProgressWindowは通常Topmost）
+            var topmostWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.Topmost && w.IsVisible);
+            if (topmostWindow != null) return topmostWindow;
+
+            // 3. 最後にMainWindow
+            return Application.Current.MainWindow;
+        });
     }
 }
 

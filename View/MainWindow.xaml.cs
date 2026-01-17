@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Microsoft.Win32;
 using System.IO;
+using System.Collections.Generic;
 using Lhamiel.Util;
 using System.Windows.Media;
 
@@ -162,205 +163,6 @@ public partial class MainWindow
         catch (Exception ex)
         {
             Logger.LogException("チェックボックスの状態設定でエラーが発生", ex);
-        }
-    }
-
-    /// <summary>
-    /// 圧縮ボタンクリック時の処理（ファイル選択のみ）
-    /// </summary>
-    private async void CompressButton_Click(object sender, RoutedEventArgs e)
-    {
-        ProgressWindow? progressWindow = null;
-        try
-        {
-            var openFileDialog = new OpenFileDialog
-            {
-                Title = "圧縮するファイルを選択",
-                Multiselect = true
-            };
-
-            if (openFileDialog.ShowDialog() == true)
-            {
-                var files = openFileDialog.FileNames.Where(File.Exists).ToList();
-                if (files.Count == 0)
-                {
-                    MessageService.ShowWarning("選択されたファイルが見つかりません。");
-                    return;
-                }
-
-                var format = CompressionFormatComboBox.SelectedItem?.ToString() ?? "ZIP";
-                var outputDir = CompressionOutputPathTextBox.Text;
-                var outputToSameDirectory = CompressionOutputToSameDirectoryRadio.IsChecked ?? false;
-
-                progressWindow = new ProgressWindow("圧縮");
-                progressWindow.Show();
-
-                var cancellationToken = progressWindow.GetCancellationToken();
-
-                foreach (var filePath in files)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var outputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
-
-                    // 出力先が既に存在する場合は上書き確認
-                    var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
-                    if (targetExists)
-                    {
-                        var canOverwrite = FileOverwriteDialog.CanOverwriteFile(filePath, outputPath, this);
-                        if (!canOverwrite)
-                        {
-                            Logger.Log("ユーザーが圧縮処理をキャンセルしました");
-                            continue;
-                        }
-
-                        // 上書きが許可された場合は既存の対象を削除
-                        try
-                        {
-                            if (Directory.Exists(outputPath))
-                            {
-                                Directory.Delete(outputPath, true);
-                            }
-                            else
-                            {
-                                File.Delete(outputPath);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
-                            MessageService.ShowError($"出力先 '{Path.GetFileName(outputPath)}' が使用中か、削除権限がありません。");
-                            continue;
-                        }
-                    }
-
-                    var progress = new Progress<ProgressInfo>(info =>
-                    {
-                        progressWindow.UpdateProgress(info.Percentage);
-                    });
-
-                    await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationToken);
-                }
-
-                await Task.Delay(500);
-
-                // 圧縮後にフォルダを開く設定を確認
-                if (_settingsManager.Current.OpenCompressionOutputFolder)
-                {
-                    FolderOpener.OpenFolder(CompressionOutputPathTextBox.Text);
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.Log("圧縮処理がキャンセルされました");
-            if (progressWindow != null)
-            {
-                progressWindow.SetCompleted("キャンセルしました。");
-                await Task.Delay(500);
-            }
-            MessageService.ShowInfo("圧縮処理をキャンセルしました。", "キャンセル");
-        }
-        catch (Exception ex)
-        {
-            MessageService.ShowException("圧縮中にエラーが発生しました", ex);
-        }
-        finally
-        {
-            if (progressWindow?.IsVisible == true)
-            {
-                try
-                {
-                    // ProgressWindowのDispatcher内で保留中のアクションをフラッシュ
-                    progressWindow.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
-                }
-                catch
-                {
-                    // ウィンドウが既にクローズされている可能性
-                }
-
-                try
-                {
-                    progressWindow.Close();
-                }
-                catch
-                {
-                    // ウィンドウのクローズに失敗した場合は無視
-                }
-            }
-        }
-    }
-
-    /// <summary>
-    /// 展開ボタンクリック時の処理
-    /// </summary>
-    private async void ExtractButton_Click(object sender, RoutedEventArgs e)
-    {
-        ProgressWindow? progressWindow = null;
-        try
-        {
-            var openFileDialog = new OpenFileDialog
-            {
-                Title = "展開するアーカイブファイルを選択",
-                Filter = "アーカイブファイル|*.zip;*.7z;*.tar;*.gz;*.bz2;*.xz;*.rar;*.cab;*.arj;*.z|すべてのファイル|*.*",
-                Multiselect = true
-            };
-
-            if (openFileDialog.ShowDialog() == true)
-            {
-                var outputDir = ExtractionOutputPathTextBox.Text;
-                var outputToSameDirectory = ExtractionOutputToSameDirectoryRadio.IsChecked ?? false;
-
-                progressWindow = new ProgressWindow("展開");
-                progressWindow.Show();
-
-                // 共通化された展開処理を実行
-                await ArchiveProcessor.ExtractArchivesAsync(openFileDialog.FileNames, outputDir, outputToSameDirectory, progressWindow, progressWindow.GetCancellationToken());
-
-                // 展開後にフォルダを開く設定を確認
-                if (_settingsManager.Current.OpenExtractionOutputFolder)
-                {
-                    OpenExtractedFolders(openFileDialog.FileNames, outputDir, outputToSameDirectory);
-                }
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.Log("展開処理がキャンセルされました");
-            if (progressWindow != null)
-            {
-                progressWindow.SetCompleted("キャンセルしました。");
-                await Task.Delay(500);
-            }
-            MessageService.ShowInfo("展開処理をキャンセルしました。", "キャンセル");
-        }
-        catch (Exception ex)
-        {
-            MessageService.ShowException("展開中にエラーが発生しました", ex);
-        }
-        finally
-        {
-            if (progressWindow?.IsVisible == true)
-            {
-                try
-                {
-                    // ProgressWindowのDispatcher内で保留中のアクションをフラッシュ
-                    progressWindow.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
-                }
-                catch
-                {
-                    // ウィンドウが既にクローズされている可能性
-                }
-
-                try
-                {
-                    progressWindow.Close();
-                }
-                catch
-                {
-                    // ウィンドウのクローズに失敗した場合は無視
-                }
-            }
         }
     }
 
@@ -773,30 +575,20 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// ドロップされた複数のファイル/フォルダを圧縮用フォルダに整理する
+    /// ドロップされた複数のファイル/フォルダを圧縮対象リストに整理する
     /// </summary>
     /// <param name="paths">ドロップされたファイル/フォルダのパス配列</param>
-    /// <returns>圧縮対象フォルダの一意なリスト</returns>
-    private List<string> ExtractCompressionTargetFolders(string[] paths)
+    /// <returns>圧縮対象の一意なリスト</returns>
+    private List<string> ExtractCompressionTargets(string[] paths)
     {
-        var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var targets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var path in paths)
         {
-            if (Directory.Exists(path))
+            if (Directory.Exists(path) || File.Exists(path))
             {
-                Logger.Log($"ディレクトリとして検出: {path}");
-                folders.Add(path);
-            }
-            else if (File.Exists(path))
-            {
-                // ファイルの場合は親ディレクトリを圧縮対象とする
-                var dir = Path.GetDirectoryName(path);
-                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
-                {
-                    Logger.Log($"ファイルとして検出: {path}, 親ディレクトリ: {dir}");
-                    folders.Add(dir);
-                }
+                Logger.Log($"圧縮対象として検出: {path}");
+                targets.Add(path);
             }
             else
             {
@@ -804,7 +596,7 @@ public partial class MainWindow
             }
         }
 
-        return folders.ToList();
+        return [.. targets];
     }
 
     /// <summary>
@@ -818,17 +610,17 @@ public partial class MainWindow
         {
             Logger.Log($"ProcessDroppedFilesForCompression開始: ドロップされたパス数 = {paths.Length}");
 
-            // フォルダ整理ロジックを独立したメソッドに分離
-            var folders = ExtractCompressionTargetFolders(paths);
+            // 修正: ファイルを親フォルダにまとめず、個別に圧縮対象とする
+            var targets = ExtractCompressionTargets(paths);
             
-            if (folders.Count == 0)
+            if (targets.Count == 0)
             {
-                Logger.Log("圧縮対象のフォルダが見つかりません");
-                MessageService.ShowWarning("圧縮対象のフォルダが見つかりません。");
+                Logger.Log("圧縮対象が見つかりません");
+                MessageService.ShowWarning("圧縮対象が見つかりません。");
                 return;
             }
 
-            Logger.Log($"圧縮対象フォルダ数: {folders.Count}");
+            Logger.Log($"圧縮対象数: {targets.Count}");
 
             var format = CompressionFormatComboBox.SelectedItem?.ToString() ?? "ZIP";
             var outputDir = CompressionOutputPathTextBox.Text;
@@ -837,10 +629,9 @@ public partial class MainWindow
             progressWindow = new ProgressWindow("圧縮");
             progressWindow.Show();
 
-            // 複雑な並列処理ロジックを削除し、ArchiveProcessor.CompressFoldersAsync に委譲
-            // これにより、コードの重複を避け、進捗管理を一元化する
-            var success = await ArchiveProcessor.CompressFoldersAsync(
-                folders.ToArray(),
+            // 修正: CompressFoldersAsync から CompressItemsAsync に変更
+            var success = await ArchiveProcessor.CompressItemsAsync(
+                targets.ToArray(),
                 outputDir,
                 outputToSameDirectory,
                 format,

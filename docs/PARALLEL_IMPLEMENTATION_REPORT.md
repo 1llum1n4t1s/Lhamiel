@@ -65,12 +65,13 @@ await Task.WhenAll(tasks);
 
 ### 2. 複数フォルダ圧縮の並列化
 
-**ファイル**: `Util/ArchiveProcessor.cs` - `CompressFoldersAsync` メソッド
+**ファイル**: `Util/ArchiveProcessor.cs` - `CompressItemsAsync` メソッド
 
 **変更点**:
 - 複数ファイル展開と同じパターンで実装
 - `SemaphoreSlim` を使用した並列制御
 - スレッドセーフなエラーハンドリング
+- 旧 `CompressFoldersAsync` からリネーム
 
 **パフォーマンス期待値**:
 - 3フォルダ × 10秒: 30秒 → 10～12秒（**3倍高速化**）
@@ -125,13 +126,13 @@ for (int i = 0; i < filesToCompress.Count; i++)
 5. ✅ **ExtractArchivesAsync_PartialFailure_ReturnsPartialSuccess**
    - 一部ファイルが失敗した場合の処理
 
-6. ✅ **CompressFoldersAsync_MultipleFolders_AllCompressedSuccessfully**
+6. ✅ **CompressItemsAsync_MultipleFolders_AllCompressedSuccessfully**
    - 複数フォルダ圧縮が正しく実行されること
 
-7. ✅ **CompressFoldersAsync_MultipleFolders_ParallelExecution**
+7. ✅ **CompressItemsAsync_MultipleFolders_ParallelExecution**
    - 並列実行が実際に行われていることを確認
 
-8. ✅ **CompressFoldersAsync_CancellationToken_IsRespected**
+8. ✅ **CompressItemsAsync_CancellationToken_IsRespected**
    - キャンセルトークンが正しく機能すること
 
 ---
