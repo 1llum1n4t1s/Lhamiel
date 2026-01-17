@@ -357,7 +357,7 @@ public static class ArchiveProcessor
             // 作業名を設定（progressWindowがnullでない場合のみ）
             if (progressWindow != null)
             {
-                progressWindow.SetOperationName("圧縮処理中...");
+                progressWindow.SetOperationName("ファイル集計中...");
             }
 
             actualCancellationToken.ThrowIfCancellationRequested();
@@ -442,7 +442,7 @@ public static class ArchiveProcessor
                     if (totalCount == 1)
                     {
                         // 単一フォルダ圧縮時は、操作名を設定
-                        progressWindow?.SetOperationName("圧縮処理中...");
+                        progressWindow?.SetOperationName("ファイル集計中...");
 
                         innerProgress = new Progress<ProgressInfo>(info =>
                         {
@@ -457,7 +457,7 @@ public static class ArchiveProcessor
                         // 複数フォルダ圧縮時は、初回のみ操作名を設定
                         if (index == 0)
                         {
-                            progressWindow?.SetOperationName("圧縮処理中...");
+                            progressWindow?.SetOperationName("ファイル集計中...");
                         }
                     }
 
