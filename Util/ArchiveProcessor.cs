@@ -38,7 +38,7 @@ public static class ArchiveProcessor
 
             // ファイル拡張子の確認
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
-            var supportedExtensions = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".xz", ".rar", ".cab", ".arj", ".z", ".exe" };
+            var supportedExtensions = new[] { ".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tz", ".exe" };
             
             if (!supportedExtensions.Contains(extension))
             {
@@ -173,7 +173,7 @@ public static class ArchiveProcessor
             var failedFiles = new List<string>();
             var lockObject = new object();
 
-            // ★ 【最適化】 ディスクI/O負荷を考慮し、並列数をCPUコア数ではなく制限
+            // ディスクI/O負荷を考慮し、並列数をCPUコア数ではなく制限
             // HDDの場合は並列数が多いとシーク多発で逆に遅くなるため、保守的な値に設定
             // SSDを前提とする場合でも、アーカイブ展開のメモリ使用量を考慮して上限を設定
             var maxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount / 2, 2, 4);
@@ -188,7 +188,7 @@ public static class ArchiveProcessor
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // ★ 修正: null を渡すと ExtractArchiveAsync 内部で progressWindow を使ってしまうため、
+                    // null を渡すと ExtractArchiveAsync 内部で progressWindow を使ってしまうため、
                     // 「全体進捗にマッピングする Progress」を渡して、UI更新を行う。
                     IProgress<ProgressInfo> mappedProgress;
                     if (totalCount == 1)
@@ -229,7 +229,7 @@ public static class ArchiveProcessor
                         var currentCount = successCount + failedFiles.Count;
                         var progress = (int)((double)currentCount / totalCount * 100);
                         
-                        // ★ 【バグ修正】 UIスレッド上で更新を実行（クロススレッド操作違反を防ぐ）
+                        // UIスレッド上で更新を実行（クロススレッド操作違反を防ぐ）
                         progressWindow?.Dispatcher.Invoke(() =>
                             progressWindow.UpdateProgress(progress, $"展開完了 ({currentCount}/{totalCount}): {Path.GetFileName(filePath)}")
                         );
@@ -274,7 +274,6 @@ public static class ArchiveProcessor
             }
             else
             {
-                _ = failedFiles.Any() ? $"\n失敗: {string.Join(", ", failedFiles)}" : "";
                 Logger.Log($"複数ファイル展開完了: {successCount}成功, {totalCount - successCount}失敗");
                 await Task.Delay(500);
                 progressWindow?.Close();
@@ -522,7 +521,6 @@ public static class ArchiveProcessor
             }
             else
             {
-                _ = failedFolders.Any() ? $"\n失敗: {string.Join(", ", failedFolders)}" : "";
                 Logger.Log($"複数フォルダ圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
                 await Task.Delay(500);
                 progressWindow?.Close();

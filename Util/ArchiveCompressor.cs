@@ -210,11 +210,9 @@ public class ArchiveCompressor
         if (format == Format.SevenZip)
         {
             // 7z形式: Normal圧縮レベル + LZMA2 + スレッド数制御
-            // ★ 修正: Ultraは圧縮率向上に対して時間・メモリコストが大きいため、Normalに変更
-            // メモリ消費を抑えてアプリケーションのフリーズを回避しつつ、良好な圧縮率を維持
             var options = new CompressionOption
             {
-                CompressionLevel = CompressionLevel.Normal,
+                CompressionLevel = CompressionLevel.Ultra,
                 CompressionMethod = CompressionMethod.Lzma2,
                 ThreadCount = threadCount
             };
@@ -320,7 +318,7 @@ public class ArchiveCompressor
                 progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
             }, cancellationToken);
 
-            // ★ 修正: 同期的な Save でもキャンセル可能にするために、CancellableProgress を使用。
+            // 同期的な Save でもキャンセル可能にするために、CancellableProgress を使用。
             // Cube.FileSystem.SevenZip は Report 呼び出し時に例外がスローされると処理を中断する。
             
             cancellationToken.ThrowIfCancellationRequested();

@@ -23,6 +23,14 @@ public partial class App
 
     private readonly UpdateManager? _updateManager;
 
+    /// <summary>
+    /// IPC サーバーのキャンセル用トークンソース
+    /// </summary>
+    private CancellationTokenSource? _ipcCts;
+
+    /// <summary>
+    /// コンストラクタ
+    /// </summary>
     public App()
     {
         // プロセス全体の優先度を下げる（低スペックPCでのフリーズ防止、ハイスペックPCでも影響なし）
@@ -80,9 +88,21 @@ public partial class App
                 // 既に起動しているインスタンスがある場合
                 Logger.Log("アプリケーションは既に起動しています。既存のインスタンスをアクティブ化します。");
                 ActivateExistingInstance();
+
+                // コマンドライン引数があれば送信
+                if (e.Args.Length > 0)
+                {
+                    Logger.Log("コマンドライン引数を既存のインスタンスに送信します。");
+                    await IpcService.SendArgsToExistingInstanceAsync(e.Args);
+                }
+
                 Shutdown();
                 return;
             }
+
+            // 初回起動時は IPC サーバーを開始して後続インスタンスからの引数を待機
+            _ipcCts = new CancellationTokenSource();
+            _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token);
 
             // 更新チェックと適用を試行
             var updateApplied = await CheckAndApplyUpdatesAsync();
@@ -275,18 +295,22 @@ public partial class App
     /// </summary>
     /// <param name="path">処理するファイルまたはフォルダのパス</param>
     /// <param name="compressionFormat">圧縮形式（"default"の場合は展開、具体的な形式の場合は圧縮）</param>
-    private async void ProcessCommandLineFile(string path, string compressionFormat = "default")
+    /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
+    private async void ProcessCommandLineFile(string path, string compressionFormat = "default", bool shouldShutdown = true)
     {
         try
         {
-            Logger.Log($"コマンドラインから処理を開始: {path}, 圧縮形式: {compressionFormat}");
+            Logger.Log($"コマンドラインから処理を開始: {path}, 圧縮形式: {compressionFormat}, 終了フラグ: {shouldShutdown}");
 
             // パスが存在するかチェック
             if (!File.Exists(path) && !Directory.Exists(path))
             {
                 Logger.Log($"指定されたパスが存在しません: {path}");
                 MessageBox.Show($"指定されたファイルまたはフォルダが見つかりません。\n{path}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-                Shutdown();
+                if (shouldShutdown)
+                {
+                    Shutdown();
+                }
                 return;
             }
 
@@ -304,34 +328,37 @@ public partial class App
                     {
                         // 圧縮形式が指定されていない場合は展開処理を実行
                         Logger.Log($"アーカイブファイルを展開処理します: {path}");
-                        await ProcessFileExtraction(path, settings);
+                        await ProcessFileExtraction(path, settings, shouldShutdown);
                     }
                     else
                     {
                         // 圧縮形式が指定されている場合は、アーカイブファイルそのものを圧縮
                         Logger.Log($"アーカイブファイルを{compressionFormat}で圧縮処理します: {path}");
-                        await ProcessFileCompression(path, settings, compressionFormat);
+                        await ProcessFileCompression(path, settings, compressionFormat, shouldShutdown);
                     }
                 }
                 else
                 {
                     // 通常ファイルの場合は圧縮処理を実行
                     Logger.Log($"ファイルを圧縮処理します: {path}");
-                    await ProcessFileCompression(path, settings, compressionFormat);
+                    await ProcessFileCompression(path, settings, compressionFormat, shouldShutdown);
                 }
             }
             else if (Directory.Exists(path))
             {
                 // フォルダの場合は圧縮処理を実行
                 Logger.Log($"フォルダを圧縮処理します: {path}");
-                await ProcessFolderCompression(path, settings, compressionFormat);
+                await ProcessFolderCompression(path, settings, compressionFormat, shouldShutdown);
             }
         }
         catch (Exception ex)
         {
             Logger.LogException("コマンドライン処理でエラーが発生", ex);
             MessageBox.Show($"処理中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-            Shutdown();
+            if (shouldShutdown)
+            {
+                Shutdown();
+            }
         }
     }
 
@@ -340,7 +367,8 @@ public partial class App
     /// </summary>
     /// <param name="filePath">展開するファイルのパス</param>
     /// <param name="settings">アプリケーション設定</param>
-    private async Task ProcessFileExtraction(string filePath, Settings settings)
+    /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
+    private async Task ProcessFileExtraction(string filePath, Settings settings, bool shouldShutdown = true)
     {
         try
         {
@@ -371,14 +399,20 @@ public partial class App
                 Logger.Log("ファイル展開処理が失敗しました");
             }
 
-            // アプリケーションを終了
-            Shutdown();
+            // 必要に応じてアプリケーションを終了
+            if (shouldShutdown)
+            {
+                Shutdown();
+            }
         }
         catch (Exception ex)
         {
             Logger.LogException("ファイル展開処理でエラーが発生", ex);
             MessageBox.Show($"展開中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-            Shutdown();
+            if (shouldShutdown)
+            {
+                Shutdown();
+            }
         }
     }
 
@@ -388,7 +422,8 @@ public partial class App
     /// <param name="filePath">圧縮するファイルのパス</param>
     /// <param name="settings">アプリケーション設定</param>
     /// <param name="compressionFormat">圧縮形式（"default"の場合は設定から取得）</param>
-    private async Task ProcessFileCompression(string filePath, Settings settings, string compressionFormat = "default")
+    /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
+    private async Task ProcessFileCompression(string filePath, Settings settings, string compressionFormat = "default", bool shouldShutdown = true)
     {
         try
         {
@@ -428,20 +463,29 @@ public partial class App
                 FolderOpener.OpenFolder(outputDir);
             }
 
-            // アプリケーションを終了
-            Shutdown();
+            // 必要に応じてアプリケーションを終了
+            if (shouldShutdown)
+            {
+                Shutdown();
+            }
         }
         catch (OperationCanceledException)
         {
             Logger.Log("ファイル圧縮処理がキャンセルされました");
             MessageBox.Show("圧縮処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
-            Shutdown();
+            if (shouldShutdown)
+            {
+                Shutdown();
+            }
         }
         catch (Exception ex)
         {
             Logger.LogException("ファイル圧縮処理でエラーが発生", ex);
             MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-            Shutdown();
+            if (shouldShutdown)
+            {
+                Shutdown();
+            }
         }
     }
 
@@ -463,7 +507,8 @@ public partial class App
     /// <param name="folderPath">圧縮するフォルダのパス</param>
     /// <param name="settings">アプリケーション設定</param>
     /// <param name="compressionFormat">圧縮形式（"default"の場合は設定から取得）</param>
-    private async Task ProcessFolderCompression(string folderPath, Settings settings, string compressionFormat = "default")
+    /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
+    private async Task ProcessFolderCompression(string folderPath, Settings settings, string compressionFormat = "default", bool shouldShutdown = true)
     {
         try
         {
@@ -495,15 +540,61 @@ public partial class App
                 Logger.Log("フォルダ圧縮処理が失敗しました");
             }
 
-            // アプリケーションを終了
-            Shutdown();
+            // 必要に応じてアプリケーションを終了
+            if (shouldShutdown)
+            {
+                Shutdown();
+            }
         }
         catch (Exception ex)
         {
             Logger.LogException("フォルダ圧縮処理でエラーが発生", ex);
             MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
-            Shutdown();
+            if (shouldShutdown)
+            {
+                Shutdown();
+            }
         }
+    }
+
+    /// <summary>
+    /// IPC 経由で引数を受信したときの処理
+    /// </summary>
+    /// <param name="args">受信した引数</param>
+    private void OnArgsReceived(string[] args)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            Logger.Log("IPC経由でコマンドライン引数を受信しました。");
+            
+            if (args.Length > 0)
+            {
+                // 引数から圧縮形式とファイルパスを抽出
+                var compressionFormat = "default";
+                var filePath = args[0];
+
+                if (args.Length >= 3 && args[0] == "--format")
+                {
+                    compressionFormat = args[1];
+                    filePath = args[2];
+                }
+
+                // メインウィンドウを前面に出す
+                if (MainWindow != null)
+                {
+                    if (MainWindow.WindowState == WindowState.Minimized)
+                    {
+                        MainWindow.WindowState = WindowState.Normal;
+                    }
+                    MainWindow.Activate();
+                    MainWindow.Focus();
+                }
+
+                // 受信した引数で処理を実行
+                // IPC 経由の場合は処理終了後にアプリを終了させないようにする
+                ProcessCommandLineFile(filePath, compressionFormat, false);
+            }
+        });
     }
 
     /// <summary>
@@ -520,7 +611,7 @@ public partial class App
         MessageBox.Show($"予期しないエラーが発生しました。\n\n詳細: {e.Exception.Message}", 
                         "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
 
-        // ★重要: これを true にすると、アプリがクラッシュして消えるのを防げます
+        // これを true にすると、アプリがクラッシュして消えるのを防げます
         e.Handled = true;
     }
 
@@ -558,6 +649,10 @@ public partial class App
     protected override void OnExit(ExitEventArgs e)
     {
         Logger.Log($"アプリケーション終了: 終了コード = {e.ApplicationExitCode}");
+
+        // IPC サーバーを停止
+        _ipcCts?.Cancel();
+        _ipcCts?.Dispose();
 
         // Mutex をリリース
         _instanceMutex?.Dispose();

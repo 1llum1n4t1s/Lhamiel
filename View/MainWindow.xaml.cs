@@ -243,7 +243,6 @@ public partial class MainWindow
                 }
 
                 await Task.Delay(500);
-                progressWindow.Close();
 
                 // 圧縮後にフォルダを開く設定を確認
                 if (_settingsManager.Current.OpenCompressionOutputFolder)
@@ -259,13 +258,36 @@ public partial class MainWindow
             {
                 progressWindow.SetCompleted("キャンセルしました。");
                 await Task.Delay(500);
-                progressWindow.Close();
             }
             MessageService.ShowInfo("圧縮処理をキャンセルしました。", "キャンセル");
         }
         catch (Exception ex)
         {
             MessageService.ShowException("圧縮中にエラーが発生しました", ex);
+        }
+        finally
+        {
+            if (progressWindow?.IsVisible == true)
+            {
+                try
+                {
+                    // ProgressWindowのDispatcher内で保留中のアクションをフラッシュ
+                    progressWindow.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+                }
+                catch
+                {
+                    // ウィンドウが既にクローズされている可能性
+                }
+
+                try
+                {
+                    progressWindow.Close();
+                }
+                catch
+                {
+                    // ウィンドウのクローズに失敗した場合は無視
+                }
+            }
         }
     }
 
@@ -309,13 +331,36 @@ public partial class MainWindow
             {
                 progressWindow.SetCompleted("キャンセルしました。");
                 await Task.Delay(500);
-                progressWindow.Close();
             }
             MessageService.ShowInfo("展開処理をキャンセルしました。", "キャンセル");
         }
         catch (Exception ex)
         {
             MessageService.ShowException("展開中にエラーが発生しました", ex);
+        }
+        finally
+        {
+            if (progressWindow?.IsVisible == true)
+            {
+                try
+                {
+                    // ProgressWindowのDispatcher内で保留中のアクションをフラッシュ
+                    progressWindow.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+                }
+                catch
+                {
+                    // ウィンドウが既にクローズされている可能性
+                }
+
+                try
+                {
+                    progressWindow.Close();
+                }
+                catch
+                {
+                    // ウィンドウのクローズに失敗した場合は無視
+                }
+            }
         }
     }
 
@@ -705,7 +750,24 @@ public partial class MainWindow
         {
             if (progressWindow?.IsVisible == true)
             {
-                progressWindow.Close();
+                try
+                {
+                    // ProgressWindowのDispatcher内で保留中のアクションをフラッシュ
+                    progressWindow.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Background);
+                }
+                catch
+                {
+                    // ウィンドウが既にクローズされている可能性
+                }
+
+                try
+                {
+                    progressWindow.Close();
+                }
+                catch
+                {
+                    // ウィンドウのクローズに失敗した場合は無視
+                }
             }
         }
     }
@@ -756,7 +818,7 @@ public partial class MainWindow
         {
             Logger.Log($"ProcessDroppedFilesForCompression開始: ドロップされたパス数 = {paths.Length}");
 
-            // ★ 改善: フォルダ整理ロジックを独立したメソッドに分離
+            // フォルダ整理ロジックを独立したメソッドに分離
             var folders = ExtractCompressionTargetFolders(paths);
             
             if (folders.Count == 0)
@@ -775,7 +837,7 @@ public partial class MainWindow
             progressWindow = new ProgressWindow("圧縮");
             progressWindow.Show();
 
-            // ★ 修正: 複雑な並列処理ロジックを削除し、ArchiveProcessor.CompressFoldersAsync に委譲
+            // 複雑な並列処理ロジックを削除し、ArchiveProcessor.CompressFoldersAsync に委譲
             // これにより、コードの重複を避け、進捗管理を一元化する
             var success = await ArchiveProcessor.CompressFoldersAsync(
                 folders.ToArray(),
@@ -810,7 +872,7 @@ public partial class MainWindow
         }
         finally
         {
-            if (progressWindow != null)
+            if (progressWindow?.IsVisible == true)
             {
                 try
                 {

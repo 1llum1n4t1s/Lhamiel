@@ -387,7 +387,7 @@ public class ArchiveExtractor
             }
             else if (Directory.Exists(path))
             {
-                // ★ 修正: GetFiles -> EnumerateFiles に変更してメモリ効率を向上
+                // GetFiles -> EnumerateFiles に変更してメモリ効率を向上
                 // 大量ファイル処理時に配列を一括確保せず、遅延実行（イテレータ処理）で処理
                 foreach (var filePath in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
                 {

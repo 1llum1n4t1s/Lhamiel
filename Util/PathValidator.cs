@@ -166,7 +166,7 @@ public static class PathValidator
 
         try
         {
-            // ★ 修正: 文字列としての ".." チェックは削除（Report..v1.txt などの正当なファイル名を誤検知するため）
+            // 文字列としての ".." チェックは削除（Report..v1.txt などの正当なファイル名を誤検知するため）
             // Path.GetFullPath で正規化を試み、有効なパスかどうかのみチェック
             var fullPath = Path.GetFullPath(path);
 

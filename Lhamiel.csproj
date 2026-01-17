@@ -40,6 +40,7 @@
     <Compile Include="Util\FileAssociation.cs" />
     <Compile Include="Util\FileOverwriteDialog.cs" />
     <Compile Include="Util\FolderOpener.cs" />
+    <Compile Include="Util\IpcService.cs" />
     <Compile Include="Util\Logger.cs" />
     <Compile Include="Util\MessageService.cs" />
     <Compile Include="Util\NativeMethods.cs" />
