@@ -371,7 +371,7 @@ public static class ArchiveProcessor
                 var progressCallback = new Action<ProgressInfo>(info =>
                 {
                     // 最初のReport時に操作名を「圧縮処理中...」に変更
-                    if (isFirstReport)
+                    if (isFirstReport && info.Percentage > 0)
                     {
                         isFirstReport = false;
                         progressWindow?.SetOperationName("圧縮処理中...");
