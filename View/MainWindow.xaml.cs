@@ -236,7 +236,7 @@ public partial class MainWindow
 
                     var progress = new Progress<ProgressInfo>(info =>
                     {
-                        progressWindow.UpdateProgress(info.Percentage, info.Status);
+                        progressWindow.UpdateProgress(info.Percentage);
                     });
 
                     await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationToken);

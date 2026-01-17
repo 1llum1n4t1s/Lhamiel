@@ -94,7 +94,7 @@ public static class ArchiveProcessor
             {
                 progress = new Progress<ProgressInfo>(info =>
                 {
-                    progressWindow.UpdateProgress(info.Percentage, info.Status);
+                    progressWindow.UpdateProgress(info.Percentage);
                 });
             }
 
@@ -109,7 +109,7 @@ public static class ArchiveProcessor
                     filePath,
                     outputPath,
                     PartialExtractionHandler.ErrorHandlingOption.AskUser,
-                    (percentage, message) => progressWindow?.UpdateProgress(percentage, message),
+                    (percentage, _) => progressWindow?.UpdateProgress(percentage),
                     (failedFile) => ShowErrorRecoveryDialog(failedFile, progressWindow),
                     cancellationToken);
                 
@@ -196,7 +196,7 @@ public static class ArchiveProcessor
                         mappedProgress = new Progress<ProgressInfo>(info =>
                         {
                             progressWindow?.Dispatcher.Invoke(() =>
-                                progressWindow.UpdateProgress(info.Percentage, info.Status)
+                                progressWindow.UpdateProgress(info.Percentage)
                             );
                         });
                     }
@@ -207,7 +207,7 @@ public static class ArchiveProcessor
                             progressWindow?.Dispatcher.Invoke(() =>
                             {
                                 var overallProgress = (int)((double)index / totalCount * 100 + (double)info.Percentage / totalCount);
-                                progressWindow.UpdateProgress(overallProgress, info.Status);
+                                progressWindow.UpdateProgress(overallProgress);
                             });
                         });
                     }
@@ -231,7 +231,7 @@ public static class ArchiveProcessor
                         
                         // UIスレッド上で更新を実行（クロススレッド操作違反を防ぐ）
                         progressWindow?.Dispatcher.Invoke(() =>
-                            progressWindow.UpdateProgress(progress, $"展開完了 ({currentCount}/{totalCount}): {Path.GetFileName(filePath)}")
+                            progressWindow.UpdateProgress(progress)
                         );
                     }
                 }
@@ -375,7 +375,7 @@ public static class ArchiveProcessor
                 var progressCallback = new Action<ProgressInfo>(info =>
                 {
                     // 1. レガシーなProgressWindow更新 (単体実行時用)
-                    progressWindow?.UpdateProgress(info.Percentage, info.Status);
+                    progressWindow?.UpdateProgress(info.Percentage);
 
                     // 2. 外部から渡された進捗レポーターへの報告 (並列実行時用)
                     progressReporter?.Report(info);
@@ -443,7 +443,7 @@ public static class ArchiveProcessor
                         {
                             progressWindow?.Dispatcher.Invoke(() =>
                             {
-                                progressWindow.UpdateProgress(info.Percentage, info.Status);
+                                progressWindow.UpdateProgress(info.Percentage);
                             });
                         });
                     }
@@ -455,7 +455,7 @@ public static class ArchiveProcessor
                             progressWindow?.Dispatcher.Invoke(() =>
                             {
                                 var overallProgress = (int)((double)index / totalCount * 100 + (double)info.Percentage / totalCount);
-                                progressWindow.UpdateProgress(overallProgress, info.Status);
+                                progressWindow.UpdateProgress(overallProgress);
                             });
                         });
                     }
@@ -478,7 +478,7 @@ public static class ArchiveProcessor
                         // 各フォルダ完了時に確実に進捗を更新
                         var completedProgress = (int)((double)(index + 1) / totalCount * 100);
                         progressWindow?.Dispatcher.Invoke(() =>
-                            progressWindow.UpdateProgress(completedProgress, $"圧縮完了 ({index + 1}/{totalCount}): {Path.GetFileName(folderPath)}")
+                            progressWindow.UpdateProgress(completedProgress)
                         );
                     }
                 }

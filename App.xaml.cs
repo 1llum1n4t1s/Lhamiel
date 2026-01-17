@@ -157,13 +157,10 @@ public partial class App
         try
         {
             var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
-            var otherProcesses = System.Diagnostics.Process.GetProcessesByName(currentProcess.ProcessName)
-                .Where(p => p.Id != currentProcess.Id)
-                .ToList();
+            var otherProcess = System.Diagnostics.Process.GetProcessesByName(currentProcess.ProcessName).FirstOrDefault(p => p.Id != currentProcess.Id);
 
-            if (otherProcesses.Count > 0)
+            if (otherProcess != null)
             {
-                var otherProcess = otherProcesses[0];
                 Logger.Log($"既存インスタンスを見つけました。PID: {otherProcess.Id}");
 
                 // メインウィンドウをアクティブ化（NativeMethods を使用）
@@ -448,7 +445,7 @@ public partial class App
 
             var progress = new Progress<ProgressInfo>(info =>
             {
-                progressWindow.UpdateProgress(info.Percentage, info.Status);
+                progressWindow.UpdateProgress(info.Percentage);
             });
 
             await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationTokenSource.Token);

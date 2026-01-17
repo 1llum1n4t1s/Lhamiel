@@ -126,34 +126,41 @@ public static class ArchiveFormatDetector
     /// </summary>
     private static bool DetectSevenZipSignature(byte[] scanBytes)
     {
-        var signature = ArchiveConstants.SevenZipSignature;
-        for (int i = 0; i < scanBytes.Length - signature.Length; i++)
+        if (MatchSignature(scanBytes, ArchiveConstants.SevenZipSignature))
         {
-            bool match = true;
-            for (int j = 0; j < signature.Length; j++)
-            {
-                if (scanBytes[i + j] != signature[j])
-                {
-                    match = false;
-                    break;
-                }
-            }
-
-            if (match)
-            {
-                Logger.Log("7-Zipファイルの特徴を発見", LogLevel.Debug);
-                return true;
-            }
+            Logger.Log("7-Zipファイルの特徴を発見", LogLevel.Debug);
+            return true;
         }
         return false;
     }
 
     /// <summary>
-    /// RARファイルのシグネチャを検出
+    /// RARファイルのシグネチャを検出 (RAR v4.x および v5.0+)
     /// </summary>
     private static bool DetectRarSignature(byte[] scanBytes)
     {
-        var signature = ArchiveConstants.RarSignature;
+        // RAR v4.x
+        if (MatchSignature(scanBytes, ArchiveConstants.RarSignature))
+        {
+            Logger.Log("RAR v4.x ファイルの特徴を発見", LogLevel.Debug);
+            return true;
+        }
+
+        // RAR v5.0+
+        if (MatchSignature(scanBytes, ArchiveConstants.Rar5Signature))
+        {
+            Logger.Log("RAR v5.0+ ファイルの特徴を発見", LogLevel.Debug);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// バイト配列内から特定のシグネチャを検索する共通メソッド
+    /// </summary>
+    private static bool MatchSignature(byte[] scanBytes, byte[] signature)
+    {
         for (int i = 0; i < scanBytes.Length - signature.Length; i++)
         {
             bool match = true;
@@ -166,11 +173,7 @@ public static class ArchiveFormatDetector
                 }
             }
 
-            if (match)
-            {
-                Logger.Log("RARファイルの特徴を発見", LogLevel.Debug);
-                return true;
-            }
+            if (match) return true;
         }
         return false;
     }

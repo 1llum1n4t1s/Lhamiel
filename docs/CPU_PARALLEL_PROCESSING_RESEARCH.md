@@ -64,7 +64,7 @@ public static async Task<bool> ExtractArchiveAsync(..., CancellationToken cancel
 // ArchiveProcessor.cs:76-79
 var progress = new Progress<int>(percentage =>
 {
-    progressWindow?.UpdateProgress(percentage, "ファイルを展開中...");
+    progressWindow?.UpdateProgress(percentage);
 });
 ```
 
@@ -490,14 +490,14 @@ CPU使用率: 75～100%（複数コア活用）
 // UI 更新は必ず UI スレッドで実行
 progressWindow?.Dispatcher.Invoke(() =>
 {
-    progressWindow.UpdateProgress(percentage, message);
+    progressWindow.UpdateProgress(percentage);
 });
 
 // または
 
 progressWindow?.Dispatcher.InvokeAsync(() =>
 {
-    progressWindow.UpdateProgress(percentage, message);
+    progressWindow.UpdateProgress(percentage);
 });
 ```
 

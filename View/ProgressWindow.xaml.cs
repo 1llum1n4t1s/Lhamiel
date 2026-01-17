@@ -49,8 +49,7 @@ public partial class ProgressWindow : Window
     /// 進捗を更新する（スロットリング付き）
     /// </summary>
     /// <param name="percentage">進捗率（0-100）</param>
-    /// <param name="status">ステータスメッセージ（UI上は非表示になりましたが、ログ出力などで利用可能です）</param>
-    public void UpdateProgress(int percentage, string status)
+    public void UpdateProgress(int percentage)
     {
         try
         {
