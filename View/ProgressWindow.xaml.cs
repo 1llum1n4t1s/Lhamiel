@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Threading;
-using Lhamiel.Util;
 
 namespace Lhamiel.View;
 
