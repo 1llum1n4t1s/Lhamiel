@@ -1,4 +1,6 @@
 using System.IO;
+using System.Linq;
+using System.Windows;
 using Cube.FileSystem.SevenZip;
 
 namespace Lhamiel.Util;
@@ -146,7 +148,7 @@ public class ArchiveExtractor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="rootItemNameForCleanup">キャンセル時に削除すべき単一ルートアイテム名（スマート解凍用）</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, System.Windows.Window? parentWindow = null, CancellationToken cancellationToken = default, string? rootItemNameForCleanup = null)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, string? rootItemNameForCleanup = null)
     {
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}, rootItem={rootItemNameForCleanup ?? "null"}");
 
@@ -210,7 +212,7 @@ public class ArchiveExtractor
     /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="rootItemNameForCleanup">キャンセル時に削除すべき単一ルートアイテム名</param>
-    public async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, System.Windows.Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, string? rootItemNameForCleanup = null)
+    public async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, string? rootItemNameForCleanup = null)
     {
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}, rootItem={rootItemNameForCleanup ?? "null"}");
 

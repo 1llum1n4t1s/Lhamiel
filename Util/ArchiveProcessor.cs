@@ -255,114 +255,116 @@ public static class ArchiveProcessor
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
     public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default)
     {
-        Logger.Log($"ArchiveProcessor.CompressItemAsync開始: sourcePath={sourcePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
+        Logger.Log($"ArchiveProcessor.CompressItemAsync開始: sourcePath={sourcePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}");
 
-        // ProgressWindow からキャンセルトークンを取得（nullの場合は渡されたトークンを使用）
-        var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
-
-        try
+        // 対象の存在確認（軽量なチェックはUIスレッドで実施）
+        if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
         {
-            // 対象の存在確認
-            if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
-            {
-                Logger.Log($"指定された対象が存在しません: {sourcePath}");
-                MessageService.ShowError($"指定されたファイルまたはフォルダが見つかりません。\n{sourcePath}");
-                return false;
-            }
-
-            // 圧縮形式の確認
-            var supportedFormats = new[] { "zip", "7z", "tar", "gz", "bz2", "xz", "cab", "wim" };
-            if (!supportedFormats.Contains(format.ToLowerInvariant()))
-            {
-                Logger.Log($"サポートされていない圧縮形式です: {format}");
-                MessageService.ShowError($"サポートされていない圧縮形式です。\n{format}");
-                return false;
-            }
-
-            Logger.Log($"圧縮処理を開始: {sourcePath}");
-
-            // 出力ファイル名の取得
-            var outputPath = ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
-
-            // 出力先が既に存在する場合は上書き確認
-            var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
-            if (targetExists)
-            {
-                Logger.Log($"出力先が既に存在します: {outputPath}");
-
-                // UIスレッドで上書き確認を実行
-                // 以前のデバッグで判明した通り、同期 Invoke ではなく await InvokeAsync を使用して
-                // スレッド間の切り替えを円滑にし、ExecutionEngineException を防ぐ
-                var dispatcher = progressWindow?.Dispatcher ?? Application.Current.Dispatcher;
-                
-                // 呼び出し前にスレッドを一度譲り、コンテキストを安定させる
-                await Task.Yield();
-                
-                var canOverwrite = await dispatcher.InvokeAsync(() =>
-                    FileOverwriteDialog.CanOverwriteFile(sourcePath, outputPath, progressWindow)).Task;
-
-                Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
-
-                if (!canOverwrite)
-                {
-                    Logger.Log("ユーザーが圧縮処理をキャンセルしました");
-                    return false;
-                }
-
-                // 上書きが許可された場合は既存の対象を削除
-                try
-                {
-                    if (Directory.Exists(outputPath))
-                    {
-                        Directory.Delete(outputPath, true);
-                    }
-                    else
-                    {
-                        File.Delete(outputPath);
-                    }
-                    Logger.Log($"既存の対象を削除しました: {outputPath}");
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
-                    throw new InvalidOperationException($"出力先 '{Path.GetFileName(outputPath)}' が使用中か、アクセス権限がありません。", ex);
-                }
-            }
-
-            // 圧縮処理を実行
-            Logger.Log($"ArchiveCompressor.CompressAsyncを呼び出し: sourcePath={sourcePath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
-
-            var progress = new Progress<ProgressInfo>(info =>
-            {
-                // 1. レガシーなProgressWindow更新 (単体実行時用)
-                // progressReporter がある場合は、そちらで全体進捗を管理しているため、ここでは更新しない
-                if (progressReporter == null)
-                {
-                    progressWindow?.UpdateProgress(info.Percentage);
-                }
-
-                // 2. 外部から渡された進捗レポーターへの報告 (並列実行時用)
-                progressReporter?.Report(info);
-            });
-
-            await ArchiveCompressor.CompressAsync(sourcePath, outputPath, format, progress, actualCancellationToken);
-
-            Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
-
-            if (progressReporter == null)
-            {
-                // UIスレッド上で安全にクローズ
-                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
-            }
-
-            return true;
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            Logger.LogException($"圧縮処理でエラーが発生: {sourcePath}", ex);
-            MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
+            Logger.Log($"指定された対象が存在しません: {sourcePath}");
+            MessageService.ShowError($"指定されたファイルまたはフォルダが見つかりません。\n{sourcePath}");
             return false;
         }
+
+        // 圧縮形式の確認
+        var supportedFormats = new[] { "zip", "7z", "tar", "gz", "bz2", "xz", "cab", "wim" };
+        if (!supportedFormats.Contains(format.ToLowerInvariant()))
+        {
+            Logger.Log($"サポートされていない圧縮形式です: {format}");
+            MessageService.ShowError($"サポートされていない圧縮形式です。\n{format}");
+            return false;
+        }
+
+        // ProgressWindow からキャンセルトークンを取得（UIスレッドで事前に取得）
+        var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
+
+        // 重い処理全体を Task.Run でバックグラウンドへ移動
+        return await Task.Run(async () =>
+        {
+            try
+            {
+                Logger.Log($"圧縮処理を開始: {sourcePath}");
+
+                // 出力ファイル名の取得
+                var outputPath = ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
+
+                // 出力先が既に存在する場合は上書き確認
+                var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
+                if (targetExists)
+                {
+                    Logger.Log($"出力先が既に存在します: {outputPath}");
+
+                    // UIスレッドで上書き確認を実行
+                    var dispatcher = progressWindow?.Dispatcher ?? Application.Current.Dispatcher;
+                    
+                    var canOverwrite = await dispatcher.InvokeAsync(() =>
+                        FileOverwriteDialog.CanOverwriteFile(sourcePath, outputPath, progressWindow)).Task;
+
+                    Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
+
+                    if (!canOverwrite)
+                    {
+                        Logger.Log("ユーザーが圧縮処理をキャンセルしました");
+                        return false;
+                    }
+
+                    // 上書きが許可された場合は既存の対象を削除
+                    try
+                    {
+                        if (Directory.Exists(outputPath))
+                        {
+                            Directory.Delete(outputPath, true);
+                        }
+                        else
+                        {
+                            File.Delete(outputPath);
+                        }
+                        Logger.Log($"既存の対象を削除しました: {outputPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
+                        throw new InvalidOperationException($"出力先 '{Path.GetFileName(outputPath)}' が使用中か、アクセス権限がありません。", ex);
+                    }
+                }
+
+                // 圧縮処理を実行
+                Logger.Log($"ArchiveCompressor.CompressAsyncを呼び出し: sourcePath={sourcePath}, outputPath={outputPath}, format={format}");
+
+                var progress = new Progress<ProgressInfo>(info =>
+                {
+                    // 1. レガシーなProgressWindow更新 (単体実行時用)
+                    if (progressReporter == null)
+                    {
+                        progressWindow?.UpdateProgress(info.Percentage);
+                    }
+
+                    // 2. 外部から渡された進捗レポーターへの報告 (並列実行時用)
+                    progressReporter?.Report(info);
+                });
+
+                await ArchiveCompressor.CompressAsync(sourcePath, outputPath, format, progress, actualCancellationToken);
+
+                Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
+
+                if (progressReporter == null)
+                {
+                    // UIスレッド上で安全にクローズ
+                    progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                }
+
+                return true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Logger.LogException($"圧縮処理でエラーが発生: {sourcePath}", ex);
+                
+                // エラーダイアログはUIスレッドで表示
+                Application.Current.Dispatcher.Invoke(() => 
+                    MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}"));
+                
+                return false;
+            }
+        }, actualCancellationToken);
     }
 
     /// <summary>

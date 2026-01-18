@@ -97,8 +97,8 @@ public class ArchiveCompressor
                     // ディレクトリの場合、再帰的にファイルを取得して個別に追加
                     Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
 
-                    // ファイルスキャンを非同期で処理（全件を即座にリスト化せず、スキャン処理自体をバックグラウンド化）
-                    var files = await Task.Run(() => GetFilesRecursively(sourcePath, excludedPatterns), cancellationToken);
+                    // ファイルスキャンを非同期で処理（全件を即座にリスト化せず、遅延評価を活用）
+                    var files = GetFilesRecursively(sourcePath, excludedPatterns);
                     var parentDir = Path.GetDirectoryName(sourcePath) ?? "";
 
                     var fileCount = 0;

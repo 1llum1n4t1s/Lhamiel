@@ -437,40 +437,25 @@ public partial class App
             // UIスレッドに一度制御を戻し、ウィンドウの描画と初期化を完了させる
             await Task.Yield();
 
-            // 出力パスを取得
-            var outputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
+            // 共通化された圧縮処理を実行
+            var success = await ArchiveProcessor.CompressItemAsync(filePath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
 
-            // 出力ファイルが既に存在する場合は削除（上書き）
-            if (File.Exists(outputPath))
+            if (success)
             {
-                File.Delete(outputPath);
+                Logger.Log("ファイル圧縮処理が完了しました");
+
+                // 圧縮後にフォルダを開く設定を確認
+                if (settings.OpenCompressionOutputFolder)
+                {
+                    FolderOpener.OpenFolder(outputDir);
+                }
             }
-
-            var progress = new Progress<ProgressInfo>(info =>
+            else
             {
-                progressWindow.UpdateProgress(info.Percentage);
-            });
-
-            await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationTokenSource.Token);
-
-            Logger.Log("ファイル圧縮処理が完了しました");
-
-            // 圧縮後にフォルダを開く設定を確認
-            if (settings.OpenCompressionOutputFolder)
-            {
-                FolderOpener.OpenFolder(outputDir);
+                Logger.Log("ファイル圧縮処理が失敗しました");
             }
 
             // 必要に応じてアプリケーションを終了
-            if (shouldShutdown)
-            {
-                Shutdown();
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.Log("ファイル圧縮処理がキャンセルされました");
-            MessageService.ShowInfo("圧縮処理をキャンセルしました。", "キャンセル");
             if (shouldShutdown)
             {
                 Shutdown();
