@@ -33,17 +33,6 @@ public partial class App
     /// </summary>
     public App()
     {
-        // プロセス全体の優先度を下げる（低スペックPCでのフリーズ防止、ハイスペックPCでも影響なし）
-        try
-        {
-            System.Diagnostics.Process.GetCurrentProcess().PriorityClass = System.Diagnostics.ProcessPriorityClass.BelowNormal;
-        }
-        catch (Exception ex)
-        {
-            // 優先度の設定に失敗しても続行（権限の問題など）
-            Logger.Log($"Failed to set process priority: {ex.Message}", LogLevel.Warning);
-        }
-
         // Log4netを早期に初期化
         Logger.Initialize();
 
@@ -448,40 +437,31 @@ public partial class App
             // UIスレッドに一度制御を戻し、ウィンドウの描画と初期化を完了させる
             await Task.Yield();
 
-            // 出力パスを取得
-            var outputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
+            // 共通化された圧縮処理を実行
+            var success = await ArchiveProcessor.CompressItemAsync(filePath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
 
-            // 出力ファイルが既に存在する場合は削除（上書き）
-            if (File.Exists(outputPath))
+            if (success)
             {
-                File.Delete(outputPath);
+                Logger.Log("ファイル圧縮処理が完了しました");
+
+                // 圧縮後にフォルダを開く設定を確認
+                if (settings.OpenCompressionOutputFolder)
+                {
+                    // 実際にファイルが作成されたフォルダを開く
+                    var finalOutputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
+                    var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
+                    if (directoryToOpen != null)
+                    {
+                        FolderOpener.OpenFolder(directoryToOpen);
+                    }
+                }
             }
-
-            var progress = new Progress<ProgressInfo>(info =>
+            else
             {
-                progressWindow.UpdateProgress(info.Percentage);
-            });
-
-            await ArchiveCompressor.CompressAsync(filePath, outputPath, format, progress, cancellationTokenSource.Token);
-
-            Logger.Log("ファイル圧縮処理が完了しました");
-
-            // 圧縮後にフォルダを開く設定を確認
-            if (settings.OpenCompressionOutputFolder)
-            {
-                FolderOpener.OpenFolder(outputDir);
+                Logger.Log("ファイル圧縮処理が失敗しました");
             }
 
             // 必要に応じてアプリケーションを終了
-            if (shouldShutdown)
-            {
-                Shutdown();
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.Log("ファイル圧縮処理がキャンセルされました");
-            MessageService.ShowInfo("圧縮処理をキャンセルしました。", "キャンセル");
             if (shouldShutdown)
             {
                 Shutdown();
@@ -548,7 +528,13 @@ public partial class App
                 // 圧縮後にフォルダを開く設定を確認
                 if (settings.OpenCompressionOutputFolder)
                 {
-                    FolderOpener.OpenFolder(outputDir);
+                    // 実際にファイルが作成されたフォルダを開く
+                    var finalOutputPath = ArchiveCompressor.GetCompressedFileName(folderPath, format, outputDir, outputToSameDirectory);
+                    var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
+                    if (directoryToOpen != null)
+                    {
+                        FolderOpener.OpenFolder(directoryToOpen);
+                    }
                 }
             }
             else
