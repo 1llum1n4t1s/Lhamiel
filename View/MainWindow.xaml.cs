@@ -488,12 +488,12 @@ public partial class MainWindow
             // アーカイブファイルの展開処理（複数対応）
             if (archiveFiles.Count > 0)
             {
-                ProcessDroppedArchives(archiveFiles.ToArray());
+                _ = ProcessDroppedArchives(archiveFiles.ToArray());
             }
             // 圧縮対象の処理（複数を並行処理）
             else if (compressionTargets.Count > 0)
             {
-                ProcessDroppedFilesForCompression(compressionTargets.ToArray());
+                _ = ProcessDroppedFilesForCompression(compressionTargets.ToArray());
             }
         }
         catch (Exception ex)
@@ -506,7 +506,7 @@ public partial class MainWindow
     /// ドロップされた複数のアーカイブファイルを展開する
     /// </summary>
     /// <param name="archivePaths">アーカイブファイルのパス配列</param>
-    private async void ProcessDroppedArchives(string[] archivePaths)
+    private async Task ProcessDroppedArchives(string[] archivePaths)
     {
         ProgressWindow? progressWindow = null;
         try
@@ -611,7 +611,7 @@ public partial class MainWindow
     /// ドロップされた複数のファイル/フォルダを並行圧縮する
     /// </summary>
     /// <param name="paths">圧縮するファイル/フォルダのパス配列</param>
-    private async void ProcessDroppedFilesForCompression(string[] paths)
+    private async Task ProcessDroppedFilesForCompression(string[] paths)
     {
         ProgressWindow? progressWindow = null;
         try

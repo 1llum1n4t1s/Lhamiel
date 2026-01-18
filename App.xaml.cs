@@ -130,7 +130,7 @@ public partial class App
                     filePath = e.Args[2];
                 }
 
-                ProcessCommandLineFile(filePath, compressionFormat);
+                _ = ProcessCommandLineFile(filePath, compressionFormat);
             }
             else
             {
@@ -293,7 +293,7 @@ public partial class App
     /// <param name="path">処理するファイルまたはフォルダのパス</param>
     /// <param name="compressionFormat">圧縮形式（"default"の場合は展開、具体的な形式の場合は圧縮）</param>
     /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
-    private async void ProcessCommandLineFile(string path, string compressionFormat = "default", bool shouldShutdown = true)
+    private async Task ProcessCommandLineFile(string path, string compressionFormat = "default", bool shouldShutdown = true)
     {
         try
         {
@@ -608,7 +608,7 @@ public partial class App
 
                 // 受信した引数で処理を実行
                 // IPC 経由の場合は処理終了後にアプリを終了させないようにする
-                ProcessCommandLineFile(filePath, compressionFormat, false);
+                _ = ProcessCommandLineFile(filePath, compressionFormat, false);
             }
         });
     }
