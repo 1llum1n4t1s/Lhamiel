@@ -189,18 +189,6 @@ public class ArchiveCompressor
     }
 
     /// <summary>
-    /// ファイルを圧縮する（同期版、互換性保持用）
-    /// </summary>
-    /// <param name="sourcePaths">圧縮するファイル・フォルダのパス</param>
-    /// <param name="outputPath">出力アーカイブのパス</param>
-    /// <param name="progressCallback">進捗コールバック</param>
-    /// <param name="cancellationToken">キャンセルトークン</param>
-    public static void CompressFiles(IEnumerable<string> sourcePaths, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
-    {
-        CompressFilesAsync(sourcePaths, outputPath, progressCallback, cancellationToken).GetAwaiter().GetResult();
-    }
-
-    /// <summary>
     /// ArchiveWriterを作成する（スレッド数制御追加）
     /// </summary>
     /// <param name="format">圧縮形式</param>
@@ -257,100 +245,6 @@ public class ArchiveCompressor
             ".tar" => Format.Tar,
             _ => Format.Zip // デフォルトはZIP
         };
-    }
-
-    /// <summary>
-    /// ディレクトリを圧縮する
-    /// </summary>
-    /// <param name="directoryPath">圧縮するディレクトリのパス</param>
-    /// <param name="outputPath">出力アーカイブのパス</param>
-    /// <param name="progressCallback">進捗コールバック</param>
-    /// <param name="cancellationToken">キャンセルトークン</param>
-    public static void CompressDirectory(string directoryPath, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
-    {
-        if (!Directory.Exists(directoryPath))
-        {
-            throw new DirectoryNotFoundException($"ディレクトリが見つかりません: {directoryPath}");
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // 出力ディレクトリを作成
-        var outputDir = Path.GetDirectoryName(outputPath);
-        if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
-        {
-            Directory.CreateDirectory(outputDir);
-        }
-
-        // 圧縮形式を決定
-        var format = GetFormatFromExtension(outputPath);
-
-        // 設定から除外パターンを取得
-        var settings = Settings.Load();
-        var excludedPatterns = settings.ExcludedFilePatterns ?? [];
-
-        try
-        {
-            // 1. 圧縮対象のファイルを再帰的に取得（除外パターンを適用）
-            var files = GetFilesRecursively(directoryPath, excludedPatterns).ToList();
-            var totalFiles = files.Count;
-            Logger.Log($"圧縮対象のファイル総数: {totalFiles}個");
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // アーカイブ内の相対パスを計算（ディレクトリ自体をルートに含める）
-            var parentDir = Path.GetDirectoryName(directoryPath) ?? "";
-            var filesToCompress = files.Select(f => (fullPath: f, relativePath: Path.GetRelativePath(parentDir, f))).ToList();
-
-            // 2. その他の形式（ArchiveWriterを使用）
-            using var writer = CreateArchiveWriter(format);
-
-            foreach (var item in filesToCompress)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                writer.Add(item.fullPath, item.relativePath);
-            }
-
-            // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
-            Logger.Log("圧縮処理を開始します");
-
-            var reportProgress = new CancellableProgress<Report>(report =>
-            {
-                // 進捗率をそのまま使用（GetRatio()で0～1を返す）
-                var ratio = report.GetRatio();
-                var percentage = (int)(ratio * 100);
-
-                progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
-            }, cancellationToken);
-
-            // 同期的な Save でもキャンセル可能にするために、CancellableProgress を使用。
-            // Cube.FileSystem.SevenZip は Report 呼び出し時に例外がスローされると処理を中断する。
-            
-            cancellationToken.ThrowIfCancellationRequested();
-            writer.Save(outputPath, reportProgress);
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new OperationCanceledException(cancellationToken);
-            }
-
-            progressCallback?.Invoke(new ProgressInfo(100, "完了"));
-            Logger.Log($"ディレクトリ圧縮完了: {directoryPath} -> {outputPath}");
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.Log($"圧縮処理がキャンセルされました: {directoryPath}");
-            if (File.Exists(outputPath))
-            {
-                try { File.Delete(outputPath); } catch { }
-            }
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"ディレクトリ圧縮でエラーが発生しました: {ex.Message}");
-            throw;
-        }
     }
 
     /// <summary>
