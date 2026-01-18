@@ -447,7 +447,13 @@ public partial class App
                 // 圧縮後にフォルダを開く設定を確認
                 if (settings.OpenCompressionOutputFolder)
                 {
-                    FolderOpener.OpenFolder(outputDir);
+                    // 実際にファイルが作成されたフォルダを開く
+                    var finalOutputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
+                    var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
+                    if (directoryToOpen != null)
+                    {
+                        FolderOpener.OpenFolder(directoryToOpen);
+                    }
                 }
             }
             else
@@ -522,7 +528,13 @@ public partial class App
                 // 圧縮後にフォルダを開く設定を確認
                 if (settings.OpenCompressionOutputFolder)
                 {
-                    FolderOpener.OpenFolder(outputDir);
+                    // 実際にファイルが作成されたフォルダを開く
+                    var finalOutputPath = ArchiveCompressor.GetCompressedFileName(folderPath, format, outputDir, outputToSameDirectory);
+                    var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
+                    if (directoryToOpen != null)
+                    {
+                        FolderOpener.OpenFolder(directoryToOpen);
+                    }
                 }
             }
             else

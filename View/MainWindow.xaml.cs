@@ -498,7 +498,7 @@ public partial class MainWindow
             progressWindow.Activate();
 
             // UIスレッドに描画を完了させる隙を与える
-            await Task.Delay(100);
+            await Task.Yield();
 
             // キャンセルトークンの取得
             var cancellationToken = progressWindow.GetCancellationToken();
@@ -548,7 +548,8 @@ public partial class MainWindow
             else if (hasCompression)
             {
                 // 圧縮のみで完了した場合の「フォルダを開く」処理
-                if (settings.OpenCompressionOutputFolder)
+                // 同じディレクトリに出力する場合は混乱を避けるため開かないように修正
+                if (settings.OpenCompressionOutputFolder && !settings.CompressionOutputToSameDirectory)
                 {
                     FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
                 }
