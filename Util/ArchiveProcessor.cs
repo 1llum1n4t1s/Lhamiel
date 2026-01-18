@@ -18,8 +18,9 @@ public static class ArchiveProcessor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="enablePartialExtraction">部分展開を有効にするかどうか</param>
     /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
+    /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null)
+    public static async Task<bool> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}");
         
@@ -117,6 +118,11 @@ public static class ArchiveProcessor
                         
                         progressWindow?.Dispatcher.BeginInvoke(() => 
                             progressWindow.SetCompleted($"展開完了: {result.SuccessCount}/{result.TotalFiles}個のファイルが成功"));
+                        
+                        if (closeWindowOnCompletion)
+                        {
+                            progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                        }
                         return true;
                     }
                     return false;
@@ -131,6 +137,10 @@ public static class ArchiveProcessor
                         cancellationToken, 
                         rootItemName);
                     
+                    if (closeWindowOnCompletion)
+                    {
+                        progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                    }
                     return true;
                 }
             }
@@ -158,8 +168,9 @@ public static class ArchiveProcessor
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
+    /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
+    public static async Task<bool> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
         try
         {
@@ -192,7 +203,7 @@ public static class ArchiveProcessor
                         }));
                     });
 
-                    var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress);
+                    var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false);
 
                     int progressToReport;
                     lock (lockObject)
@@ -231,7 +242,10 @@ public static class ArchiveProcessor
             await Task.WhenAll(tasks);
 
             // 完了処理
-            progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+            if (closeWindowOnCompletion)
+            {
+                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+            }
             return successCount > 0;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -252,8 +266,9 @@ public static class ArchiveProcessor
     /// <param name="progressWindow">進行状況ウィンドウ（nullの場合はUI更新を行わない）</param>
     /// <param name="progressReporter">外部からの進捗報告用（並列処理時などに使用）</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
+    /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default)
+    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
         Logger.Log($"ArchiveProcessor.CompressItemAsync開始: sourcePath={sourcePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}");
 
@@ -346,7 +361,7 @@ public static class ArchiveProcessor
 
                 Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
 
-                if (progressReporter == null)
+                if (progressReporter == null && closeWindowOnCompletion)
                 {
                     // UIスレッド上で安全にクローズ
                     progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
@@ -376,8 +391,9 @@ public static class ArchiveProcessor
     /// <param name="format">圧縮形式</param>
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
+    /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressItemsAsync(string[] sourcePaths, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
+    public static async Task<bool> CompressItemsAsync(string[] sourcePaths, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
         try
         {
@@ -427,7 +443,7 @@ public static class ArchiveProcessor
                     }
 
                     // 共通化された圧縮処理を実行
-                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken);
+                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false);
 
                     lock (lockObject)
                     {
@@ -482,14 +498,20 @@ public static class ArchiveProcessor
                 Logger.Log($"複数対象圧縮完了: {successCount}/{totalCount}個の圧縮に成功");
                 
                 // UIスレッド上で安全にクローズ
-                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                if (closeWindowOnCompletion)
+                {
+                    progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                }
                 return true;
             }
             else
             {
                 Logger.Log($"複数対象圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
                 
-                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                if (closeWindowOnCompletion)
+                {
+                    progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                }
                 return successCount > 0;
             }
         }
