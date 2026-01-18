@@ -363,7 +363,13 @@ public partial class App
 
             // 進行状況ウィンドウを表示
             var progressWindow = new View.ProgressWindow("展開");
-            progressWindow.Owner = MainWindow;
+
+            // MainWindowが自分自身（progressWindow）でない場合のみOwnerに設定
+            if (MainWindow != null && MainWindow != progressWindow)
+            {
+                progressWindow.Owner = MainWindow;
+            }
+
             progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
             
             var cancellationTokenSource = new CancellationTokenSource();
@@ -426,7 +432,13 @@ public partial class App
 
             // 進行状況ウィンドウを表示
             var progressWindow = new View.ProgressWindow("圧縮");
-            progressWindow.Owner = MainWindow;
+
+            // MainWindowが自分自身（progressWindow）でない場合のみOwnerに設定
+            if (MainWindow != null && MainWindow != progressWindow)
+            {
+                progressWindow.Owner = MainWindow;
+            }
+
             progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
             
             var cancellationTokenSource = new CancellationTokenSource();
@@ -507,7 +519,13 @@ public partial class App
 
             // 進行状況ウィンドウを表示
             var progressWindow = new View.ProgressWindow("圧縮");
-            progressWindow.Owner = MainWindow;
+
+            // MainWindowが自分自身（progressWindow）でない場合のみOwnerに設定
+            if (MainWindow != null && MainWindow != progressWindow)
+            {
+                progressWindow.Owner = MainWindow;
+            }
+
             progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
             
             var cancellationTokenSource = new CancellationTokenSource();
