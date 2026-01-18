@@ -89,7 +89,8 @@ public class ArchiveCompressor
                     // ファイルが除外対象でない場合のみ追加
                     if (!ShouldExcludeFile(sourcePath, excludedPatterns))
                     {
-                        filesToCompress.Add((sourcePath, sourcePath));
+                        // ファイル単体の場合はアーカイブのルートに配置
+                        filesToCompress.Add((sourcePath, Path.GetFileName(sourcePath)));
                     }
                 }
                 else if (Directory.Exists(sourcePath))
@@ -244,6 +245,10 @@ public class ArchiveCompressor
             ".zip" => Format.Zip,
             ".7z" => Format.SevenZip,
             ".tar" => Format.Tar,
+            ".gz" => Format.GZip,
+            ".tgz" => Format.GZip,
+            ".bz2" => Format.BZip2,
+            ".xz" => Format.XZ,
             _ => Format.Zip // デフォルトはZIP
         };
     }
