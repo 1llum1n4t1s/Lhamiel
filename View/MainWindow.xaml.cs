@@ -433,7 +433,7 @@ public partial class MainWindow
     /// <summary>
     /// ドロップゾーンのドロップ時の処理
     /// </summary>
-    private void DropZone_Drop(object sender, DragEventArgs e)
+    private async void DropZone_Drop(object sender, DragEventArgs e)
     {
         // ドロップ後に元の見た目に戻す
         DropZoneBorder.BorderBrush = (SolidColorBrush)Application.Current.Resources["BorderBrush"];
@@ -443,9 +443,9 @@ public partial class MainWindow
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
         {
             var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (files.Length > 0)
+            if (files != null && files.Length > 0)
             {
-                ProcessDroppedFiles(files);
+                await ProcessDroppedFiles(files);
             }
         }
         e.Handled = true;
@@ -455,49 +455,36 @@ public partial class MainWindow
     /// ドロップされた複数のファイル/フォルダを処理する
     /// </summary>
     /// <param name="paths">ドロップされたファイル/フォルダのパス配列</param>
-    private void ProcessDroppedFiles(string[] paths)
+    private async Task ProcessDroppedFiles(string[] paths)
     {
         try
         {
-            // アーカイブファイルと圧縮対象を分類
-            var archiveFiles = new List<string>();
-            var compressionTargets = new List<string>();
+            // 判定ロジック: 全てのファイルが「展開可能なアーカイブ」かどうか
+            // ファイルが存在し、かつサポートされているアーカイブ形式であるものをアーカイブとみなす
+            var allArchives = paths.All(p => File.Exists(p) && ArchiveExtractor.IsSupportedArchiveType(p));
 
-            foreach (var path in paths)
+            // 全てがアーカイブ形式の場合
+            if (allArchives)
             {
-                if (File.Exists(path))
-                {
-                    if (ArchiveExtractor.IsSupportedArchiveType(path))
-                    {
-                        // アーカイブファイル
-                        archiveFiles.Add(path);
-                    }
-                    else
-                    {
-                        // 通常ファイル
-                        compressionTargets.Add(path);
-                    }
-                }
-                else if (Directory.Exists(path))
-                {
-                    // ディレクトリ
-                    compressionTargets.Add(path);
-                }
+                // ■ 仕様2: A.zip, B.zip -> 個別に展開
+                // アーカイブ展開用の非同期メソッドを呼び出し
+                await ProcessDroppedArchives(paths);
             }
-
-            // アーカイブファイルの展開処理（複数対応）
-            if (archiveFiles.Count > 0)
+            // アーカイブ以外のファイルまたはフォルダが含まれる場合
+            else
             {
-                _ = ProcessDroppedArchives(archiveFiles.ToArray());
-            }
-            // 圧縮対象の処理（複数を並行処理）
-            else if (compressionTargets.Count > 0)
-            {
-                _ = ProcessDroppedFilesForCompression(compressionTargets.ToArray());
+                // ■ 仕様1: A.txt, B.txt -> 個別に圧縮 (A.zip, B.zipを作成)
+                // 一つでもアーカイブ以外のファイル/フォルダが含まれていれば、全体を圧縮対象とする
+                // 圧縮用の非同期メソッドを呼び出し
+                await ProcessDroppedFilesForCompression(paths);
             }
         }
+        // 例外発生時の処理
         catch (Exception ex)
         {
+            // ログ出力
+            Logger.LogException("ファイルの処理に失敗しました", ex);
+            // ユーザーへのエラー通知
             MessageService.ShowException("ファイルの処理に失敗しました", ex);
         }
     }
