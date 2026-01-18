@@ -231,7 +231,12 @@ public class ArchiveExtractor
             {
                 // まだ確認されていない場合はここで確認
                 Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {actualTargetDir}");
-                var canOverwrite = FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow);
+
+                // バックグラウンドスレッドからのUI操作（ダイアログ表示）をUIスレッドで行う
+                var dispatcher = parentWindow?.Dispatcher ?? Application.Current.Dispatcher;
+                var canOverwrite = await dispatcher.InvokeAsync(() =>
+                    FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow)).Task;
+
                 if (!canOverwrite)
                 {
                     throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");

@@ -97,27 +97,28 @@ public class ArchiveCompressor
                     // ディレクトリの場合、再帰的にファイルを取得して個別に追加
                     Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
 
-                    // ファイルスキャンを非同期で処理
-                    var files = await Task.Run(() => GetFilesRecursively(sourcePath, excludedPatterns).ToList(), cancellationToken);
+                    // ファイルスキャンを非同期で処理（全件を即座にリスト化せず、スキャン処理自体をバックグラウンド化）
+                    var files = await Task.Run(() => GetFilesRecursively(sourcePath, excludedPatterns), cancellationToken);
                     var parentDir = Path.GetDirectoryName(sourcePath) ?? "";
 
-                    Logger.Log($"スキャン完了: {files.Count}個のファイルが見つかりました");
-
-                    for (var i = 0; i < files.Count; i++)
+                    var fileCount = 0;
+                    foreach (var file in files)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        var file = files[i];
                         // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
                         var relativePath = Path.GetRelativePath(parentDir, file);
                         filesToCompress.Add((file, relativePath));
 
+                        fileCount++;
                         // 定期的に他のタスクに実行権を譲る
-                        if (i % 100 == 0)
+                        if (fileCount % 100 == 0)
                         {
                             await Task.Yield();
                         }
                     }
+
+                    Logger.Log($"スキャン完了: {fileCount}個のファイルが見つかりました");
                 }
                 else
                 {

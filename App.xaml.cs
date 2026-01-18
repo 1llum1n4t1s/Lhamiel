@@ -33,17 +33,6 @@ public partial class App
     /// </summary>
     public App()
     {
-        // プロセス全体の優先度を下げる（低スペックPCでのフリーズ防止、ハイスペックPCでも影響なし）
-        try
-        {
-            System.Diagnostics.Process.GetCurrentProcess().PriorityClass = System.Diagnostics.ProcessPriorityClass.BelowNormal;
-        }
-        catch (Exception ex)
-        {
-            // 優先度の設定に失敗しても続行（権限の問題など）
-            Logger.Log($"Failed to set process priority: {ex.Message}", LogLevel.Warning);
-        }
-
         // Log4netを早期に初期化
         Logger.Initialize();
 
