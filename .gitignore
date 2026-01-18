@@ -1,3 +1,4 @@
+.cursor/
 .idea/
 .vs/
 .vscode/
@@ -5,3 +6,4 @@
 *.suo
 bin/
 obj/
+build_output.txt

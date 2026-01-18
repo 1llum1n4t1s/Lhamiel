@@ -1,4 +1,3 @@
-using Amiga.FileFormats.LHA;
 using Cube.FileSystem.SevenZip;
 using System.IO;
 using CompressionMethod = Cube.FileSystem.SevenZip.CompressionMethod;
@@ -36,15 +35,12 @@ public class ArchiveCompressor
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="format">圧縮形式</param>
     /// <param name="progress">進捗コールバック</param>
+    /// <param name="cancellationToken">キャンセルトークン</param>
     /// <returns>圧縮処理の完了を表すTask</returns>
-    public static async Task CompressAsync(string sourcePath, string outputPath, string format, IProgress<int>? progress = null, CancellationToken cancellationToken = default)
+    public static async Task CompressAsync(string sourcePath, string outputPath, string format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
     {
-        var compressor = new ArchiveCompressor();
-        await Task.Run(() =>
-        {
-            var progressCallback = progress != null ? new Action<int>(p => progress.Report(p)) : null;
-            compressor.CompressFiles(new[] { sourcePath }, outputPath, progressCallback, cancellationToken);
-        }, cancellationToken);
+        var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
+        await CompressFilesAsync([sourcePath], outputPath, progressCallback, cancellationToken);
     }
 
     /// <summary>
@@ -54,7 +50,7 @@ public class ArchiveCompressor
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    public void CompressFiles(IEnumerable<string> sourcePaths, string outputPath, Action<int>? progressCallback = null, CancellationToken cancellationToken = default)
+    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         var sourceList = sourcePaths.ToList();
         if (!sourceList.Any())
@@ -74,83 +70,100 @@ public class ArchiveCompressor
 
         // 設定から除外パターンを取得
         var settings = Settings.Load();
-        var excludedPatterns = settings.ExcludedFilePatterns ?? new List<string>();
+        var excludedPatterns = settings.ExcludedFilePatterns ?? [];
 
         var outputCreated = false;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // LHA形式の場合
-            if (format.isLha)
-            {
-                CompressFilesAsLha(sourceList, outputPath, excludedPatterns, progressCallback, cancellationToken);
-            }
-            else
-            {
-                // ArchiveWriterを使用して圧縮（形式に応じてオプションを設定）
-                using var writer = CreateArchiveWriter(format.format);
+            // ファイルリストを先に準備
+            var filesToCompress = new List<(string fullPath, string relativePath)>();
 
-                // ファイルリストを先に準備（並列読み込み対応）
-                var filesToCompress = new List<(string fullPath, string relativePath)>();
+            foreach (var sourcePath in sourceList)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
 
-                foreach (var sourcePath in sourceList)
+                if (File.Exists(sourcePath))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    if (File.Exists(sourcePath))
+                    // ファイルが除外対象でない場合のみ追加
+                    if (!ShouldExcludeFile(sourcePath, excludedPatterns))
                     {
-                        // ファイルが除外対象でない場合のみ追加
-                        if (!ShouldExcludeFile(sourcePath, excludedPatterns))
-                        {
-                            filesToCompress.Add((sourcePath, sourcePath));
-                        }
-                    }
-                    else if (Directory.Exists(sourcePath))
-                    {
-                        // ディレクトリの場合、再帰的にファイルを取得して個別に追加
-                        var files = GetFilesRecursively(sourcePath, excludedPatterns);
-                        var parentDir = Path.GetDirectoryName(sourcePath) ?? "";
-
-                        foreach (var file in files)
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-
-                            // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
-                            var relativePath = Path.GetRelativePath(parentDir, file);
-                            filesToCompress.Add((file, relativePath));
-                        }
-                    }
-                    else
-                    {
-                        throw new FileNotFoundException($"指定されたパスが見つかりません: {sourcePath}");
+                        filesToCompress.Add((sourcePath, sourcePath));
                     }
                 }
-
-                // ファイルを圧縮アーカイブに追加
-                for (int i = 0; i < filesToCompress.Count; i++)
+                else if (Directory.Exists(sourcePath))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    // ディレクトリの場合、再帰的にファイルを取得して個別に追加
+                    Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
 
-                    var (fullPath, relativePath) = filesToCompress[i];
-                    writer.Add(fullPath, relativePath);
+                    // ファイルスキャンを非同期で処理
+                    var files = await Task.Run(() => GetFilesRecursively(sourcePath, excludedPatterns).ToList(), cancellationToken);
+                    var parentDir = Path.GetDirectoryName(sourcePath) ?? "";
 
-                    var progress = (int)((double)i / filesToCompress.Count * 50);
-                    progressCallback?.Invoke(progress);
+                    Logger.Log($"スキャン完了: {files.Count}個のファイルが見つかりました");
+
+                    for (var i = 0; i < files.Count; i++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        var file = files[i];
+                        // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
+                        var relativePath = Path.GetRelativePath(parentDir, file);
+                        filesToCompress.Add((file, relativePath));
+
+                        // 定期的に他のタスクに実行権を譲る
+                        if (i % 100 == 0)
+                        {
+                            await Task.Yield();
+                        }
+                    }
                 }
-
-                // 進捗報告を設定（圧縮開始時点で 50%）
-                progressCallback?.Invoke(50);
-
-                // 圧縮を実行
-                outputCreated = true;
-                writer.Save(outputPath);
-
-                // 完了時の進捗報告
-                progressCallback?.Invoke(100);
-
-                Logger.Log($"圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
+                else
+                {
+                    throw new FileNotFoundException($"指定されたパスが見つかりません: {sourcePath}");
+                }
             }
+
+            Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
+
+            // ArchiveWriterを使用して圧縮（形式に応じてオプションを設定）
+            using var writer = CreateArchiveWriter(format);
+
+            // ファイルを圧縮アーカイブに追加
+            var totalFiles = filesToCompress.Count;
+            Logger.Log($"圧縮するファイル数: {totalFiles}");
+
+            foreach (var (fullPath, relativePath) in filesToCompress)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                writer.Add(fullPath, relativePath);
+            }
+
+            // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
+            outputCreated = true;
+            Logger.Log("圧縮処理を開始します");
+
+            var reportProgress = new CancellableProgress<Report>(report =>
+            {
+                // 進捗率をそのまま使用（GetRatio()で0～1を返す）
+                var ratio = report.GetRatio();
+                var percentage = (int)(ratio * 100);
+
+                progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
+            }, cancellationToken);
+
+            await Task.Run(() =>
+            {
+                writer.Save(outputPath, reportProgress);
+            }, cancellationToken);
+
+            // 重要なオブジェクトを延命させ、ネイティブ側からの不意なコールバックによる
+            // ExecutionEngineException を防止する
+            GC.KeepAlive(writer);
+            GC.KeepAlive(reportProgress);
+
+            Logger.Log($"圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
         }
         catch (OperationCanceledException)
         {
@@ -176,127 +189,37 @@ public class ArchiveCompressor
     }
 
     /// <summary>
-    /// ファイルをLHA形式で圧縮する
+    /// ファイルを圧縮する（同期版、互換性保持用）
     /// </summary>
-    /// <param name="sourcePaths">圧縮対象のパス</param>
+    /// <param name="sourcePaths">圧縮するファイル・フォルダのパス</param>
     /// <param name="outputPath">出力アーカイブのパス</param>
-    /// <param name="excludedPatterns">除外パターン</param>
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    private static void CompressFilesAsLha(IEnumerable<string> sourcePaths, string outputPath, List<string> excludedPatterns, Action<int>? progressCallback, CancellationToken cancellationToken)
+    public static void CompressFiles(IEnumerable<string> sourcePaths, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
-        progressCallback?.Invoke(0);
-
-        var sourceList = sourcePaths.ToList();
-        var filesToCompress = new List<(string fullPath, string relativePath)>();
-
-        // 圧縮対象のファイルを準備
-        foreach (var sourcePath in sourceList)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            if (File.Exists(sourcePath))
-            {
-                if (!ShouldExcludeFile(sourcePath, excludedPatterns))
-                {
-                    filesToCompress.Add((sourcePath, Path.GetFileName(sourcePath)));
-                }
-            }
-            else if (Directory.Exists(sourcePath))
-            {
-                var files = GetFilesRecursively(sourcePath, excludedPatterns);
-                var parentDir = Path.GetDirectoryName(sourcePath) ?? "";
-
-                foreach (var file in files)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var relativePath = Path.GetRelativePath(parentDir, file);
-                    filesToCompress.Add((file, relativePath));
-                }
-            }
-            else
-            {
-                throw new FileNotFoundException($"指定されたパスが見つかりません: {sourcePath}");
-            }
-        }
-
-        try
-        {
-            // LHA形式として圧縮するために、ディレクトリパスを作成
-            var tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-            Directory.CreateDirectory(tempDirectory);
-
-            try
-            {
-                for (int i = 0; i < filesToCompress.Count; i++)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var (fullPath, relativePath) = filesToCompress[i];
-                    var tempFilePath = Path.Combine(tempDirectory, relativePath);
-                    var tempFileDir = Path.GetDirectoryName(tempFilePath) ?? "";
-
-                    if (!Directory.Exists(tempFileDir))
-                    {
-                        Directory.CreateDirectory(tempFileDir);
-                    }
-
-                    File.Copy(fullPath, tempFilePath, true);
-
-                    var progress = (int)((double)(i + 1) / filesToCompress.Count * 50);
-                    progressCallback?.Invoke(progress);
-                }
-
-                // LHAWriter.WriteLHAFileを使用してLHA形式で圧縮
-                var result = LHAWriter.WriteLHAFile(outputPath, tempDirectory, "*", Amiga.FileFormats.LHA.CompressionMethod.LH5);
-
-                if (result != LHAWriteResult.Success)
-                {
-                    throw new InvalidOperationException($"LHA形式の圧縮に失敗しました: {result}");
-                }
-
-                progressCallback?.Invoke(100);
-                Logger.Log($"LHA形式の圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
-            }
-            finally
-            {
-                // 一時ディレクトリを削除
-                try
-                {
-                    if (Directory.Exists(tempDirectory))
-                    {
-                        Directory.Delete(tempDirectory, true);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"一時ディレクトリの削除に失敗しました: {tempDirectory}, {ex.Message}");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"LHA形式の圧縮でエラーが発生しました: {ex.Message}");
-            throw;
-        }
+        CompressFilesAsync(sourcePaths, outputPath, progressCallback, cancellationToken).GetAwaiter().GetResult();
     }
 
     /// <summary>
-    /// ArchiveWriterを作成する
+    /// ArchiveWriterを作成する（スレッド数制御追加）
     /// </summary>
     /// <param name="format">圧縮形式</param>
+    /// <param name="maxThreads">最大スレッド数（0または負の値で自動設定）</param>
     /// <returns>ArchiveWriterインスタンス</returns>
-    private static ArchiveWriter CreateArchiveWriter(Format format)
+    private static ArchiveWriter CreateArchiveWriter(Format format, int maxThreads = -1)
     {
+        // デフォルトはプロセッサ数、制限がある場合はその値
+        var threadCount = maxThreads > 0 ? maxThreads : Environment.ProcessorCount;
+
         // 形式に応じたオプションを設定
         if (format == Format.SevenZip)
         {
-            // 7z形式: Ultra圧縮レベル + LZMA2 + CPU コア数と同じスレッド数
+            // 7z形式: Normal圧縮レベル + LZMA2 + スレッド数制御
             var options = new CompressionOption
             {
                 CompressionLevel = CompressionLevel.Ultra,
                 CompressionMethod = CompressionMethod.Lzma2,
-                ThreadCount = Environment.ProcessorCount
+                ThreadCount = threadCount
             };
             return new ArchiveWriter(format, options);
         }
@@ -307,7 +230,7 @@ public class ArchiveCompressor
             {
                 CompressionLevel = CompressionLevel.Fast,
                 CompressionMethod = CompressionMethod.Deflate,
-                ThreadCount = Environment.ProcessorCount,
+                ThreadCount = threadCount,
                 CodePage = CodePage.Utf8
             };
             return new ArchiveWriter(format, options);
@@ -324,16 +247,15 @@ public class ArchiveCompressor
     /// </summary>
     /// <param name="outputPath">出力ファイルパス</param>
     /// <returns>圧縮形式</returns>
-    private static (Format format, bool isLha) GetFormatFromExtension(string outputPath)
+    private static Format GetFormatFromExtension(string outputPath)
     {
         var extension = Path.GetExtension(outputPath).ToLowerInvariant();
         return extension switch
         {
-            ".zip" => (Format.Zip, false),
-            ".7z" => (Format.SevenZip, false),
-            ".tar" => (Format.Tar, false),
-            ".lzh" => (Format.Zip, true), // LHA形式フラグをtrue
-            _ => (Format.Zip, false) // デフォルトはZIP
+            ".zip" => Format.Zip,
+            ".7z" => Format.SevenZip,
+            ".tar" => Format.Tar,
+            _ => Format.Zip // デフォルトはZIP
         };
     }
 
@@ -343,12 +265,15 @@ public class ArchiveCompressor
     /// <param name="directoryPath">圧縮するディレクトリのパス</param>
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="progressCallback">進捗コールバック</param>
-    public void CompressDirectory(string directoryPath, string outputPath, Action<int>? progressCallback = null)
+    /// <param name="cancellationToken">キャンセルトークン</param>
+    public static void CompressDirectory(string directoryPath, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         if (!Directory.Exists(directoryPath))
         {
             throw new DirectoryNotFoundException($"ディレクトリが見つかりません: {directoryPath}");
         }
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         // 出力ディレクトリを作成
         var outputDir = Path.GetDirectoryName(outputPath);
@@ -362,40 +287,64 @@ public class ArchiveCompressor
 
         // 設定から除外パターンを取得
         var settings = Settings.Load();
-        var excludedPatterns = settings.ExcludedFilePatterns ?? new List<string>();
+        var excludedPatterns = settings.ExcludedFilePatterns ?? [];
 
         try
         {
-            // LHA形式の場合
-            if (format.isLha)
+            // 1. 圧縮対象のファイルを再帰的に取得（除外パターンを適用）
+            var files = GetFilesRecursively(directoryPath, excludedPatterns).ToList();
+            var totalFiles = files.Count;
+            Logger.Log($"圧縮対象のファイル総数: {totalFiles}個");
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // アーカイブ内の相対パスを計算（ディレクトリ自体をルートに含める）
+            var parentDir = Path.GetDirectoryName(directoryPath) ?? "";
+            var filesToCompress = files.Select(f => (fullPath: f, relativePath: Path.GetRelativePath(parentDir, f))).ToList();
+
+            // 2. その他の形式（ArchiveWriterを使用）
+            using var writer = CreateArchiveWriter(format);
+
+            foreach (var item in filesToCompress)
             {
-                CompressFilesAsLha(new[] { directoryPath }, outputPath, excludedPatterns, progressCallback, CancellationToken.None);
-                return;
+                cancellationToken.ThrowIfCancellationRequested();
+                writer.Add(item.fullPath, item.relativePath);
             }
 
-            // ArchiveWriterを使用して圧縮（形式に応じてオプションを設定）
-            using var writer = CreateArchiveWriter(format.format);
+            // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
+            Logger.Log("圧縮処理を開始します");
 
-            // ディレクトリ内のファイルを再帰的に取得して個別に追加
-            var files = GetFilesRecursively(directoryPath, excludedPatterns);
-
-            foreach (var file in files)
+            var reportProgress = new CancellableProgress<Report>(report =>
             {
-                // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
-                var relativePath = Path.GetRelativePath(directoryPath, file);
-                writer.Add(file, relativePath);
+                // 進捗率をそのまま使用（GetRatio()で0～1を返す）
+                var ratio = report.GetRatio();
+                var percentage = (int)(ratio * 100);
+
+                progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
+            }, cancellationToken);
+
+            // 同期的な Save でもキャンセル可能にするために、CancellableProgress を使用。
+            // Cube.FileSystem.SevenZip は Report 呼び出し時に例外がスローされると処理を中断する。
+            
+            cancellationToken.ThrowIfCancellationRequested();
+            writer.Save(outputPath, reportProgress);
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(cancellationToken);
             }
 
-            // 進捗報告を設定
-            progressCallback?.Invoke(0);
-
-            // 圧縮を実行
-            writer.Save(outputPath);
-
-            // 完了時の進捗報告
-            progressCallback?.Invoke(100);
-
+            progressCallback?.Invoke(new ProgressInfo(100, "完了"));
             Logger.Log($"ディレクトリ圧縮完了: {directoryPath} -> {outputPath}");
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log($"圧縮処理がキャンセルされました: {directoryPath}");
+            if (File.Exists(outputPath))
+            {
+                try { File.Delete(outputPath); } catch { }
+            }
+            throw;
         }
         catch (Exception ex)
         {
@@ -410,7 +359,7 @@ public class ArchiveCompressor
     /// <param name="archivePath">アーカイブパス</param>
     /// <param name="folderName">チェックするフォルダ名</param>
     /// <returns>同名フォルダが存在するかどうか</returns>
-    public bool HasFolderWithSameName(string archivePath, string folderName)
+    public static bool HasFolderWithSameName(string archivePath, string folderName)
     {
         if (!File.Exists(archivePath))
         {
@@ -475,33 +424,23 @@ public class ArchiveCompressor
     /// <returns>ファイルパスのリスト</returns>
     private static IEnumerable<string> GetFilesRecursively(string directoryPath, List<string> excludedPatterns)
     {
-        var files = new List<string>();
-
         try
         {
             // ディレクトリ自体が除外対象かチェック
             if (ShouldExcludeFile(directoryPath, excludedPatterns))
             {
-                return files;
+                return [];
             }
 
-            // 現在のディレクトリのファイルを取得
-            foreach (var file in Directory.GetFiles(directoryPath))
+            // Directory.EnumerateFiles を使用して効率的にファイルを取得
+            var enumerationOptions = new EnumerationOptions
             {
-                if (!ShouldExcludeFile(file, excludedPatterns))
-                {
-                    files.Add(file);
-                }
-            }
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true // 権限エラーで止まらないようにする
+            };
 
-            // サブディレクトリを再帰的に処理
-            foreach (var directory in Directory.GetDirectories(directoryPath))
-            {
-                if (!ShouldExcludeFile(directory, excludedPatterns))
-                {
-                    files.AddRange(GetFilesRecursively(directory, excludedPatterns));
-                }
-            }
+            return Directory.EnumerateFiles(directoryPath, "*", enumerationOptions)
+                .Where(file => !ShouldExcludeFile(file, excludedPatterns));
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -512,6 +451,6 @@ public class ArchiveCompressor
             Logger.Log($"ファイル取得中にエラーが発生しました: {directoryPath}, {ex.Message}");
         }
 
-        return files;
+        return [];
     }
 }

@@ -56,7 +56,6 @@ public class SettingsTests
     [InlineData("ZIP", true)]
     [InlineData("7z", true)]
     [InlineData("TAR", true)]
-    [InlineData("LHA", true)]
     [InlineData("RAR", false)]
     [InlineData("GZ", false)]
     [InlineData("unknown", false)]

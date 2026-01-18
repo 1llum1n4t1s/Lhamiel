@@ -9,11 +9,11 @@ public static class PathValidator
 {
     // Windows予約デバイス名
     private static readonly string[] ReservedDeviceNames =
-    {
+    [
         "CON", "PRN", "AUX", "NUL",
         "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
         "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
-    };
+    ];
 
     // 最大パス長（Windowsのデフォルト制限）
     private const int MaxPathLength = 260;
@@ -164,28 +164,26 @@ public static class PathValidator
     {
         errorMessage = null;
 
-        // "../" または "..\" パターンをチェック
-        if (path.Contains(".."))
+        try
         {
-            // 正規化されたパスで再度確認
-            try
-            {
-                var fullPath = Path.GetFullPath(path);
-                var normalizedPath = path.Replace('/', Path.DirectorySeparatorChar)
-                                         .Replace('\\', Path.DirectorySeparatorChar);
+            // 文字列としての ".." チェックは削除（Report..v1.txt などの正当なファイル名を誤検知するため）
+            // Path.GetFullPath で正規化を試み、有効なパスかどうかのみチェック
+            var fullPath = Path.GetFullPath(path);
 
-                if (normalizedPath.Contains($"..{Path.DirectorySeparatorChar}"))
-                {
-                    errorMessage = "パストラバーサルのパターンが検出されました (..)";
-                    Logger.Log($"セキュリティ警告: パストラバーサル検出 - {path}", LogLevel.Warning);
-                    return false;
-                }
-            }
-            catch (Exception ex)
+            // 追加のセキュリティチェック: ルートディレクトリ外へのアクセスを防ぐ
+            var root = Path.GetPathRoot(fullPath);
+            if (string.IsNullOrEmpty(root) || !fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
             {
-                errorMessage = $"パスの正規化に失敗しました: {ex.Message}";
+                errorMessage = "不正なパス形式が検出されました";
+                Logger.Log($"セキュリティ警告: 不正なパス形式 - 元パス: {path}, 正規化パス: {fullPath}", LogLevel.Warning);
                 return false;
             }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"パスの検証に失敗しました: {ex.Message}";
+            Logger.Log($"パス検証エラー: {path}, {ex.Message}", LogLevel.Warning);
+            return false;
         }
 
         return true;
@@ -221,47 +219,57 @@ public static class PathValidator
     }
 
     /// <summary>
-    /// パスを安全に正規化する
+    /// 指定されたパスが保護されたディレクトリ（デスクトップ、マイドキュメント、ドライブのルートなど）かどうかを判定する
     /// </summary>
-    /// <param name="path">正規化するパス</param>
-    /// <param name="normalizedPath">正規化されたパス</param>
-    /// <returns>正規化に成功した場合はtrue</returns>
-    public static bool TryNormalizePath(string path, out string? normalizedPath)
+    /// <param name="path">検証するパス</param>
+    /// <returns>保護されている場合はtrue</returns>
+    public static bool IsProtectedDirectory(string path)
     {
-        normalizedPath = null;
-
         try
         {
-            normalizedPath = Path.GetFullPath(path);
+            if (string.IsNullOrWhiteSpace(path)) return true;
+
+            var fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            
+            // 1. ドライブのルートディレクトリをチェック
+            var root = Path.GetPathRoot(fullPath);
+            if (string.Equals(root?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), 
+                              fullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // 2. 特殊なフォルダ（シェルフォルダ）をチェック
+            var protectedFolders = new List<string>
+            {
+                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+                Environment.GetFolderPath(Environment.SpecialFolder.System),
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)
+            };
+
+            // Downloads フォルダの追加（SpecialFolderにない場合が多いため）
+            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (!string.IsNullOrEmpty(userProfile))
+            {
+                protectedFolders.Add(Path.Combine(userProfile, "Downloads"));
+            }
+
+            return protectedFolders.Any(f => !string.IsNullOrEmpty(f) && 
+                                             string.Equals(Path.GetFullPath(f).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), 
+                                                           fullPath, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            // エラーが発生した場合は安全のために保護されているとみなす
             return true;
         }
-        catch (Exception ex)
-        {
-            Logger.Log($"パスの正規化に失敗: {path} - {ex.Message}", LogLevel.Warning);
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// ファイルパスが安全かどうかを包括的に検証する
-    /// </summary>
-    /// <param name="filePath">検証するファイルパス</param>
-    /// <param name="baseDirectory">基準ディレクトリ（指定した場合、この配下かどうかもチェック）</param>
-    /// <returns>安全な場合はtrue</returns>
-    public static bool IsSafeFilePath(string filePath, string? baseDirectory = null)
-    {
-        if (!IsValidFilePath(filePath, out var errorMessage))
-        {
-            Logger.Log($"ファイルパス検証失敗: {errorMessage}", LogLevel.Warning);
-            return false;
-        }
-
-        if (baseDirectory != null && !IsWithinDirectory(filePath, baseDirectory))
-        {
-            Logger.Log($"ファイルパスが基準ディレクトリ外です: {filePath}", LogLevel.Warning);
-            return false;
-        }
-
-        return true;
     }
 }

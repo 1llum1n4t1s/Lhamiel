@@ -154,7 +154,7 @@ ArchiveProcessor.ExtractArchiveAsync
     ↓
 MainWindow.CompressFolderButton_Click
     ↓
-ArchiveProcessor.CompressFolderAsync
+ArchiveProcessor.CompressItemAsync
     ↓
 Settings.CompressionFormat取得
     ↓

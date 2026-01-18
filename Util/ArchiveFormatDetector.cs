@@ -81,7 +81,7 @@ public static class ArchiveFormatDetector
                         DetectRarSignature(scanBytes) ||
                         DetectArchiveKeywords(scanBytes))
                     {
-                        Logger.Log($"自己展開圧縮ファイルを確認: {filePath}", LogLevel.Info);
+                        Logger.Log($"自己展開圧縮ファイルを確認: {filePath}");
                         return true;
                     }
                 }
@@ -107,7 +107,7 @@ public static class ArchiveFormatDetector
     /// </summary>
     private static bool DetectZipSignature(byte[] scanBytes, long startOffset)
     {
-        for (int i = 0; i < scanBytes.Length - 3; i++)
+        for (int i = 0; i <= scanBytes.Length - 4; i++)
         {
             if (scanBytes[i] == ArchiveConstants.PkHeaderFirstByte &&
                 scanBytes[i + 1] == ArchiveConstants.PkHeaderSecondByte &&
@@ -126,35 +126,42 @@ public static class ArchiveFormatDetector
     /// </summary>
     private static bool DetectSevenZipSignature(byte[] scanBytes)
     {
-        var signature = ArchiveConstants.SevenZipSignature;
-        for (int i = 0; i < scanBytes.Length - signature.Length; i++)
+        if (MatchSignature(scanBytes, ArchiveConstants.SevenZipSignature))
         {
-            bool match = true;
-            for (int j = 0; j < signature.Length; j++)
-            {
-                if (scanBytes[i + j] != signature[j])
-                {
-                    match = false;
-                    break;
-                }
-            }
-
-            if (match)
-            {
-                Logger.Log("7-Zipファイルの特徴を発見", LogLevel.Debug);
-                return true;
-            }
+            Logger.Log("7-Zipファイルの特徴を発見", LogLevel.Debug);
+            return true;
         }
         return false;
     }
 
     /// <summary>
-    /// RARファイルのシグネチャを検出
+    /// RARファイルのシグネチャを検出 (RAR v4.x および v5.0+)
     /// </summary>
     private static bool DetectRarSignature(byte[] scanBytes)
     {
-        var signature = ArchiveConstants.RarSignature;
-        for (int i = 0; i < scanBytes.Length - signature.Length; i++)
+        // RAR v4.x
+        if (MatchSignature(scanBytes, ArchiveConstants.RarSignature))
+        {
+            Logger.Log("RAR v4.x ファイルの特徴を発見", LogLevel.Debug);
+            return true;
+        }
+
+        // RAR v5.0+
+        if (MatchSignature(scanBytes, ArchiveConstants.Rar5Signature))
+        {
+            Logger.Log("RAR v5.0+ ファイルの特徴を発見", LogLevel.Debug);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// バイト配列内から特定のシグネチャを検索する共通メソッド
+    /// </summary>
+    private static bool MatchSignature(byte[] scanBytes, byte[] signature)
+    {
+        for (int i = 0; i <= scanBytes.Length - signature.Length; i++)
         {
             bool match = true;
             for (int j = 0; j < signature.Length; j++)
@@ -166,11 +173,7 @@ public static class ArchiveFormatDetector
                 }
             }
 
-            if (match)
-            {
-                Logger.Log("RARファイルの特徴を発見", LogLevel.Debug);
-                return true;
-            }
+            if (match) return true;
         }
         return false;
     }
@@ -199,35 +202,5 @@ public static class ArchiveFormatDetector
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// バイト配列内でバイトパターンを検索する
-    /// </summary>
-    /// <param name="data">検索対象のバイト配列</param>
-    /// <param name="pattern">検索するパターン</param>
-    /// <returns>パターンが見つかった位置のインデックス。見つからない場合は-1</returns>
-    public static int FindBytePattern(byte[] data, byte[] pattern)
-    {
-        if (data == null || pattern == null || pattern.Length == 0 || data.Length < pattern.Length)
-            return -1;
-
-        for (int i = 0; i <= data.Length - pattern.Length; i++)
-        {
-            bool match = true;
-            for (int j = 0; j < pattern.Length; j++)
-            {
-                if (data[i + j] != pattern[j])
-                {
-                    match = false;
-                    break;
-                }
-            }
-
-            if (match)
-                return i;
-        }
-
-        return -1;
     }
 }

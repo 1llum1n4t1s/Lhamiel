@@ -2,7 +2,6 @@ using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
 namespace Lhamiel.Util;
@@ -14,14 +13,6 @@ namespace Lhamiel.Util;
 [SupportedOSPlatform("windows")]
 public class FileAssociation
 {
-    // Windows APIの定数
-    private const int SHCNE_ASSOCCHANGED = 0x08000000;
-    private const int SHCNF_IDLIST = 0x0000;
-
-    // Windows API関数の宣言
-    [DllImport("shell32.dll")]
-    private static extern void SHChangeNotify(int eventId, int flags, IntPtr item1, IntPtr item2);
-
     /// <summary>
     /// アプリケーションの実行ファイルパス
     /// 現在実行中のアプリケーションのパスを取得
@@ -113,7 +104,7 @@ public class FileAssociation
     {
         try
         {
-            SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+            NativeMethods.SHChangeNotify(NativeMethods.SHCNE_ASSOCCHANGED, NativeMethods.SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
             Thread.Sleep(200);
         }
         catch (Exception ex)
@@ -236,19 +227,16 @@ public class FileAssociation
     {
         try
         {
-            Logger.Log($"[関連付け状態取得] 開始: {extension}", LogLevel.Debug);
             if (!extension.StartsWith("."))
             {
                 extension = "." + extension;
             }
 
-            // まず、ユーザーレベルの直接的な関連付けをチェック
             var userKeyPath = $"Software\\Classes\\{extension}";
             using var userKey = Registry.CurrentUser.OpenSubKey(userKeyPath);
             if (userKey != null)
             {
                 var appId = userKey.GetValue("") as string;
-                Logger.Log($"[関連付け状態取得] アプリケーション識別子: {appId}", LogLevel.Debug);
                 if (!string.IsNullOrEmpty(appId) && appId.StartsWith("Lhamiel"))
                 {
                     var shellKeyPath = $"Software\\Classes\\{appId}\\shell\\open\\command";
@@ -256,97 +244,17 @@ public class FileAssociation
                     if (shellKey != null)
                     {
                         var command = shellKey.GetValue("") as string;
-                        Logger.Log($"[関連付け状態取得] コマンド: {command}", LogLevel.Debug);
-                        Logger.Log($"[関連付け状態取得] AppPath: {AppPath}", LogLevel.Debug);
                         var isAssociated = command?.Contains(AppPath) == true;
-                        Logger.Log($"[関連付け状態取得] 関連付け状態: {isAssociated}", LogLevel.Debug);
                         return isAssociated;
                     }
-                    Logger.Log("[関連付け状態取得] シェルキーが見つかりません", LogLevel.Debug);
                 }
-                else
-                {
-                    Logger.Log("[関連付け状態取得] アプリケーション識別子がLhamielではありません", LogLevel.Debug);
-                }
-            }
-            else
-            {
-                Logger.Log("[関連付け状態取得] ユーザーキーが見つかりません", LogLevel.Debug);
             }
 
-            Logger.Log($"[関連付け状態取得] 関連付けなし: {extension}", LogLevel.Debug);
             return false;
         }
         catch (Exception ex)
         {
-            Logger.LogException($"[関連付け状態取得] エラー: {extension}", ex);
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// すべてのサポートされているファイル形式に関連付けを設定する
-    /// </summary>
-    /// <returns>すべての設定が成功した場合はtrue、そうでなければfalse</returns>
-    [SupportedOSPlatform("windows")]
-    public static bool AssociateAllSupportedTypes()
-    {
-        var supportedTypes = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".lzma", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tgz", ".tbz2", ".tbz", ".tlz", ".txz", ".tz" };
-        var success = true;
-
-        foreach (var type in supportedTypes)
-        {
-            if (!AssociateFileType(type))
-            {
-                success = false;
-            }
-        }
-
-        return success;
-    }
-
-    /// <summary>
-    /// すべてのサポートされているファイル形式の関連付けを解除する
-    /// </summary>
-    /// <returns>すべての解除が成功した場合はtrue、そうでなければfalse</returns>
-    [SupportedOSPlatform("windows")]
-    public static bool DisassociateAllSupportedTypes()
-    {
-        var supportedTypes = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".lzma", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tgz", ".tbz2", ".tbz", ".tlz", ".txz", ".tz" };
-        var success = true;
-
-        foreach (var type in supportedTypes)
-        {
-            if (!DisassociateFileType(type))
-            {
-                success = false;
-            }
-        }
-
-        return success;
-    }
-
-    /// <summary>
-    /// レジストリへの書き込み権限があるかどうかを確認する
-    /// </summary>
-    /// <returns>権限がある場合はtrue、そうでなければfalse</returns>
-    [SupportedOSPlatform("windows")]
-    public static bool HasRegistryPermission()
-    {
-        try
-        {
-            var testKeyPath = "Software\\LhamielTest";
-            using var testKey = Registry.CurrentUser.CreateSubKey(testKeyPath);
-            if (testKey != null)
-            {
-                testKey.SetValue("Test", "TestValue");
-                Registry.CurrentUser.DeleteSubKey(testKeyPath);
-                return true;
-            }
-            return false;
-        }
-        catch
-        {
+            Logger.LogException($"ファイル関連付け状態の確認に失敗しました: {extension}", ex);
             return false;
         }
     }
@@ -369,25 +277,4 @@ public class FileAssociation
         return status;
     }
 
-    /// <summary>
-    /// 指定された拡張子の現在の関連付け状態を取得する
-    /// </summary>
-    /// <param name="extension">拡張子</param>
-    /// <returns>関連付けられている場合はtrue、そうでなければfalse</returns>
-    [SupportedOSPlatform("windows")]
-    public static bool GetCurrentAssociationStatus(string extension)
-    {
-        return IsFileTypeAssociated(extension);
-    }
-
-    /// <summary>
-    /// 指定された拡張子の関連付けが完全に設定されているかどうかを確認する
-    /// </summary>
-    /// <param name="extension">拡張子</param>
-    /// <returns>完全に設定されている場合はtrue、そうでなければfalse</returns>
-    [SupportedOSPlatform("windows")]
-    public static bool IsAssociationFullyConfigured(string extension)
-    {
-        return IsFileTypeAssociated(extension);
-    }
 }

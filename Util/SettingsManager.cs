@@ -31,7 +31,7 @@ public sealed class SettingsManager
         try
         {
             _settings = Settings.Load();
-            Logger.Log("設定を読み込みました", LogLevel.Info);
+            Logger.Log("設定を読み込みました");
         }
         catch (Exception ex)
         {
@@ -48,7 +48,7 @@ public sealed class SettingsManager
         try
         {
             _settings.Save();
-            Logger.Log("設定を保存しました", LogLevel.Info);
+            Logger.Log("設定を保存しました");
         }
         catch (Exception ex)
         {
@@ -57,50 +57,4 @@ public sealed class SettingsManager
         }
     }
 
-    /// <summary>
-    /// 設定を再読み込み
-    /// </summary>
-    public void Reload()
-    {
-        try
-        {
-            var newSettings = Settings.Load();
-
-            // 既存の設定オブジェクトのプロパティを更新
-            _settings.CompressionFormat = newSettings.CompressionFormat;
-            _settings.ExtractionOutputDirectory = newSettings.ExtractionOutputDirectory;
-            _settings.CompressionOutputDirectory = newSettings.CompressionOutputDirectory;
-            _settings.ExtractionOutputToSameDirectory = newSettings.ExtractionOutputToSameDirectory;
-            _settings.CompressionOutputToSameDirectory = newSettings.CompressionOutputToSameDirectory;
-            _settings.EnableShortcutCreation = newSettings.EnableShortcutCreation;
-            _settings.UpdateRepoOwner = newSettings.UpdateRepoOwner;
-            _settings.UpdateRepoName = newSettings.UpdateRepoName;
-            _settings.UpdateChannel = newSettings.UpdateChannel;
-            _settings.LastUpdateCheckTime = newSettings.LastUpdateCheckTime;
-
-            Logger.Log("設定を再読み込みしました", LogLevel.Info);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogException("設定の再読み込みに失敗しました", ex);
-            throw;
-        }
-    }
-
-    /// <summary>
-    /// 設定をデフォルト値にリセット
-    /// </summary>
-    public void ResetToDefaults()
-    {
-        try
-        {
-            _settings.ResetToDefaults();
-            Logger.Log("設定をデフォルト値にリセットしました", LogLevel.Info);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogException("設定のリセットに失敗しました", ex);
-            throw;
-        }
-    }
 }

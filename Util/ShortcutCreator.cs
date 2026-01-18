@@ -87,8 +87,7 @@ public static class ShortcutCreator
                 shortcut = shellType.InvokeMember("CreateShortcut",
                     System.Reflection.BindingFlags.InvokeMethod,
                     null,
-                    shell,
-                    new object[] { shortcutPath });
+                    shell, [shortcutPath]);
 
                 if (shortcut == null)
                 {
@@ -102,22 +101,19 @@ public static class ShortcutCreator
                 shortcutType.InvokeMember("TargetPath",
                     System.Reflection.BindingFlags.SetProperty,
                     null,
-                    shortcut,
-                    new object[] { targetPath });
+                    shortcut, [targetPath]);
 
                 // Descriptionプロパティを設定
                 shortcutType.InvokeMember("Description",
                     System.Reflection.BindingFlags.SetProperty,
                     null,
-                    shortcut,
-                    new object[] { description });
+                    shortcut, [description]);
 
                 // WorkingDirectoryプロパティを設定
                 shortcutType.InvokeMember("WorkingDirectory",
                     System.Reflection.BindingFlags.SetProperty,
                     null,
-                    shortcut,
-                    new object[] { Path.GetDirectoryName(targetPath) ?? "" });
+                    shortcut, [Path.GetDirectoryName(targetPath) ?? ""]);
 
                 // Saveメソッドを呼び出し
                 shortcutType.InvokeMember("Save",

@@ -15,9 +15,11 @@ public static class ArchiveProcessor
     /// <param name="outputDir">出力ディレクトリ</param>
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
     /// <param name="progressWindow">進行状況ウィンドウ</param>
+    /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="enablePartialExtraction">部分展開を有効にするかどうか</param>
+    /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false)
+    public static async Task<bool> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
         
@@ -30,18 +32,18 @@ public static class ArchiveProcessor
             if (!File.Exists(filePath))
             {
                 Logger.Log($"指定されたファイルが存在しません: {filePath}");
-                MessageBox.Show($"指定されたファイルが見つかりません。\n{filePath}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageService.ShowError($"指定されたファイルが見つかりません。\n{filePath}");
                 return false;
             }
 
             // ファイル拡張子の確認
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
-            var supportedExtensions = new[] { ".zip", ".7z", ".tar", ".gz", ".bz2", ".xz", ".rar", ".lzh", ".cab", ".arj", ".z", ".exe" };
+            var supportedExtensions = new[] { ".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tz", ".exe" };
             
             if (!supportedExtensions.Contains(extension))
             {
                 Logger.Log($"サポートされていないファイル形式です: {extension}");
-                MessageBox.Show($"サポートされていないファイル形式です。\n{extension}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageService.ShowError($"サポートされていないファイル形式です。\n{extension}");
                 return false;
             }
 
@@ -52,27 +54,49 @@ public static class ArchiveProcessor
                 if (!ArchiveFormatDetector.IsSelfExtractingArchive(filePath))
                 {
                     Logger.Log($"実行可能ファイルですが、自己展開圧縮ファイルではありません: {filePath}", LogLevel.Warning);
-                    MessageBox.Show($"実行可能ファイルですが、自己展開圧縮ファイルではありません。\n{filePath}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageService.ShowError($"実行可能ファイルですが、自己展開圧縮ファイルではありません。\n{filePath}");
                     return false;
                 }
-                Logger.Log($"自己展開圧縮ファイルを確認: {filePath}", LogLevel.Info);
+                Logger.Log($"自己展開圧縮ファイルを確認: {filePath}");
             }
 
             Logger.Log($"展開処理を開始: {filePath}");
 
-            // 出力先ディレクトリの取得
-            outputPath = ArchiveExtractor.GetOutputDirectory(filePath, outputDir, outputToSameDirectory);
+            // 展開先パスの決定ロジック（二重フォルダ防止）
+            // 基準となる出力ディレクトリ（ユーザー指定の場所 または アーカイブと同じ場所）
+            var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(filePath, outputDir, outputToSameDirectory);
 
-            // ファイル名を設定
-            progressWindow?.SetFileName(filePath);
+            // アーカイブの中身をチェックして、展開先を決定
+            var isSingleRoot = ArchiveExtractor.HasSingleRootItem(filePath);
+            
+            if (isSingleRoot)
+            {
+                // 単一要素の場合：アーカイブ名フォルダを作らず、基準ディレクトリに直接展開
+                // 結果として、中身の単一要素名でフォルダ/ファイルが作成される
+                outputPath = baseDirectory;
+                Logger.Log($"スマート解凍適用: 単一ルート要素のため直下に展開 -> {outputPath}");
+            }
+            else
+            {
+                // 複数要素の場合：アーカイブ名フォルダを作成して、その中に展開
+                var fileName = Path.GetFileNameWithoutExtension(filePath);
+                outputPath = Path.Combine(baseDirectory, fileName);
+                Logger.Log($"通常解凍: アーカイブ名フォルダを作成 -> {outputPath}");
+            }
 
             cancellationToken.ThrowIfCancellationRequested();
 
             // 展開処理を実行
-            var progress = new Progress<int>(percentage =>
+            // 個別進捗が指定されていない場合は、ProgressWindow用の進捗を作成
+            // 並列処理時はindividualProgressに空のProgressを渡して、個別進捗のUI更新を無効化する
+            IProgress<ProgressInfo>? progress = individualProgress;
+            if (progress == null && progressWindow != null)
             {
-                progressWindow?.UpdateProgress(percentage, "ファイルを展開中...");
-            });
+                progress = new Progress<ProgressInfo>(info =>
+                {
+                    progressWindow.UpdateProgress(info.Percentage);
+                });
+            }
 
             if (enablePartialExtraction)
             {
@@ -85,8 +109,9 @@ public static class ArchiveProcessor
                     filePath,
                     outputPath,
                     PartialExtractionHandler.ErrorHandlingOption.AskUser,
-                    (percentage, message) => progressWindow?.UpdateProgress(percentage, message),
-                    (failedFile) => ShowErrorRecoveryDialog(failedFile, progressWindow));
+                    (percentage, _) => progressWindow?.UpdateProgress(percentage),
+                    (failedFile) => ShowErrorRecoveryDialog(failedFile, progressWindow),
+                    cancellationToken);
                 
                 // 結果を表示
                 if (result.SuccessCount > 0)
@@ -107,20 +132,16 @@ public static class ArchiveProcessor
             else
             {
                 Logger.Log($"ArchiveExtractor.ExtractArchiveAsyncを呼び出し: filePath={filePath}, outputPath={outputPath}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
-                await ArchiveExtractor.ExtractArchiveAsync(filePath, outputPath, progress, progressWindow, cancellationToken);
+                
+                // スマート解凍（isSingleRoot）の場合、キャンセル時に削除すべきは rootItemName
+                var rootItemName = isSingleRoot ? ArchiveExtractor.GetSingleRootItemName(filePath) : null;
+                await ArchiveExtractor.ExtractArchiveAsync(filePath, outputPath, progress, progressWindow, cancellationToken, rootItemName);
 
                 Logger.Log($"展開処理が完了: {filePath}");
                 return true;
             }
         }
-        catch (OperationCanceledException)
-        {
-            Logger.Log($"展開処理がキャンセルされました: {filePath}");
-            progressWindow?.SetCompleted("キャンセルしました。");
-            MessageBox.Show("展開処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
-            return false;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // 詳細なエラー分析を実行
             var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, filePath, outputPath);
@@ -128,7 +149,7 @@ public static class ArchiveProcessor
             
             // エラーダイアログを表示
             var errorMessage = $"{errorInfo.Message}\n\n詳細: {errorInfo.Details}\n\n推奨対処法: {errorInfo.RecommendedAction}";
-            MessageBox.Show(errorMessage, "展開エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowError(errorMessage, "展開エラー");
             
             return false;
         }
@@ -152,9 +173,9 @@ public static class ArchiveProcessor
             var failedFiles = new List<string>();
             var lockObject = new object();
 
-            // 同時実行数を CPU コア数に制限（メモリ保護）
-            var maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 4);
-            var semaphore = new System.Threading.SemaphoreSlim(maxDegreeOfParallelism);
+            // ディスクI/O負荷を考慮し、並列数をCPUコア数ではなく制限
+            var maxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount / 2, 2, 4);
+            using var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
 
             Logger.Log($"複数ファイル展開開始: {totalCount}個のファイル、最大並列度={maxDegreeOfParallelism}");
 
@@ -165,7 +186,32 @@ public static class ArchiveProcessor
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken);
+                    // null を渡すと ExtractArchiveAsync 内部で progressWindow を使ってしまうため、
+                    // 「全体進捗にマッピングする Progress」を渡して、UI更新を行う。
+                    IProgress<ProgressInfo> mappedProgress;
+                    if (totalCount == 1)
+                    {
+                        mappedProgress = new Progress<ProgressInfo>(info =>
+                        {
+                            // BeginInvoke に変更して、UIスレッドの負荷を軽減しデッドロックを回避
+                            progressWindow?.Dispatcher.BeginInvoke(new Action(() =>
+                                progressWindow.UpdateProgress(info.Percentage)
+                            ));
+                        });
+                    }
+                    else
+                    {
+                        mappedProgress = new Progress<ProgressInfo>(info =>
+                        {
+                            progressWindow?.Dispatcher.BeginInvoke(new Action(() =>
+                            {
+                                var overallProgress = (int)((double)index / totalCount * 100 + (double)info.Percentage / totalCount);
+                                progressWindow.UpdateProgress(overallProgress);
+                            }));
+                        });
+                    }
+
+                    var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress);
 
                     lock (lockObject)
                     {
@@ -178,8 +224,14 @@ public static class ArchiveProcessor
                             failedFiles.Add(Path.GetFileName(filePath));
                         }
 
-                        var progress = (int)((double)(index + 1) / totalCount * 100);
-                        progressWindow?.UpdateProgress(progress, $"展開中: {Path.GetFileName(filePath)}");
+                        // 件数ベースの進捗を最終更新
+                        var currentCount = successCount + failedFiles.Count;
+                        var progress = (int)((double)currentCount / totalCount * 100);
+                        
+                        // UIスレッド上で更新を実行（クロススレッド操作違反を防ぐ）
+                        progressWindow?.Dispatcher.Invoke(() =>
+                            progressWindow.UpdateProgress(progress)
+                        );
                     }
                 }
                 catch (OperationCanceledException)
@@ -214,176 +266,212 @@ public static class ArchiveProcessor
             // 完了メッセージを表示
             if (successCount == totalCount)
             {
-                progressWindow?.SetCompleted("展開が完了しました。");
                 Logger.Log($"複数ファイル展開完了: {successCount}/{totalCount}個の展開に成功");
-                await Task.Delay(1000);
-                progressWindow?.Close();
+                
+                // UIスレッド上で安全にクローズ
+                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
                 return true;
             }
             else
             {
-                var failureMessage = failedFiles.Any() ? $"\n失敗: {string.Join(", ", failedFiles)}" : "";
-                progressWindow?.SetCompleted($"{successCount}/{totalCount}個のファイルの展開が完了しました。{failureMessage}");
                 Logger.Log($"複数ファイル展開完了: {successCount}成功, {totalCount - successCount}失敗");
-                await Task.Delay(1000);
-                progressWindow?.Close();
+                
+                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
                 return successCount > 0;
             }
         }
-        catch (OperationCanceledException)
-        {
-            Logger.Log("複数ファイル展開処理がキャンセルされました");
-            progressWindow?.SetCompleted("キャンセルしました。");
-            MessageBox.Show("展開処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
-            return false;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数ファイル展開処理でエラーが発生", ex);
-            MessageBox.Show($"展開中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageService.ShowError($"展開中にエラーが発生しました。\n{ex.Message}");
             return false;
         }
     }
 
     /// <summary>
-    /// フォルダの圧縮処理を実行
+    /// ファイルまたはフォルダの圧縮処理を実行
     /// </summary>
-    /// <param name="folderPath">圧縮するフォルダのパス</param>
+    /// <param name="sourcePath">圧縮する対象（ファイルまたはフォルダ）のパス</param>
     /// <param name="outputDir">出力ディレクトリ</param>
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
     /// <param name="format">圧縮形式</param>
-    /// <param name="progressWindow">進行状況ウィンドウ</param>
+    /// <param name="progressWindow">進行状況ウィンドウ（nullの場合はUI更新を行わない）</param>
+    /// <param name="progressReporter">外部からの進捗報告用（並列処理時などに使用）</param>
+    /// <param name="cancellationToken">キャンセルトークン</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressFolderAsync(string folderPath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
+    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default)
     {
-        Logger.Log($"ArchiveProcessor.CompressFolderAsync開始: folderPath={folderPath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
-        
+        Logger.Log($"ArchiveProcessor.CompressItemAsync開始: sourcePath={sourcePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
+
+        // ProgressWindow からキャンセルトークンを取得（nullの場合は渡されたトークンを使用）
+        var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
+
         try
         {
-            // フォルダの存在確認
-            if (!Directory.Exists(folderPath))
+            // 対象の存在確認
+            if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
             {
-                Logger.Log($"指定されたフォルダが存在しません: {folderPath}");
-                MessageBox.Show($"指定されたフォルダが見つかりません。\n{folderPath}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                Logger.Log($"指定された対象が存在しません: {sourcePath}");
+                MessageService.ShowError($"指定されたファイルまたはフォルダが見つかりません。\n{sourcePath}");
                 return false;
             }
 
             // 圧縮形式の確認
-            var supportedFormats = new[] { "zip", "7z", "tar", "gz", "bz2", "xz", "cab", "wim", "lzh" };
+            var supportedFormats = new[] { "zip", "7z", "tar", "gz", "bz2", "xz", "cab", "wim" };
             if (!supportedFormats.Contains(format.ToLowerInvariant()))
             {
                 Logger.Log($"サポートされていない圧縮形式です: {format}");
-                MessageBox.Show($"サポートされていない圧縮形式です。\n{format}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageService.ShowError($"サポートされていない圧縮形式です。\n{format}");
                 return false;
             }
 
-            Logger.Log($"圧縮処理を開始: {folderPath}");
+            Logger.Log($"圧縮処理を開始: {sourcePath}");
 
             // 出力ファイル名の取得
-            var outputPath = ArchiveCompressor.GetCompressedFileName(folderPath, format, outputDir, outputToSameDirectory);
+            var outputPath = ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
 
-            // 出力ファイルが既に存在する場合は上書き確認
-            if (File.Exists(outputPath))
+            // 出力先が既に存在する場合は上書き確認
+            var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
+            if (targetExists)
             {
-                Logger.Log($"出力ファイルが既に存在します: {outputPath}");
+                Logger.Log($"出力先が既に存在します: {outputPath}");
+
+                // UIスレッドで上書き確認を実行
+                // 以前のデバッグで判明した通り、同期 Invoke ではなく await InvokeAsync を使用して
+                // スレッド間の切り替えを円滑にし、ExecutionEngineException を防ぐ
+                var dispatcher = progressWindow?.Dispatcher ?? Application.Current.Dispatcher;
                 
-                if (progressWindow != null)
+                // 呼び出し前にスレッドを一度譲り、コンテキストを安定させる
+                await Task.Yield();
+                
+                var canOverwrite = await dispatcher.InvokeAsync(() =>
+                    FileOverwriteDialog.CanOverwriteFile(sourcePath, outputPath, progressWindow)).Task;
+
+                Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
+
+                if (!canOverwrite)
                 {
-                    // UIスレッドで上書き確認を実行
-                    var canOverwrite = await progressWindow.Dispatcher.InvokeAsync(() => 
-                        FileOverwriteDialog.CanOverwriteFile(folderPath, outputPath, progressWindow));
-                    
-                    Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
-                    
-                    if (!canOverwrite)
-                    {
-                        Logger.Log("ユーザーが圧縮処理をキャンセルしました");
-                        return false;
-                    }
-                    
-                    // 上書きが許可された場合は既存ファイルを削除
-                    File.Delete(outputPath);
-                    Logger.Log($"既存ファイルを削除しました: {outputPath}");
+                    Logger.Log("ユーザーが圧縮処理をキャンセルしました");
+                    return false;
                 }
-                else
+
+                // 上書きが許可された場合は既存の対象を削除
+                try
                 {
-                    // progressWindowがnullの場合は自動的に上書き
-                    Logger.Log("progressWindowがnullのため、既存ファイルを自動的に上書きします");
-                    File.Delete(outputPath);
+                    if (Directory.Exists(outputPath))
+                    {
+                        Directory.Delete(outputPath, true);
+                    }
+                    else
+                    {
+                        File.Delete(outputPath);
+                    }
+                    Logger.Log($"既存の対象を削除しました: {outputPath}");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
+                    throw new InvalidOperationException($"出力先 '{Path.GetFileName(outputPath)}' が使用中か、アクセス権限がありません。", ex);
                 }
             }
 
-            // ファイル名を設定
-            progressWindow?.SetFileName(outputPath);
-
-            cancellationToken.ThrowIfCancellationRequested();
-
             // 圧縮処理を実行
-            var progress = new Progress<int>(percentage =>
+            Logger.Log($"ArchiveCompressor.CompressAsyncを呼び出し: sourcePath={sourcePath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
+
+            var progress = new Progress<ProgressInfo>(info =>
             {
-                progressWindow?.UpdateProgress(percentage, "フォルダを圧縮中...");
+                // 1. レガシーなProgressWindow更新 (単体実行時用)
+                // progressReporter がある場合は、そちらで全体進捗を管理しているため、ここでは更新しない
+                if (progressReporter == null)
+                {
+                    progressWindow?.UpdateProgress(info.Percentage);
+                }
+
+                // 2. 外部から渡された進捗レポーターへの報告 (並列実行時用)
+                progressReporter?.Report(info);
             });
 
-            Logger.Log($"ArchiveCompressor.CompressAsyncを呼び出し: folderPath={folderPath}, outputPath={outputPath}, format={format}, progressWindow={progressWindow?.GetType().Name ?? "null"}");
-            await ArchiveCompressor.CompressAsync(folderPath, outputPath, format, progress, cancellationToken);
+            await ArchiveCompressor.CompressAsync(sourcePath, outputPath, format, progress, actualCancellationToken);
 
-            Logger.Log($"圧縮処理が完了: {folderPath} -> {outputPath}");
-            
-            // 完了メッセージを表示
-            progressWindow?.SetCompleted("圧縮が完了しました。");
-            await Task.Delay(1000);
-            progressWindow?.Close();
-            
+            Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
+
+            if (progressReporter == null)
+            {
+                // UIスレッド上で安全にクローズ
+                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+            }
+
             return true;
         }
-        catch (OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Logger.Log($"圧縮処理がキャンセルされました: {folderPath}");
-            progressWindow?.SetCompleted("キャンセルしました。");
-            MessageBox.Show("圧縮処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogException($"圧縮処理でエラーが発生: {folderPath}", ex);
-            MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            Logger.LogException($"圧縮処理でエラーが発生: {sourcePath}", ex);
+            MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
             return false;
         }
     }
 
     /// <summary>
-    /// 複数のフォルダの圧縮処理を実行（並列処理対応）
+    /// 複数のファイルまたはフォルダの圧縮処理を実行（並列処理対応）
     /// </summary>
-    /// <param name="folderPaths">圧縮するフォルダのパスの配列</param>
+    /// <param name="sourcePaths">圧縮する対象（ファイルまたはフォルダ）のパスの配列</param>
     /// <param name="outputDir">出力ディレクトリ</param>
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
     /// <param name="format">圧縮形式</param>
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressFoldersAsync(string[] folderPaths, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
+    public static async Task<bool> CompressItemsAsync(string[] sourcePaths, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default)
     {
         try
         {
-            var totalCount = folderPaths.Length;
+            var totalCount = sourcePaths.Length;
             var successCount = 0;
-            var failedFolders = new List<string>();
+            var failedPaths = new List<string>();
             var lockObject = new object();
 
-            // 同時実行数を CPU コア数に制限（メモリ保護）
-            var maxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, 4);
-            var semaphore = new System.Threading.SemaphoreSlim(maxDegreeOfParallelism);
+            // ProgressWindow からキャンセルトークンを取得（nullの場合は渡されたトークンを使用）
+            var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
 
-            Logger.Log($"複数フォルダ圧縮開始: {totalCount}個のフォルダ、最大並列度={maxDegreeOfParallelism}、形式={format}");
+            var maxDegreeOfParallelism = 2;
+            using var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
 
-            var tasks = folderPaths.Select(async (folderPath, index) =>
+            Logger.Log($"複数対象圧縮開始: {totalCount}個の対象、並列制限={maxDegreeOfParallelism}、形式={format}");
+
+            var tasks = sourcePaths.Select(async (sourcePath, index) =>
             {
-                await semaphore.WaitAsync(cancellationToken);
+                await semaphore.WaitAsync(actualCancellationToken);
                 try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    actualCancellationToken.ThrowIfCancellationRequested();
 
-                    var success = await CompressFolderAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, cancellationToken);
+                    // 単一対象の場合は詳細な進捗を表示するためのReporterを作成
+                    IProgress<ProgressInfo>? innerProgress = null;
+                    if (totalCount == 1)
+                    {
+                        innerProgress = new Progress<ProgressInfo>(info =>
+                        {
+                            progressWindow?.Dispatcher.Invoke(() =>
+                            {
+                                progressWindow.UpdateProgress(info.Percentage);
+                            });
+                        });
+                    }
+                    else
+                    {
+                        // 複数対象圧縮時は、個別進捗を全体進捗にマッピングして表示
+                        innerProgress = new Progress<ProgressInfo>(info =>
+                        {
+                            progressWindow?.Dispatcher.Invoke(() =>
+                            {
+                                var overallProgress = (int)((double)index / totalCount * 100 + (double)info.Percentage / totalCount);
+                                progressWindow.UpdateProgress(overallProgress);
+                            });
+                        });
+                    }
+
+                    // 共通化された圧縮処理を実行
+                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken);
 
                     lock (lockObject)
                     {
@@ -393,24 +481,27 @@ public static class ArchiveProcessor
                         }
                         else
                         {
-                            failedFolders.Add(Path.GetFileName(folderPath));
+                            failedPaths.Add(Path.GetFileName(sourcePath));
                         }
 
-                        var progress = (int)((double)(index + 1) / totalCount * 100);
-                        progressWindow?.UpdateProgress(progress, $"圧縮中: {Path.GetFileName(folderPath)}");
+                        // 各対象完了時に確実に進捗を更新
+                        var completedProgress = (int)((double)(index + 1) / totalCount * 100);
+                        progressWindow?.Dispatcher.BeginInvoke(new Action(() =>
+                            progressWindow.UpdateProgress(completedProgress)
+                        ));
                     }
                 }
                 catch (OperationCanceledException)
                 {
-                    Logger.Log($"フォルダ圧縮がキャンセルされました: {folderPath}");
+                    Logger.Log($"圧縮がキャンセルされました: {sourcePath}");
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogException($"フォルダ圧縮でエラーが発生: {folderPath}", ex);
+                    Logger.LogException($"圧縮でエラーが発生: {sourcePath}", ex);
                     lock (lockObject)
                     {
-                        failedFolders.Add(Path.GetFileName(folderPath));
+                        failedPaths.Add(Path.GetFileName(sourcePath));
                     }
                 }
                 finally
@@ -425,40 +516,31 @@ public static class ArchiveProcessor
             }
             catch (OperationCanceledException)
             {
-                Logger.Log("複数フォルダ圧縮処理が全体でキャンセルされました");
+                Logger.Log("複数対象圧縮処理が全体でキャンセルされました");
                 throw;
             }
 
             // 完了メッセージを表示
             if (successCount == totalCount)
             {
-                progressWindow?.SetCompleted("圧縮が完了しました。");
-                Logger.Log($"複数フォルダ圧縮完了: {successCount}/{totalCount}個の圧縮に成功");
-                await Task.Delay(1000);
-                progressWindow?.Close();
+                Logger.Log($"複数対象圧縮完了: {successCount}/{totalCount}個の圧縮に成功");
+                
+                // UIスレッド上で安全にクローズ
+                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
                 return true;
             }
             else
             {
-                var failureMessage = failedFolders.Any() ? $"\n失敗: {string.Join(", ", failedFolders)}" : "";
-                progressWindow?.SetCompleted($"{successCount}/{totalCount}個のフォルダの圧縮が完了しました。{failureMessage}");
-                Logger.Log($"複数フォルダ圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
-                await Task.Delay(1000);
-                progressWindow?.Close();
+                Logger.Log($"複数対象圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
+                
+                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
                 return successCount > 0;
             }
         }
-        catch (OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Logger.Log("複数フォルダ圧縮処理がキャンセルされました");
-            progressWindow?.SetCompleted("キャンセルしました。");
-            MessageBox.Show("圧縮処理をキャンセルしました。", "キャンセル", MessageBoxButton.OK, MessageBoxImage.Information);
-            return false;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogException("複数フォルダ圧縮処理でエラーが発生", ex);
-            MessageBox.Show($"圧縮中にエラーが発生しました。\n{ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            Logger.LogException("複数対象圧縮処理でエラーが発生", ex);
+            MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
             return false;
         }
     }

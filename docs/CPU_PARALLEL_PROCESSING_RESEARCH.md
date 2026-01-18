@@ -25,8 +25,8 @@ Lhamielの現在の実装では**基本的な非同期処理は実装されて�
 |---------|---------|------|
 | `ArchiveProcessor.cs` | `ExtractArchiveAsync` | 単一アーカイブの展開（非同期） |
 | `ArchiveProcessor.cs` | `ExtractArchivesAsync` | 複数アーカイブの展開（順序実行） |
-| `ArchiveProcessor.cs` | `CompressFolderAsync` | フォルダ圧縮（非同期） |
-| `ArchiveProcessor.cs` | `CompressFoldersAsync` | 複数フォルダ圧縮（順序実行） |
+| `ArchiveProcessor.cs` | `CompressItemAsync` | フォルダ圧縮（非同期） |
+| `ArchiveProcessor.cs` | `CompressItemsAsync` | 複数フォルダ圧縮（順序実行） |
 | `ArchiveExtractor.cs` | `ExtractArchiveAsync` | アーカイブ展開実装 |
 | `ArchiveCompressor.cs` | `CompressAsync` | 圧縮実装 |
 | `PartialExtractionHandler.cs` | `ExtractWithPartialFailureHandling` | 部分展開（ファイル単位） |
@@ -64,7 +64,7 @@ public static async Task<bool> ExtractArchiveAsync(..., CancellationToken cancel
 // ArchiveProcessor.cs:76-79
 var progress = new Progress<int>(percentage =>
 {
-    progressWindow?.UpdateProgress(percentage, "ファイルを展開中...");
+    progressWindow?.UpdateProgress(percentage);
 });
 ```
 
@@ -490,14 +490,14 @@ CPU使用率: 75～100%（複数コア活用）
 // UI 更新は必ず UI スレッドで実行
 progressWindow?.Dispatcher.Invoke(() =>
 {
-    progressWindow.UpdateProgress(percentage, message);
+    progressWindow.UpdateProgress(percentage);
 });
 
 // または
 
 progressWindow?.Dispatcher.InvokeAsync(() =>
 {
-    progressWindow.UpdateProgress(percentage, message);
+    progressWindow.UpdateProgress(percentage);
 });
 ```
 
