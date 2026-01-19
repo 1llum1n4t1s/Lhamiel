@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Security;
 using System.Windows;
@@ -396,8 +397,8 @@ public class ArchiveExtractor
             }
             else if (Directory.Exists(path))
             {
-                // 再帰的なヘルパーメソッドを使用して属性を解除
-                RemoveReadOnlyAttributesRecursive(new DirectoryInfo(path));
+                // 反復的なヘルパーメソッドを使用して属性を解除
+                RemoveReadOnlyAttributesIterative(new DirectoryInfo(path));
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
@@ -407,61 +408,71 @@ public class ArchiveExtractor
     }
 
     /// <summary>
-    /// 指定されたディレクトリとその内容に対して、再帰的に読み取り専用属性を解除します
+    /// 指定されたディレクトリとその内容に対して、反復的に読み取り専用属性を解除します
     /// </summary>
     /// <param name="dirInfo">対象ディレクトリの DirectoryInfo インスタンス</param>
-    private static void RemoveReadOnlyAttributesRecursive(DirectoryInfo dirInfo)
+    private static void RemoveReadOnlyAttributesIterative(DirectoryInfo dirInfo)
     {
-        // ディレクトリ自体の属性解除
-        try
-        {
-            if ((dirInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-            {
-                dirInfo.Attributes &= ~FileAttributes.ReadOnly;
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-        {
-            Logger.Log($"ディレクトリ属性変更失敗: {dirInfo.FullName}, {ex.Message}");
-        }
+        // スタックを使用して反復的に処理（スタックオーバーフロー防止）
+        var stack = new Stack<DirectoryInfo>();
+        if (!dirInfo.Exists) return;
+        stack.Push(dirInfo);
 
-        // ファイルの属性解除
-        try
+        while (stack.Count > 0)
         {
-            foreach (var file in dirInfo.GetFiles())
+            var currentDir = stack.Pop();
+
+            // ディレクトリ自体の属性解除
+            try
             {
-                try
+                if ((currentDir.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
                 {
-                    if ((file.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+                    currentDir.Attributes &= ~FileAttributes.ReadOnly;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                Logger.Log($"ディレクトリ属性変更失敗: {currentDir.FullName}, {ex.Message}");
+            }
+
+            // ファイルの属性解除
+            try
+            {
+                foreach (var file in currentDir.GetFiles())
+                {
+                    try
                     {
-                        file.Attributes &= ~FileAttributes.ReadOnly;
+                        if ((file.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+                        {
+                            file.Attributes &= ~FileAttributes.ReadOnly;
+                        }
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        // 個別のファイル属性変更エラーはデバッグログに記録して無視
+                        Logger.Log($"個別のファイル属性変更エラー（無視）: {file.FullName}, {ex.Message}", LogLevel.Debug);
                     }
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                // ディレクトリアクセスエラーはデバッグログに記録して無視し、続行を試みる
+                Logger.Log($"ディレクトリアクセスエラー（ファイル属性変更中）: {currentDir.FullName}, {ex.Message}", LogLevel.Debug);
+            }
+
+            // サブディレクトリをスタックに追加
+            try
+            {
+                foreach (var subDir in currentDir.GetDirectories())
                 {
-                    // 個別のファイル属性変更エラーはデバッグログに記録して無視
-                    Logger.Log($"個別のファイル属性変更エラー（無視）: {file.FullName}, {ex.Message}", LogLevel.Debug);
+                    stack.Push(subDir);
                 }
             }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-        {
-            // ディレクトリアクセスエラーはデバッグログに記録して無視し、続行を試みる
-            Logger.Log($"ディレクトリアクセスエラー（ファイル属性変更中）: {dirInfo.FullName}, {ex.Message}", LogLevel.Debug);
-        }
-
-        // サブディレクトリへ再帰
-        try
-        {
-            foreach (var subDir in dirInfo.GetDirectories())
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
-                RemoveReadOnlyAttributesRecursive(subDir);
+                // ディレクトリアクセスエラーはデバッグログに記録して無視
+                Logger.Log($"サブディレクトリアクセスエラー: {currentDir.FullName}, {ex.Message}", LogLevel.Debug);
             }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-        {
-            // ディレクトリアクセスエラーはデバッグログに記録して無視
-            Logger.Log($"サブディレクトリアクセスエラー: {dirInfo.FullName}, {ex.Message}", LogLevel.Debug);
         }
     }
 }
