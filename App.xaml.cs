@@ -253,15 +253,17 @@ public partial class App
                 await ProcessingCompletionEvent.WaitAsync(timeoutCts.Token);
                 
                 Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
+                _updateManager.ApplyUpdatesAndRestart(updateInfo);
+                return true;
             }
             catch (OperationCanceledException)
             {
-                // タイムアウトした場合は、ユーザーにリスクを通知した上で強制的に更新を適用
-                Logger.Log("Velopack: 処理完了の待機がタイムアウトしました。更新を強制的に適用します。", LogLevel.Warning);
+                // タイムアウトした場合は、更新を中止してユーザーに通知
+                Logger.Log("Velopack: 処理完了の待機がタイムアウトしました。今回のアップデート適用は中止します。", LogLevel.Warning);
+                MessageService.ShowWarning("進行中の処理が完了しなかったため、アップデートの適用を中止しました。アプリケーションを終了してから、再度お試しください。");
+                IsUpdateRestarting = false; // 更新プロセスを中止し、通常の動作に戻す
+                return false; // 更新失敗として終了
             }
-
-            _updateManager.ApplyUpdatesAndRestart(updateInfo);
-            return true;
         }
         catch (OperationCanceledException)
         {

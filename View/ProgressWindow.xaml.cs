@@ -160,6 +160,8 @@ public partial class ProgressWindow : Window
         // 基本クラスの処理を実行
         base.OnClosed(e);
         
-        // CTSの破棄はここでは行わない（バックグラウンドスレッドがまだTokenを参照している可能性があるため）
+        // バックグラウンド処理が完了しているので、CTSを安全に破棄する
+        _cancellationTokenSource?.Dispose();
+        _cancellationTokenSource = null;
     }
 }

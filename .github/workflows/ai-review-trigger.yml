@@ -19,5 +19,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr comment $PR_NUMBER --body "/gemini review 必ず日本語で回答してください。"
-          gh pr comment $PR_NUMBER --body "@codex レビューしてください。回答はすべて日本語でお願いします。"
+          gh pr comment $PR_NUMBER --body "$(cat <<'EOF'
+          <details>
+          <summary>🤖 AI Review Request</summary>
+
+          /gemini review 必ず日本語で回答してください。
+          @codex レビューしてください。回答はすべて日本語でお願いします。
+          </details>
+          EOF
+          )"
