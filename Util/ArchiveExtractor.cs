@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Security;
 using System.Windows;
@@ -15,7 +13,7 @@ public static class ArchiveExtractor
     /// <summary>
     /// 定数: サポートされている展開形式の一覧
     /// </summary>
-    private static readonly string[] SupportedExtensions = [".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tZ", ".exe"];
+    private static readonly string[] SupportedExtensions = [".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tZ"];
 
     /// <summary>
     /// 定数: スマート解凍判定用：無視するシステムディレクトリ名
@@ -34,19 +32,7 @@ public static class ArchiveExtractor
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
         
         // メソッド呼び出し: サポートされている拡張子リストに含まれているか確認
-        if (!SupportedExtensions.Contains(extension))
-        {
-            return false;
-        }
-        
-        // .exeファイルの場合は自己展開圧縮ファイルかどうかを確認
-        if (extension == ".exe")
-        {
-            // メソッド呼び出し: 自己展開アーカイブ判定を実行
-            return ArchiveFormatDetector.IsSelfExtractingArchive(filePath);
-        }
-        
-        return true;
+        return SupportedExtensions.Contains(extension);
     }
 
     /// <summary>
