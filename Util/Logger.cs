@@ -1,5 +1,8 @@
 using log4net;
 using log4net.Config;
+using log4net.Appender;
+using log4net.Repository.Hierarchy;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 
@@ -41,6 +44,29 @@ public static class Logger
     {
         if (!isConfigured)
         {
+            // 旧パス（アプリケーション実行ディレクトリ）
+            var oldLogFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lhamiel.log");
+            var newLogFilePath = Path.Combine(Settings.AppDataDirectory, "Lhamiel.log");
+
+            // ディレクトリ作成
+            if (!Directory.Exists(Settings.AppDataDirectory))
+            {
+                Directory.CreateDirectory(Settings.AppDataDirectory);
+            }
+
+            // 移行処理：新しい場所にログファイルがなく、古い場所にある場合は移動する
+            if (!File.Exists(newLogFilePath) && File.Exists(oldLogFilePath))
+            {
+                try
+                {
+                    File.Move(oldLogFilePath, newLogFilePath);
+                }
+                catch
+                {
+                    // ログ出力前なので失敗しても無視
+                }
+            }
+
             // Log4net初期化前にログファイルをトリミング
             TruncateLogFileIfNeeded();
 
@@ -51,6 +77,15 @@ public static class Logger
             if (configFile.Exists)
             {
                 XmlConfigurator.Configure(logRepository, configFile);
+
+                // ログファイルのパスを動的に設定（AppDataDirectory を使用）
+                var hierarchy = (Hierarchy)logRepository;
+                var appenders = hierarchy.Root.Appenders.OfType<FileAppender>();
+                foreach (var appender in appenders)
+                {
+                    appender.File = newLogFilePath;
+                    appender.ActivateOptions();
+                }
             }
             else
             {
@@ -69,8 +104,8 @@ public static class Logger
     {
         var settings = Settings.Load();
         var maxLines = settings.LogMaxLines > 0 ? settings.LogMaxLines : 1000;
-        var logFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lhamiel.log");
-        var tempFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lhamiel.log.tmp");
+        var logFilePath = Path.Combine(Settings.AppDataDirectory, "Lhamiel.log");
+        var tempFilePath = Path.Combine(Settings.AppDataDirectory, "Lhamiel.log.tmp");
 
         try
         {
@@ -100,15 +135,15 @@ public static class Logger
             File.Move(tempFilePath, logFilePath);
             
             // コンソールに出力（デバッグ用）
-            Console.WriteLine($"ログファイルをトリミングしました: {lineCount}行 -> {linesToKeep.Length}行（最大行数: {maxLines}行）");
-            System.Diagnostics.Debug.WriteLine($"ログファイルをトリミングしました: {lineCount}行 -> {linesToKeep.Length}行（最大行数: {maxLines}行）");
+            Console.WriteLine($@"ログファイルをトリミングしました: {lineCount}行 -> {linesToKeep.Length}行（最大行数: {maxLines}行）");
+            Debug.WriteLine($"ログファイルをトリミングしました: {lineCount}行 -> {linesToKeep.Length}行（最大行数: {maxLines}行）");
         }
         catch (Exception ex)
         {
             // エラーをコンソールに出力
-            Console.WriteLine($"ログファイルのトリミングに失敗しました: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"ログファイルのトリミングに失敗しました: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"スタックトレース: {ex.StackTrace}");
+            Console.WriteLine($@"ログファイルのトリミングに失敗しました: {ex.Message}");
+            Debug.WriteLine($"ログファイルのトリミングに失敗しました: {ex.Message}");
+            Debug.WriteLine($"スタックトレース: {ex.StackTrace}");
             
             // 一時ファイルが残っている場合は削除
             try

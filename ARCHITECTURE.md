@@ -86,7 +86,7 @@ Lhamielは、Windows向けのWPFベースのアーカイブ圧縮・展開ツー
 
 **Settings**
 - アプリケーション設定の管理
-- JSON形式での永続化
+- JSON形式での永続化 (`%LocalAppData%\Lhamiel\settings.json`)
 - 設定の検証
 
 **Logger**
@@ -218,7 +218,7 @@ Settings.Save()
 
 ### ログ出力
 
-- ファイル: `Lhamiel.log` (アプリケーションディレクトリ)
+- ファイル: `Lhamiel.log` (`%LocalAppData%\Lhamiel` ディレクトリ)
 - 最大行数: 1000行 (自動ローテーション)
 - InnerException含む詳細なスタックトレース記録
 
