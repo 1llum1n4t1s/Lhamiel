@@ -215,10 +215,10 @@ public class ArchiveCompressor
         }
         else if (format == Format.Zip)
         {
-            // ZIP形式: Fastest圧縮レベル + UTF-8エンコーディング
+            // ZIP形式: Normal圧縮レベル + UTF-8エンコーディング
             var options = new CompressionOption
             {
-                CompressionLevel = CompressionLevel.Fast,
+                CompressionLevel = CompressionLevel.Normal,
                 CompressionMethod = CompressionMethod.Deflate,
                 ThreadCount = threadCount,
                 CodePage = CodePage.Utf8
