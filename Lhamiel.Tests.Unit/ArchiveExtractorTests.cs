@@ -369,8 +369,8 @@ public class ArchiveExtractorTests
             var actualOutputDir = ArchiveExtractor.GetOutputDirectory(zipPath, baseOutputDir);
             Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
 
-            var extractor = new ArchiveExtractor();
-            await extractor.ExtractArchive(zipPath, actualOutputDir);
+            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            await ArchiveExtractor.ExtractArchive(zipPath, actualOutputDir);
 
             // Assert: 展開結果を確認
             Console.WriteLine($"Extracted directory: {actualOutputDir}");
@@ -436,8 +436,8 @@ public class ArchiveExtractorTests
             var actualOutputDir = ArchiveExtractor.GetOutputDirectory(zipPath, baseOutputDir);
             Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
 
-            var extractor = new ArchiveExtractor();
-            await extractor.ExtractArchive(zipPath, actualOutputDir);
+            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            await ArchiveExtractor.ExtractArchive(zipPath, actualOutputDir);
 
             // Assert: 展開結果を確認
             Console.WriteLine($"\nExtracted directory: {actualOutputDir}");
