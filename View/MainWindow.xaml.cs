@@ -515,59 +515,51 @@ public partial class MainWindow
             bool hasExtraction = filesToExtract.Count > 0;
 
             // 2. 圧縮処理を実行（もしあれば）
-            try
+            if (hasCompression)
             {
-                if (hasCompression)
+                // 次に展開処理が控えている場合はウィンドウを閉じない
+                bool closeWindow = !hasExtraction;
+
+                await ArchiveProcessor.CompressItemsAsync(
+                    filesToCompress.ToArray(),
+                    settings.CompressionOutputDirectory,
+                    settings.CompressionOutputToSameDirectory,
+                    settings.CompressionFormat,
+                    progressWindow,
+                    cancellationToken,
+                    closeWindowOnCompletion: closeWindow
+                );
+            }
+
+            // キャンセルされていたら展開処理には進まない
+            if (cancellationToken.IsCancellationRequested) return;
+
+            // 3. 展開処理を実行（もしあれば）
+            if (hasExtraction)
+            {
+                // 最後なのでウィンドウを閉じる
+                var success = await ArchiveProcessor.ExtractArchivesAsync(
+                    filesToExtract.ToArray(),
+                    settings.ExtractionOutputDirectory,
+                    settings.ExtractionOutputToSameDirectory,
+                    progressWindow,
+                    cancellationToken,
+                    closeWindowOnCompletion: true
+                );
+
+                if (success && settings.OpenExtractionOutputFolder)
                 {
-                    // 次に展開処理が控えている場合はウィンドウを閉じない
-                    bool closeWindow = !hasExtraction;
-
-                    await ArchiveProcessor.CompressItemsAsync(
-                        filesToCompress.ToArray(),
-                        settings.CompressionOutputDirectory,
-                        settings.CompressionOutputToSameDirectory,
-                        settings.CompressionFormat,
-                        progressWindow,
-                        cancellationToken,
-                        closeWindowOnCompletion: closeWindow
-                    );
-                }
-
-                // キャンセルされていたら展開処理には進まない
-                if (cancellationToken.IsCancellationRequested) return;
-
-                // 3. 展開処理を実行（もしあれば）
-                if (hasExtraction)
-                {
-                    // 最後なのでウィンドウを閉じる
-                    var success = await ArchiveProcessor.ExtractArchivesAsync(
-                        filesToExtract.ToArray(),
-                        settings.ExtractionOutputDirectory,
-                        settings.ExtractionOutputToSameDirectory,
-                        progressWindow,
-                        cancellationToken,
-                        closeWindowOnCompletion: true
-                    );
-
-                    if (success && settings.OpenExtractionOutputFolder)
-                    {
-                        OpenExtractedFolders(filesToExtract, settings.ExtractionOutputDirectory, settings.ExtractionOutputToSameDirectory);
-                    }
-                }
-                else if (hasCompression)
-                {
-                    // 圧縮のみで完了した場合の「フォルダを開く」処理
-                    // 同じディレクトリに出力する場合は混乱を避けるため開かないように修正
-                    if (settings.OpenCompressionOutputFolder && !settings.CompressionOutputToSameDirectory)
-                    {
-                        FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
-                    }
+                    OpenExtractedFolders(filesToExtract, settings.ExtractionOutputDirectory, settings.ExtractionOutputToSameDirectory);
                 }
             }
-            finally
+            else if (hasCompression)
             {
-                // 処理終了をアプリケーション全体に通知
-                App.NotifyProgressFinished();
+                // 圧縮のみで完了した場合の「フォルダを開く」処理
+                // 同じディレクトリに出力する場合は混乱を避けるため開かないように修正
+                if (settings.OpenCompressionOutputFolder && !settings.CompressionOutputToSameDirectory)
+                {
+                    FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
+                }
             }
         }
         catch (OperationCanceledException)

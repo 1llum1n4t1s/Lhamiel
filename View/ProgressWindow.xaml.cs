@@ -159,6 +159,9 @@ public partial class ProgressWindow : Window
     {
         // 基本クラスの処理を実行
         base.OnClosed(e);
+
+        // 処理終了をアプリケーション全体に通知（処理待ちなどの同期に使用）
+        App.NotifyProgressFinished();
         
         // バックグラウンド処理が完了しているので、CTSを安全に破棄する
         _cancellationTokenSource?.Dispose();

@@ -452,29 +452,21 @@ public partial class App
             await Task.Yield();
 
             // 共通化された展開処理を実行
-            try
+            var success = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
+
+            if (success)
             {
-                var success = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
+                Logger.Log("ファイル展開処理が完了しました");
 
-                if (success)
+                // 展開後にフォルダを開く設定を確認
+                if (settings.OpenExtractionOutputFolder)
                 {
-                    Logger.Log("ファイル展開処理が完了しました");
-
-                    // 展開後にフォルダを開く設定を確認
-                    if (settings.OpenExtractionOutputFolder)
-                    {
-                        OpenExtractedFolder(filePath, outputDir, outputToSameDirectory);
-                    }
-                }
-                else
-                {
-                    Logger.Log("ファイル展開処理が失敗しました");
+                    OpenExtractedFolder(filePath, outputDir, outputToSameDirectory);
                 }
             }
-            finally
+            else
             {
-                // 処理終了をアプリケーション全体に通知
-                NotifyProgressFinished();
+                Logger.Log("ファイル展開処理が失敗しました");
             }
 
             // 必要に応じてアプリケーションを終了
@@ -529,35 +521,27 @@ public partial class App
             await Task.Yield();
 
             // 共通化された圧縮処理を実行
-            try
+            var success = await ArchiveProcessor.CompressItemAsync(filePath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
+
+            if (success)
             {
-                var success = await ArchiveProcessor.CompressItemAsync(filePath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
+                Logger.Log("ファイル圧縮処理が完了しました");
 
-                if (success)
+                // 圧縮後にフォルダを開く設定を確認
+                if (settings.OpenCompressionOutputFolder)
                 {
-                    Logger.Log("ファイル圧縮処理が完了しました");
-
-                    // 圧縮後にフォルダを開く設定を確認
-                    if (settings.OpenCompressionOutputFolder)
+                    // 実際にファイルが作成されたフォルダを開く
+                    var finalOutputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
+                    var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
+                    if (directoryToOpen != null)
                     {
-                        // 実際にファイルが作成されたフォルダを開く
-                        var finalOutputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
-                        var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
-                        if (directoryToOpen != null)
-                        {
-                            FolderOpener.OpenFolder(directoryToOpen);
-                        }
+                        FolderOpener.OpenFolder(directoryToOpen);
                     }
                 }
-                else
-                {
-                    Logger.Log("ファイル圧縮処理が失敗しました");
-                }
             }
-            finally
+            else
             {
-                // 処理終了をアプリケーション全体に通知
-                NotifyProgressFinished();
+                Logger.Log("ファイル圧縮処理が失敗しました");
             }
 
             // 必要に応じてアプリケーションを終了
@@ -624,35 +608,27 @@ public partial class App
             await Task.Yield();
 
             // 共通化された圧縮処理を実行
-            try
+            var success = await ArchiveProcessor.CompressItemAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
+
+            if (success)
             {
-                var success = await ArchiveProcessor.CompressItemAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
+                Logger.Log("フォルダ圧縮処理が完了しました");
 
-                if (success)
+                // 圧縮後にフォルダを開く設定を確認
+                if (settings.OpenCompressionOutputFolder)
                 {
-                    Logger.Log("フォルダ圧縮処理が完了しました");
-
-                    // 圧縮後にフォルダを開く設定を確認
-                    if (settings.OpenCompressionOutputFolder)
+                    // 実際にファイルが作成されたフォルダを開く
+                    var finalOutputPath = ArchiveCompressor.GetCompressedFileName(folderPath, format, outputDir, outputToSameDirectory);
+                    var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
+                    if (directoryToOpen != null)
                     {
-                        // 実際にファイルが作成されたフォルダを開く
-                        var finalOutputPath = ArchiveCompressor.GetCompressedFileName(folderPath, format, outputDir, outputToSameDirectory);
-                        var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
-                        if (directoryToOpen != null)
-                        {
-                            FolderOpener.OpenFolder(directoryToOpen);
-                        }
+                        FolderOpener.OpenFolder(directoryToOpen);
                     }
                 }
-                else
-                {
-                    Logger.Log("フォルダ圧縮処理が失敗しました");
-                }
             }
-            finally
+            else
             {
-                // 処理終了をアプリケーション全体に通知
-                NotifyProgressFinished();
+                Logger.Log("フォルダ圧縮処理が失敗しました");
             }
 
             // 必要に応じてアプリケーションを終了

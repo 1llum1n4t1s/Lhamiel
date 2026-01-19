@@ -449,15 +449,15 @@ public class ArchiveExtractor
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
                     {
-                        // 個別のファイル属性変更エラーはデバッグログに記録して無視
-                        Logger.Log($"個別のファイル属性変更エラー（無視）: {file.FullName}, {ex.Message}", LogLevel.Debug);
+                        // 個別のファイル属性変更エラーは警告ログに記録して無視
+                        Logger.Log($"個別のファイル属性変更エラー（無視）: {file.FullName}, {ex.Message}", LogLevel.Warning);
                     }
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
-                // ディレクトリアクセスエラーはデバッグログに記録して無視し、続行を試みる
-                Logger.Log($"ディレクトリアクセスエラー（ファイル属性変更中）: {currentDir.FullName}, {ex.Message}", LogLevel.Debug);
+                // ディレクトリアクセスエラーは警告ログに記録して無視し、続行を試みる
+                Logger.Log($"ディレクトリアクセスエラー（ファイル属性変更中）: {currentDir.FullName}, {ex.Message}", LogLevel.Warning);
             }
 
             // サブディレクトリをスタックに追加
@@ -470,8 +470,8 @@ public class ArchiveExtractor
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
-                // ディレクトリアクセスエラーはデバッグログに記録して無視
-                Logger.Log($"サブディレクトリアクセスエラー: {currentDir.FullName}, {ex.Message}", LogLevel.Debug);
+                // ディレクトリアクセスエラーは警告ログに記録して無視
+                Logger.Log($"サブディレクトリアクセスエラー: {currentDir.FullName}, {ex.Message}", LogLevel.Warning);
             }
         }
     }
