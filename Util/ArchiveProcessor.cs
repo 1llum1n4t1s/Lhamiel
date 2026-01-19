@@ -39,7 +39,7 @@ public static class ArchiveProcessor
             try
             {
                 // UIスレッドからアクセスが必要なプログレス表示用のラッパー
-                IProgress<ProgressInfo>? progress = individualProgress;
+                var progress = individualProgress;
                 if (progress == null && progressWindow != null)
                 {
                     progress = new Progress<ProgressInfo>(info =>

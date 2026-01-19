@@ -511,14 +511,14 @@ public partial class MainWindow
             var cancellationToken = progressWindow.GetCancellationToken();
 
             var settings = _settingsManager.Current;
-            bool hasCompression = filesToCompress.Count > 0;
-            bool hasExtraction = filesToExtract.Count > 0;
+            var hasCompression = filesToCompress.Count > 0;
+            var hasExtraction = filesToExtract.Count > 0;
 
             // 2. 圧縮処理を実行（もしあれば）
             if (hasCompression)
             {
                 // 次に展開処理が控えている場合はウィンドウを閉じない
-                bool closeWindow = !hasExtraction;
+                var closeWindow = !hasExtraction;
 
                 await ArchiveProcessor.CompressItemsAsync(
                     filesToCompress.ToArray(),
