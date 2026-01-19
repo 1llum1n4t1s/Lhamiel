@@ -1,5 +1,5 @@
-using System.Windows;
 using System.IO;
+using System.Windows;
 using Lhamiel.Util;
 using Velopack;
 using Velopack.Sources;
@@ -359,25 +359,7 @@ public partial class App
             // ファイルかフォルダかを判定して適切な処理を実行
             if (File.Exists(path))
             {
-                // .exeファイルの場合は自己展開形式かどうかで処理を振り分け
-                if (Path.GetExtension(path).Equals(".exe", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (ArchiveFormatDetector.IsSelfExtractingArchive(path))
-                    {
-                        // 自己展開形式の場合は常に展開処理を実行
-                        Logger.Log($"自己展開形式のファイルを展開処理します: {path}");
-                        await ProcessFileExtraction(path, settings, shouldShutdown);
-                    }
-                    else
-                    {
-                        // それ以外の場合は圧縮処理を実行
-                        Logger.Log($"実行ファイルを圧縮処理します: {path}");
-                        await ProcessFileCompression(path, settings, compressionFormat, shouldShutdown);
-                    }
-                    return;
-                }
-
-                // それ以外のアーカイブファイル形式かどうかを判定
+                // アーカイブファイル形式かどうかを判定
                 if (ArchiveExtractor.IsSupportedArchiveType(path))
                 {
                     // アーカイブファイルの場合

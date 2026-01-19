@@ -51,7 +51,7 @@ public static class ArchiveProcessor
 
                 // ファイル拡張子の確認
                 var extension = Path.GetExtension(filePath).ToLowerInvariant();
-                var supportedExtensions = new[] { ".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tz", ".exe" };
+                var supportedExtensions = new[] { ".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tz" };
                 
                 if (!supportedExtensions.Contains(extension))
                 {
@@ -59,18 +59,6 @@ public static class ArchiveProcessor
                     Application.Current.Dispatcher.Invoke(() => 
                         MessageService.ShowError($"サポートされていないファイル形式です。\n{extension}"));
                     return false;
-                }
-
-                // .exeファイルの場合は自己展開圧縮ファイルかどうかを確認
-                if (extension == ".exe")
-                {
-                    if (!ArchiveFormatDetector.IsSelfExtractingArchive(filePath))
-                    {
-                        Logger.Log($"実行可能ファイルですが、自己展開圧縮ファイルではありません: {filePath}", LogLevel.Warning);
-                        Application.Current.Dispatcher.Invoke(() => 
-                            MessageService.ShowError($"実行可能ファイルですが、自己展開圧縮ファイルではありません。\n{filePath}"));
-                        return false;
-                    }
                 }
 
                 // --- ここから重いI/O処理 ---
