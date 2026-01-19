@@ -30,6 +30,7 @@
     <Compile Include="App.xaml.cs" />
     <Compile Include="Properties\Settings.Designer.cs" />
     <Compile Include="Util\ArchiveCompressor.cs" />
+    <Compile Include="Util\AsyncManualResetEvent.cs" />
     <Compile Include="Util\CancellableProgress.cs" />
     <Compile Include="Util\ArchiveConstants.cs" />
     <Compile Include="Util\ArchiveErrorHandler.cs" />

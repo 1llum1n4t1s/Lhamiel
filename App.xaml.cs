@@ -52,6 +52,37 @@ public partial class App
     }
 
     /// <summary>
+    /// 処理（圧縮・展開）の完了状態を管理するイベント
+    /// </summary>
+    public static AsyncManualResetEvent ProcessingCompletionEvent { get; } = new(true);
+
+    /// <summary>
+    /// プログレスウィンドウが開かれたときに呼び出されます
+    /// </summary>
+    public static void NotifyProgressStarted()
+    {
+        // イベントをリセットして非完了状態にする
+        ProcessingCompletionEvent.Reset();
+    }
+
+    /// <summary>
+    /// プログレスウィンドウが閉じられたときに呼び出されます
+    /// </summary>
+    public static void NotifyProgressFinished()
+    {
+        // UIスレッドで現在開いているプログレスウィンドウがないか確認
+        // Dispatcher.BeginInvoke を使用して、現在のウィンドウが Windows コレクションから削除された後に判定を行う
+        Current.Dispatcher.BeginInvoke(() =>
+        {
+            // 他に ProgressWindow が残っていない場合、全ての処理が完了したとみなしてイベントをセットする
+            if (!Current.Windows.OfType<View.ProgressWindow>().Any())
+            {
+                ProcessingCompletionEvent.Set();
+            }
+        });
+    }
+
+    /// <summary>
     /// 現在圧縮または展開処理中かどうかを判定します
     /// </summary>
     private bool IsProcessing => Dispatcher.Invoke(() => Windows.OfType<View.ProgressWindow>().Any());
@@ -210,10 +241,10 @@ public partial class App
                 {
                     // 5分間のタイムアウトを設定
                     using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-                    while (IsProcessing)
-                    {
-                        await Task.Delay(500, timeoutCts.Token);
-                    }
+                    
+                    // イベントがセットされるのを待つ（ポーリングから変更）
+                    await ProcessingCompletionEvent.WaitAsync(timeoutCts.Token);
+                    
                     Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
                 }
                 catch (OperationCanceledException)

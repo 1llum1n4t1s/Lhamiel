@@ -435,15 +435,17 @@ public class ArchiveExtractor
                         file.Attributes &= ~FileAttributes.ReadOnly;
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    /* 個別のファイルエラーは無視 */
+                    // 個別のファイル属性変更エラーはデバッグログに記録して無視
+                    Logger.Log($"個別のファイル属性変更エラー（無視）: {file.FullName}, {ex.Message}", LogLevel.Debug);
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            /* ディレクトリアクセスエラーは無視して続行 */
+            // ディレクトリアクセスエラーはデバッグログに記録して無視し、続行を試みる
+            Logger.Log($"ディレクトリアクセスエラー（ファイル属性変更中）: {dirInfo.FullName}, {ex.Message}", LogLevel.Debug);
         }
 
         // サブディレクトリへ再帰
@@ -454,9 +456,10 @@ public class ArchiveExtractor
                 RemoveReadOnlyAttributesRecursive(subDir);
             }
         }
-        catch
+        catch (Exception ex)
         {
-            /* ディレクトリアクセスエラーは無視 */
+            // ディレクトリアクセスエラーはデバッグログに記録して無視
+            Logger.Log($"サブディレクトリアクセスエラー: {dirInfo.FullName}, {ex.Message}", LogLevel.Debug);
         }
     }
 }
