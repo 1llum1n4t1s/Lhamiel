@@ -129,8 +129,8 @@ public static class ArchiveProcessor
                 }
                 else
                 {
-                    var extractor = new ArchiveExtractor();
-                    await extractor.ExtractArchive(filePath, outputPath, 
+                    // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+                    await ArchiveExtractor.ExtractArchive(filePath, outputPath, 
                         p => progress?.Report(p), 
                         progressWindow, 
                         false, 

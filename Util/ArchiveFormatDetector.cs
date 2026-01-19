@@ -53,15 +53,15 @@ public static class ArchiveFormatDetector
             // 複数のスキャン戦略を試行
             var scanStrategies = new (long Start, long Size)[]
             {
-                // 戦略1: ファイル末尾から2MBをスキャン
+                // 戦略1: ファイル末尾から4MBをスキャン（末尾に圧縮データがある場合）
                 (Math.Max(0, fileInfo.Length - ArchiveConstants.MaxSelfExtractingSize),
                  Math.Min(ArchiveConstants.MaxSelfExtractingSize, fileInfo.Length)),
-                // 戦略2: ファイル中央付近から1MBをスキャン
-                (Math.Max(0, fileInfo.Length / 2 - ArchiveConstants.SmallFileScanSize),
-                 Math.Min(ArchiveConstants.MinSelfExtractingSize, fileInfo.Length)),
+                // 戦略2: ファイル中央付近から1MBをスキャン（中央に圧縮データがある場合）
+                (Math.Max(0, fileInfo.Length / 2 - ArchiveConstants.SmallFileScanSize / 2),
+                 Math.Min(ArchiveConstants.SmallFileScanSize, fileInfo.Length)),
                 // 戦略3: ファイル先頭から1MBをスキャン（実行可能ファイルのヘッダー部分を除く）
                 (ArchiveConstants.BufferSize,
-                 Math.Min(ArchiveConstants.MinSelfExtractingSize, fileInfo.Length - ArchiveConstants.BufferSize))
+                 Math.Min(ArchiveConstants.SmallFileScanSize, fileInfo.Length - ArchiveConstants.BufferSize))
             };
 
             foreach (var strategy in scanStrategies)

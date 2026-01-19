@@ -121,8 +121,8 @@ public class ArchiveCompressionTests
             Assert.True(File.Exists(archivePath), "Zip archive should be created");
 
             // Act - 展開
-            var extractor = new ArchiveExtractor();
-            await extractor.ExtractArchive(archivePath, extractDir);
+            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -162,8 +162,8 @@ public class ArchiveCompressionTests
             Assert.True(File.Exists(archivePath), "7z archive should be created");
 
             // Act - 展開
-            var extractor = new ArchiveExtractor();
-            await extractor.ExtractArchive(archivePath, extractDir);
+            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -203,8 +203,8 @@ public class ArchiveCompressionTests
             Assert.True(File.Exists(archivePath), "Tar archive should be created");
 
             // Act - 展開
-            var extractor = new ArchiveExtractor();
-            await extractor.ExtractArchive(archivePath, extractDir);
+            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -246,8 +246,8 @@ public class ArchiveCompressionTests
             Assert.True(File.Exists(archivePath), $"{extension} archive should be created");
 
             // Act - 展開
-            var extractor = new ArchiveExtractor();
-            await extractor.ExtractArchive(archivePath, extractDir);
+            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -371,8 +371,8 @@ public class ArchiveCompressionTests
             Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
-            var extractor = new ArchiveExtractor();
-            await extractor.ExtractArchive(archivePath, extractDir);
+            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
@@ -427,8 +427,8 @@ public class ArchiveCompressionTests
             Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
-            var extractor = new ArchiveExtractor();
-            await extractor.ExtractArchive(archivePath, extractDir);
+            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
@@ -483,8 +483,8 @@ public class ArchiveCompressionTests
             Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
-            var extractor = new ArchiveExtractor();
-            await extractor.ExtractArchive(archivePath, extractDir);
+            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
@@ -539,8 +539,8 @@ public class ArchiveCompressionTests
             Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
-            var extractor = new ArchiveExtractor();
-            await extractor.ExtractArchive(archivePath, extractDir);
+            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);

@@ -21,6 +21,11 @@ public partial class App
     /// </summary>
     private const int UpdateCheckTimeoutMs = 10000;
 
+    /// <summary>
+    /// アップデート適用前の進行中処理待機タイムアウト（分）
+    /// </summary>
+    private const int UpdateProcessingWaitTimeoutMinutes = 5;
+
     private readonly UpdateManager? _updateManager;
 
     /// <summary>
@@ -50,6 +55,43 @@ public partial class App
 
         _updateManager = InitializeUpdateManager();
     }
+
+    /// <summary>
+    /// 処理（圧縮・展開）の完了状態を管理するイベント
+    /// </summary>
+    public static AsyncManualResetEvent ProcessingCompletionEvent { get; } = new(true);
+
+    /// <summary>
+    /// プログレスウィンドウが開かれたときに呼び出されます
+    /// </summary>
+    public static void NotifyProgressStarted()
+    {
+        // イベントをリセットして非完了状態にする
+        ProcessingCompletionEvent.Reset();
+    }
+
+    /// <summary>
+    /// プログレスウィンドウが閉じられたときに呼び出されます
+    /// </summary>
+    public static void NotifyProgressFinished()
+    {
+        // UIスレッドで現在開いているプログレスウィンドウがないか確認
+        // Dispatcher.BeginInvoke を使用して、現在のウィンドウが Windows コレクションから削除された後に判定を行う
+        Current.Dispatcher.BeginInvoke(() =>
+        {
+            // 他に ProgressWindow が残っていない場合、全ての処理が完了したとみなしてイベントをセットする
+            if (!Current.Windows.OfType<View.ProgressWindow>().Any())
+            {
+                ProcessingCompletionEvent.Set();
+            }
+        });
+    }
+
+    /// <summary>
+    /// アップデートによる再起動が予定されているかどうかを取得します。
+    /// これが true の場合、新しい圧縮・展開処理の開始を抑制します。
+    /// </summary>
+    public bool IsUpdateRestarting { get; private set; }
 
     /// <summary>
     /// アプリケーション起動時の処理
@@ -93,17 +135,13 @@ public partial class App
             _ipcCts = new CancellationTokenSource();
             _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token);
 
-            // 更新チェックと適用を試行
-            var updateApplied = await CheckAndApplyUpdatesAsync();
-            if (updateApplied)
-            {
-                return;
-            }
-
             base.OnStartup(e);
 
             // 起動ログを出力
             Logger.LogStartup(e.Args);
+
+            // 更新チェックをバックグラウンドで開始（起動を妨げない）
+            _ = CheckAndApplyUpdatesAsync();
 
             // コマンドライン引数をチェック
             if (e.Args.Length > 0)
@@ -134,7 +172,6 @@ public partial class App
             var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log");
             File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] アプリケーション起動エラー: {ex}\n");
             Shutdown();
-            return;
         }
     }
 
@@ -186,28 +223,12 @@ public partial class App
 
         try
         {
-            // 前回チェックからの経過時間をチェック
-            var settings = Settings.Load();
-            if (!string.IsNullOrWhiteSpace(settings.LastUpdateCheckTime) &&
-                DateTime.TryParse(settings.LastUpdateCheckTime, out var lastCheckTime))
-            {
-                var elapsed = DateTime.Now - lastCheckTime;
-                if (elapsed.TotalDays < 7)
-                {
-                    Logger.Log($"Velopack: 前回チェックから{elapsed.TotalDays:F1}日経過しているため、アップデートチェックをスキップします。(次回チェック対象: {lastCheckTime.AddDays(7):yyyy-MM-dd HH:mm:ss})");
-                    return false;
-                }
-            }
-
             using var cts = new CancellationTokenSource(UpdateCheckTimeoutMs);
             Logger.Log("Velopack: 更新チェックを開始します。");
 
             var updateInfo = await _updateManager.CheckForUpdatesAsync();
             if (updateInfo == null)
             {
-                // チェック時刻を記録
-                settings.LastUpdateCheckTime = DateTime.Now.ToString("o");
-                settings.Save();
                 Logger.Log("Velopack: 利用可能な更新はありません。");
                 return false;
             }
@@ -216,21 +237,45 @@ public partial class App
 
             await _updateManager.DownloadUpdatesAsync(updateInfo);
 
-            // チェック時刻を記録
-            settings.LastUpdateCheckTime = DateTime.Now.ToString("o");
-            settings.Save();
+            Logger.Log("Velopack: ダウンロード完了。更新を適用します。");
 
-            Logger.Log("Velopack: ダウンロード完了。更新を適用して再起動します。");
-            _updateManager.ApplyUpdatesAndRestart(updateInfo);
-            return true;
+            // 再起動フラグを立てて、新しい処理が開始されないようにする
+            IsUpdateRestarting = true;
+
+            // 進行中の処理（圧縮・展開）が完了するのを待機します
+            Logger.Log("Velopack: 進行中の処理の完了を待機しています...");
+            try
+            {
+                // 定義されたタイムアウト時間を設定
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(UpdateProcessingWaitTimeoutMinutes));
+                
+                // イベントがセットされるのを待つ（実行中の処理がなければ即時完了）
+                await ProcessingCompletionEvent.WaitAsync(timeoutCts.Token);
+                
+                Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
+                _updateManager.ApplyUpdatesAndRestart(updateInfo);
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                // タイムアウトした場合は、更新を中止してユーザーに通知
+                Logger.Log("Velopack: 処理完了の待機がタイムアウトしました。今回のアップデート適用は中止します。", LogLevel.Warning);
+                MessageService.ShowWarning("進行中の処理が完了しなかったため、アップデートの適用を中止しました。アプリケーションを終了してから、再度お試しください。");
+                IsUpdateRestarting = false; // 更新プロセスを中止し、通常の動作に戻す
+                return false; // 更新失敗として終了
+            }
         }
         catch (OperationCanceledException)
         {
+            // 待機中にキャンセルされた場合もフラグをリセットして通常動作を継続可能にする
+            IsUpdateRestarting = false;
             Logger.Log("Velopack: 更新チェックがタイムアウトしました。アプリケーションを続行します。");
             return false;
         }
         catch (Exception ex)
         {
+            // 更新の適用（再起動の準備）に失敗した場合はフラグをリセットして通常動作を継続可能にする
+            IsUpdateRestarting = false;
             Logger.Log($"Velopack: 更新チェック中にエラーが発生しました: {ex.Message}");
             return false;
         }
@@ -244,7 +289,7 @@ public partial class App
     {
         try
         {
-            var settings = Settings.Load();
+            var settings = SettingsManager.Instance.Current;
             var repoOwner = settings.UpdateRepoOwner;
             var repoName = settings.UpdateRepoName;
             var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "release" : settings.UpdateChannel;
@@ -286,6 +331,14 @@ public partial class App
     {
         try
         {
+            // 再起動が予定されている場合は、新しい処理を開始しない
+            if (IsUpdateRestarting)
+            {
+                Logger.Log("アップデートのための再起動が予定されているため、新しい処理をスキップします。");
+                MessageService.ShowWarning("アップデートの適用準備が整いました。再起動後に再度お試しください。");
+                return;
+            }
+
             Logger.Log($"コマンドラインから処理を開始: {path}, 圧縮形式: {compressionFormat}, 終了フラグ: {shouldShutdown}");
 
             // パスが存在するかチェック
@@ -301,12 +354,30 @@ public partial class App
             }
 
             // 設定を読み込み
-            var settings = Settings.Load();
+            var settings = SettingsManager.Instance.Current;
 
             // ファイルかフォルダかを判定して適切な処理を実行
             if (File.Exists(path))
             {
-                // アーカイブファイル形式かどうかを判定
+                // .exeファイルの場合は自己展開形式かどうかで処理を振り分け
+                if (Path.GetExtension(path).Equals(".exe", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (ArchiveFormatDetector.IsSelfExtractingArchive(path))
+                    {
+                        // 自己展開形式の場合は常に展開処理を実行
+                        Logger.Log($"自己展開形式のファイルを展開処理します: {path}");
+                        await ProcessFileExtraction(path, settings, shouldShutdown);
+                    }
+                    else
+                    {
+                        // それ以外の場合は圧縮処理を実行
+                        Logger.Log($"実行ファイルを圧縮処理します: {path}");
+                        await ProcessFileCompression(path, settings, compressionFormat, shouldShutdown);
+                    }
+                    return;
+                }
+
+                // それ以外のアーカイブファイル形式かどうかを判定
                 if (ArchiveExtractor.IsSupportedArchiveType(path))
                 {
                     // アーカイブファイルの場合
@@ -372,7 +443,7 @@ public partial class App
 
             progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
             
-            var cancellationTokenSource = new CancellationTokenSource();
+            using var cancellationTokenSource = new CancellationTokenSource();
             progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
             progressWindow.Activate();
@@ -441,7 +512,7 @@ public partial class App
 
             progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
             
-            var cancellationTokenSource = new CancellationTokenSource();
+            using var cancellationTokenSource = new CancellationTokenSource();
             progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
             progressWindow.Activate();
@@ -528,7 +599,7 @@ public partial class App
 
             progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
             
-            var cancellationTokenSource = new CancellationTokenSource();
+            using var cancellationTokenSource = new CancellationTokenSource();
             progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
             progressWindow.Activate();

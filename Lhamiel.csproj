@@ -14,7 +14,7 @@
     <DebugType>portable</DebugType>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <Version>1.0.22</Version>
+    <Version>1.0.25</Version>
     <AssemblyTitle>Lhamiel</AssemblyTitle>
     <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
     <AssemblyCompany>1llum1n4t1s</AssemblyCompany>
@@ -30,6 +30,7 @@
     <Compile Include="App.xaml.cs" />
     <Compile Include="Properties\Settings.Designer.cs" />
     <Compile Include="Util\ArchiveCompressor.cs" />
+    <Compile Include="Util\AsyncManualResetEvent.cs" />
     <Compile Include="Util\CancellableProgress.cs" />
     <Compile Include="Util\ArchiveConstants.cs" />
     <Compile Include="Util\ArchiveErrorHandler.cs" />
