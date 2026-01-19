@@ -60,7 +60,7 @@ public partial class App
     /// アプリケーション起動時の処理
     /// </summary>
     /// <param name="e">起動イベント引数</param>
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         // 1. UIスレッド（画面操作など）で発生した未処理の例外をキャッチする
         DispatcherUnhandledException += App_DispatcherUnhandledException;
@@ -87,7 +87,7 @@ public partial class App
                 if (e.Args.Length > 0)
                 {
                     Logger.Log("コマンドライン引数を既存のインスタンスに送信します。");
-                    _ = IpcService.SendArgsToExistingInstanceAsync(e.Args);
+                    await IpcService.SendArgsToExistingInstanceAsync(e.Args);
                 }
 
                 Shutdown();
@@ -208,7 +208,7 @@ public partial class App
                 Logger.Log("Velopack: 処理（圧縮/展開）の完了を待機しています...");
                 while (IsProcessing)
                 {
-                    await Task.Delay(2000);
+                    await Task.Delay(500);
                 }
                 Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
             }
