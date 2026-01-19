@@ -574,7 +574,7 @@ public partial class MainWindow
         {
             Logger.LogException("ファイルの処理に失敗しました", ex);
             MessageService.ShowException("ファイルの処理に失敗しました", ex);
-            progressWindow?.Close();
+            progressWindow?.CloseSafe();
         }
     }
 
