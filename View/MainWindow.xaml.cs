@@ -453,9 +453,17 @@ public partial class MainWindow
     /// <summary>
     /// ドロップされた複数のファイル/フォルダを処理する
     /// </summary>
-    /// <param name="paths">ドロップされたファイル/フォルダ의 パス配列</param>
+    /// <param name="paths">ドロップされたファイル/フォルダのパス配列</param>
     private async Task ProcessDroppedFiles(string[] paths)
     {
+        // アップデートによる再起動が予定されている場合は、新しい処理を開始しない
+        if (Application.Current is App { IsUpdateRestarting: true })
+        {
+            Logger.Log("アップデートのための再起動が予定されているため、新しい処理をスキップします。");
+            MessageService.ShowWarning("アップデートの適用準備が整いました。再起動後に再度お試しください。");
+            return;
+        }
+
         ProgressWindow? progressWindow = null;
         try
         {

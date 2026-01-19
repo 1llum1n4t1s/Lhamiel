@@ -83,9 +83,10 @@ public partial class App
     }
 
     /// <summary>
-    /// 現在圧縮または展開処理中かどうかを判定します
+    /// アップデートによる再起動が予定されているかどうかを取得します。
+    /// これが true の場合、新しい圧縮・展開処理の開始を抑制します。
     /// </summary>
-    private bool IsProcessing => Dispatcher.Invoke(() => Windows.OfType<View.ProgressWindow>().Any());
+    public bool IsUpdateRestarting { get; private set; }
 
     /// <summary>
     /// アプリケーション起動時の処理
@@ -233,28 +234,25 @@ public partial class App
 
             Logger.Log("Velopack: ダウンロード完了。更新を適用します。");
 
-            // 進行中の処理（圧縮・展開）がある場合は完了を待機
-            if (IsProcessing)
+            // 再起動フラグを立てて、新しい処理が開始されないようにする
+            IsUpdateRestarting = true;
+
+            // 進行中の処理（圧縮・展開）が完了するのを待機します
+            Logger.Log("Velopack: 進行中の処理の完了を待機しています...");
+            try
             {
-                Logger.Log("Velopack: 処理（圧縮/展開）の完了を待機しています...");
-                try
-                {
-                    // 5分間のタイムアウトを設定
-                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
-                    
-                    // イベントがセットされるのを待つ（ポーリングから変更）
-                    await ProcessingCompletionEvent.WaitAsync(timeoutCts.Token);
-                    
-                    Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
-                }
-                catch (OperationCanceledException)
-                {
-                    Logger.Log("Velopack: 処理完了の待機がタイムアウトしました。更新を強制的に適用します。", LogLevel.Warning);
-                }
+                // 5分間のタイムアウトを設定
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                
+                // イベントがセットされるのを待つ（実行中の処理がなければ即時完了）
+                await ProcessingCompletionEvent.WaitAsync(timeoutCts.Token);
+                
+                Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
             }
-            else
+            catch (OperationCanceledException)
             {
-                Logger.Log("Velopack: 実行中の処理がないため、すぐに再起動して更新を適用します。");
+                // タイムアウトした場合は、ユーザーにリスクを通知した上で強制的に更新を適用
+                Logger.Log("Velopack: 処理完了の待機がタイムアウトしました。更新を強制的に適用します。", LogLevel.Warning);
             }
 
             _updateManager.ApplyUpdatesAndRestart(updateInfo);
@@ -322,6 +320,14 @@ public partial class App
     {
         try
         {
+            // 再起動が予定されている場合は、新しい処理を開始しない
+            if (IsUpdateRestarting)
+            {
+                Logger.Log("アップデートのための再起動が予定されているため、新しい処理をスキップします。");
+                MessageService.ShowWarning("アップデートの適用準備が整いました。再起動後に再度お試しください。");
+                return;
+            }
+
             Logger.Log($"コマンドラインから処理を開始: {path}, 圧縮形式: {compressionFormat}, 終了フラグ: {shouldShutdown}");
 
             // パスが存在するかチェック
