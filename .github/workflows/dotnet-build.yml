@@ -1,7 +1,6 @@
 name: .NET ビルド
 
 on:
-  push:
   pull_request:
 
 jobs:
@@ -34,7 +33,7 @@ jobs:
         with:
           name: test-results-Release
           path: '**/TestResults/*.trx'
-          retention-days: 30
+          retention-days: 1
 
       - name: ビルド成果物をアップロード
         uses: actions/upload-artifact@v4
@@ -44,4 +43,4 @@ jobs:
             bin/Release/**/*.exe
             bin/Release/**/*.dll
             !bin/Release/**/ref/**
-          retention-days: 7
+          retention-days: 1

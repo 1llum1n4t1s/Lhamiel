@@ -52,10 +52,15 @@ public partial class App
     }
 
     /// <summary>
+    /// 現在圧縮または展開処理中かどうかを判定します
+    /// </summary>
+    private bool IsProcessing => Dispatcher.Invoke(() => Windows.OfType<View.ProgressWindow>().Any());
+
+    /// <summary>
     /// アプリケーション起動時の処理
     /// </summary>
     /// <param name="e">起動イベント引数</param>
-    protected override async void OnStartup(StartupEventArgs e)
+    protected override void OnStartup(StartupEventArgs e)
     {
         // 1. UIスレッド（画面操作など）で発生した未処理の例外をキャッチする
         DispatcherUnhandledException += App_DispatcherUnhandledException;
@@ -82,7 +87,7 @@ public partial class App
                 if (e.Args.Length > 0)
                 {
                     Logger.Log("コマンドライン引数を既存のインスタンスに送信します。");
-                    await IpcService.SendArgsToExistingInstanceAsync(e.Args);
+                    _ = IpcService.SendArgsToExistingInstanceAsync(e.Args);
                 }
 
                 Shutdown();
@@ -93,17 +98,13 @@ public partial class App
             _ipcCts = new CancellationTokenSource();
             _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token);
 
-            // 更新チェックと適用を試行
-            var updateApplied = await CheckAndApplyUpdatesAsync();
-            if (updateApplied)
-            {
-                return;
-            }
-
             base.OnStartup(e);
 
             // 起動ログを出力
             Logger.LogStartup(e.Args);
+
+            // 更新チェックをバックグラウンドで開始（起動を妨げない）
+            _ = CheckAndApplyUpdatesAsync();
 
             // コマンドライン引数をチェック
             if (e.Args.Length > 0)
@@ -134,7 +135,6 @@ public partial class App
             var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log");
             File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] アプリケーション起動エラー: {ex}\n");
             Shutdown();
-            return;
         }
     }
 
@@ -186,28 +186,12 @@ public partial class App
 
         try
         {
-            // 前回チェックからの経過時間をチェック
-            var settings = Settings.Load();
-            if (!string.IsNullOrWhiteSpace(settings.LastUpdateCheckTime) &&
-                DateTime.TryParse(settings.LastUpdateCheckTime, out var lastCheckTime))
-            {
-                var elapsed = DateTime.Now - lastCheckTime;
-                if (elapsed.TotalDays < 7)
-                {
-                    Logger.Log($"Velopack: 前回チェックから{elapsed.TotalDays:F1}日経過しているため、アップデートチェックをスキップします。(次回チェック対象: {lastCheckTime.AddDays(7):yyyy-MM-dd HH:mm:ss})");
-                    return false;
-                }
-            }
-
             using var cts = new CancellationTokenSource(UpdateCheckTimeoutMs);
             Logger.Log("Velopack: 更新チェックを開始します。");
 
             var updateInfo = await _updateManager.CheckForUpdatesAsync();
             if (updateInfo == null)
             {
-                // チェック時刻を記録
-                settings.LastUpdateCheckTime = DateTime.Now.ToString("o");
-                settings.Save();
                 Logger.Log("Velopack: 利用可能な更新はありません。");
                 return false;
             }
@@ -216,11 +200,23 @@ public partial class App
 
             await _updateManager.DownloadUpdatesAsync(updateInfo);
 
-            // チェック時刻を記録
-            settings.LastUpdateCheckTime = DateTime.Now.ToString("o");
-            settings.Save();
+            Logger.Log("Velopack: ダウンロード完了。更新を適用します。");
 
-            Logger.Log("Velopack: ダウンロード完了。更新を適用して再起動します。");
+            // 進行中の処理（圧縮・展開）がある場合は完了を待機
+            if (IsProcessing)
+            {
+                Logger.Log("Velopack: 処理（圧縮/展開）の完了を待機しています...");
+                while (IsProcessing)
+                {
+                    await Task.Delay(2000);
+                }
+                Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
+            }
+            else
+            {
+                Logger.Log("Velopack: 実行中の処理がないため、すぐに再起動して更新を適用します。");
+            }
+
             _updateManager.ApplyUpdatesAndRestart(updateInfo);
             return true;
         }
@@ -306,7 +302,25 @@ public partial class App
             // ファイルかフォルダかを判定して適切な処理を実行
             if (File.Exists(path))
             {
-                // アーカイブファイル形式かどうかを判定
+                // .exeファイルの場合は自己展開形式かどうかで処理を振り分け
+                if (Path.GetExtension(path).Equals(".exe", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (ArchiveFormatDetector.IsSelfExtractingArchive(path))
+                    {
+                        // 自己展開形式の場合は常に展開処理を実行
+                        Logger.Log($"自己展開形式のファイルを展開処理します: {path}");
+                        await ProcessFileExtraction(path, settings, shouldShutdown);
+                    }
+                    else
+                    {
+                        // それ以外の場合は圧縮処理を実行
+                        Logger.Log($"実行ファイルを圧縮処理します: {path}");
+                        await ProcessFileCompression(path, settings, compressionFormat, shouldShutdown);
+                    }
+                    return;
+                }
+
+                // それ以外のアーカイブファイル形式かどうかを判定
                 if (ArchiveExtractor.IsSupportedArchiveType(path))
                 {
                     // アーカイブファイルの場合
