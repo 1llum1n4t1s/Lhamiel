@@ -169,7 +169,12 @@ public partial class App
         catch (Exception ex)
         {
             // ログファイルに直接書き込み（Loggerが使えない場合のため）
-            var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "error.log");
+            var appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lhamiel");
+            if (!Directory.Exists(appDataDir))
+            {
+                Directory.CreateDirectory(appDataDir);
+            }
+            var logPath = Path.Combine(appDataDir, "error.log");
             File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] アプリケーション起動エラー: {ex}\n");
             Shutdown();
         }
@@ -346,7 +351,7 @@ public partial class App
             {
                 Logger.Log($"指定されたパスが存在しません: {path}");
                 MessageService.ShowError($"指定されたファイルまたはフォルダが見つかりません。\n{path}");
-                if (shouldShutdown)
+                if (shouldShutdown && !Current.Windows.OfType<Window>().Any(w => w.IsVisible))
                 {
                     Shutdown();
                 }
@@ -394,7 +399,7 @@ public partial class App
         {
             Logger.LogException("コマンドライン処理でエラーが発生", ex);
             MessageService.ShowError($"処理中にエラーが発生しました。\n{ex.Message}");
-            if (shouldShutdown)
+            if (shouldShutdown && !Current.Windows.OfType<Window>().Any(w => w.IsVisible))
             {
                 Shutdown();
             }
@@ -479,7 +484,7 @@ public partial class App
             }
 
             // 必要に応じてアプリケーションを終了
-            if (shouldShutdown)
+            if (shouldShutdown && !Current.Windows.OfType<Window>().Any(w => w.IsVisible))
             {
                 Shutdown();
             }
@@ -488,7 +493,7 @@ public partial class App
         {
             Logger.LogException("ファイル展開処理でエラーが発生", ex);
             MessageService.ShowError($"展開中にエラーが発生しました。\n{ex.Message}");
-            if (shouldShutdown)
+            if (shouldShutdown && !Current.Windows.OfType<Window>().Any(w => w.IsVisible))
             {
                 Shutdown();
             }
@@ -581,7 +586,7 @@ public partial class App
             }
 
             // 必要に応じてアプリケーションを終了
-            if (shouldShutdown)
+            if (shouldShutdown && !Current.Windows.OfType<Window>().Any(w => w.IsVisible))
             {
                 Shutdown();
             }
@@ -590,7 +595,7 @@ public partial class App
         {
             Logger.LogException("ファイル圧縮処理でエラーが発生", ex);
             MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
-            if (shouldShutdown)
+            if (shouldShutdown && !Current.Windows.OfType<Window>().Any(w => w.IsVisible))
             {
                 Shutdown();
             }
@@ -695,7 +700,7 @@ public partial class App
             }
 
             // 必要に応じてアプリケーションを終了
-            if (shouldShutdown)
+            if (shouldShutdown && !Current.Windows.OfType<Window>().Any(w => w.IsVisible))
             {
                 Shutdown();
             }
@@ -704,7 +709,7 @@ public partial class App
         {
             Logger.LogException("フォルダ圧縮処理でエラーが発生", ex);
             MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
-            if (shouldShutdown)
+            if (shouldShutdown && !Current.Windows.OfType<Window>().Any(w => w.IsVisible))
             {
                 Shutdown();
             }

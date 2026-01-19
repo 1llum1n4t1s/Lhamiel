@@ -9,9 +9,14 @@ namespace Lhamiel.Util;
 public class Settings
 {
     /// <summary>
+    /// アプリケーションデータディレクトリ
+    /// </summary>
+    internal static readonly string AppDataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lhamiel");
+
+    /// <summary>
     /// 設定ファイルのパス
     /// </summary>
-    private static readonly string SettingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+    private static readonly string SettingsFilePath = Path.Combine(AppDataDirectory, "settings.json");
 
     /// <summary>
     /// JSONシリアライザー設定
@@ -117,6 +122,30 @@ public class Settings
     {
         try
         {
+            // 旧パス（アプリケーション実行ディレクトリ）
+            var oldSettingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+
+            // ディレクトリ作成
+            if (!Directory.Exists(AppDataDirectory))
+            {
+                Directory.CreateDirectory(AppDataDirectory);
+            }
+
+            // 移行処理：新しい場所に設定ファイルがなく、古い場所にある場合は移動する
+            if (!File.Exists(SettingsFilePath) && File.Exists(oldSettingsFilePath))
+            {
+                try
+                {
+                    File.Move(oldSettingsFilePath, SettingsFilePath);
+                    // Logger.Log を使うと再帰の恐れがあるため、デバッグ出力のみ
+                    System.Diagnostics.Debug.WriteLine($"設定ファイルを移行しました: {oldSettingsFilePath} -> {SettingsFilePath}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"設定ファイルの移行に失敗しました: {ex.Message}");
+                }
+            }
+
             if (File.Exists(SettingsFilePath))
             {
                 var json = File.ReadAllText(SettingsFilePath);
@@ -131,7 +160,8 @@ public class Settings
         }
         catch (Exception ex)
         {
-            Logger.Log($"設定ファイルの読み込みに失敗しました: {ex.Message}");
+            // ここも再帰回避のため Logger.Log は控える
+            System.Diagnostics.Debug.WriteLine($"設定ファイルの読み込みに失敗しました: {ex.Message}");
         }
 
         return new Settings();

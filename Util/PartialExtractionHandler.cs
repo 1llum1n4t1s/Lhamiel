@@ -154,7 +154,7 @@ public class PartialExtractionHandler
             try
             {
                 // 事前展開済みの内容から個別ファイルをコピー
-                for (int i = 0; i < items.Count; i++)
+                for (var i = 0; i < items.Count; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
@@ -317,7 +317,7 @@ public class PartialExtractionHandler
     /// </summary>
     private static async Task<bool> RetryExtraction(string tempPath, string outputPath, string fullName, bool isDirectory, int maxRetries)
     {
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
@@ -406,7 +406,7 @@ public class PartialExtractionHandler
 
             try
             {
-                for (int i = 0; i < recoverableFiles.Count; i++)
+                for (var i = 0; i < recoverableFiles.Count; i++)
                 {
                     var failedFile = recoverableFiles[i];
                     var progress = recoverableFiles.Count == 0 ? 100 : (int)((double)(i + 1) / recoverableFiles.Count * 100);

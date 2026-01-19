@@ -32,7 +32,7 @@ public class ParallelProcessingTests
         Directory.CreateDirectory(sourceDir);
 
         // テストファイルを作成
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
             File.WriteAllText(Path.Combine(sourceDir, $"file{i}.txt"), $"Content {i}");
         }
@@ -58,7 +58,7 @@ public class ParallelProcessingTests
         Directory.CreateDirectory(folderPath);
 
         // テストファイルを作成
-        for (int i = 0; i < 5; i++)
+        for (var i = 0; i < 5; i++)
         {
             File.WriteAllText(Path.Combine(folderPath, $"file{i}.txt"), $"Folder content {i}");
         }
@@ -126,13 +126,13 @@ public class ParallelProcessingTests
         {
             // 3つのZIPファイルを作成（各約 100KB）
             var zipFiles = new List<string>();
-            for (int i = 0; i < 3; i++)
+            for (var i = 0; i < 3; i++)
             {
                 var sourceDir = Path.Combine(testDir, $"source_{i}");
                 Directory.CreateDirectory(sourceDir);
 
                 // より大きなテストファイルを作成
-                for (int j = 0; j < 10; j++)
+                for (var j = 0; j < 10; j++)
                 {
                     var content = new string('x', 10000);
                     File.WriteAllText(Path.Combine(sourceDir, $"file{j}.txt"), content);
@@ -192,7 +192,7 @@ public class ParallelProcessingTests
         {
             // 2つのZIPファイルを作成
             var zipFiles = new List<string>();
-            for (int i = 0; i < 2; i++)
+            for (var i = 0; i < 2; i++)
             {
                 zipFiles.Add(CreateTestZipFile(testDir, $"archive{i}"));
             }
@@ -284,13 +284,13 @@ public class ParallelProcessingTests
         {
             // 複数の大きなフォルダを作成
             var folders = new List<string>();
-            for (int i = 0; i < 3; i++)
+            for (var i = 0; i < 3; i++)
             {
                 var folderPath = Path.Combine(testDir, $"folder{i}");
                 Directory.CreateDirectory(folderPath);
 
                 // より大きなテストファイルを作成
-                for (int j = 0; j < 10; j++)
+                for (var j = 0; j < 10; j++)
                 {
                     var content = new string('y', 10000);
                     File.WriteAllText(Path.Combine(folderPath, $"file{j}.txt"), content);
@@ -425,7 +425,7 @@ public class ParallelProcessingTests
         {
             // 複数のZIPファイルを作成
             var zipFiles = new List<string>();
-            for (int i = 0; i < 5; i++)
+            for (var i = 0; i < 5; i++)
             {
                 zipFiles.Add(CreateTestZipFile(testDir, $"archive{i}"));
             }
@@ -435,7 +435,7 @@ public class ParallelProcessingTests
 
             // 複数の非同期タスクで並列展開を実行
             var tasks = new List<Task>();
-            for (int i = 0; i < 2; i++)
+            for (var i = 0; i < 2; i++)
             {
                 var task = ArchiveProcessor.ExtractArchivesAsync(
                     zipFiles.ToArray(),
