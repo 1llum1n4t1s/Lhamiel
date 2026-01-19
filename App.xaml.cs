@@ -21,6 +21,11 @@ public partial class App
     /// </summary>
     private const int UpdateCheckTimeoutMs = 10000;
 
+    /// <summary>
+    /// アップデート適用前の進行中処理待機タイムアウト（分）
+    /// </summary>
+    private const int UpdateProcessingWaitTimeoutMinutes = 5;
+
     private readonly UpdateManager? _updateManager;
 
     /// <summary>
@@ -241,8 +246,8 @@ public partial class App
             Logger.Log("Velopack: 進行中の処理の完了を待機しています...");
             try
             {
-                // 5分間のタイムアウトを設定
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                // 定義されたタイムアウト時間を設定
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(UpdateProcessingWaitTimeoutMinutes));
                 
                 // イベントがセットされるのを待つ（実行中の処理がなければ即時完了）
                 await ProcessingCompletionEvent.WaitAsync(timeoutCts.Token);
@@ -260,11 +265,15 @@ public partial class App
         }
         catch (OperationCanceledException)
         {
+            // 待機中にキャンセルされた場合もフラグをリセットして通常動作を継続可能にする
+            IsUpdateRestarting = false;
             Logger.Log("Velopack: 更新チェックがタイムアウトしました。アプリケーションを続行します。");
             return false;
         }
         catch (Exception ex)
         {
+            // 更新の適用（再起動の準備）に失敗した場合はフラグをリセットして通常動作を継続可能にする
+            IsUpdateRestarting = false;
             Logger.Log($"Velopack: 更新チェック中にエラーが発生しました: {ex.Message}");
             return false;
         }

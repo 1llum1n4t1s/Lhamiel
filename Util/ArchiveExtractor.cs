@@ -1,4 +1,6 @@
+using System;
 using System.IO;
+using System.Security;
 using System.Windows;
 using Cube.FileSystem.SevenZip;
 
@@ -254,7 +256,7 @@ public class ArchiveExtractor
                     {
                         Directory.Delete(actualTargetDir, true);
                     }
-                    catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
                     {
                         Logger.Log($"削除再試行（属性解除）: {actualTargetDir}");
                         RemoveReadOnlyAttributes(actualTargetDir);
@@ -269,7 +271,7 @@ public class ArchiveExtractor
                 }
                 Logger.Log("既存の対象を正常に削除しました。");
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 Logger.Log($"既存対象の削除に失敗しました: {actualTargetDir}, {ex.Message}");
                 throw new InvalidOperationException($"展開先 '{Path.GetFileName(actualTargetDir)}' が使用中か、削除権限がありません。", ex);
@@ -340,7 +342,7 @@ public class ArchiveExtractor
                     Logger.Log($"キャンセルされた展開ファイルを削除しました: {cleanupPath}");
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 Logger.Log($"キャンセル時のクリーンアップに失敗しました: {cleanupPath}, {ex.Message}", LogLevel.Warning);
             }
@@ -387,7 +389,7 @@ public class ArchiveExtractor
                         fileInfo.Attributes &= ~FileAttributes.ReadOnly;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
                 {
                     Logger.Log($"ファイル属性の変更に失敗しました: {path}, {ex.Message}");
                 }
@@ -398,7 +400,7 @@ public class ArchiveExtractor
                 RemoveReadOnlyAttributesRecursive(new DirectoryInfo(path));
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
         {
             Logger.Log($"読み取り専用属性の削除処理でエラーが発生しました: {path}, {ex.Message}");
         }
@@ -418,7 +420,7 @@ public class ArchiveExtractor
                 dirInfo.Attributes &= ~FileAttributes.ReadOnly;
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
         {
             Logger.Log($"ディレクトリ属性変更失敗: {dirInfo.FullName}, {ex.Message}");
         }
@@ -435,14 +437,14 @@ public class ArchiveExtractor
                         file.Attributes &= ~FileAttributes.ReadOnly;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
                 {
                     // 個別のファイル属性変更エラーはデバッグログに記録して無視
                     Logger.Log($"個別のファイル属性変更エラー（無視）: {file.FullName}, {ex.Message}", LogLevel.Debug);
                 }
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
         {
             // ディレクトリアクセスエラーはデバッグログに記録して無視し、続行を試みる
             Logger.Log($"ディレクトリアクセスエラー（ファイル属性変更中）: {dirInfo.FullName}, {ex.Message}", LogLevel.Debug);
@@ -456,7 +458,7 @@ public class ArchiveExtractor
                 RemoveReadOnlyAttributesRecursive(subDir);
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
         {
             // ディレクトリアクセスエラーはデバッグログに記録して無視
             Logger.Log($"サブディレクトリアクセスエラー: {dirInfo.FullName}, {ex.Message}", LogLevel.Debug);

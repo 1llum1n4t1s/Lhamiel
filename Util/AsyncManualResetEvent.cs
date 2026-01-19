@@ -10,7 +10,7 @@ public class AsyncManualResetEvent
     /// <summary>
     /// 現在のタスク完了を管理するための TaskCompletionSource
     /// </summary>
-    private volatile TaskCompletionSource _tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private TaskCompletionSource _tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>
     /// AsyncManualResetEvent の新しいインスタンスを初期化します。
