@@ -1,0 +1,20 @@
+name: Auto AI Review Trigger
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  comment:
+    name: Post AI Review Comments
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Post Comments
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr comment $PR_NUMBER --body "/gemini review 必ず日本語で回答してください。"
+          gh pr comment $PR_NUMBER --body "@codex レビューしてください。回答はすべて日本語でお願いします。"

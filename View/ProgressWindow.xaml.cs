@@ -137,6 +137,22 @@ public partial class ProgressWindow : Window
     }
 
     /// <summary>
+    /// ウィンドウが閉じられる時の処理
+    /// </summary>
+    /// <param name="e">イベント引数</param>
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        // まだキャンセルされていない場合は、ウィンドウを閉じることをキャンセル指示とみなす
+        if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+        {
+            _cancellationTokenSource.Cancel();
+            CancelRequested?.Invoke(this, EventArgs.Empty);
+        }
+        
+        base.OnClosing(e);
+    }
+
+    /// <summary>
     /// リソースをクリーンアップする
     /// </summary>
     protected override void OnClosed(EventArgs e)
@@ -144,9 +160,6 @@ public partial class ProgressWindow : Window
         // 基本クラスの処理を実行
         base.OnClosed(e);
         
-        // 処理終了をアプリケーション全体に通知（全てのウィンドウが閉じればイベントがセットされる）
-        App.NotifyProgressFinished();
-
         // CTSの破棄はここでは行わない（バックグラウンドスレッドがまだTokenを参照している可能性があるため）
     }
 }
