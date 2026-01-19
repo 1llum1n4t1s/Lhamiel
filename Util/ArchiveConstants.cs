@@ -6,9 +6,9 @@ namespace Lhamiel.Util;
 public static class ArchiveConstants
 {
     // ファイルサイズ定数
-    public const long MinSelfExtractingSize = 1024 * 1024; // 1MB
-    public const long MaxSelfExtractingSize = 2 * 1024 * 1024; // 2MB
-    public const long SmallFileScanSize = 512 * 1024; // 512KB
+    public const long MinSelfExtractingSize = 32 * 1024; // 32KB
+    public const long MaxSelfExtractingSize = 4 * 1024 * 1024; // 4MB
+    public const long SmallFileScanSize = 1024 * 1024; // 1MB
     public const int BufferSize = 4096; // 4KB
 
     // MZ ヘッダー (Windows実行ファイル)

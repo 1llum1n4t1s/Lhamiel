@@ -30,9 +30,17 @@ public partial class ProgressWindow : Window
 
     public ProgressWindow(string operationType)
     {
+        // コンポーネントの初期化
         InitializeComponent();
+        
+        // 操作タイプに応じたタイトルを設定
         Title = $"{operationType} - Lhamiel";
+        
+        // キャンセル処理用のトークンソースを初期化
         _cancellationTokenSource = new CancellationTokenSource();
+
+        // 処理開始をアプリケーション全体に通知（更新待機などの同期に使用）
+        App.NotifyProgressStarted();
 
         // 所有者が設定されている場合はその中央に、そうでなければ画面中央に表示
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -129,11 +137,34 @@ public partial class ProgressWindow : Window
     }
 
     /// <summary>
+    /// ウィンドウが閉じられる時の処理
+    /// </summary>
+    /// <param name="e">イベント引数</param>
+    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    {
+        // まだキャンセルされていない場合は、ウィンドウを閉じることをキャンセル指示とみなす
+        if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+        {
+            _cancellationTokenSource.Cancel();
+            CancelRequested?.Invoke(this, EventArgs.Empty);
+        }
+        
+        base.OnClosing(e);
+    }
+
+    /// <summary>
     /// リソースをクリーンアップする
     /// </summary>
     protected override void OnClosed(EventArgs e)
     {
+        // 基本クラスの処理を実行
         base.OnClosed(e);
-        // CTSの破棄はここでは行わない（バックグラウンドスレッドがまだTokenを参照している可能性があるため）
+
+        // 処理終了をアプリケーション全体に通知（処理待ちなどの同期に使用）
+        App.NotifyProgressFinished();
+        
+        // バックグラウンド処理が完了しているので、CTSを安全に破棄する
+        _cancellationTokenSource?.Dispose();
+        _cancellationTokenSource = null;
     }
 }
