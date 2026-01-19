@@ -109,7 +109,7 @@ public static class ArchiveProcessor
                         
                         if (closeWindowOnCompletion)
                         {
-                            progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                            progressWindow?.CloseSafe();
                         }
                         return true;
                     }
@@ -127,7 +127,7 @@ public static class ArchiveProcessor
                     
                     if (closeWindowOnCompletion)
                     {
-                        progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                        progressWindow?.CloseSafe();
                     }
                     return true;
                 }
@@ -232,7 +232,7 @@ public static class ArchiveProcessor
             // 完了処理
             if (closeWindowOnCompletion)
             {
-                progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                progressWindow?.CloseSafe();
             }
             return successCount > 0;
         }
@@ -352,7 +352,7 @@ public static class ArchiveProcessor
                 if (progressReporter == null && closeWindowOnCompletion)
                 {
                     // UIスレッド上で安全にクローズ
-                    progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                    progressWindow?.CloseSafe();
                 }
 
                 return true;
@@ -488,7 +488,7 @@ public static class ArchiveProcessor
                 // UIスレッド上で安全にクローズ
                 if (closeWindowOnCompletion)
                 {
-                    progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                    progressWindow?.CloseSafe();
                 }
                 return true;
             }
@@ -498,7 +498,7 @@ public static class ArchiveProcessor
                 
                 if (closeWindowOnCompletion)
                 {
-                    progressWindow?.Dispatcher.BeginInvoke(new Action(() => progressWindow.Close()));
+                    progressWindow?.CloseSafe();
                 }
                 return successCount > 0;
             }

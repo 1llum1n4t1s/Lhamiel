@@ -129,10 +129,47 @@ public partial class ProgressWindow : Window
         }
     }
 
+    /// <summary>
+    /// ウィンドウを安全に閉じます。
+    /// すでに閉じている場合や、閉じようとしている場合は何もしません。
+    /// </summary>
+    public void CloseSafe()
+    {
+        try
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
+            {
+                try
+                {
+                    if (IsLoaded && !Dispatcher.HasShutdownStarted)
+                    {
+                        Close();
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    // すでに閉じている場合などの例外を無視
+                }
+            });
+        }
+        catch (Exception)
+        {
+            // ディスパッチャー自体が終了している場合などの例外を無視
+        }
+    }
+
     private void CancelButton_Click(object sender, RoutedEventArgs e)
     {
         CancelButton.IsEnabled = false;
-        _cancellationTokenSource?.Cancel();
+        try
+        {
+            if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+            {
+                _cancellationTokenSource.Cancel();
+            }
+        }
+        catch (ObjectDisposedException) { }
+        
         CancelRequested?.Invoke(this, EventArgs.Empty);
     }
 
@@ -143,10 +180,17 @@ public partial class ProgressWindow : Window
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
         // まだキャンセルされていない場合は、ウィンドウを閉じることをキャンセル指示とみなす
-        if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+        try
         {
-            _cancellationTokenSource.Cancel();
-            CancelRequested?.Invoke(this, EventArgs.Empty);
+            if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+            {
+                _cancellationTokenSource.Cancel();
+                CancelRequested?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // CTSが既に破棄されている場合は無視
         }
         
         base.OnClosing(e);
