@@ -206,11 +206,20 @@ public partial class App
             if (IsProcessing)
             {
                 Logger.Log("Velopack: 処理（圧縮/展開）の完了を待機しています...");
-                while (IsProcessing)
+                try
                 {
-                    await Task.Delay(500);
+                    // 5分間のタイムアウトを設定
+                    using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+                    while (IsProcessing)
+                    {
+                        await Task.Delay(500, timeoutCts.Token);
+                    }
+                    Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
                 }
-                Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
+                catch (OperationCanceledException)
+                {
+                    Logger.Log("Velopack: 処理完了の待機がタイムアウトしました。更新を強制的に適用します。", LogLevel.Warning);
+                }
             }
             else
             {
@@ -240,7 +249,7 @@ public partial class App
     {
         try
         {
-            var settings = Settings.Load();
+            var settings = SettingsManager.Instance.Current;
             var repoOwner = settings.UpdateRepoOwner;
             var repoName = settings.UpdateRepoName;
             var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "release" : settings.UpdateChannel;
@@ -297,7 +306,7 @@ public partial class App
             }
 
             // 設定を読み込み
-            var settings = Settings.Load();
+            var settings = SettingsManager.Instance.Current;
 
             // ファイルかフォルダかを判定して適切な処理を実行
             if (File.Exists(path))
@@ -386,7 +395,7 @@ public partial class App
 
             progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
             
-            var cancellationTokenSource = new CancellationTokenSource();
+            using var cancellationTokenSource = new CancellationTokenSource();
             progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
             progressWindow.Activate();
@@ -455,7 +464,7 @@ public partial class App
 
             progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
             
-            var cancellationTokenSource = new CancellationTokenSource();
+            using var cancellationTokenSource = new CancellationTokenSource();
             progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
             progressWindow.Activate();
@@ -542,7 +551,7 @@ public partial class App
 
             progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
             
-            var cancellationTokenSource = new CancellationTokenSource();
+            using var cancellationTokenSource = new CancellationTokenSource();
             progressWindow.CancelRequested += (_, _) => cancellationTokenSource.Cancel();
             progressWindow.Show();
             progressWindow.Activate();

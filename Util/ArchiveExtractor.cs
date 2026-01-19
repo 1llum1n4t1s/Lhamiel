@@ -307,9 +307,6 @@ public class ArchiveExtractor
                 {
                     reader.Save(outputPath);
                 }
-
-                // ネイティブ側（Cube.FileSystem.SevenZip）の参照を確実に保持
-                GC.KeepAlive(reader);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -397,42 +394,69 @@ public class ArchiveExtractor
             }
             else if (Directory.Exists(path))
             {
-                // GetFiles -> EnumerateFiles に変更してメモリ効率を向上
-                // 大量ファイル処理時に配列を一括確保せず、遅延実行（イテレータ処理）で処理
-                foreach (var filePath in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
-                {
-                    try
-                    {
-                        var fileInfo = new FileInfo(filePath);
-                        if ((fileInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                        {
-                            fileInfo.Attributes &= ~FileAttributes.ReadOnly;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Log($"ファイル属性の変更に失敗しました: {filePath}, {ex.Message}");
-                    }
-                }
-
-                // ディレクトリ自体の読み取り専用属性も削除
-                try
-                {
-                    var dirInfo = new DirectoryInfo(path);
-                    if ((dirInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                    {
-                        dirInfo.Attributes &= ~FileAttributes.ReadOnly;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"ディレクトリ属性の変更に失敗しました: {path}, {ex.Message}");
-                }
+                // 再帰的なヘルパーメソッドを使用して属性を解除
+                RemoveReadOnlyAttributesRecursive(new DirectoryInfo(path));
             }
         }
         catch (Exception ex)
         {
             Logger.Log($"読み取り専用属性の削除処理でエラーが発生しました: {path}, {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 指定されたディレクトリとその内容に対して、再帰的に読み取り専用属性を解除します
+    /// </summary>
+    /// <param name="dirInfo">対象ディレクトリの DirectoryInfo インスタンス</param>
+    private static void RemoveReadOnlyAttributesRecursive(DirectoryInfo dirInfo)
+    {
+        // ディレクトリ自体の属性解除
+        try
+        {
+            if ((dirInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+            {
+                dirInfo.Attributes &= ~FileAttributes.ReadOnly;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"ディレクトリ属性変更失敗: {dirInfo.FullName}, {ex.Message}");
+        }
+
+        // ファイルの属性解除
+        try
+        {
+            foreach (var file in dirInfo.GetFiles())
+            {
+                try
+                {
+                    if ((file.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+                    {
+                        file.Attributes &= ~FileAttributes.ReadOnly;
+                    }
+                }
+                catch
+                {
+                    /* 個別のファイルエラーは無視 */
+                }
+            }
+        }
+        catch
+        {
+            /* ディレクトリアクセスエラーは無視して続行 */
+        }
+
+        // サブディレクトリへ再帰
+        try
+        {
+            foreach (var subDir in dirInfo.GetDirectories())
+            {
+                RemoveReadOnlyAttributesRecursive(subDir);
+            }
+        }
+        catch
+        {
+            /* ディレクトリアクセスエラーは無視 */
         }
     }
 }
