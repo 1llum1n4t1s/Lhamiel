@@ -66,13 +66,15 @@ public partial class ProgressWindow : Window
                     ProgressBar.Value = percentage;
                     ProgressTextBlock.Text = $"{percentage}%";
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Logger.Log($"進捗更新時のエラー: {ex.Message}");
                 }
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Logger.Log($"進捗更新処理のエラー: {ex.Message}");
         }
     }
 
@@ -98,9 +100,9 @@ public partial class ProgressWindow : Window
                 catch { }
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // ウィンドウがクローズされた場合は無視
+            Logger.Log($"完了状態設定時のエラー: {ex.Message}");
         }
     }
 

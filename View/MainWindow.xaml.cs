@@ -69,10 +69,10 @@ public partial class MainWindow
             CompressionFormatComboBox.ItemsSource = Settings.SupportedCompressionFormats;
 
             var selectedFormat = _settingsManager.Current.CompressionFormat;
-            var supportedFormats = Settings.SupportedCompressionFormats.Select(f => f.ToUpperInvariant()).ToList();
-            if (!string.IsNullOrEmpty(selectedFormat) && supportedFormats.Contains(selectedFormat.ToUpperInvariant()))
+            if (!string.IsNullOrEmpty(selectedFormat) && Settings.SupportedCompressionFormats.Any(f =>
+                f.Equals(selectedFormat, StringComparison.OrdinalIgnoreCase)))
             {
-                CompressionFormatComboBox.SelectedItem = Settings.SupportedCompressionFormats.FirstOrDefault(f => 
+                CompressionFormatComboBox.SelectedItem = Settings.SupportedCompressionFormats.FirstOrDefault(f =>
                     f.Equals(selectedFormat, StringComparison.OrdinalIgnoreCase));
             }
             else

@@ -23,7 +23,13 @@ public class ArchiveCompressor
             ? Path.GetDirectoryName(sourcePath) ?? "" 
             : outputDirectory;
 
-        var fileName = Path.GetFileName(sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        var trimmedPath = sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var fileName = Path.GetFileNameWithoutExtension(trimmedPath);
+        if (string.IsNullOrEmpty(fileName))
+        {
+            fileName = Path.GetFileName(trimmedPath);
+        }
+
         var lowerExtension = extension.ToLowerInvariant();
 
         return Path.Combine(directory, $"{fileName}.{lowerExtension}");
