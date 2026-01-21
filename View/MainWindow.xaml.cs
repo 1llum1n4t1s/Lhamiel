@@ -62,50 +62,40 @@ public partial class MainWindow
         }
     }
 
-    /// <summary>
-    /// UIの初期化
-    /// </summary>
     private void InitializeUI()
     {
         try
         {
-            // メイン圧縮形式の選択肢を設定
             CompressionFormatComboBox.ItemsSource = Settings.SupportedCompressionFormats;
 
-            // 設定された圧縮形式がサポートされているかチェックし、見つからない場合はデフォルト値を使用
-            var selectedFormat = _settingsManager.Current.CompressionFormat?.ToUpperInvariant();
-            if (Settings.SupportedCompressionFormats.Contains(selectedFormat))
+            var selectedFormat = _settingsManager.Current.CompressionFormat;
+            var supportedFormats = Settings.SupportedCompressionFormats.Select(f => f.ToUpperInvariant()).ToList();
+            if (!string.IsNullOrEmpty(selectedFormat) && supportedFormats.Contains(selectedFormat.ToUpperInvariant()))
             {
-                CompressionFormatComboBox.SelectedItem = selectedFormat;
+                CompressionFormatComboBox.SelectedItem = Settings.SupportedCompressionFormats.FirstOrDefault(f => 
+                    f.Equals(selectedFormat, StringComparison.OrdinalIgnoreCase));
             }
             else
             {
-                // デフォルト値（ZIP）を選択
                 CompressionFormatComboBox.SelectedItem = "ZIP";
                 _settingsManager.Current.CompressionFormat = "ZIP";
             }
 
-            // 出力ディレクトリの設定
             ExtractionOutputPathTextBox.Text = _settingsManager.Current.ExtractionOutputDirectory;
             CompressionOutputPathTextBox.Text = _settingsManager.Current.CompressionOutputDirectory;
 
-            // 出力先パターンの設定
             ExtractionOutputToSameDirectoryRadio.IsChecked = _settingsManager.Current.ExtractionOutputToSameDirectory;
             ExtractionOutputToDirectoryRadio.IsChecked = !_settingsManager.Current.ExtractionOutputToSameDirectory;
             CompressionOutputToSameDirectoryRadio.IsChecked = _settingsManager.Current.CompressionOutputToSameDirectory;
             CompressionOutputToDirectoryRadio.IsChecked = !_settingsManager.Current.CompressionOutputToSameDirectory;
 
-            // フォルダを開く設定の読み込み
             OpenExtractionOutputFolderCheckBox.IsChecked = _settingsManager.Current.OpenExtractionOutputFolder;
             OpenCompressionOutputFolderCheckBox.IsChecked = _settingsManager.Current.OpenCompressionOutputFolder;
 
-            // 関連付け設定の読み込み
             LoadAssociationStatus();
 
-            // バージョン情報を設定
             LoadVersionInfo();
 
-            // イベントハンドラーを追加
             ExtractionOutputToSameDirectoryRadio.Checked += ExtractionOutputPattern_Changed;
             ExtractionOutputToDirectoryRadio.Checked += ExtractionOutputPattern_Changed;
             CompressionOutputToSameDirectoryRadio.Checked += CompressionOutputPattern_Changed;
