@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Threading;
+using Lhamiel.Util;
 
 namespace Lhamiel.View;
 
@@ -17,16 +18,6 @@ public partial class ProgressWindow : Window
     /// キャンセルトークンソース（キャンセル処理に使用）
     /// </summary>
     private CancellationTokenSource? _cancellationTokenSource;
-
-    /// <summary>
-    /// 最後のプログレス更新時刻
-    /// </summary>
-    private DateTime _lastProgressUpdate = DateTime.MinValue;
-
-    /// <summary>
-    /// プログレス更新の最小間隔（ミリ秒）
-    /// </summary>
-    private const int ProgressUpdateIntervalMs = 50;
 
     public ProgressWindow(string operationType)
     {
@@ -56,48 +47,34 @@ public partial class ProgressWindow : Window
     }
 
     /// <summary>
-    /// 進捗を更新する（スロットリング付き）
+    /// 進捗を更新する
     /// </summary>
     /// <param name="percentage">進捗率（0-100）</param>
     public void UpdateProgress(int percentage)
     {
         try
         {
-            // すでに閉じているか閉じようとしている場合は無視
             if (!IsLoaded || Dispatcher.HasShutdownStarted)
                 return;
 
-            var now = DateTime.Now;
-            
-            // 重要な進捗（90%、100%）は必ず更新
-            var isImportantUpdate = percentage >= 90;
-            
-            // スロットリング: 最小間隔より短い場合はスキップ（重要な更新は除く）
-            if (!isImportantUpdate && (now - _lastProgressUpdate).TotalMilliseconds < ProgressUpdateIntervalMs)
-                return;
-
-            _lastProgressUpdate = now;
-
-            // 非同期でUIを更新
             Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
             {
                 try
                 {
-                    // ラムダ式実行時にまだウィンドウが生きているか再確認
                     if (!IsLoaded) return;
 
                     ProgressBar.Value = percentage;
                     ProgressTextBlock.Text = $"{percentage}%";
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // 実行中のエラー（ウィンドウが閉じられた等）は無視
+                    Logger.Log($"進捗更新時のエラー: {ex.Message}");
                 }
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // ウィンドウの状態チェック中のエラーなどは無視
+            Logger.Log($"進捗更新処理のエラー: {ex.Message}");
         }
     }
 
@@ -123,9 +100,9 @@ public partial class ProgressWindow : Window
                 catch { }
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // ウィンドウがクローズされた場合は無視
+            Logger.Log($"完了状態設定時のエラー: {ex.Message}");
         }
     }
 
@@ -146,15 +123,15 @@ public partial class ProgressWindow : Window
                         Close();
                     }
                 }
-                catch (InvalidOperationException)
+                catch (InvalidOperationException ex)
                 {
-                    // すでに閉じている場合などの例外を無視
+                    Logger.Log($"ウィンドウクローズ時のエラー: {ex.Message}");
                 }
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // ディスパッチャー自体が終了している場合などの例外を無視
+            Logger.Log($"ウィンドウクローズ処理のエラー: {ex.Message}");
         }
     }
 
@@ -188,9 +165,9 @@ public partial class ProgressWindow : Window
                 CancelRequested?.Invoke(this, EventArgs.Empty);
             }
         }
-        catch (ObjectDisposedException)
+        catch (ObjectDisposedException ex)
         {
-            // CTSが既に破棄されている場合は無視
+            Logger.Log($"OnClosing内のCTS例外: {ex.Message}");
         }
         
         base.OnClosing(e);
