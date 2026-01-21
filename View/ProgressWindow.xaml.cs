@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Threading;
+using Lhamiel.Util;
 
 namespace Lhamiel.View;
 
@@ -120,15 +121,15 @@ public partial class ProgressWindow : Window
                         Close();
                     }
                 }
-                catch (InvalidOperationException)
+                catch (InvalidOperationException ex)
                 {
-                    // すでに閉じている場合などの例外を無視
+                    Logger.Log($"ウィンドウクローズ時のエラー: {ex.Message}");
                 }
             });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // ディスパッチャー自体が終了している場合などの例外を無視
+            Logger.Log($"ウィンドウクローズ処理のエラー: {ex.Message}");
         }
     }
 
@@ -162,9 +163,9 @@ public partial class ProgressWindow : Window
                 CancelRequested?.Invoke(this, EventArgs.Empty);
             }
         }
-        catch (ObjectDisposedException)
+        catch (ObjectDisposedException ex)
         {
-            // CTSが既に破棄されている場合は無視
+            Logger.Log($"OnClosing内のCTS例外: {ex.Message}");
         }
         
         base.OnClosing(e);
