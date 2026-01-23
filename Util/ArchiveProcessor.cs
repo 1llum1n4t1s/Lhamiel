@@ -335,13 +335,11 @@ public static class ArchiveProcessor
 
                 var progress = new Progress<ProgressInfo>(info =>
                 {
-                    // 1. レガシーなProgressWindow更新 (単体実行時用)
                     if (progressReporter == null)
                     {
-                        progressWindow?.UpdateProgress(info.Percentage);
+                        progressWindow?.Dispatcher.BeginInvoke(() => progressWindow.UpdateProgress(info.Percentage));
                     }
 
-                    // 2. 外部から渡された進捗レポーターへの報告 (並列実行時用)
                     progressReporter?.Report(info);
                 });
 
