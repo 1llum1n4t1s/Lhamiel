@@ -115,14 +115,14 @@ public class ArchiveCompressionTests
             Directory.CreateDirectory(extractDir);
 
             // Act - 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath);
+            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             // Assert - 圧縮ファイルが作成されたか
             Assert.True(File.Exists(archivePath), "Zip archive should be created");
 
             // Act - 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -156,14 +156,14 @@ public class ArchiveCompressionTests
             Directory.CreateDirectory(extractDir);
 
             // Act - 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath);
+            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             // Assert - 圧縮ファイルが作成されたか
             Assert.True(File.Exists(archivePath), "7z archive should be created");
 
             // Act - 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -197,14 +197,14 @@ public class ArchiveCompressionTests
             Directory.CreateDirectory(extractDir);
 
             // Act - 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath);
+            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             // Assert - 圧縮ファイルが作成されたか
             Assert.True(File.Exists(archivePath), "Tar archive should be created");
 
             // Act - 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -240,14 +240,14 @@ public class ArchiveCompressionTests
             Directory.CreateDirectory(extractDir);
 
             // Act - 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath);
+            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             // Assert - 圧縮ファイルが作成されたか
             Assert.True(File.Exists(archivePath), $"{extension} archive should be created");
 
             // Act - 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
 
             // Assert - 内容を検証（展開後のディレクトリ構造に対応）
             var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
@@ -281,7 +281,7 @@ public class ArchiveCompressionTests
             var archivePath = Path.Combine(testDir, "single_file.zip");
 
             // Act
-            await ArchiveCompressor.CompressFilesAsync([testFile], archivePath);
+            await ArchiveCompressor.CompressFilesAsync([testFile], archivePath, null, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.True(File.Exists(archivePath), "Zip archive should be created");
@@ -314,7 +314,7 @@ public class ArchiveCompressionTests
             var archivePath = Path.Combine(testDir, "multiple_files.zip");
 
             // Act
-            await ArchiveCompressor.CompressFilesAsync([file1, file2, file3], archivePath);
+            await ArchiveCompressor.CompressFilesAsync([file1, file2, file3], archivePath, null, TestContext.Current.CancellationToken);
 
             // Assert
             Assert.True(File.Exists(archivePath), "Zip archive with multiple files should be created");
@@ -365,14 +365,14 @@ public class ArchiveCompressionTests
             Console.WriteLine($"ZIPファイル: {archivePath}");
 
             // Act: 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath);
+            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             Assert.True(File.Exists(archivePath), "ZIP archive should be created");
             Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
@@ -421,14 +421,14 @@ public class ArchiveCompressionTests
             Console.WriteLine($"7zファイル: {archivePath}");
 
             // Act: 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath);
+            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             Assert.True(File.Exists(archivePath), "7z archive should be created");
             Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
@@ -477,14 +477,14 @@ public class ArchiveCompressionTests
             Console.WriteLine($"TARファイル: {archivePath}");
 
             // Act: 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath);
+            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             Assert.True(File.Exists(archivePath), "TAR archive should be created");
             Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
@@ -533,14 +533,14 @@ public class ArchiveCompressionTests
             Console.WriteLine($"TARファイル: {archivePath}");
 
             // Act: 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath);
+            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             Assert.True(File.Exists(archivePath), "TAR archive should be created");
             Console.WriteLine($"✓ 圧縮成功");
 
             // Act: 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir);
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
 
             // Assert: ファイルとフォルダ名が正しく保持されているか確認
             var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
