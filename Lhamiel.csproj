@@ -12,53 +12,26 @@
     <SatelliteResourceLanguages>ja</SatelliteResourceLanguages>
     <Optimize>true</Optimize>
     <DebugType>portable</DebugType>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <Version>1.0.42</Version>
+    <Version>1.0.44</Version>
     <AssemblyTitle>Lhamiel</AssemblyTitle>
     <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
     <AssemblyCompany>1llum1n4t1s</AssemblyCompany>
     <AssemblyProduct>Lhamiel</AssemblyProduct>
     <AssemblyCopyright>Copyright © 2025-2026 ゆろち</AssemblyCopyright>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
-    <NoWarn>CA1416</NoWarn>
     <Title>Lhamiel</Title>
     <Authors>ゆろち</Authors>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="App.xaml.cs" />
-    <Compile Include="Properties\Settings.Designer.cs" />
-    <Compile Include="Util\ArchiveCompressor.cs" />
-    <Compile Include="Util\AsyncManualResetEvent.cs" />
-    <Compile Include="Util\CancellableProgress.cs" />
-    <Compile Include="Util\ArchiveConstants.cs" />
-    <Compile Include="Util\ArchiveErrorHandler.cs" />
-    <Compile Include="Util\ArchiveExtractor.cs" />
-    <Compile Include="Util\ArchiveProcessor.cs" />
-    <Compile Include="Util\FileOperations.cs" />
-    <Compile Include="Util\FileAssociation.cs" />
-    <Compile Include="Util\FileOverwriteDialog.cs" />
-    <Compile Include="Util\FolderOpener.cs" />
-    <Compile Include="Util\IpcService.cs" />
-    <Compile Include="Util\Logger.cs" />
-    <Compile Include="Util\MessageService.cs" />
-    <Compile Include="Util\NativeMethods.cs" />
-    <Compile Include="Util\PartialExtractionHandler.cs" />
-    <Compile Include="Util\PathValidator.cs" />
-    <Compile Include="Util\ProgressInfo.cs" />
-    <Compile Include="Util\Settings.cs" />
-    <Compile Include="Util\SettingsManager.cs" />
-    <Compile Include="Util\ShortcutCreator.cs" />
-    <Compile Include="View\ErrorRecoveryDialog.xaml.cs" />
-    <Compile Include="View\MainWindow.xaml.cs" />
-    <Compile Include="View\ProgressWindow.xaml.cs" />
+    <Compile Remove="Lhamiel.Tests.Unit\**" />
   </ItemGroup>
 
-
   <ItemGroup>
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.6" />
     <PackageReference Include="7z.Libs" Version="25.1.0" />
-    <PackageReference Include="Cube.FileSystem.SevenZip" Version="8.4.1" />
     <PackageReference Include="log4net" Version="3.2.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />

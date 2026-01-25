@@ -370,7 +370,7 @@ public class ArchiveExtractorTests
             Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
 
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(zipPath, actualOutputDir);
+            await ArchiveExtractor.ExtractArchive(zipPath, actualOutputDir, null, null, false, TestContext.Current.CancellationToken);
 
             // Assert: 展開結果を確認
             Console.WriteLine($"Extracted directory: {actualOutputDir}");
@@ -437,7 +437,7 @@ public class ArchiveExtractorTests
             Console.WriteLine($"\nCalculated output directory: {actualOutputDir}");
 
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(zipPath, actualOutputDir);
+            await ArchiveExtractor.ExtractArchive(zipPath, actualOutputDir, null, null, false, TestContext.Current.CancellationToken);
 
             // Assert: 展開結果を確認
             Console.WriteLine($"\nExtracted directory: {actualOutputDir}");

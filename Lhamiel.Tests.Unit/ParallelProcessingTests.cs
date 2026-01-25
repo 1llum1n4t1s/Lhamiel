@@ -88,7 +88,7 @@ public class ParallelProcessingTests
                 outputDir,
                 outputToSameDirectory: false,
                 progressWindow: null!,
-                cancellationToken: CancellationToken.None
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // 結果を確認
@@ -156,7 +156,7 @@ public class ParallelProcessingTests
                 outputDir,
                 outputToSameDirectory: false,
                 progressWindow: null!,
-                cancellationToken: CancellationToken.None
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             stopwatch.Stop();
@@ -206,7 +206,7 @@ public class ParallelProcessingTests
                 outputDir,
                 outputToSameDirectory: false,
                 progressWindow: null!,
-                cancellationToken: CancellationToken.None
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // 成功するはず
@@ -247,7 +247,7 @@ public class ParallelProcessingTests
                 outputToSameDirectory: false,
                 format: "zip",
                 progressWindow: null!,
-                cancellationToken: CancellationToken.None
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // 結果を確認
@@ -311,7 +311,7 @@ public class ParallelProcessingTests
                 outputToSameDirectory: false,
                 format: "zip",
                 progressWindow: null!,
-                cancellationToken: CancellationToken.None
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             stopwatch.Stop();
@@ -356,7 +356,7 @@ public class ParallelProcessingTests
                 outputToSameDirectory: false,
                 format: "zip",
                 progressWindow: null!,
-                cancellationToken: CancellationToken.None
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // 成功するはず
@@ -395,7 +395,7 @@ public class ParallelProcessingTests
                 outputDir,
                 outputToSameDirectory: false,
                 progressWindow: null!,
-                cancellationToken: CancellationToken.None
+                cancellationToken: TestContext.Current.CancellationToken
             );
 
             // 両方成功として扱われるはず
@@ -442,7 +442,7 @@ public class ParallelProcessingTests
                     Path.Combine(outputDir, $"batch{i}"),
                     outputToSameDirectory: false,
                     progressWindow: null!,
-                    cancellationToken: CancellationToken.None
+                    cancellationToken: TestContext.Current.CancellationToken
                 );
                 tasks.Add(task);
             }
