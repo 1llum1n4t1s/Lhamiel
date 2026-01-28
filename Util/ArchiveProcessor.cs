@@ -160,6 +160,14 @@ public static class ArchiveProcessor
                 
                 return false;
             }
+            finally
+            {
+                // 例外発生時にも確実にクリーンアップ
+                if (closeWindowOnCompletion)
+                {
+                    progressWindow?.CloseSafe();
+                }
+            }
         }, cancellationToken);
     }
 
@@ -268,6 +276,13 @@ public static class ArchiveProcessor
         {
             Logger.LogException("複数ファイル展開処理でエラーが発生", ex);
             MessageService.ShowError($"展開中にエラーが発生しました。\n{ex.Message}");
+            
+            // 例外発生時にも確実にクリーンアップ
+            if (closeWindowOnCompletion)
+            {
+                progressWindow?.CloseSafe();
+            }
+            
             return false;
         }
     }
@@ -409,6 +424,14 @@ public static class ArchiveProcessor
                 }
                 
                 return false;
+            }
+            finally
+            {
+                // 例外発生時にも確実にクリーンアップ
+                if (progressReporter == null && closeWindowOnCompletion)
+                {
+                    progressWindow?.CloseSafe();
+                }
             }
         }, actualCancellationToken);
     }
@@ -559,6 +582,13 @@ public static class ArchiveProcessor
         {
             Logger.LogException("複数対象圧縮処理でエラーが発生", ex);
             MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
+            
+            // 例外発生時にも確実にクリーンアップ
+            if (closeWindowOnCompletion)
+            {
+                progressWindow?.CloseSafe();
+            }
+            
             return false;
         }
     }

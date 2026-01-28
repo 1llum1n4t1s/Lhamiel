@@ -250,8 +250,7 @@ public static class ArchiveExtractor
             finally
             {
                 // ネイティブ側からのコールバックを確実に保護するため、処理完了まで参照を保持
-                GC.KeepAlive(progressCallback);
-                GC.KeepAlive(progress);
+                KeepAliveCallbacks(progressCallback, progress);
             }
         }, cancellationToken);
     }
@@ -454,8 +453,7 @@ public static class ArchiveExtractor
                     progressCallback(new ProgressInfo(100, "ファイルを展開中..."));
 
                     // ネイティブ側のコールバック完了を確実に保証
-                    GC.KeepAlive(progress);
-                    GC.KeepAlive(progressCallback);
+                    KeepAliveCallbacks(progress, progressCallback);
                 }
                 else
                 {
@@ -464,7 +462,7 @@ public static class ArchiveExtractor
                 }
 
                 // reader自体の生存も保証
-                GC.KeepAlive(reader);
+                KeepAliveCallbacks(reader);
             }
 
             // メソッド呼び出し: キャンセルの確認
@@ -480,6 +478,61 @@ public static class ArchiveExtractor
                 if (Directory.Exists(rootPath))
                 {
                     Logger.Log($"スマート解凍：ルート要素 '{rootItemNameForCleanup}' をリフトアップします");
+                    
+                    // リフトアップ前の競合チェック
+                    var conflicts = new List<string>();
+                    foreach (var dir in Directory.GetDirectories(rootPath))
+                    {
+                        var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+                        if (Directory.Exists(destDir)) conflicts.Add(destDir);
+                    }
+                    foreach (var file in Directory.GetFiles(rootPath))
+                    {
+                        var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                        if (File.Exists(destFile)) conflicts.Add(destFile);
+                    }
+                    
+                    // 競合がある場合は確認ダイアログを表示
+                    if (conflicts.Count > 0)
+                    {
+                        Logger.Log($"リフトアップ時に競合が検出されました: {conflicts.Count}件");
+                        
+                        // 変数: ディスパッチャーを取得
+                        var dispatcher = parentWindow?.Dispatcher ?? (Application.Current != null ? Application.Current.Dispatcher : null);
+                        
+                        // メソッド呼び出し: UIスレッドで上書き確認ダイアログを表示
+                        bool canLiftUp;
+                        if (dispatcher != null)
+                        {
+                            canLiftUp = await dispatcher.InvokeAsync(() =>
+                            {
+                                // 変数: 競合の説明メッセージ
+                                var conflictMessage = conflicts.Count == 1
+                                    ? $"リフトアップ時に既存のアイテム '{Path.GetFileName(conflicts[0])}' と競合します。\n\n上書きしてリフトアップを続行しますか？"
+                                    : $"リフトアップ時に {conflicts.Count} 個の既存アイテムと競合します。\n\n上書きしてリフトアップを続行しますか？";
+                                
+                                // メソッド呼び出し: リフトアップ確認ダイアログを表示
+                                var result = parentWindow != null
+                                    ? MessageBox.Show(parentWindow, conflictMessage, "リフトアップの確認", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No)
+                                    : MessageBox.Show(conflictMessage, "リフトアップの確認", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
+                                
+                                return result == MessageBoxResult.Yes;
+                            }).Task;
+                        }
+                        else
+                        {
+                            // Dispatcherがない（ユニットテストなど）環境では、確認なしで続行
+                            Logger.Log("リフトアップ時の競合確認をスキップ（Dispatcherなし）");
+                            canLiftUp = true;
+                        }
+                        
+                        if (!canLiftUp)
+                        {
+                            // メソッド呼び出し: ログの記録
+                            Logger.Log("ユーザーがリフトアップをキャンセルしました。ルート要素フォルダのまま残します。");
+                            return;
+                        }
+                    }
                     
                     // ルート要素の中身を outputPath 直下に移動
                     foreach (var dir in Directory.GetDirectories(rootPath))
@@ -725,6 +778,18 @@ public static class ArchiveExtractor
                     stack.Push(subDir);
                 }
             }, $"サブディレクトリアクセスエラー: {currentDir.FullName}", LogLevel.Warning);
+        }
+    }
+
+    /// <summary>
+    /// ネイティブ側コールバック完了まで参照を保持する
+    /// </summary>
+    /// <param name="values">保持するオブジェクト</param>
+    private static void KeepAliveCallbacks(params object?[] values)
+    {
+        foreach (var v in values)
+        {
+            GC.KeepAlive(v);
         }
     }
 }

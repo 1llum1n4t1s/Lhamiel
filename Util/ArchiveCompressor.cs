@@ -207,9 +207,7 @@ public class ArchiveCompressor
 
                     // 全てのオブジェクトの生存を、ネイティブ処理完了直後に明示的に保証する
                     // これにより、JIT最適化による早期解放（およびそれに伴うアクセス違反）を防ぐ
-                    GC.KeepAlive(writer);
-                    GC.KeepAlive(reportProgress);
-                    GC.KeepAlive(progressCallback);
+                    KeepAliveCallbacks(writer, reportProgress, progressCallback);
                 }, cancellationToken);
             }
             catch (Exception ex)
@@ -405,5 +403,17 @@ public class ArchiveCompressor
         }
 
         return [];
+    }
+
+    /// <summary>
+    /// ネイティブ側コールバック完了まで参照を保持する
+    /// </summary>
+    /// <param name="values">保持するオブジェクト</param>
+    private static void KeepAliveCallbacks(params object?[] values)
+    {
+        foreach (var v in values)
+        {
+            GC.KeepAlive(v);
+        }
     }
 }
