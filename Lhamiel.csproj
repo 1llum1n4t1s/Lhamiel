@@ -25,6 +25,10 @@
     <Authors>ゆろち</Authors>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Remove="Lhamiel.Tests.Unit\**" />
   </ItemGroup>
@@ -51,12 +55,20 @@
     </Content>
   </ItemGroup>
 
-  <!-- ビルド後にx64フォルダを削除し、7z.dllをルートに移動 -->
+  <!-- ビルド後に7z.dllをルートに配置（より確実な方法） -->
   <Target Name="Move7zDllToRoot" AfterTargets="Build">
-    <Move SourceFiles="$(OutputPath)x64\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)x64\7z.dll')" />
-    <RemoveDir Directories="$(OutputPath)x64" Condition="Exists('$(OutputPath)x64')" />
-    <RemoveDir Directories="$(OutputPath)x86" Condition="Exists('$(OutputPath)x86')" />
-    <RemoveDir Directories="$(OutputPath)runtimes" Condition="Exists('$(OutputPath)runtimes')" />
+    <!-- 複数の場所を確認して、見つかったら移動 -->
+    <Move SourceFiles="$(OutputPath)x64\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)x64\7z.dll')" ContinueOnError="true" />
+    <Move SourceFiles="$(OutputPath)runtimes\win-x64\native\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)runtimes\win-x64\native\7z.dll')" ContinueOnError="true" />
+    
+    <!-- クリーンアップ -->
+    <RemoveDir Directories="$(OutputPath)x64" Condition="Exists('$(OutputPath)x64')" ContinueOnError="true" />
+    <RemoveDir Directories="$(OutputPath)x86" Condition="Exists('$(OutputPath)x86')" ContinueOnError="true" />
+    <RemoveDir Directories="$(OutputPath)runtimes" Condition="Exists('$(OutputPath)runtimes')" ContinueOnError="true" />
+    
+    <!-- 成功したかログ出力 -->
+    <Message Text="7z.dll is at: $(OutputPath)7z.dll" Importance="high" Condition="Exists('$(OutputPath)7z.dll')" />
+    <Warning Text="7z.dll NOT FOUND at $(OutputPath)7z.dll" Condition="!Exists('$(OutputPath)7z.dll')" />
   </Target>
 
 

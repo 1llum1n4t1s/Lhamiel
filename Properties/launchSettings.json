@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Lhamiel": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}

@@ -242,8 +242,17 @@ public static class ArchiveExtractor
             // ラムダ式を使用してIProgressをActionに変換
             var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
             
-            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, overwriteConfirmed, cancellationToken, rootItemNameForCleanup);
+            try
+            {
+                // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+                await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, overwriteConfirmed, cancellationToken, rootItemNameForCleanup);
+            }
+            finally
+            {
+                // ネイティブ側からのコールバックを確実に保護するため、処理完了まで参照を保持
+                GC.KeepAlive(progressCallback);
+                GC.KeepAlive(progress);
+            }
         }, cancellationToken);
     }
 
@@ -261,6 +270,16 @@ public static class ArchiveExtractor
     {
         // メソッド呼び出し: ログの記録
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}, rootItem={rootItemNameForCleanup ?? "null"}");
+
+        // スマート解凍の自動判定（引数で指定されていない場合）
+        if (rootItemNameForCleanup == null)
+        {
+            rootItemNameForCleanup = GetSingleRootItemName(archivePath);
+            if (rootItemNameForCleanup != null)
+            {
+                Logger.Log($"スマート解凍を自動判定しました: {rootItemNameForCleanup}");
+            }
+        }
 
         // メソッド呼び出し: ファイルの存在確認
         if (!File.Exists(archivePath))
@@ -288,11 +307,22 @@ public static class ArchiveExtractor
 
                 // 変数: ディスパッチャーを取得
                 // 条件演算子を使用してディスパッチャーを取得
-                var dispatcher = parentWindow?.Dispatcher ?? Application.Current.Dispatcher;
+                var dispatcher = parentWindow?.Dispatcher ?? (Application.Current != null ? Application.Current.Dispatcher : null);
                 
                 // メソッド呼び出し: UIスレッドで上書き確認ダイアログを表示
-                var canOverwrite = await dispatcher.InvokeAsync(() =>
-                    FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow)).Task;
+                bool canOverwrite;
+                if (dispatcher != null)
+                {
+                    canOverwrite = await dispatcher.InvokeAsync(() =>
+                        FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow)).Task;
+                }
+                else
+                {
+                    // Dispatcherがない（ユニットテストなど）環境では、
+                    // 上書き確認なしで続行するか、またはデフォルトの挙動を決定
+                    // ここではユニットテストを考慮し、確認なしで続行（または既存ファイルを削除）
+                    canOverwrite = true;
+                }
 
                 if (!canOverwrite)
                 {
@@ -363,7 +393,8 @@ public static class ArchiveExtractor
             // メソッド呼び出し: キャンセルの確認
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 変数: アーカイブリーダーの初期化
+            // ネイティブ側（7z.dll）との連携を確実に保護するため
+            // using スコープ内で reader と progress を管理する
             using (var reader = new ArchiveReader(archivePath))
             {
                 // メソッド呼び出し: ログの記録
@@ -371,29 +402,69 @@ public static class ArchiveExtractor
 
                 if (progressCallback != null)
                 {
-                    // 変数: 最後に報告した進捗率
+                    // 変数: 最後に報告した進捗率と時間（UIスレッドの負荷軽減用）
                     var lastPercentage = -1;
-                    
+                    var lastReportTime = Environment.TickCount64;
+                    const int reportInterval = 100; // 100ms間隔
+                    // 進捗コールバックが複数スレッドから呼ばれる可能性に備えた同期用オブジェクト
+                    var progressLock = new object();
+
                     // 変数: キャンセル可能な進捗報告オブジェクト
-                    var progress = new CancellableProgress<Report>(report =>
+                    // using を使用してスコープを維持
+                    using var progress = new CancellableProgress<Report>(report =>
                     {
-                        // 変数: 進捗率の計算
-                        var percentage = report.TotalBytes > 0 ? (int)((report.Bytes * 100) / report.TotalBytes) : 0;
-                        if (percentage == lastPercentage) return;
-                        lastPercentage = percentage;
-                        
+                        // 進捗率を取得（ライブラリの GetRatio() と Report を信じる）
+                        var ratio = report.GetRatio();
+                        var percentage = (int)(ratio * 100);
+
+                        lock (progressLock)
+                        {
+                            // 単調増加を保証（Ice アプリケーションの実装パターンに準拠）
+                            if (percentage <= lastPercentage && percentage > 0 && percentage < 100)
+                            {
+                                return;
+                            }
+
+                            var currentTime = Environment.TickCount64;
+
+                            // 以下のいずれかの条件を満たす場合のみ報告
+                            // 1. 進捗が 0% または 100% (開始と完了を保証)
+                            // 2. 前回の報告から 100ms 以上経過しており、かつ進捗率が変化している
+                            if (percentage > 0 && percentage < 100)
+                            {
+                                if (percentage == lastPercentage) return;
+                                if (currentTime - lastReportTime < reportInterval) return;
+                            }
+
+                            lastPercentage = percentage;
+                            lastReportTime = currentTime;
+                        }
+
                         // メソッド呼び出し: 進捗コールバックを実行
                         progressCallback(new ProgressInfo(percentage, "ファイルを展開中..."));
                     }, cancellationToken);
 
                     // メソッド呼び出し: アーカイブを保存
                     reader.Save(outputPath, progress);
+
+                    // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // Terminate で 100% を保証（Ice アプリケーションの実装パターンに準拠）
+                    progressCallback(new ProgressInfo(100, "ファイルを展開中..."));
+
+                    // ネイティブ側のコールバック完了を確実に保証
+                    GC.KeepAlive(progress);
+                    GC.KeepAlive(progressCallback);
                 }
                 else
                 {
                     // メソッド呼び出し: アーカイブを保存
                     reader.Save(outputPath);
                 }
+
+                // reader自体の生存も保証
+                GC.KeepAlive(reader);
             }
 
             // メソッド呼び出し: キャンセルの確認
@@ -401,6 +472,34 @@ public static class ArchiveExtractor
             
             // メソッド呼び出し: ログの記録
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
+
+            // スマート解凍：ルート要素が単一の場合はリフトアップを行う
+            if (rootItemNameForCleanup != null)
+            {
+                var rootPath = Path.Combine(outputPath, rootItemNameForCleanup);
+                if (Directory.Exists(rootPath))
+                {
+                    Logger.Log($"スマート解凍：ルート要素 '{rootItemNameForCleanup}' をリフトアップします");
+                    
+                    // ルート要素の中身を outputPath 直下に移動
+                    foreach (var dir in Directory.GetDirectories(rootPath))
+                    {
+                        var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+                        if (Directory.Exists(destDir)) Directory.Delete(destDir, true);
+                        Directory.Move(dir, destDir);
+                    }
+                    foreach (var file in Directory.GetFiles(rootPath))
+                    {
+                        var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                        if (File.Exists(destFile)) File.Delete(destFile);
+                        File.Move(file, destFile);
+                    }
+                    
+                    // 空になったルート要素を削除
+                    Directory.Delete(rootPath, true);
+                    Logger.Log("リフトアップが完了しました");
+                }
+            }
         }
         catch (OperationCanceledException)
         {

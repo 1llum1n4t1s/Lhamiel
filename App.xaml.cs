@@ -41,6 +41,9 @@ public partial class App
         // Log4netを早期に初期化
         Logger.Initialize();
 
+        // 7z.dll をプロセスに固定して、アンロード時のクラッシュを防止
+        NativeLibraryManager.Initialize();
+
         try
         {
             // Velopackの初期化：インストール、アンインストール、更新などを処理
@@ -408,13 +411,14 @@ public partial class App
     /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
     private async Task ProcessFileExtraction(string filePath, Settings settings, bool shouldShutdown = true)
     {
+        View.ProgressWindow? progressWindow = null;
         try
         {
             var outputDir = settings.ExtractionOutputDirectory;
             var outputToSameDirectory = settings.ExtractionOutputToSameDirectory;
 
             // 進行状況ウィンドウを表示
-            var progressWindow = new View.ProgressWindow("展開");
+            progressWindow = new View.ProgressWindow("展開");
 
             // MainWindowが自分自身（progressWindow）でない場合のみOwnerに設定
             if (MainWindow != null && MainWindow != progressWindow)
@@ -480,6 +484,12 @@ public partial class App
             // 必要に応じてアプリケーションを終了
             ShutdownIfNeeded(shouldShutdown);
         }
+        catch (OperationCanceledException)
+        {
+            Logger.Log("ファイル展開処理がキャンセルされました");
+            progressWindow?.CloseSafe();
+            ShutdownIfNeeded(shouldShutdown);
+        }
         catch (Exception ex)
         {
             Logger.LogException("ファイル展開処理でエラーが発生", ex);
@@ -497,6 +507,7 @@ public partial class App
     /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
     private async Task ProcessFileCompression(string filePath, Settings settings, string compressionFormat = "default", bool shouldShutdown = true)
     {
+        View.ProgressWindow? progressWindow = null;
         try
         {
             var outputDir = settings.CompressionOutputDirectory;
@@ -504,7 +515,7 @@ public partial class App
             var format = compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
 
             // 進行状況ウィンドウを表示
-            var progressWindow = new View.ProgressWindow("圧縮");
+            progressWindow = new View.ProgressWindow("圧縮");
 
             // MainWindowが自分自身（progressWindow）でない場合のみOwnerに設定
             if (MainWindow != null && MainWindow != progressWindow)
@@ -576,6 +587,12 @@ public partial class App
             // 必要に応じてアプリケーションを終了
             ShutdownIfNeeded(shouldShutdown);
         }
+        catch (OperationCanceledException)
+        {
+            Logger.Log("ファイル圧縮処理がキャンセルされました");
+            progressWindow?.CloseSafe();
+            ShutdownIfNeeded(shouldShutdown);
+        }
         catch (Exception ex)
         {
             Logger.LogException("ファイル圧縮処理でエラーが発生", ex);
@@ -617,6 +634,7 @@ public partial class App
     /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
     private async Task ProcessFolderCompression(string folderPath, Settings settings, string compressionFormat = "default", bool shouldShutdown = true)
     {
+        View.ProgressWindow? progressWindow = null;
         try
         {
             var outputDir = settings.CompressionOutputDirectory;
@@ -624,7 +642,7 @@ public partial class App
             var format = compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
 
             // 進行状況ウィンドウを表示
-            var progressWindow = new View.ProgressWindow("圧縮");
+            progressWindow = new View.ProgressWindow("圧縮");
 
             // MainWindowが自分自身（progressWindow）でない場合のみOwnerに設定
             if (MainWindow != null && MainWindow != progressWindow)
@@ -694,6 +712,12 @@ public partial class App
             }
 
             // 必要に応じてアプリケーションを終了
+            ShutdownIfNeeded(shouldShutdown);
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log("フォルダ圧縮処理がキャンセルされました");
+            progressWindow?.CloseSafe();
             ShutdownIfNeeded(shouldShutdown);
         }
         catch (Exception ex)
