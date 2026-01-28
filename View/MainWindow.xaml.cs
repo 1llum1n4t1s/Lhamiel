@@ -558,6 +558,7 @@ public partial class MainWindow
             if (progressWindow != null)
             {
                 progressWindow.SetCompleted("キャンセルしました。");
+                progressWindow.CloseSafe();
             }
         }
         catch (Exception ex)
