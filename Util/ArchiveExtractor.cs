@@ -250,7 +250,7 @@ public static class ArchiveExtractor
             finally
             {
                 // ネイティブ側からのコールバックを確実に保護するため、処理完了まで参照を保持
-                KeepAliveCallbacks(progressCallback, progress);
+                NativeInteropHelper.KeepAliveCallbacks(progressCallback, progress);
             }
         }, cancellationToken);
     }
@@ -453,7 +453,7 @@ public static class ArchiveExtractor
                     progressCallback(new ProgressInfo(100, "ファイルを展開中..."));
 
                     // ネイティブ側のコールバック完了を確実に保証
-                    KeepAliveCallbacks(progress, progressCallback);
+                    NativeInteropHelper.KeepAliveCallbacks(progress, progressCallback);
                 }
                 else
                 {
@@ -462,7 +462,7 @@ public static class ArchiveExtractor
                 }
 
                 // reader自体の生存も保証
-                KeepAliveCallbacks(reader);
+                NativeInteropHelper.KeepAliveCallbacks(reader);
             }
 
             // メソッド呼び出し: キャンセルの確認
@@ -778,18 +778,6 @@ public static class ArchiveExtractor
                     stack.Push(subDir);
                 }
             }, $"サブディレクトリアクセスエラー: {currentDir.FullName}", LogLevel.Warning);
-        }
-    }
-
-    /// <summary>
-    /// ネイティブ側コールバック完了まで参照を保持する
-    /// </summary>
-    /// <param name="values">保持するオブジェクト</param>
-    private static void KeepAliveCallbacks(params object?[] values)
-    {
-        foreach (var v in values)
-        {
-            GC.KeepAlive(v);
         }
     }
 }
