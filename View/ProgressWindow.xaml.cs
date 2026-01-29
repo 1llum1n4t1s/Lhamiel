@@ -1,5 +1,7 @@
-using System.Windows;
-using System.Windows.Threading;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Lhamiel.Util;
 
 namespace Lhamiel.View;
@@ -9,6 +11,10 @@ namespace Lhamiel.View;
 /// </summary>
 public partial class ProgressWindow : Window
 {
+    private ProgressBar? _progressBar;
+    private TextBlock? _progressTextBlock;
+    private Button? _cancelButton;
+
     /// <summary>
     /// キャンセルが要求されたときのイベント
     /// </summary>
@@ -19,14 +25,31 @@ public partial class ProgressWindow : Window
     /// </summary>
     private CancellationTokenSource? _cancellationTokenSource;
 
+    private void InitializeComponent()
+    {
+        AvaloniaXamlLoader.Load(this);
+        _progressBar = this.FindControl<ProgressBar>("ProgressBar");
+        _progressTextBlock = this.FindControl<TextBlock>("ProgressTextBlock");
+        _cancelButton = this.FindControl<Button>("CancelButton");
+    }
+
+    /// <summary>
+    /// パラメータなしコンストラクタ（デザイナー・XAML プレビュー用。実行時は ProgressWindow(string) を推奨）
+    /// </summary>
+    public ProgressWindow() : this("処理中") { }
+
+    /// <summary>
+    /// コンストラクタ
+    /// </summary>
+    /// <param name="operationType">操作タイプ（タイトル表示用）</param>
     public ProgressWindow(string operationType)
     {
         // コンポーネントの初期化
         InitializeComponent();
-        
+
         // 操作タイプに応じたタイトルを設定
         Title = $"{operationType} - Lhamiel";
-        
+
         // キャンセル処理用のトークンソースを初期化
         _cancellationTokenSource = new CancellationTokenSource();
 
@@ -54,17 +77,16 @@ public partial class ProgressWindow : Window
     {
         try
         {
-            if (!IsLoaded || Dispatcher.HasShutdownStarted)
+            if (!IsInitialized)
                 return;
 
-            Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
+            Dispatcher.UIThread.Post(() =>
             {
                 try
                 {
-                    if (!IsLoaded) return;
-
-                    ProgressBar.Value = percentage;
-                    ProgressTextBlock.Text = $"{percentage}%";
+                    if (!IsInitialized) return;
+                    if (_progressBar != null) _progressBar.Value = percentage;
+                    if (_progressTextBlock != null) _progressTextBlock.Text = $"{percentage}%";
                 }
                 catch (Exception ex)
                 {
@@ -86,16 +108,16 @@ public partial class ProgressWindow : Window
     {
         try
         {
-            if (!IsLoaded || Dispatcher.HasShutdownStarted)
+            if (!IsInitialized)
                 return;
 
-            Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
+            Dispatcher.UIThread.Post(() =>
             {
                 try
                 {
-                    if (!IsLoaded) return;
-                    ProgressBar.Value = 100;
-                    ProgressTextBlock.Text = "100%";
+                    if (!IsInitialized) return;
+                    if (_progressBar != null) _progressBar.Value = 100;
+                    if (_progressTextBlock != null) _progressTextBlock.Text = "100%";
                 }
                 catch { }
             });
@@ -114,11 +136,11 @@ public partial class ProgressWindow : Window
     {
         try
         {
-            Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
+            Dispatcher.UIThread.Post(() =>
             {
                 try
                 {
-                    if (IsLoaded && !Dispatcher.HasShutdownStarted)
+                    if (IsInitialized)
                     {
                         Close();
                     }
@@ -135,9 +157,9 @@ public partial class ProgressWindow : Window
         }
     }
 
-    private void CancelButton_Click(object sender, RoutedEventArgs e)
+    private void CancelButton_Click(object? sender, RoutedEventArgs e)
     {
-        CancelButton.IsEnabled = false;
+        if (_cancelButton != null) _cancelButton.IsEnabled = false;
         try
         {
             if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
@@ -146,7 +168,7 @@ public partial class ProgressWindow : Window
             }
         }
         catch (ObjectDisposedException) { }
-        
+
         CancelRequested?.Invoke(this, EventArgs.Empty);
     }
 
@@ -154,7 +176,7 @@ public partial class ProgressWindow : Window
     /// ウィンドウが閉じられる時の処理
     /// </summary>
     /// <param name="e">イベント引数</param>
-    protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    protected override void OnClosing(WindowClosingEventArgs e)
     {
         // まだキャンセルされていない場合は、ウィンドウを閉じることをキャンセル指示とみなす
         try
@@ -169,7 +191,7 @@ public partial class ProgressWindow : Window
         {
             Logger.Log($"OnClosing内のCTS例外: {ex.Message}");
         }
-        
+
         base.OnClosing(e);
     }
 
@@ -183,7 +205,7 @@ public partial class ProgressWindow : Window
 
         // 処理終了をアプリケーション全体に通知（処理待ちなどの同期に使用）
         App.NotifyProgressFinished();
-        
+
         // バックグラウンド処理が完了しているので、CTSを安全に破棄する
         _cancellationTokenSource?.Dispose();
         _cancellationTokenSource = null;

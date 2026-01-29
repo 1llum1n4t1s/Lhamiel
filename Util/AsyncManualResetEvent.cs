@@ -61,7 +61,7 @@ public class AsyncManualResetEvent
         {
             // 現在のインスタンスを取得
             var tcs = _tcs;
-            
+
             // 未完了の状態で既にあれば何もしない、完了済みであれば新しいインスタンスと入れ替える
             if (!tcs.Task.IsCompleted ||
                 Interlocked.CompareExchange(ref _tcs, new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously), tcs) == tcs)

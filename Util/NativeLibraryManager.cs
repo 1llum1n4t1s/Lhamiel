@@ -21,7 +21,7 @@ public static class NativeLibraryManager
 
         // 7z.dll のパスを取得（実行ファイルと同じディレクトリを想定）
         var dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "7z.dll");
-        
+
         if (!File.Exists(dllPath))
         {
             Logger.Log($"7z.dll が見つかりません: {dllPath}", LogLevel.Warning);
@@ -30,7 +30,7 @@ public static class NativeLibraryManager
 
         // LoadLibrary を呼び出して参照カウントを増やす
         _hModule = LoadLibrary(dllPath);
-        
+
         if (_hModule == IntPtr.Zero)
         {
             var errorCode = Marshal.GetLastWin32Error();

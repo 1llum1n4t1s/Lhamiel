@@ -1,6 +1,8 @@
 using System.IO;
 using System.Security;
-using System.Windows;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Threading;
 using Cube.FileSystem.SevenZip;
 
 namespace Lhamiel.Util;
@@ -30,7 +32,7 @@ public static class ArchiveExtractor
         // 変数: ファイルの拡張子を取得（小文字化）
         // メソッド呼び出し: Path.GetExtensionとToLowerInvariantを呼び出し
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
-        
+
         // メソッド呼び出し: サポートされている拡張子リストに含まれているか確認
         return SupportedExtensions.Contains(extension);
     }
@@ -47,7 +49,7 @@ public static class ArchiveExtractor
         // 変数: 基準となる出力ディレクトリを取得
         // メソッド呼び出し: GetBaseOutputDirectoryを呼び出し
         var baseDir = GetBaseOutputDirectory(archivePath, defaultOutputDir, outputToSameDirectory);
-        
+
         // 変数: 拡張子を除いたファイル名を取得
         // メソッド呼び出し: Path.GetFileNameWithoutExtensionを呼び出し
         var fileName = Path.GetFileNameWithoutExtension(archivePath);
@@ -69,7 +71,7 @@ public static class ArchiveExtractor
         // 変数: アーカイブの親ディレクトリ名を取得
         // メソッド呼び出し: Path.GetDirectoryNameを呼び出し。nullの場合は空文字を使用
         var directory = Path.GetDirectoryName(archivePath) ?? "";
-        
+
         // 変数: 基準ディレクトリを決定。設定に応じてアーカイブと同じ場所かデフォルト先かを選択
         var baseDirectory = outputToSameDirectory ? directory : defaultOutputDir;
 
@@ -96,7 +98,7 @@ public static class ArchiveExtractor
         {
             // 変数: アーカイブリーダーの初期化。usingで確実に解放
             using var reader = new ArchiveReader(archivePath);
-            
+
             // 変数: ルートアイテム名を保持するセット（大文字小文字を区別しない）
             var rootItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -107,7 +109,7 @@ public static class ArchiveExtractor
                 // 変数: 正規化されたパス
                 // メソッド呼び出し: Replaceを呼び出し
                 var path = item.FullName.Replace('\\', '/');
-                
+
                 // 変数: パスをスラッシュで分割
                 // メソッド呼び出し: Splitを呼び出し
                 var parts = path.Split(['/'], StringSplitOptions.RemoveEmptyEntries);
@@ -180,11 +182,11 @@ public static class ArchiveExtractor
         // 変数: 実際の展開先ターゲットパス
         // 三項演算子を使用してパスを構築
         var actualTargetDir = rootItemNameForCleanup != null ? Path.Combine(outputPath, rootItemNameForCleanup) : outputPath;
-        
+
         // 変数: 上書き確認が必要かどうかのフラグ
         // メソッド呼び出し: ディレクトリまたはファイルの存在確認
         var targetExists = Directory.Exists(actualTargetDir) || File.Exists(actualTargetDir);
-        
+
         // メソッド呼び出し: ログの記録
         Logger.Log($"展開先存在チェック: actualTargetDir={actualTargetDir}, exists={targetExists}");
 
@@ -199,18 +201,18 @@ public static class ArchiveExtractor
             {
                 // メソッド呼び出し: ログの記録
                 Logger.Log($"上書き不可: 保護されたディレクトリです: {actualTargetDir}", LogLevel.Warning);
-                
+
                 // 例外の投下
                 throw new InvalidOperationException($"'{actualTargetDir}' はシステムによって保護されているため、上書き展開できません。別の場所を選択してください。");
             }
 
             // メソッド呼び出し: ログの記録
             Logger.Log($"上書き確認ダイアログを表示します: {actualTargetDir}");
-            
+
             // UIスレッドで上書き確認を実行
             // メソッド呼び出し: UIスレッドのディスパッチャーを介してダイアログを表示
-            var canOverwrite = await parentWindow.Dispatcher.InvokeAsync(() =>
-                FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow));
+            var canOverwrite = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+                await FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow));
 
             // メソッド呼び出し: ログの記録
             Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
@@ -220,7 +222,7 @@ public static class ArchiveExtractor
                 // 例外の投下
                 throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
             }
-            
+
             // 変数: 上書き確定フラグをtrueに
             overwriteConfirmed = true;
         }
@@ -229,7 +231,7 @@ public static class ArchiveExtractor
             // parentWindow がない場合は自動的に上書き（または既存仕様に合わせる）
             // メソッド呼び出し: ログの記録
             Logger.Log($"上書き確認ダイアログをスキップ（parentWindowなし）: {actualTargetDir}");
-            
+
             // 変数: 上書き確定フラグをtrueに
             overwriteConfirmed = true;
         }
@@ -241,7 +243,7 @@ public static class ArchiveExtractor
             // 変数: 進捗コールバック関数の作成
             // ラムダ式を使用してIProgressをActionに変換
             var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
-            
+
             try
             {
                 // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
@@ -304,24 +306,9 @@ public static class ArchiveExtractor
                 // メソッド呼び出し: ログの記録
                 Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {actualTargetDir}");
 
-                // 変数: ディスパッチャーを取得
-                // 条件演算子を使用してディスパッチャーを取得
-                var dispatcher = parentWindow?.Dispatcher ?? (Application.Current != null ? Application.Current.Dispatcher : null);
-                
                 // メソッド呼び出し: UIスレッドで上書き確認ダイアログを表示
-                bool canOverwrite;
-                if (dispatcher != null)
-                {
-                    canOverwrite = await dispatcher.InvokeAsync(() =>
-                        FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow)).Task;
-                }
-                else
-                {
-                    // Dispatcherがない（ユニットテストなど）環境では、
-                    // 上書き確認なしで続行するか、またはデフォルトの挙動を決定
-                    // ここではユニットテストを考慮し、確認なしで続行（または既存ファイルを削除）
-                    canOverwrite = true;
-                }
+                var canOverwrite = await Dispatcher.UIThread.InvokeAsync(() =>
+                    FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow));
 
                 if (!canOverwrite)
                 {
@@ -335,7 +322,7 @@ public static class ArchiveExtractor
             {
                 // メソッド呼び出し: ログの記録
                 Logger.Log($"既存の展開先を削除します: {actualTargetDir}");
-                
+
                 // メソッド呼び出し: ディレクトリの存在確認
                 if (Directory.Exists(actualTargetDir))
                 {
@@ -348,13 +335,13 @@ public static class ArchiveExtractor
                     {
                         // メソッド呼び出し: ログの記録
                         Logger.Log($"削除再試行（属性解除）: {actualTargetDir}");
-                        
+
                         // メソッド呼び出し: 読み取り専用属性を解除
                         RemoveReadOnlyAttributes(actualTargetDir);
-                        
+
                         // メソッド呼び出し: OSのファイルロック解除を少し待機
                         await Task.Delay(100, cancellationToken);
-                        
+
                         // メソッド呼び出し: ディレクトリを再度削除試行
                         Directory.Delete(actualTargetDir, true);
                     }
@@ -365,7 +352,7 @@ public static class ArchiveExtractor
                     // メソッド呼び出し: ファイルを削除
                     File.Delete(actualTargetDir);
                 }
-                
+
                 // メソッド呼び出し: ログの記録
                 Logger.Log("既存の対象を正常に削除しました。");
             }
@@ -373,7 +360,7 @@ public static class ArchiveExtractor
             {
                 // メソッド呼び出し: ログの記録
                 Logger.Log($"既存対象の削除に失敗しました: {actualTargetDir}, {ex.Message}");
-                
+
                 // 例外の投下
                 throw new InvalidOperationException($"展開先 '{Path.GetFileName(actualTargetDir)}' が使用中か、削除権限がありません。", ex);
             }
@@ -467,7 +454,7 @@ public static class ArchiveExtractor
 
             // メソッド呼び出し: キャンセルの確認
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             // メソッド呼び出し: ログの記録
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
 
@@ -478,7 +465,7 @@ public static class ArchiveExtractor
                 if (Directory.Exists(rootPath))
                 {
                     Logger.Log($"スマート解凍：ルート要素 '{rootItemNameForCleanup}' をリフトアップします");
-                    
+
                     // リフトアップ前の競合チェック
                     var conflicts = new List<string>();
                     foreach (var dir in Directory.GetDirectories(rootPath))
@@ -491,41 +478,17 @@ public static class ArchiveExtractor
                         var destFile = Path.Combine(outputPath, Path.GetFileName(file));
                         if (File.Exists(destFile)) conflicts.Add(destFile);
                     }
-                    
+
                     // 競合がある場合は確認ダイアログを表示
                     if (conflicts.Count > 0)
                     {
                         Logger.Log($"リフトアップ時に競合が検出されました: {conflicts.Count}件");
-                        
-                        // 変数: ディスパッチャーを取得
-                        var dispatcher = parentWindow?.Dispatcher ?? (Application.Current != null ? Application.Current.Dispatcher : null);
-                        
-                        // メソッド呼び出し: UIスレッドで上書き確認ダイアログを表示
-                        bool canLiftUp;
-                        if (dispatcher != null)
-                        {
-                            canLiftUp = await dispatcher.InvokeAsync(() =>
-                            {
-                                // 変数: 競合の説明メッセージ
-                                var conflictMessage = conflicts.Count == 1
-                                    ? $"リフトアップ時に既存のアイテム '{Path.GetFileName(conflicts[0])}' と競合します。\n\n上書きしてリフトアップを続行しますか？"
-                                    : $"リフトアップ時に {conflicts.Count} 個の既存アイテムと競合します。\n\n上書きしてリフトアップを続行しますか？";
-                                
-                                // メソッド呼び出し: リフトアップ確認ダイアログを表示
-                                var result = parentWindow != null
-                                    ? MessageBox.Show(parentWindow, conflictMessage, "リフトアップの確認", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No)
-                                    : MessageBox.Show(conflictMessage, "リフトアップの確認", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-                                
-                                return result == MessageBoxResult.Yes;
-                            }).Task;
-                        }
-                        else
-                        {
-                            // Dispatcherがない（ユニットテストなど）環境では、確認なしで続行
-                            Logger.Log("リフトアップ時の競合確認をスキップ（Dispatcherなし）");
-                            canLiftUp = true;
-                        }
-                        
+                        var conflictMessage = conflicts.Count == 1
+                            ? $"リフトアップ時に既存のアイテム '{Path.GetFileName(conflicts[0])}' と競合します。\n\n上書きしてリフトアップを続行しますか？"
+                            : $"リフトアップ時に {conflicts.Count} 個の既存アイテムと競合します。\n\n上書きしてリフトアップを続行しますか？";
+                        var canLiftUp = await Dispatcher.UIThread.InvokeAsync(async () =>
+                            await MessageService.ShowYesNoQuestionAsync(conflictMessage, "リフトアップの確認", parentWindow));
+
                         if (!canLiftUp)
                         {
                             // メソッド呼び出し: ログの記録
@@ -533,7 +496,7 @@ public static class ArchiveExtractor
                             return;
                         }
                     }
-                    
+
                     // ルート要素の中身を outputPath 直下に移動
                     foreach (var dir in Directory.GetDirectories(rootPath))
                     {
@@ -547,7 +510,7 @@ public static class ArchiveExtractor
                         if (File.Exists(destFile)) File.Delete(destFile);
                         File.Move(file, destFile);
                     }
-                    
+
                     // 空になったルート要素を削除
                     Directory.Delete(rootPath, true);
                     Logger.Log("リフトアップが完了しました");
@@ -558,10 +521,10 @@ public static class ArchiveExtractor
         {
             // 変数: クリーンアップ対象のパス
             var cleanupPath = rootItemNameForCleanup != null ? Path.Combine(outputPath, rootItemNameForCleanup) : outputPath;
-            
+
             // メソッド呼び出し: ログの記録
             Logger.Log($"展開処理がキャンセルされました。クリーンアップを試行: {cleanupPath}");
-            
+
             // 保護されたディレクトリは絶対に削除しない
             // メソッド呼び出し: 保護されたディレクトリかチェック
             if (PathValidator.IsProtectedDirectory(cleanupPath))
@@ -579,7 +542,7 @@ public static class ArchiveExtractor
                     // メソッド呼び出し: 属性を解除して削除
                     RemoveReadOnlyAttributes(cleanupPath);
                     Directory.Delete(cleanupPath, true);
-                    
+
                     // メソッド呼び出し: ログの記録
                     Logger.Log($"キャンセルされた展開先を削除しました: {cleanupPath}");
                 }
@@ -588,7 +551,7 @@ public static class ArchiveExtractor
                 {
                     // メソッド呼び出し: ファイルを削除
                     File.Delete(cleanupPath);
-                    
+
                     // メソッド呼び出し: ログの記録
                     Logger.Log($"キャンセルされた展開ファイルを削除しました: {cleanupPath}");
                 }
@@ -605,7 +568,7 @@ public static class ArchiveExtractor
             // 変数: エラー情報の分析結果
             // メソッド呼び出し: エラー内容を分析
             var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath);
-            
+
             // メソッド呼び出し: ログの記録
             Logger.Log($"アーカイブ展開でエラーが発生しました: {errorInfo.Message}");
             Logger.Log($"エラー詳細: {errorInfo.Details}");
@@ -615,11 +578,11 @@ public static class ArchiveExtractor
             {
                 // メソッド呼び出し: ログの記録
                 Logger.Log("破損ファイルの詳細分析を実行します");
-                
+
                 // 変数: 破損分析の結果
                 // メソッド呼び出し: 破損状態を分析
                 var corruptionAnalysis = ArchiveErrorHandler.AnalyzeCorruption(archivePath);
-                
+
                 // メソッド呼び出し: ログの記録
                 Logger.Log($"破損分析結果: 破損={corruptionAnalysis.IsCorrupted}, 種類={corruptionAnalysis.CorruptionType}, 回復率={corruptionAnalysis.RecoveryRate:F1}%");
             }

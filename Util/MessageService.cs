@@ -1,9 +1,13 @@
-using System.Windows;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 
 namespace Lhamiel.Util;
 
 /// <summary>
-/// メッセージボックス表示を一元管理するサービスクラス
+/// メッセージボックス表示を一元管理するサービスクラス（MessageBox.Avalonia 使用）
 /// </summary>
 public static class MessageService
 {
@@ -11,26 +15,27 @@ public static class MessageService
     /// アクティブなウィンドウを取得する
     /// </summary>
     /// <returns>アクティブなウィンドウ、またはnull</returns>
-    private static Window? GetActiveWindow()
+    private static async Task<Window?> GetActiveWindowAsync()
     {
-        if (Application.Current == null) return null;
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            return null;
 
-        // UIスレッド以外から呼ばれた場合はInvokeして安全に取得
-        if (!Application.Current.Dispatcher.CheckAccess())
-        {
-            return Application.Current.Dispatcher.Invoke(GetActiveWindow);
-        }
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+            return GetActiveWindowInternal(desktop);
 
-        // 1. アクティブなウィンドウがあればそれを優先（ProgressWindowなど）
-        var activeWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w.IsVisible);
+        return await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => GetActiveWindowInternal(desktop));
+    }
+
+    /// <summary>
+    /// UIスレッド上でアクティブなウィンドウを取得する
+    /// </summary>
+    private static Window? GetActiveWindowInternal(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        var activeWindow = desktop.Windows.FirstOrDefault(w => w.IsActive && w.IsVisible);
         if (activeWindow != null) return activeWindow;
-
-        // 2. アクティブなウィンドウがない場合は、最後に表示された表示中のウィンドウを探す
-        var lastVisibleWindow = Application.Current.Windows.OfType<Window>().LastOrDefault(w => w.IsVisible);
+        var lastVisibleWindow = desktop.Windows.LastOrDefault(w => w.IsVisible);
         if (lastVisibleWindow != null) return lastVisibleWindow;
-
-        // 3. 最後にMainWindow
-        return Application.Current.MainWindow;
+        return desktop.MainWindow;
     }
 
     /// <summary>
@@ -38,10 +43,15 @@ public static class MessageService
     /// </summary>
     /// <param name="message">メッセージ本文</param>
     /// <param name="title">タイトル（省略可）</param>
-    public static void ShowError(string message, string title = "エラー")
+    public static async Task ShowError(string message, string title = "エラー")
     {
         Logger.Log($"エラーメッセージ表示: {title} - {message}", LogLevel.Error);
-        MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+        var window = await GetActiveWindowAsync();
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Error);
+        if (window != null)
+            await box.ShowWindowDialogAsync(window);
+        else
+            await box.ShowAsync();
     }
 
     /// <summary>
@@ -49,10 +59,15 @@ public static class MessageService
     /// </summary>
     /// <param name="message">メッセージ本文</param>
     /// <param name="title">タイトル（省略可）</param>
-    public static void ShowInfo(string message, string title = "情報")
+    public static async Task ShowInfo(string message, string title = "情報")
     {
         Logger.Log($"情報メッセージ表示: {title} - {message}");
-        MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+        var window = await GetActiveWindowAsync();
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Info);
+        if (window != null)
+            await box.ShowWindowDialogAsync(window);
+        else
+            await box.ShowAsync();
     }
 
     /// <summary>
@@ -60,10 +75,15 @@ public static class MessageService
     /// </summary>
     /// <param name="message">メッセージ本文</param>
     /// <param name="title">タイトル（省略可）</param>
-    public static void ShowWarning(string message, string title = "警告")
+    public static async Task ShowWarning(string message, string title = "警告")
     {
         Logger.Log($"警告メッセージ表示: {title} - {message}", LogLevel.Warning);
-        MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
+        var window = await GetActiveWindowAsync();
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Warning);
+        if (window != null)
+            await box.ShowWindowDialogAsync(window);
+        else
+            await box.ShowAsync();
     }
 
     /// <summary>
@@ -72,11 +92,16 @@ public static class MessageService
     /// <param name="context">エラーの文脈</param>
     /// <param name="ex">例外オブジェクト</param>
     /// <param name="title">タイトル（省略可）</param>
-    public static void ShowException(string context, Exception ex, string title = "エラー")
+    public static async Task ShowException(string context, Exception ex, string title = "エラー")
     {
         Logger.LogException(context, ex);
         var message = $"{context}\n\n詳細: {ex.Message}";
-        MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+        var window = await GetActiveWindowAsync();
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Error);
+        if (window != null)
+            await box.ShowWindowDialogAsync(window);
+        else
+            await box.ShowAsync();
     }
 
     /// <summary>
@@ -84,9 +109,33 @@ public static class MessageService
     /// </summary>
     /// <param name="message">メッセージ本文</param>
     /// <param name="title">タイトル（省略可）</param>
-    public static void ShowSuccess(string message, string title = "完了")
+    public static async Task ShowSuccess(string message, string title = "完了")
     {
         Logger.Log($"成功メッセージ表示: {title} - {message}");
-        MessageBox.Show(GetActiveWindow(), message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+        var window = await GetActiveWindowAsync();
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Success);
+        if (window != null)
+            await box.ShowWindowDialogAsync(window);
+        else
+            await box.ShowAsync();
+    }
+
+    /// <summary>
+    /// はい/いいえの確認ダイアログを表示する
+    /// </summary>
+    /// <param name="message">メッセージ本文</param>
+    /// <param name="title">タイトル</param>
+    /// <param name="parentWindow">親ウィンドウ（nullの場合は自動検索）</param>
+    /// <returns>「はい」が選ばれた場合true</returns>
+    public static async Task<bool> ShowYesNoQuestionAsync(string message, string title, Window? parentWindow = null)
+    {
+        parentWindow ??= await GetActiveWindowAsync();
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.YesNo, Icon.Question);
+        ButtonResult result;
+        if (parentWindow != null)
+            result = await box.ShowWindowDialogAsync(parentWindow);
+        else
+            result = await box.ShowAsync();
+        return result == ButtonResult.Yes;
     }
 }

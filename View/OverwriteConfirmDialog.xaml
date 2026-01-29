@@ -1,0 +1,20 @@
+<Window x:Class="Lhamiel.View.OverwriteConfirmDialog"
+        xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="ファイルの置き換え" Height="180" Width="450"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TextBlock x:Name="MessageTextBlock" Grid.Row="0"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,20"/>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button x:Name="YesButton" Content="はい" Width="80" Click="YesButton_Click"/>
+            <Button x:Name="NoButton" Content="いいえ" Width="80" Click="NoButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

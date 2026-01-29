@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<linker>
+  <assembly fullname="Lhamiel" preserve="all" />
+  <assembly fullname="log4net" preserve="all" />
+  <assembly fullname="Newtonsoft.Json" preserve="all" />
+</linker>

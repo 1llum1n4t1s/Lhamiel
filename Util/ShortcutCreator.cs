@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
 namespace Lhamiel.Util;
 
 /// <summary>
-/// デスクトップにショートカットを作成するユーティリティクラス
+/// デスクトップにショートカットを作成するユーティリティクラス。
+/// IShellLinkW を P/Invoke で呼び出すため、Native AOT でも動作する。
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class ShortcutCreator
@@ -64,87 +64,16 @@ public static class ShortcutCreator
                 return false;
             }
 
-            // COMオブジェクトを直接使用してショートカットを作成
-            var shellType = Type.GetTypeFromProgID("WScript.Shell");
-            if (shellType == null)
-            {
-                Logger.Log("WScript.Shell COMオブジェクトの作成に失敗しました", LogLevel.Error);
-                return false;
-            }
-
-            // リフレクションを使った型安全な実装
-            var shell = Activator.CreateInstance(shellType);
-            if (shell == null)
-            {
-                Logger.Log("WScript.Shellインスタンスの作成に失敗しました", LogLevel.Error);
-                return false;
-            }
-
-            object? shortcut = null;
-            try
-            {
-                // CreateShortcutメソッドを呼び出し
-                shortcut = shellType.InvokeMember("CreateShortcut",
-                    System.Reflection.BindingFlags.InvokeMethod,
-                    null,
-                    shell, [shortcutPath]);
-
-                if (shortcut == null)
-                {
-                    Logger.Log("ショートカットオブジェクトの作成に失敗しました", LogLevel.Error);
-                    return false;
-                }
-
-                var shortcutType = shortcut.GetType();
-
-                // TargetPathプロパティを設定
-                shortcutType.InvokeMember("TargetPath",
-                    System.Reflection.BindingFlags.SetProperty,
-                    null,
-                    shortcut, [targetPath]);
-
-                // Descriptionプロパティを設定
-                shortcutType.InvokeMember("Description",
-                    System.Reflection.BindingFlags.SetProperty,
-                    null,
-                    shortcut, [description]);
-
-                // WorkingDirectoryプロパティを設定
-                shortcutType.InvokeMember("WorkingDirectory",
-                    System.Reflection.BindingFlags.SetProperty,
-                    null,
-                    shortcut, [Path.GetDirectoryName(targetPath) ?? ""]);
-
-                // Saveメソッドを呼び出し
-                shortcutType.InvokeMember("Save",
-                    System.Reflection.BindingFlags.InvokeMethod,
-                    null,
-                    shortcut,
-                    null);
-            }
-            finally
-            {
-                // COMオブジェクトを解放
-                if (shortcut != null && Marshal.IsComObject(shortcut))
-                {
-                    Marshal.ReleaseComObject(shortcut);
-                }
-                if (Marshal.IsComObject(shell))
-                {
-                    Marshal.ReleaseComObject(shell);
-                }
-            }
-
-            if (File.Exists(shortcutPath))
+            var ok = ShellLinkNative.CreateShortcut(targetPath, shortcutPath, description ?? "");
+            if (ok)
             {
                 Logger.Log($"ショートカットを作成しました: {shortcutPath}");
-                return true;
             }
             else
             {
                 Logger.Log("ショートカットファイルの作成に失敗しました");
-                return false;
             }
+            return ok;
         }
         catch (Exception ex)
         {
@@ -161,60 +90,42 @@ public static class ShortcutCreator
     {
         try
         {
-            // 一般的な方法：Process.GetCurrentProcess().MainModule.FileNameを使用
             var processPath = Process.GetCurrentProcess().MainModule?.FileName;
             if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
             {
                 Logger.Log($"Process.GetCurrentProcess().MainModule.FileName: {processPath}");
                 return processPath;
             }
-            
-            // .NET 9の新しい実行モデルに対応
-            // アプリケーションのベースディレクトリからexeファイルを探す
+
             var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
             Logger.Log($"AppDomain.CurrentDomain.BaseDirectory: {baseDirectory}");
-            
-            // ベースディレクトリ内のexeファイルを探す
+
             var exeFiles = Directory.GetFiles(baseDirectory, "*.exe");
             if (exeFiles.Length > 0)
             {
-                // メインのアプリケーションexeファイルを特定
-                // Lhamiel.exeを優先し、見つからない場合は最初のexeファイルを使用
                 var mainExe = exeFiles.FirstOrDefault(f => Path.GetFileName(f).Equals("Lhamiel.exe", StringComparison.OrdinalIgnoreCase));
                 if (mainExe != null)
                 {
                     Logger.Log($"メイン実行ファイルを発見: {mainExe}");
                     return mainExe;
                 }
-                
-                // Lhamiel.exeが見つからない場合は、最初のexeファイルを使用
                 Logger.Log($"実行ファイルを発見: {exeFiles[0]}");
                 return exeFiles[0];
             }
-            
-            // フォールバック：Assembly.GetExecutingAssembly().Location
-            var assemblyPath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-            Logger.Log($"Assembly.GetExecutingAssembly().Location: {assemblyPath}");
-            
-            // DLLファイルの場合は、同じディレクトリのexeファイルを探す
-            if (Path.GetExtension(assemblyPath).ToLowerInvariant() == ".dll")
+
+            var assemblyPath = AppContext.BaseDirectory;
+            if (!string.IsNullOrEmpty(assemblyPath))
             {
-                var assemblyDir = Path.GetDirectoryName(assemblyPath);
-                if (assemblyDir != null)
+                var exePath = Path.Combine(assemblyPath.TrimEnd(Path.DirectorySeparatorChar), "Lhamiel.exe");
+                if (File.Exists(exePath))
                 {
-                    var assemblyName = Path.GetFileNameWithoutExtension(assemblyPath);
-                    var exePath = Path.Combine(assemblyDir, assemblyName + ".exe");
-                    
-                    if (File.Exists(exePath))
-                    {
-                        Logger.Log($"DLLから派生した実行ファイル: {exePath}");
-                        return exePath;
-                    }
+                    Logger.Log($"ベースディレクトリから実行ファイル: {exePath}");
+                    return exePath;
                 }
             }
-            
+
             Logger.Log($"最終的なパス: {assemblyPath}");
-            return assemblyPath;
+            return assemblyPath ?? "";
         }
         catch (Exception ex)
         {

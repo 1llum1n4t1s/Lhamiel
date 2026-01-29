@@ -29,11 +29,11 @@ public class FileAssociation
                 {
                     return processPath;
                 }
-                
+
                 // .NET 9の新しい実行モデルに対応
                 // アプリケーションのベースディレクトリからexeファイルを探す
                 var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-                
+
                 // ベースディレクトリ内のexeファイルを探す
                 var exeFiles = Directory.GetFiles(baseDirectory, "*.exe");
                 if (exeFiles.Length > 0)
@@ -45,14 +45,14 @@ public class FileAssociation
                     {
                         return mainExe;
                     }
-                    
+
                     // Lhamiel.exeが見つからない場合は、最初のexeファイルを使用
                     return exeFiles[0];
                 }
-                
+
                 // フォールバック：Assembly.GetExecutingAssembly().Location
                 var assemblyPath = Assembly.GetExecutingAssembly().Location;
-                
+
                 // DLLファイルの場合は、同じディレクトリのexeファイルを探す
                 if (Path.GetExtension(assemblyPath).ToLowerInvariant() == ".dll")
                 {
@@ -61,14 +61,14 @@ public class FileAssociation
                     {
                         var assemblyName = Path.GetFileNameWithoutExtension(assemblyPath);
                         var exePath = Path.Combine(assemblyDir, assemblyName + ".exe");
-                        
+
                         if (File.Exists(exePath))
                         {
                             return exePath;
                         }
                     }
                 }
-                
+
                 return assemblyPath;
             }
             catch (Exception ex)
