@@ -39,11 +39,19 @@ public partial class App : Application
     private CancellationTokenSource? _ipcCts;
 
     /// <summary>
+    /// XAML の初期化
+    /// </summary>
+    private void InitializeComponent()
+    {
+        AvaloniaXamlLoader.Load(this);
+    }
+
+    /// <summary>
     /// コンストラクタ
     /// </summary>
     public App()
     {
-        AvaloniaXamlLoader.Load(this);
+        InitializeComponent();
         RequestedThemeVariant = null;
         // Log4netを早期に初期化
         Logger.Initialize();

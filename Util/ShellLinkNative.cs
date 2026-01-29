@@ -15,6 +15,16 @@ internal static class ShellLinkNative
     private const int CLSCTX_INPROC_SERVER = 1;
     private const int COINIT_APARTMENTTHREADED = 2;
 
+    // IShellLinkW vtable offsets (COM spec)
+    private const int VTable_SetPath = 20;
+    private const int VTable_SetDescription = 7;
+    private const int VTable_SetWorkingDirectory = 9;
+    // IUnknown vtable offsets (COM spec)
+    private const int VTable_QueryInterface = 0;
+    private const int VTable_Release = 2;
+    // IPersistFile vtable offsets (COM spec)
+    private const int VTable_IPersistFile_Save = 6;
+
     private static readonly Guid CLSID_ShellLink = new("00021401-0000-0000-C000-000000000046");
     private static readonly Guid IID_IShellLinkW = new("000214F9-0000-0000-C000-000000000046");
     private static readonly Guid IID_IPersistFile = new("0000010b-0000-0000-C000-000000000046");
@@ -77,12 +87,10 @@ internal static class ShellLinkNative
             try
             {
                 var vtable = Marshal.ReadIntPtr(pShellLink);
-                // IUnknown: 0=QueryInterface, 1=AddRef, 2=Release
-                // IShellLinkW: 3=GetPath, 4=GetIDList, 5=SetIDList, 6=GetDescription, 7=SetDescription, 8=GetWorkingDirectory, 9=SetWorkingDirectory, ... 20=SetPath
-                var setPathPtr = Marshal.ReadIntPtr(vtable, 20 * IntPtr.Size);
-                var setDescriptionPtr = Marshal.ReadIntPtr(vtable, 7 * IntPtr.Size);
-                var setWorkingDirPtr = Marshal.ReadIntPtr(vtable, 9 * IntPtr.Size);
-                var releasePtr = Marshal.ReadIntPtr(vtable, 2 * IntPtr.Size);
+                var setPathPtr = Marshal.ReadIntPtr(vtable, VTable_SetPath * IntPtr.Size);
+                var setDescriptionPtr = Marshal.ReadIntPtr(vtable, VTable_SetDescription * IntPtr.Size);
+                var setWorkingDirPtr = Marshal.ReadIntPtr(vtable, VTable_SetWorkingDirectory * IntPtr.Size);
+                var releasePtr = Marshal.ReadIntPtr(vtable, VTable_Release * IntPtr.Size);
 
                 var setPath = Marshal.GetDelegateForFunctionPointer<SetPathDelegate>(setPathPtr);
                 var setDescription = Marshal.GetDelegateForFunctionPointer<SetDescriptionDelegate>(setDescriptionPtr);
@@ -103,7 +111,7 @@ internal static class ShellLinkNative
                     return false;
                 }
 
-                var queryInterfacePtr = Marshal.ReadIntPtr(vtable, 0);
+                var queryInterfacePtr = Marshal.ReadIntPtr(vtable, VTable_QueryInterface * IntPtr.Size);
                 var queryInterface = Marshal.GetDelegateForFunctionPointer<QueryInterfaceDelegate>(queryInterfacePtr);
                 if (queryInterface(pShellLink, IID_IPersistFile, out var pPersistFile) != S_OK || pPersistFile == 0)
                 {
@@ -123,7 +131,7 @@ internal static class ShellLinkNative
                 }
                 finally
                 {
-                    var persistReleasePtr = Marshal.ReadIntPtr(Marshal.ReadIntPtr(pPersistFile), 2 * IntPtr.Size);
+                    var persistReleasePtr = Marshal.ReadIntPtr(Marshal.ReadIntPtr(pPersistFile), VTable_Release * IntPtr.Size);
                     var persistRelease = Marshal.GetDelegateForFunctionPointer<ReleaseDelegate>(persistReleasePtr);
                     _ = persistRelease(pPersistFile);
                 }
@@ -131,7 +139,7 @@ internal static class ShellLinkNative
             finally
             {
                 var vtable = Marshal.ReadIntPtr(pShellLink);
-                var releasePtr = Marshal.ReadIntPtr(vtable, 2 * IntPtr.Size);
+                var releasePtr = Marshal.ReadIntPtr(vtable, VTable_Release * IntPtr.Size);
                 var release = Marshal.GetDelegateForFunctionPointer<ReleaseDelegate>(releasePtr);
                 _ = release(pShellLink);
             }

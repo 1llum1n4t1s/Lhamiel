@@ -21,7 +21,7 @@ public static class FileOverwriteDialog
     public static async Task<OverwriteResult> ShowOverwriteDialog(string sourceFilePath, string destinationPath, Window? parentWindow = null)
     {
         // 親ウィンドウが未指定の場合は、現在のアクティブなウィンドウまたは最前面のウィンドウを探す
-        parentWindow ??= GetBestParentWindow();
+        parentWindow ??= await GetBestParentWindowAsync();
 
         Logger.Log($"ShowOverwriteDialog開始: sourceFilePath={sourceFilePath}, destinationPath={destinationPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
 
@@ -112,22 +112,15 @@ public static class FileOverwriteDialog
     /// <summary>
     /// ダイアログを表示するための最適な親ウィンドウを取得する
     /// </summary>
-    private static Window? GetBestParentWindow()
+    private static async Task<Window?> GetBestParentWindowAsync()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return null;
 
-        // すでにUIスレッドにいる場合は直接実行、そうでなければPostしてデッドロックを防ぐ
         if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
-        {
             return GetBestParentWindowInternal(desktop);
-        }
-        else
-        {
-            Window? result = null;
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => result = GetBestParentWindowInternal(desktop), Avalonia.Threading.DispatcherPriority.Normal);
-            return result;
-        }
+
+        return await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => GetBestParentWindowInternal(desktop));
     }
 
     /// <summary>

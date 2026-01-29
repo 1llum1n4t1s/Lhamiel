@@ -88,9 +88,8 @@ public partial class ProgressWindow : Window
                 try
                 {
                     if (!IsInitialized) return;
-
-                    _progressBar!.Value = percentage;
-                    _progressTextBlock!.Text = $"{percentage}%";
+                    if (_progressBar != null) _progressBar.Value = percentage;
+                    if (_progressTextBlock != null) _progressTextBlock.Text = $"{percentage}%";
                 }
                 catch (Exception ex)
                 {
@@ -120,8 +119,8 @@ public partial class ProgressWindow : Window
                 try
                 {
                     if (!IsInitialized) return;
-                    _progressBar!.Value = 100;
-                    _progressTextBlock!.Text = "100%";
+                    if (_progressBar != null) _progressBar.Value = 100;
+                    if (_progressTextBlock != null) _progressTextBlock.Text = "100%";
                 }
                 catch { }
             });

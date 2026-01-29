@@ -14,20 +14,15 @@ public static class MessageService
     /// アクティブなウィンドウを取得する
     /// </summary>
     /// <returns>アクティブなウィンドウ、またはnull</returns>
-    private static Window? GetActiveWindow()
+    private static async Task<Window?> GetActiveWindowAsync()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return null;
 
-        // UIスレッド以外から呼ばれた場合はPostして安全に取得
-        Window? result = null;
-        if (!Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
-        {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() => result = GetActiveWindowInternal(desktop), Avalonia.Threading.DispatcherPriority.Normal);
-            return result;
-        }
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+            return GetActiveWindowInternal(desktop);
 
-        return GetActiveWindowInternal(desktop);
+        return await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => GetActiveWindowInternal(desktop));
     }
 
     /// <summary>
@@ -55,7 +50,7 @@ public static class MessageService
     public static async void ShowError(string message, string title = "エラー")
     {
         Logger.Log($"エラーメッセージ表示: {title} - {message}", LogLevel.Error);
-        var window = GetActiveWindow();
+        var window = await GetActiveWindowAsync();
         var dialog = CreateMessageWindow(title, message);
         if (window != null)
         {
@@ -93,7 +88,7 @@ public static class MessageService
     public static async void ShowInfo(string message, string title = "情報")
     {
         Logger.Log($"情報メッセージ表示: {title} - {message}");
-        var window = GetActiveWindow();
+        var window = await GetActiveWindowAsync();
         var dialog = CreateMessageWindow(title, message);
         if (window != null)
         {
@@ -109,7 +104,7 @@ public static class MessageService
     public static async void ShowWarning(string message, string title = "警告")
     {
         Logger.Log($"警告メッセージ表示: {title} - {message}", LogLevel.Warning);
-        var window = GetActiveWindow();
+        var window = await GetActiveWindowAsync();
         var dialog = CreateMessageWindow(title, message);
         if (window != null)
         {
@@ -127,7 +122,7 @@ public static class MessageService
     {
         Logger.LogException(context, ex);
         var message = $"{context}\n\n詳細: {ex.Message}";
-        var window = GetActiveWindow();
+        var window = await GetActiveWindowAsync();
         var dialog = CreateMessageWindow(title, message);
         if (window != null)
         {
@@ -143,7 +138,7 @@ public static class MessageService
     public static async void ShowSuccess(string message, string title = "完了")
     {
         Logger.Log($"成功メッセージ表示: {title} - {message}");
-        var window = GetActiveWindow();
+        var window = await GetActiveWindowAsync();
         var dialog = CreateMessageWindow(title, message);
         if (window != null)
         {
@@ -160,7 +155,7 @@ public static class MessageService
     /// <returns>「はい」が選ばれた場合true</returns>
     public static async Task<bool> ShowYesNoQuestionAsync(string message, string title, Window? parentWindow = null)
     {
-        parentWindow ??= GetActiveWindow();
+        parentWindow ??= await GetActiveWindowAsync();
         var tcs = new TaskCompletionSource<bool>();
         var dialog = new Window
         {
