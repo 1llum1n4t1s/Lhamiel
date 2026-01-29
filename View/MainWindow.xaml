@@ -185,28 +185,20 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- チェックボックス一覧 -->
+                    <!-- チェックボックス一覧（Associations にバインドして動的生成） -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <UniformGrid Columns="4" Margin="12,8">
-                            <CheckBox x:Name="ZipCheckBox" Content="ZIP (.zip)" Margin="0,4" IsChecked="{Binding ZipIsChecked}" />
-                            <CheckBox x:Name="SevenZipCheckBox" Content="7-Zip (.7z)" Margin="0,4" IsChecked="{Binding SevenZipIsChecked}" />
-                            <CheckBox x:Name="TarCheckBox" Content="TAR (.tar)" Margin="0,4" IsChecked="{Binding TarIsChecked}" />
-                            <CheckBox x:Name="GzCheckBox" Content="GZIP (.gz)" Margin="0,4" IsChecked="{Binding GzIsChecked}" />
-                            <CheckBox x:Name="Bz2CheckBox" Content="BZIP2 (.bz2)" Margin="0,4" IsChecked="{Binding Bz2IsChecked}" />
-                            <CheckBox x:Name="LzmaCheckBox" Content="LZMA (.lzma)" Margin="0,4" IsChecked="{Binding LzmaIsChecked}" />
-                            <CheckBox x:Name="XzCheckBox" Content="XZ (.xz)" Margin="0,4" IsChecked="{Binding XzIsChecked}" />
-                            <CheckBox x:Name="RarCheckBox" Content="RAR (.rar)" Margin="0,4" IsChecked="{Binding RarIsChecked}" />
-                            <CheckBox x:Name="LzhCheckBox" Content="LZH (.lzh)" Margin="0,4" IsChecked="{Binding LzhIsChecked}" />
-                            <CheckBox x:Name="CabCheckBox" Content="CAB (.cab)" Margin="0,4" IsChecked="{Binding CabIsChecked}" />
-                            <CheckBox x:Name="ArjCheckBox" Content="ARJ (.arj)" Margin="0,4" IsChecked="{Binding ArjIsChecked}" />
-                            <CheckBox x:Name="ZCheckBox" Content="Z (.z)" Margin="0,4" IsChecked="{Binding ZIsChecked}" />
-                            <CheckBox x:Name="TgzCheckBox" Content="TAR.GZ (.tgz)" Margin="0,4" IsChecked="{Binding TgzIsChecked}" />
-                            <CheckBox x:Name="Tbz2CheckBox" Content="TAR.BZ2 (.tbz2)" Margin="0,4" IsChecked="{Binding Tbz2IsChecked}" />
-                            <CheckBox x:Name="TbzCheckBox" Content="TAR.BZ (.tbz)" Margin="0,4" IsChecked="{Binding TbzIsChecked}" />
-                            <CheckBox x:Name="TlzCheckBox" Content="TAR.LZMA (.tlz)" Margin="0,4" IsChecked="{Binding TlzIsChecked}" />
-                            <CheckBox x:Name="TxzCheckBox" Content="TAR.XZ (.txz)" Margin="0,4" IsChecked="{Binding TxzIsChecked}" />
-                            <CheckBox x:Name="TZCheckBox" Content="TAR.Z (.tz)" Margin="0,4" IsChecked="{Binding TzIsChecked}" />
-                        </UniformGrid>
+                        <ItemsControl Margin="12,8" ItemsSource="{Binding Associations}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="4" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox Content="{Binding Description}" Margin="0,4" IsChecked="{Binding IsAssociated}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </ScrollViewer>
                 </Grid>
             </TabItem>

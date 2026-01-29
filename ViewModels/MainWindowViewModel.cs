@@ -4,6 +4,7 @@ using System.Reflection;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Lhamiel.Models;
 using Lhamiel.Util;
 using Lhamiel.View;
 
@@ -47,59 +48,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _openCompressionOutputFolder = true;
 
-    [ObservableProperty]
-    private bool _zipIsChecked;
-
-    [ObservableProperty]
-    private bool _sevenZipIsChecked;
-
-    [ObservableProperty]
-    private bool _tarIsChecked;
-
-    [ObservableProperty]
-    private bool _gzIsChecked;
-
-    [ObservableProperty]
-    private bool _bz2IsChecked;
-
-    [ObservableProperty]
-    private bool _lzmaIsChecked;
-
-    [ObservableProperty]
-    private bool _xzIsChecked;
-
-    [ObservableProperty]
-    private bool _rarIsChecked;
-
-    [ObservableProperty]
-    private bool _lzhIsChecked;
-
-    [ObservableProperty]
-    private bool _cabIsChecked;
-
-    [ObservableProperty]
-    private bool _arjIsChecked;
-
-    [ObservableProperty]
-    private bool _zIsChecked;
-
-    [ObservableProperty]
-    private bool _tgzIsChecked;
-
-    [ObservableProperty]
-    private bool _tbz2IsChecked;
-
-    [ObservableProperty]
-    private bool _tbzIsChecked;
-
-    [ObservableProperty]
-    private bool _tlzIsChecked;
-
-    [ObservableProperty]
-    private bool _txzIsChecked;
-
-    [ObservableProperty]
-    private bool _tzIsChecked;
+    /// <summary>
+    /// ファイル関連付けの一覧（拡張子・表示名・関連付け状態）
+    /// </summary>
+    public ObservableCollection<FileAssociationItem> Associations { get; } = CreateAssociationItems();
 
     [ObservableProperty]
     private string _versionText = string.Empty;
@@ -351,29 +303,45 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// ファイル関連付けの初期一覧を作成する（拡張子・表示名の定義はここで一元管理）
+    /// </summary>
+    private static ObservableCollection<FileAssociationItem> CreateAssociationItems()
+    {
+        var pairs = new[]
+        {
+            ("zip", "ZIP (.zip)"),
+            ("7z", "7-Zip (.7z)"),
+            ("tar", "TAR (.tar)"),
+            ("gz", "GZIP (.gz)"),
+            ("bz2", "BZIP2 (.bz2)"),
+            ("lzma", "LZMA (.lzma)"),
+            ("xz", "XZ (.xz)"),
+            ("rar", "RAR (.rar)"),
+            ("lzh", "LZH (.lzh)"),
+            ("cab", "CAB (.cab)"),
+            ("arj", "ARJ (.arj)"),
+            ("z", "Z (.z)"),
+            ("tgz", "TAR.GZ (.tgz)"),
+            ("tbz2", "TAR.BZ2 (.tbz2)"),
+            ("tbz", "TAR.BZ (.tbz)"),
+            ("tlz", "TAR.LZMA (.tlz)"),
+            ("txz", "TAR.XZ (.txz)"),
+            ("tz", "TAR.Z (.tz)")
+        };
+        var list = new ObservableCollection<FileAssociationItem>();
+        foreach (var (ext, desc) in pairs)
+            list.Add(new FileAssociationItem { Extension = ext, Description = desc });
+        return list;
+    }
+
     private void LoadAssociationStatus()
     {
         try
         {
             var status = FileAssociation.GetCurrentAssociationStatus();
-            ZipIsChecked = status.GetValueOrDefault("zip", false);
-            SevenZipIsChecked = status.GetValueOrDefault("7z", false);
-            TarIsChecked = status.GetValueOrDefault("tar", false);
-            GzIsChecked = status.GetValueOrDefault("gz", false);
-            Bz2IsChecked = status.GetValueOrDefault("bz2", false);
-            LzmaIsChecked = status.GetValueOrDefault("lzma", false);
-            XzIsChecked = status.GetValueOrDefault("xz", false);
-            RarIsChecked = status.GetValueOrDefault("rar", false);
-            LzhIsChecked = status.GetValueOrDefault("lzh", false);
-            CabIsChecked = status.GetValueOrDefault("cab", false);
-            ArjIsChecked = status.GetValueOrDefault("arj", false);
-            ZIsChecked = status.GetValueOrDefault("z", false);
-            TgzIsChecked = status.GetValueOrDefault("tgz", false);
-            Tbz2IsChecked = status.GetValueOrDefault("tbz2", false);
-            TbzIsChecked = status.GetValueOrDefault("tbz", false);
-            TlzIsChecked = status.GetValueOrDefault("tlz", false);
-            TxzIsChecked = status.GetValueOrDefault("txz", false);
-            TzIsChecked = status.GetValueOrDefault("tz", false);
+            foreach (var item in Associations)
+                item.IsAssociated = status.GetValueOrDefault(item.Extension, false);
             Logger.Log("関連付け設定の読み込みが完了しました");
         }
         catch (Exception ex)
@@ -385,9 +353,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void SetAllAssociations(bool isChecked)
     {
-        ZipIsChecked = SevenZipIsChecked = TarIsChecked = GzIsChecked = Bz2IsChecked = LzmaIsChecked = XzIsChecked = isChecked;
-        RarIsChecked = LzhIsChecked = CabIsChecked = ArjIsChecked = ZIsChecked = isChecked;
-        TgzIsChecked = Tbz2IsChecked = TbzIsChecked = TlzIsChecked = TxzIsChecked = TzIsChecked = isChecked;
+        foreach (var item in Associations)
+            item.IsAssociated = isChecked;
     }
 
     private void ApplyAssociationSettings()
@@ -395,26 +362,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             Logger.Log("関連付け設定の適用を開始");
-            var keys = new[] { "zip", "7z", "tar", "gz", "bz2", "lzma", "xz", "rar", "lzh", "cab", "arj", "z", "tgz", "tbz2", "tbz", "tlz", "txz", "tz" };
-            var shouldAssociate = new[] { ZipIsChecked, SevenZipIsChecked, TarIsChecked, GzIsChecked, Bz2IsChecked, LzmaIsChecked, XzIsChecked, RarIsChecked, LzhIsChecked, CabIsChecked, ArjIsChecked, ZIsChecked, TgzIsChecked, Tbz2IsChecked, TbzIsChecked, TlzIsChecked, TxzIsChecked, TzIsChecked };
-            for (var i = 0; i < keys.Length; i++)
+            foreach (var item in Associations)
             {
-                var extension = keys[i];
-                var should = shouldAssociate[i];
-                var isCurrentlyAssociated = FileAssociation.IsFileTypeAssociated(extension);
-                if (should && !isCurrentlyAssociated)
+                var isCurrentlyAssociated = FileAssociation.IsFileTypeAssociated(item.Extension);
+                if (item.IsAssociated && !isCurrentlyAssociated)
                 {
-                    if (FileAssociation.AssociateFileType(extension))
-                        Logger.Log($"関連付け設定成功: {extension}");
+                    if (FileAssociation.AssociateFileType(item.Extension))
+                        Logger.Log($"関連付け設定成功: {item.Extension}");
                     else
-                        Logger.Log($"関連付け設定失敗: {extension}", LogLevel.Warning);
+                        Logger.Log($"関連付け設定失敗: {item.Extension}", LogLevel.Warning);
                 }
-                else if (!should && isCurrentlyAssociated)
+                else if (!item.IsAssociated && isCurrentlyAssociated)
                 {
-                    if (FileAssociation.DisassociateFileType(extension))
-                        Logger.Log($"関連付け解除成功: {extension}");
+                    if (FileAssociation.DisassociateFileType(item.Extension))
+                        Logger.Log($"関連付け解除成功: {item.Extension}");
                     else
-                        Logger.Log($"関連付け解除失敗: {extension}", LogLevel.Warning);
+                        Logger.Log($"関連付け解除失敗: {item.Extension}", LogLevel.Warning);
                 }
             }
             Logger.Log("関連付け設定の適用が完了しました");
