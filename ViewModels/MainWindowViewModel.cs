@@ -131,12 +131,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _settingsManager.Current.CompressionOutputToSameDirectory = !value;
     }
 
-    partial void OnSelectedCompressionFormatChanged(string value)
-    {
-        _settingsManager.Current.CompressionFormat = value ?? "ZIP";
-        _settingsManager.Save();
-    }
-
     [RelayCommand]
     private async Task BrowseExtractionAsync()
     {
