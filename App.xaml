@@ -3,6 +3,7 @@
              xmlns:actipro="http://schemas.actiprosoftware.com/avaloniaui"
              x:Class="Lhamiel.App">
     <Application.Styles>
+        <!-- Actipro Avalonia UI テーマ -->
         <actipro:ModernTheme />
         <Style Selector="TabItem">
             <Setter Property="FontSize" Value="14"/>
