@@ -1,6 +1,49 @@
-<Application x:Class="Lhamiel.App"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             ShutdownMode="OnLastWindowClose"
-             ThemeMode="System">
+             xmlns:actipro="http://schemas.actiprosoftware.com/avaloniaui"
+             x:Class="Lhamiel.App">
+    <Application.Styles>
+        <actipro:ModernTheme />
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+        <Style Selector="Button">
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <!-- WPF風 GroupBox 見た目（Actipro テーマリソースで枠付きグループ表示） -->
+        <Style Selector="HeaderedContentControl">
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Border ZIndex="1"
+                                Background="{actipro:ThemeResource Container2BackgroundBrush}"
+                                Padding="5,0,5,0"
+                                Margin="5,0,0,0">
+                            <TextBlock Text="{TemplateBinding Header}" FontWeight="SemiBold"/>
+                        </Border>
+                        <Border Grid.RowSpan="2"
+                                Grid.ColumnSpan="2"
+                                Padding="0,8,0,0"
+                                CornerRadius="4"
+                                Margin="0,10,0,0"
+                                BorderBrush="{actipro:ThemeResource Container2BorderBrush}"
+                                BorderThickness="1">
+                            <ContentPresenter Name="PART_ContentPresenter"
+                                              Padding="8"
+                                              Content="{TemplateBinding Content}"/>
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter>
+        </Style>
+    </Application.Styles>
 </Application>

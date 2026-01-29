@@ -211,7 +211,7 @@ public static class ArchiveErrorHandler
         try
         {
             using var reader = new ArchiveReader(archivePath);
-            
+
             // アーカイブの基本情報を取得
             analysis.TotalFiles = reader.Items.Count();
             analysis.TotalSize = 0; // 現在のライブラリではサイズ情報が取得できないため0を設定
@@ -341,7 +341,7 @@ public static class ArchiveErrorHandler
         var details = new StringBuilder();
         details.AppendLine($"アーカイブファイル: {archivePath}");
         details.AppendLine($"エラーメッセージ: {ex.Message}");
-        
+
         try
         {
             var fileInfo = new FileInfo(archivePath);

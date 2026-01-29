@@ -1,20 +1,124 @@
-using System.Windows;
-using System.Windows.Controls;
-using Microsoft.Win32;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Markup.Xaml;
+using Avalonia.Platform.Storage;
 using System.IO;
 using Lhamiel.Util;
-using System.Windows.Media;
 
 namespace Lhamiel.View;
 
 /// <summary>
 /// MainWindow.xaml の相互作用ロジック
 /// </summary>
-public partial class MainWindow
+public partial class MainWindow : Window
 {
     private readonly SettingsManager _settingsManager;
     private readonly bool _isInitializing;
     private readonly Dictionary<string, CheckBox> _associationCheckBoxes;
+
+    private Border? DropZoneBorder;
+    private RadioButton? ExtractionOutputToSameDirectoryRadio;
+    private RadioButton? ExtractionOutputToDirectoryRadio;
+    private TextBox? ExtractionOutputPathTextBox;
+    private Button? ExtractionBrowseButton;
+    private CheckBox? OpenExtractionOutputFolderCheckBox;
+    private RadioButton? CompressionOutputToSameDirectoryRadio;
+    private RadioButton? CompressionOutputToDirectoryRadio;
+    private TextBox? CompressionOutputPathTextBox;
+    private Button? CompressionBrowseButton;
+    private CheckBox? OpenCompressionOutputFolderCheckBox;
+    private Button? SelectAllButton;
+    private Button? DeselectAllButton;
+    private CheckBox? ZipCheckBox;
+    private CheckBox? SevenZipCheckBox;
+    private CheckBox? TarCheckBox;
+    private CheckBox? GzCheckBox;
+    private CheckBox? Bz2CheckBox;
+    private CheckBox? LzmaCheckBox;
+    private CheckBox? XzCheckBox;
+    private CheckBox? RarCheckBox;
+    private CheckBox? LzhCheckBox;
+    private CheckBox? CabCheckBox;
+    private CheckBox? ArjCheckBox;
+    private CheckBox? ZCheckBox;
+    private CheckBox? TgzCheckBox;
+    private CheckBox? Tbz2CheckBox;
+    private CheckBox? TbzCheckBox;
+    private CheckBox? TlzCheckBox;
+    private CheckBox? TxzCheckBox;
+    private CheckBox? TZCheckBox;
+    private TextBlock? VersionTextBlock;
+    private TextBlock? CopyrightTextBlock;
+    private TextBlock? LicenseTextBlock;
+    private ComboBox? CompressionFormatComboBox;
+    private Button? CreateShortcutButton;
+    private Button? SaveButton;
+    private Button? CancelButton;
+
+    /// <summary>
+    /// 必須コントロールを取得する（null の場合は例外）
+    /// </summary>
+    private static T RequireControl<T>(T? control, string name) where T : class =>
+        control ?? throw new InvalidOperationException($"Control '{name}' not found.");
+
+    private void InitializeComponent()
+    {
+        AvaloniaXamlLoader.Load(this);
+        DropZoneBorder = this.FindControl<Border>("DropZoneBorder");
+        ExtractionOutputToSameDirectoryRadio = this.FindControl<RadioButton>("ExtractionOutputToSameDirectoryRadio");
+        ExtractionOutputToDirectoryRadio = this.FindControl<RadioButton>("ExtractionOutputToDirectoryRadio");
+        ExtractionOutputPathTextBox = this.FindControl<TextBox>("ExtractionOutputPathTextBox");
+        ExtractionBrowseButton = this.FindControl<Button>("ExtractionBrowseButton");
+        OpenExtractionOutputFolderCheckBox = this.FindControl<CheckBox>("OpenExtractionOutputFolderCheckBox");
+        CompressionOutputToSameDirectoryRadio = this.FindControl<RadioButton>("CompressionOutputToSameDirectoryRadio");
+        CompressionOutputToDirectoryRadio = this.FindControl<RadioButton>("CompressionOutputToDirectoryRadio");
+        CompressionOutputPathTextBox = this.FindControl<TextBox>("CompressionOutputPathTextBox");
+        CompressionBrowseButton = this.FindControl<Button>("CompressionBrowseButton");
+        OpenCompressionOutputFolderCheckBox = this.FindControl<CheckBox>("OpenCompressionOutputFolderCheckBox");
+        SelectAllButton = this.FindControl<Button>("SelectAllButton");
+        DeselectAllButton = this.FindControl<Button>("DeselectAllButton");
+        ZipCheckBox = this.FindControl<CheckBox>("ZipCheckBox");
+        SevenZipCheckBox = this.FindControl<CheckBox>("SevenZipCheckBox");
+        TarCheckBox = this.FindControl<CheckBox>("TarCheckBox");
+        GzCheckBox = this.FindControl<CheckBox>("GzCheckBox");
+        Bz2CheckBox = this.FindControl<CheckBox>("Bz2CheckBox");
+        LzmaCheckBox = this.FindControl<CheckBox>("LzmaCheckBox");
+        XzCheckBox = this.FindControl<CheckBox>("XzCheckBox");
+        RarCheckBox = this.FindControl<CheckBox>("RarCheckBox");
+        LzhCheckBox = this.FindControl<CheckBox>("LzhCheckBox");
+        CabCheckBox = this.FindControl<CheckBox>("CabCheckBox");
+        ArjCheckBox = this.FindControl<CheckBox>("ArjCheckBox");
+        ZCheckBox = this.FindControl<CheckBox>("ZCheckBox");
+        TgzCheckBox = this.FindControl<CheckBox>("TgzCheckBox");
+        Tbz2CheckBox = this.FindControl<CheckBox>("Tbz2CheckBox");
+        TbzCheckBox = this.FindControl<CheckBox>("TbzCheckBox");
+        TlzCheckBox = this.FindControl<CheckBox>("TlzCheckBox");
+        TxzCheckBox = this.FindControl<CheckBox>("TxzCheckBox");
+        TZCheckBox = this.FindControl<CheckBox>("TZCheckBox");
+        VersionTextBlock = this.FindControl<TextBlock>("VersionTextBlock");
+        CopyrightTextBlock = this.FindControl<TextBlock>("CopyrightTextBlock");
+        LicenseTextBlock = this.FindControl<TextBlock>("LicenseTextBlock");
+        CompressionFormatComboBox = this.FindControl<ComboBox>("CompressionFormatComboBox");
+        CreateShortcutButton = this.FindControl<Button>("CreateShortcutButton");
+        SaveButton = this.FindControl<Button>("SaveButton");
+        CancelButton = this.FindControl<Button>("CancelButton");
+        if (ExtractionBrowseButton != null) ExtractionBrowseButton.Click += ExtractionBrowseButton_Click;
+        if (CompressionBrowseButton != null) CompressionBrowseButton.Click += CompressionBrowseButton_Click;
+        if (ExtractionOutputToSameDirectoryRadio != null) ExtractionOutputToSameDirectoryRadio.IsCheckedChanged += ExtractionOutputPattern_Changed;
+        if (ExtractionOutputToDirectoryRadio != null) ExtractionOutputToDirectoryRadio.IsCheckedChanged += ExtractionOutputPattern_Changed;
+        if (CompressionOutputToSameDirectoryRadio != null) CompressionOutputToSameDirectoryRadio.IsCheckedChanged += CompressionOutputPattern_Changed;
+        if (CompressionOutputToDirectoryRadio != null) CompressionOutputToDirectoryRadio.IsCheckedChanged += CompressionOutputPattern_Changed;
+        if (CompressionFormatComboBox != null) CompressionFormatComboBox.SelectionChanged += CompressionFormatComboBox_SelectionChanged;
+        if (CreateShortcutButton != null) CreateShortcutButton.Click += CreateShortcutButton_Click;
+        if (SaveButton != null) SaveButton.Click += SaveSettingsButton_Click;
+        if (CancelButton != null) CancelButton.Click += CancelButton_Click;
+        if (SelectAllButton != null) SelectAllButton.Click += SelectAllButton_Click;
+        if (DeselectAllButton != null) DeselectAllButton.Click += DeselectAllButton_Click;
+    }
 
     /// <summary>
     /// MainWindowのコンストラクタ
@@ -30,26 +134,26 @@ public partial class MainWindow
             // チェックボックスの辞書を初期化
             _associationCheckBoxes = new Dictionary<string, CheckBox>
             {
-                { "zip", ZipCheckBox },
-                { "7z", SevenZipCheckBox },
-                { "tar", TarCheckBox },
-                { "gz", GzCheckBox },
-                { "bz2", Bz2CheckBox },
-                { "lzma", LzmaCheckBox },
-                { "xz", XzCheckBox },
-                { "rar", RarCheckBox },
-                { "lzh", LzhCheckBox },
-                { "cab", CabCheckBox },
-                { "arj", ArjCheckBox },
-                { "z", ZCheckBox },
-                { "tgz", TgzCheckBox },
-                { "tbz2", Tbz2CheckBox },
-                { "tbz", TbzCheckBox },
-                { "tlz", TlzCheckBox },
-                { "txz", TxzCheckBox },
-                { "tz", TZCheckBox }
+                { "zip", RequireControl(ZipCheckBox, nameof(ZipCheckBox)) },
+                { "7z", RequireControl(SevenZipCheckBox, nameof(SevenZipCheckBox)) },
+                { "tar", RequireControl(TarCheckBox, nameof(TarCheckBox)) },
+                { "gz", RequireControl(GzCheckBox, nameof(GzCheckBox)) },
+                { "bz2", RequireControl(Bz2CheckBox, nameof(Bz2CheckBox)) },
+                { "lzma", RequireControl(LzmaCheckBox, nameof(LzmaCheckBox)) },
+                { "xz", RequireControl(XzCheckBox, nameof(XzCheckBox)) },
+                { "rar", RequireControl(RarCheckBox, nameof(RarCheckBox)) },
+                { "lzh", RequireControl(LzhCheckBox, nameof(LzhCheckBox)) },
+                { "cab", RequireControl(CabCheckBox, nameof(CabCheckBox)) },
+                { "arj", RequireControl(ArjCheckBox, nameof(ArjCheckBox)) },
+                { "z", RequireControl(ZCheckBox, nameof(ZCheckBox)) },
+                { "tgz", RequireControl(TgzCheckBox, nameof(TgzCheckBox)) },
+                { "tbz2", RequireControl(Tbz2CheckBox, nameof(Tbz2CheckBox)) },
+                { "tbz", RequireControl(TbzCheckBox, nameof(TbzCheckBox)) },
+                { "tlz", RequireControl(TlzCheckBox, nameof(TlzCheckBox)) },
+                { "txz", RequireControl(TxzCheckBox, nameof(TxzCheckBox)) },
+                { "tz", RequireControl(TZCheckBox, nameof(TZCheckBox)) }
             };
-            
+
             // 注: 圧縮形式はZIPと7zのみをサポート（展開は複数形式対応）
 
             InitializeUI();
@@ -66,41 +170,51 @@ public partial class MainWindow
     {
         try
         {
-            CompressionFormatComboBox.ItemsSource = Settings.SupportedCompressionFormats;
+            var combo = CompressionFormatComboBox;
+            var extractionPath = ExtractionOutputPathTextBox;
+            var compressionPath = CompressionOutputPathTextBox;
+            var extractionSame = ExtractionOutputToSameDirectoryRadio;
+            var extractionDir = ExtractionOutputToDirectoryRadio;
+            var compressionSame = CompressionOutputToSameDirectoryRadio;
+            var compressionDir = CompressionOutputToDirectoryRadio;
+            var openExtraction = OpenExtractionOutputFolderCheckBox;
+            var openCompression = OpenCompressionOutputFolderCheckBox;
+            if (combo == null || extractionPath == null || compressionPath == null || extractionSame == null || extractionDir == null || compressionSame == null || compressionDir == null || openExtraction == null || openCompression == null)
+                return;
 
+            combo.ItemsSource = Settings.SupportedCompressionFormats;
             var selectedFormat = _settingsManager.Current.CompressionFormat;
             if (!string.IsNullOrEmpty(selectedFormat) && Settings.SupportedCompressionFormats.Any(f =>
                 f.Equals(selectedFormat, StringComparison.OrdinalIgnoreCase)))
             {
-                CompressionFormatComboBox.SelectedItem = Settings.SupportedCompressionFormats.FirstOrDefault(f =>
+                combo.SelectedItem = Settings.SupportedCompressionFormats.FirstOrDefault(f =>
                     f.Equals(selectedFormat, StringComparison.OrdinalIgnoreCase));
             }
             else
             {
-                CompressionFormatComboBox.SelectedItem = "ZIP";
+                combo.SelectedItem = "ZIP";
                 _settingsManager.Current.CompressionFormat = "ZIP";
             }
 
-            ExtractionOutputPathTextBox.Text = _settingsManager.Current.ExtractionOutputDirectory;
-            CompressionOutputPathTextBox.Text = _settingsManager.Current.CompressionOutputDirectory;
+            extractionPath.Text = _settingsManager.Current.ExtractionOutputDirectory;
+            compressionPath.Text = _settingsManager.Current.CompressionOutputDirectory;
 
-            ExtractionOutputToSameDirectoryRadio.IsChecked = _settingsManager.Current.ExtractionOutputToSameDirectory;
-            ExtractionOutputToDirectoryRadio.IsChecked = !_settingsManager.Current.ExtractionOutputToSameDirectory;
-            CompressionOutputToSameDirectoryRadio.IsChecked = _settingsManager.Current.CompressionOutputToSameDirectory;
-            CompressionOutputToDirectoryRadio.IsChecked = !_settingsManager.Current.CompressionOutputToSameDirectory;
+            extractionSame.IsChecked = _settingsManager.Current.ExtractionOutputToSameDirectory;
+            extractionDir.IsChecked = !_settingsManager.Current.ExtractionOutputToSameDirectory;
+            compressionSame.IsChecked = _settingsManager.Current.CompressionOutputToSameDirectory;
+            compressionDir.IsChecked = !_settingsManager.Current.CompressionOutputToSameDirectory;
 
-            OpenExtractionOutputFolderCheckBox.IsChecked = _settingsManager.Current.OpenExtractionOutputFolder;
-            OpenCompressionOutputFolderCheckBox.IsChecked = _settingsManager.Current.OpenCompressionOutputFolder;
+            openExtraction.IsChecked = _settingsManager.Current.OpenExtractionOutputFolder;
+            openCompression.IsChecked = _settingsManager.Current.OpenCompressionOutputFolder;
 
             LoadAssociationStatus();
-
             LoadVersionInfo();
 
-            ExtractionOutputToSameDirectoryRadio.Checked += ExtractionOutputPattern_Changed;
-            ExtractionOutputToDirectoryRadio.Checked += ExtractionOutputPattern_Changed;
-            CompressionOutputToSameDirectoryRadio.Checked += CompressionOutputPattern_Changed;
-            CompressionOutputToDirectoryRadio.Checked += CompressionOutputPattern_Changed;
-            CompressionFormatComboBox.SelectionChanged += CompressionFormatComboBox_SelectionChanged;
+            extractionSame.IsCheckedChanged += ExtractionOutputPattern_Changed;
+            extractionDir.IsCheckedChanged += ExtractionOutputPattern_Changed;
+            compressionSame.IsCheckedChanged += CompressionOutputPattern_Changed;
+            compressionDir.IsCheckedChanged += CompressionOutputPattern_Changed;
+            combo.SelectionChanged += CompressionFormatComboBox_SelectionChanged;
         }
         catch (Exception ex)
         {
@@ -158,23 +272,30 @@ public partial class MainWindow
     /// <summary>
     /// 設定保存ボタンクリック時の処理
     /// </summary>
-    private void SaveSettingsButton_Click(object sender, RoutedEventArgs e)
+    private void SaveSettingsButton_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
-            _settingsManager.Current.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "ZIP";
-            _settingsManager.Current.ExtractionOutputDirectory = ExtractionOutputPathTextBox.Text;
-            _settingsManager.Current.CompressionOutputDirectory = CompressionOutputPathTextBox.Text;
-            _settingsManager.Current.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectoryRadio.IsChecked ?? false;
-            _settingsManager.Current.CompressionOutputToSameDirectory = CompressionOutputToSameDirectoryRadio.IsChecked ?? false;
-            _settingsManager.Current.OpenExtractionOutputFolder = OpenExtractionOutputFolderCheckBox.IsChecked ?? false;
-            _settingsManager.Current.OpenCompressionOutputFolder = OpenCompressionOutputFolderCheckBox.IsChecked ?? false;
+            var combo = CompressionFormatComboBox;
+            var extractionPath = ExtractionOutputPathTextBox;
+            var compressionPath = CompressionOutputPathTextBox;
+            var extractionSame = ExtractionOutputToSameDirectoryRadio;
+            var compressionSame = CompressionOutputToSameDirectoryRadio;
+            var openExtraction = OpenExtractionOutputFolderCheckBox;
+            var openCompression = OpenCompressionOutputFolderCheckBox;
+            if (combo == null || extractionPath == null || compressionPath == null || extractionSame == null || compressionSame == null || openExtraction == null || openCompression == null)
+                return;
+
+            _settingsManager.Current.CompressionFormat = combo.SelectedItem?.ToString() ?? "ZIP";
+            _settingsManager.Current.ExtractionOutputDirectory = extractionPath.Text ?? string.Empty;
+            _settingsManager.Current.CompressionOutputDirectory = compressionPath.Text ?? string.Empty;
+            _settingsManager.Current.ExtractionOutputToSameDirectory = extractionSame.IsChecked ?? false;
+            _settingsManager.Current.CompressionOutputToSameDirectory = compressionSame.IsChecked ?? false;
+            _settingsManager.Current.OpenExtractionOutputFolder = openExtraction.IsChecked ?? false;
+            _settingsManager.Current.OpenCompressionOutputFolder = openCompression.IsChecked ?? false;
 
             _settingsManager.Save();
-
-            // 関連付け設定の処理
             ApplyAssociationSettings();
-
             Close();
         }
         catch (Exception ex)
@@ -236,48 +357,55 @@ public partial class MainWindow
     /// <summary>
     /// 展開出力ディレクトリ選択ボタンクリック時の処理
     /// </summary>
-    private void ExtractionBrowseButton_Click(object sender, RoutedEventArgs e)
+    private async void ExtractionBrowseButton_Click(object? sender, RoutedEventArgs e)
     {
-        var folderDialog = new OpenFolderDialog
-        {
-            Title = "展開先ディレクトリを選択"
-        };
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
 
-        if (folderDialog.ShowDialog() == true)
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            ExtractionOutputPathTextBox.Text = folderDialog.FolderName;
+            Title = "展開先ディレクトリを選択",
+            AllowMultiple = false
+        });
+
+        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path && ExtractionOutputPathTextBox is { } extractionPath)
+        {
+            extractionPath.Text = path;
         }
     }
 
     /// <summary>
     /// 圧縮出力ディレクトリ選択ボタンクリック時の処理
     /// </summary>
-    private void CompressionBrowseButton_Click(object sender, RoutedEventArgs e)
+    private async void CompressionBrowseButton_Click(object? sender, RoutedEventArgs e)
     {
-        var folderDialog = new OpenFolderDialog
-        {
-            Title = "圧縮先ディレクトリを選択"
-        };
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel == null) return;
 
-        if (folderDialog.ShowDialog() == true)
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            CompressionOutputPathTextBox.Text = folderDialog.FolderName;
+            Title = "圧縮先ディレクトリを選択",
+            AllowMultiple = false
+        });
+
+        if (folders.Count > 0 && folders[0].TryGetLocalPath() is { } path && CompressionOutputPathTextBox is { } compressionPath)
+        {
+            compressionPath.Text = path;
         }
     }
 
     /// <summary>
     /// 展開出力パターン変更時の処理
     /// </summary>
-    private void ExtractionOutputPattern_Changed(object sender, RoutedEventArgs e)
+    private void ExtractionOutputPattern_Changed(object? sender, RoutedEventArgs e)
     {
         try
         {
-            if (!_isInitializing && sender is RadioButton radioButton)
+            if (!_isInitializing && sender is RadioButton radioButton && radioButton.IsChecked == true && ExtractionOutputToSameDirectoryRadio is { } extractionSame)
             {
-                _settingsManager.Current.ExtractionOutputToSameDirectory = radioButton == ExtractionOutputToSameDirectoryRadio;
+                _settingsManager.Current.ExtractionOutputToSameDirectory = radioButton == extractionSame;
             }
         }
-
         catch (Exception ex)
         {
             Logger.LogException("展開出力パターン変更処理でエラーが発生", ex);
@@ -287,16 +415,15 @@ public partial class MainWindow
     /// <summary>
     /// 圧縮出力パターン変更時の処理
     /// </summary>
-    private void CompressionOutputPattern_Changed(object sender, RoutedEventArgs e)
+    private void CompressionOutputPattern_Changed(object? sender, RoutedEventArgs e)
     {
         try
         {
-            if (!_isInitializing && sender is RadioButton radioButton)
+            if (!_isInitializing && sender is RadioButton radioButton && radioButton.IsChecked == true && CompressionOutputToSameDirectoryRadio is { } compressionSame)
             {
-                _settingsManager.Current.CompressionOutputToSameDirectory = radioButton == CompressionOutputToSameDirectoryRadio;
+                _settingsManager.Current.CompressionOutputToSameDirectory = radioButton == compressionSame;
             }
         }
-
         catch (Exception ex)
         {
             Logger.LogException("圧縮出力パターン変更処理でエラーが発生", ex);
@@ -306,17 +433,16 @@ public partial class MainWindow
     /// <summary>
     /// 圧縮形式選択変更時の処理
     /// </summary>
-    private void CompressionFormatComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void CompressionFormatComboBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         try
         {
-            if (!_isInitializing)
+            if (!_isInitializing && CompressionFormatComboBox is { } combo)
             {
-                _settingsManager.Current.CompressionFormat = CompressionFormatComboBox.SelectedItem?.ToString() ?? "ZIP";
+                _settingsManager.Current.CompressionFormat = combo.SelectedItem?.ToString() ?? "ZIP";
                 _settingsManager.Save();
             }
         }
-
         catch (Exception ex)
         {
             Logger.LogException("圧縮形式選択変更処理でエラーが発生", ex);
@@ -326,7 +452,7 @@ public partial class MainWindow
     /// <summary>
     /// デスクトップにショートカット作成ボタンクリック時の処理
     /// </summary>
-    private void CreateShortcutButton_Click(object sender, RoutedEventArgs e)
+    private void CreateShortcutButton_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
@@ -348,7 +474,7 @@ public partial class MainWindow
     /// <summary>
     /// キャンセルボタンクリック時の処理
     /// </summary>
-    private void CancelButton_Click(object sender, RoutedEventArgs e)
+    private void CancelButton_Click(object? sender, RoutedEventArgs e)
     {
         Close();
     }
@@ -356,7 +482,7 @@ public partial class MainWindow
     /// <summary>
     /// 全選択ボタンクリック時の処理
     /// </summary>
-    private void SelectAllButton_Click(object sender, RoutedEventArgs e)
+    private void SelectAllButton_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
@@ -372,7 +498,7 @@ public partial class MainWindow
     /// <summary>
     /// 全解除ボタンクリック時の処理
     /// </summary>
-    private void DeselectAllButton_Click(object sender, RoutedEventArgs e)
+    private void DeselectAllButton_Click(object? sender, RoutedEventArgs e)
     {
         try
         {
@@ -386,58 +512,73 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// ドロップゾーンのドラッグエンター時の処理
+    /// ドロップゾーンのドラッグオーバー時の処理
     /// </summary>
-    private void DropZone_DragEnter(object sender, DragEventArgs e)
+    private void DropZone_DragOver(object? sender, DragEventArgs e)
     {
-        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        if (e.DataTransfer.Contains(DataFormat.File))
         {
-            e.Effects = DragDropEffects.Copy;
+            e.DragEffects = DragDropEffects.Copy;
 
             // ドラッグ中の視覚的フィードバックを提供
-            DropZoneBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0, 120, 212)); // PrimaryColor
-            DropZoneBorder.BorderThickness = new Thickness(3);
-            DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(230, 243, 255)); // Light blue
+            if (DropZoneBorder != null)
+            {
+                DropZoneBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0, 120, 212)); // PrimaryColor
+                DropZoneBorder.BorderThickness = new Thickness(3);
+                DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(230, 243, 255)); // Light blue
+            }
         }
         else
         {
-            e.Effects = DragDropEffects.None;
+            e.DragEffects = DragDropEffects.None;
         }
-        e.Handled = true;
     }
 
     /// <summary>
     /// ドロップゾーンのドラッグリーブ時の処理
     /// </summary>
-    private void DropZone_DragLeave(object sender, DragEventArgs e)
+    private void DropZone_DragLeave(object? sender, RoutedEventArgs e)
     {
         // ドラッグが離れた時に元の見た目に戻す
-        DropZoneBorder.BorderBrush = (SolidColorBrush)Application.Current.Resources["BorderBrush"];
-        DropZoneBorder.BorderThickness = new Thickness(2);
-        DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(249, 249, 249)); // #F9F9F9
-
-        e.Handled = true;
+        if (DropZoneBorder != null)
+        {
+            DropZoneBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(200, 200, 200));
+            DropZoneBorder.BorderThickness = new Thickness(2);
+            DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(249, 249, 249)); // #F9F9F9
+        }
     }
 
     /// <summary>
     /// ドロップゾーンのドロップ時の処理
     /// </summary>
-    private async void DropZone_Drop(object sender, DragEventArgs e)
+    private async void DropZone_Drop(object? sender, DragEventArgs e)
     {
         // ドロップ後に元の見た目に戻す
-        DropZoneBorder.BorderBrush = (SolidColorBrush)Application.Current.Resources["BorderBrush"];
-        DropZoneBorder.BorderThickness = new Thickness(2);
-        DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(249, 249, 249)); // #F9F9F9
-
-        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+        if (DropZoneBorder != null)
         {
-            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (files != null && files.Length > 0)
+            DropZoneBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(200, 200, 200));
+            DropZoneBorder.BorderThickness = new Thickness(2);
+            DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(249, 249, 249)); // #F9F9F9
+        }
+
+        if (e.DataTransfer.Contains(DataFormat.File))
+        {
+            if (e.DataTransfer.TryGetFiles() is { } files)
             {
-                await ProcessDroppedFiles(files);
+                var filePaths = new List<string>();
+                foreach (var file in files)
+                {
+                    if (file.TryGetLocalPath() is { } path)
+                    {
+                        filePaths.Add(path);
+                    }
+                }
+                if (filePaths.Count > 0)
+                {
+                    await ProcessDroppedFiles(filePaths.ToArray());
+                }
             }
         }
-        e.Handled = true;
     }
 
     /// <summary>
@@ -447,7 +588,7 @@ public partial class MainWindow
     private async Task ProcessDroppedFiles(string[] paths)
     {
         // アップデートによる再起動が予定されている場合は、新しい処理を開始しない
-        if (Application.Current is App { IsUpdateRestarting: true })
+        if (Avalonia.Application.Current is App { IsUpdateRestarting: true })
         {
             Logger.Log("アップデートのための再起動が予定されているため、新しい処理をスキップします。");
             MessageService.ShowWarning("アップデートの適用準備が整いました。再起動後に再度お試しください。");
@@ -488,7 +629,6 @@ public partial class MainWindow
             // 進捗ウィンドウを表示
             progressWindow = new ProgressWindow("処理中")
             {
-                Owner = this,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner
             };
             progressWindow.Show();
@@ -651,28 +791,26 @@ public partial class MainWindow
     /// </summary>
     private void LoadVersionInfo()
     {
+        var versionBlock = VersionTextBlock;
+        var copyrightBlock = CopyrightTextBlock;
+        var licenseBlock = LicenseTextBlock;
+        if (versionBlock == null || copyrightBlock == null || licenseBlock == null)
+            return;
+
         try
         {
-            // アセンブリからバージョン情報を取得
             var assembly = System.Reflection.Assembly.GetExecutingAssembly();
-
-            // パッケージバージョンをAssemblyInformationalVersionから取得
             var informationalVersionAttribute = assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
                 .FirstOrDefault() as System.Reflection.AssemblyInformationalVersionAttribute;
             var rawVersion = informationalVersionAttribute?.InformationalVersion ?? "1.0.0";
-            // ハッシュ部分（+ 以降）を削除して整形
             var versionString = rawVersion.Contains('+') ? rawVersion.Split('+')[0] : rawVersion;
 
-            // バージョン情報を設定
-            VersionTextBlock.Text = versionString;
-
-            // コピーライト情報を取得
+            versionBlock.Text = versionString;
             var copyrightAttribute = assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyCopyrightAttribute), false)
                 .FirstOrDefault() as System.Reflection.AssemblyCopyrightAttribute;
-            CopyrightTextBlock.Text = copyrightAttribute?.Copyright ?? "Copyright © 2025-2026 ゆろち";
+            copyrightBlock.Text = copyrightAttribute?.Copyright ?? "Copyright © 2025-2026 ゆろち";
 
-            // MITライセンステキストを設定
-            LicenseTextBlock.Text = @"MIT License
+            licenseBlock.Text = @"MIT License
 
 Copyright (c) 2024 Lhamiel
 
@@ -699,8 +837,8 @@ SOFTWARE.";
         catch (Exception ex)
         {
             Logger.LogException("バージョン情報の読み込みでエラーが発生", ex);
-            VersionTextBlock.Text = "不明";
-            CopyrightTextBlock.Text = "Copyright © 2024";
+            versionBlock.Text = "不明";
+            copyrightBlock.Text = "Copyright © 2024";
         }
     }
 }

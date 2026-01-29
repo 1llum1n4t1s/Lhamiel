@@ -230,10 +230,10 @@ public static class PathValidator
             if (string.IsNullOrWhiteSpace(path)) return true;
 
             var fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            
+
             // 1. ドライブのルートディレクトリをチェック
             var root = Path.GetPathRoot(fullPath);
-            if (string.Equals(root?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), 
+            if (string.Equals(root?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
                               fullPath, StringComparison.OrdinalIgnoreCase))
             {
                 return true;
@@ -262,8 +262,8 @@ public static class PathValidator
                 protectedFolders.Add(Path.Combine(userProfile, "Downloads"));
             }
 
-            return protectedFolders.Any(f => !string.IsNullOrEmpty(f) && 
-                                             string.Equals(Path.GetFullPath(f).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), 
+            return protectedFolders.Any(f => !string.IsNullOrEmpty(f) &&
+                                             string.Equals(Path.GetFullPath(f).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
                                                            fullPath, StringComparison.OrdinalIgnoreCase));
         }
         catch

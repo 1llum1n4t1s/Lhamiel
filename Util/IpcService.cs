@@ -30,9 +30,9 @@ public static class IpcService
 
             var json = JsonConvert.SerializeObject(args);
             var buffer = Encoding.UTF8.GetBytes(json);
-            
+
             await client.WriteAsync(buffer, 0, buffer.Length);
-            
+
             // 書き込み完了を確実にする
             client.WaitForPipeDrain();
             return true;
@@ -56,10 +56,10 @@ public static class IpcService
             try
             {
                 using var server = new NamedPipeServerStream(
-                    PipeName, 
-                    PipeDirection.In, 
-                    1, 
-                    PipeTransmissionMode.Byte, 
+                    PipeName,
+                    PipeDirection.In,
+                    1,
+                    PipeTransmissionMode.Byte,
                     PipeOptions.Asynchronous);
 
                 // 接続を待機

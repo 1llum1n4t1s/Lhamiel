@@ -1,5 +1,10 @@
 using System.IO;
-using System.Windows;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
+using Avalonia.Threading;
 using Lhamiel.Util;
 using Velopack;
 using Velopack.Sources;
@@ -9,7 +14,7 @@ namespace Lhamiel;
 /// <summary>
 /// App.xaml の相互作用ロジック
 /// </summary>
-public partial class App
+public partial class App : Application
 {
     /// <summary>
     /// アプリケーションインスタンス管理用の Mutex
@@ -38,6 +43,8 @@ public partial class App
     /// </summary>
     public App()
     {
+        AvaloniaXamlLoader.Load(this);
+        RequestedThemeVariant = null;
         // Log4netを早期に初期化
         Logger.Initialize();
 
@@ -79,15 +86,19 @@ public partial class App
     public static void NotifyProgressFinished()
     {
         // UIスレッドで現在開いているプログレスウィンドウがないか確認
-        // Dispatcher.BeginInvoke を使用して、現在のウィンドウが Windows コレクションから削除された後に判定を行う
-        Current.Dispatcher.BeginInvoke(() =>
+        // AvaloniaではApplication.Current経由でアクセス
+        if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // 他に ProgressWindow が残っていない場合、全ての処理が完了したとみなしてイベントをセットする
-            if (!Current.Windows.OfType<View.ProgressWindow>().Any())
+            Dispatcher.UIThread.Post(() =>
             {
-                ProcessingCompletionEvent.Set();
-            }
-        });
+                // 他に ProgressWindow が残っていない場合、全ての処理が完了したとみなしてイベントをセットする
+                var hasProgressWindow = desktop.Windows.OfType<View.ProgressWindow>().Any();
+                if (!hasProgressWindow)
+                {
+                    ProcessingCompletionEvent.Set();
+                }
+            });
+        }
     }
 
     /// <summary>
@@ -100,10 +111,10 @@ public partial class App
     /// アプリケーション起動時の処理
     /// </summary>
     /// <param name="e">起動イベント引数</param>
-    protected override async void OnStartup(StartupEventArgs e)
+    public override async void OnFrameworkInitializationCompleted()
     {
         // 1. UIスレッド（画面操作など）で発生した未処理の例外をキャッチする
-        DispatcherUnhandledException += App_DispatcherUnhandledException;
+        // Avaloniaでは例外ハンドリングは別の方法で行う
 
         // 2. バックグラウンドタスク（Task.Runなど）で発生した例外をキャッチする
         TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
@@ -124,13 +135,17 @@ public partial class App
                 ActivateExistingInstance();
 
                 // コマンドライン引数があれば送信
-                if (e.Args.Length > 0)
+                var args = Environment.GetCommandLineArgs().Skip(1).ToArray();
+                if (args.Length > 0)
                 {
                     Logger.Log("コマンドライン引数を既存のインスタンスに送信します。");
-                    await IpcService.SendArgsToExistingInstanceAsync(e.Args);
+                    await IpcService.SendArgsToExistingInstanceAsync(args);
                 }
 
-                Shutdown();
+                if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                {
+                    desktop.Shutdown();
+                }
                 return;
             }
 
@@ -138,26 +153,32 @@ public partial class App
             _ipcCts = new CancellationTokenSource();
             _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token);
 
-            base.OnStartup(e);
+            base.OnFrameworkInitializationCompleted();
+
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifecycle)
+            {
+                desktopLifecycle.Exit += (_, _) => OnApplicationExiting();
+            }
 
             // 起動ログを出力
-            Logger.LogStartup(e.Args);
+            var startupArgs = Environment.GetCommandLineArgs().Skip(1).ToArray();
+            Logger.LogStartup(startupArgs);
 
             // 更新チェックをバックグラウンドで開始（起動を妨げない）
             _ = CheckAndApplyUpdatesAsync();
 
             // コマンドライン引数をチェック
-            if (e.Args.Length > 0)
+            if (startupArgs.Length > 0)
             {
                 // 引数から圧縮形式とファイルパスを抽出
                 var compressionFormat = "default";
-                var filePath = e.Args[0];
+                var filePath = startupArgs[0];
 
                 // --format オプションがある場合は圧縮形式を取得
-                if (e.Args.Length >= 3 && e.Args[0] == "--format")
+                if (startupArgs.Length >= 3 && startupArgs[0] == "--format")
                 {
-                    compressionFormat = e.Args[1];
-                    filePath = e.Args[2];
+                    compressionFormat = startupArgs[1];
+                    filePath = startupArgs[2];
                 }
 
                 _ = ProcessCommandLineFile(filePath, compressionFormat);
@@ -165,8 +186,10 @@ public partial class App
             else
             {
                 // 引数がない場合はメインウィンドウを表示
-                var mainWindow = new View.MainWindow();
-                mainWindow.Show();
+                if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+                {
+                    lifetime.MainWindow = new View.MainWindow();
+                }
             }
         }
         catch (Exception ex)
@@ -179,7 +202,10 @@ public partial class App
             }
             var logPath = Path.Combine(appDataDir, "error.log");
             File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] アプリケーション起動エラー: {ex}\n");
-            Shutdown();
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+            {
+                lifetime.Shutdown();
+            }
         }
     }
 
@@ -256,10 +282,10 @@ public partial class App
             {
                 // 定義されたタイムアウト時間を設定
                 using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(UpdateProcessingWaitTimeoutMinutes));
-                
+
                 // イベントがセットされるのを待つ（実行中の処理がなければ即時完了）
                 await ProcessingCompletionEvent.WaitAsync(timeoutCts.Token);
-                
+
                 Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
                 _updateManager.ApplyUpdatesAndRestart(updateInfo);
                 return true;
@@ -421,15 +447,17 @@ public partial class App
             progressWindow = new View.ProgressWindow("展開");
 
             // MainWindowが自分自身（progressWindow）でない場合のみOwnerに設定
-            if (MainWindow != null && MainWindow != progressWindow)
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null && desktop.MainWindow != progressWindow)
             {
-                progressWindow.Owner = MainWindow;
+                progressWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            }
+            else
+            {
+                progressWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
             }
 
-            progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
-            
             using var cancellationTokenSource = new CancellationTokenSource();
-            
+
             // キャンセル要求時のイベントハンドラを定義
             EventHandler cancelHandler = (_, _) =>
             {
@@ -518,15 +546,17 @@ public partial class App
             progressWindow = new View.ProgressWindow("圧縮");
 
             // MainWindowが自分自身（progressWindow）でない場合のみOwnerに設定
-            if (MainWindow != null && MainWindow != progressWindow)
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null && desktop.MainWindow != progressWindow)
             {
-                progressWindow.Owner = MainWindow;
+                progressWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            }
+            else
+            {
+                progressWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
             }
 
-            progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
-            
             using var cancellationTokenSource = new CancellationTokenSource();
-            
+
             // キャンセル要求時のイベントハンドラを定義
             EventHandler cancelHandler = (_, _) =>
             {
@@ -619,9 +649,13 @@ public partial class App
     /// <param name="shouldShutdown">終了フラグ</param>
     private void ShutdownIfNeeded(bool shouldShutdown)
     {
-        if (shouldShutdown && !Current.Windows.OfType<Window>().Any(w => w.IsVisible))
+        if (shouldShutdown && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            Shutdown();
+            var hasVisibleWindow = desktop.Windows.OfType<Window>().Any(w => w.IsVisible);
+            if (!hasVisibleWindow)
+            {
+                desktop.Shutdown();
+            }
         }
     }
 
@@ -645,15 +679,17 @@ public partial class App
             progressWindow = new View.ProgressWindow("圧縮");
 
             // MainWindowが自分自身（progressWindow）でない場合のみOwnerに設定
-            if (MainWindow != null && MainWindow != progressWindow)
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null && desktop.MainWindow != progressWindow)
             {
-                progressWindow.Owner = MainWindow;
+                progressWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+            }
+            else
+            {
+                progressWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
             }
 
-            progressWindow.WindowStartupLocation = progressWindow.Owner != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen;
-            
             using var cancellationTokenSource = new CancellationTokenSource();
-            
+
             // キャンセル要求時のイベントハンドラを定義
             EventHandler cancelHandler = (_, _) =>
             {
@@ -734,56 +770,43 @@ public partial class App
     /// <param name="args">受信した引数</param>
     private void OnArgsReceived(string[] args)
     {
-        Dispatcher.BeginInvoke(() =>
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            Logger.Log("IPC経由でコマンドライン引数を受信しました。");
-            
-            if (args.Length > 0)
+            Dispatcher.UIThread.Post(() =>
             {
-                // 引数から圧縮形式とファイルパスを抽出
-                var compressionFormat = "default";
-                var filePath = args[0];
+                Logger.Log("IPC経由でコマンドライン引数を受信しました。");
 
-                if (args.Length >= 3 && args[0] == "--format")
+                if (args.Length > 0)
                 {
-                    compressionFormat = args[1];
-                    filePath = args[2];
-                }
+                    // 引数から圧縮形式とファイルパスを抽出
+                    var compressionFormat = "default";
+                    var filePath = args[0];
 
-                // メインウィンドウを前面に出す
-                if (MainWindow != null)
-                {
-                    if (MainWindow.WindowState == WindowState.Minimized)
+                    if (args.Length >= 3 && args[0] == "--format")
                     {
-                        MainWindow.WindowState = WindowState.Normal;
+                        compressionFormat = args[1];
+                        filePath = args[2];
                     }
-                    MainWindow.Activate();
-                    MainWindow.Focus();
+
+                    // メインウィンドウを前面に出す
+                    if (desktop.MainWindow != null)
+                    {
+                        if (desktop.MainWindow.WindowState == WindowState.Minimized)
+                        {
+                            desktop.MainWindow.WindowState = WindowState.Normal;
+                        }
+                        desktop.MainWindow.Activate();
+                        desktop.MainWindow.Focus();
+                    }
+
+                    // 受信した引数で処理を実行
+                    // IPC 経由の場合は処理終了後にアプリを終了させないようにする
+                    _ = ProcessCommandLineFile(filePath, compressionFormat, false);
                 }
-
-                // 受信した引数で処理を実行
-                // IPC 経由の場合は処理終了後にアプリを終了させないようにする
-                _ = ProcessCommandLineFile(filePath, compressionFormat, false);
-            }
-        });
+            });
+        }
     }
 
-    /// <summary>
-    /// UIスレッドで発生した未処理の例外をハンドル
-    /// </summary>
-    /// <param name="sender">イベント送信元</param>
-    /// <param name="e">ディスパッチャー未処理例外イベント引数</param>
-    private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
-    {
-        // エラー内容をログに保存（これで本当の原因がわかります）
-        Logger.LogException("UIスレッドで未処理の例外が発生しました", e.Exception);
-
-        // ユーザーにエラーを通知
-        MessageService.ShowError($"予期しないエラーが発生しました。\n\n詳細: {e.Exception.Message}");
-
-        // これを true にすると、アプリがクラッシュして消えるのを防げます
-        e.Handled = true;
-    }
 
     /// <summary>
     /// バックグラウンドタスクで発生した未処理の例外をハンドル
@@ -815,10 +838,9 @@ public partial class App
     /// <summary>
     /// アプリケーション終了時の処理
     /// </summary>
-    /// <param name="e">終了イベント引数</param>
-    protected override void OnExit(ExitEventArgs e)
+    public void OnApplicationExiting()
     {
-        Logger.Log($"アプリケーション終了: 終了コード = {e.ApplicationExitCode}");
+        Logger.Log("アプリケーション終了");
 
         // IPC サーバーを停止
         _ipcCts?.Cancel();
@@ -826,8 +848,6 @@ public partial class App
 
         // Mutex をリリース
         _instanceMutex?.Dispose();
-
-        base.OnExit(e);
     }
 }
 

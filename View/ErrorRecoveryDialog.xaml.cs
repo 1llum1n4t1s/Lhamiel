@@ -1,5 +1,7 @@
 using System.IO;
-using System.Windows;
+using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.Markup.Xaml;
 using Lhamiel.Util;
 
 namespace Lhamiel.View;
@@ -9,6 +11,11 @@ namespace Lhamiel.View;
 /// </summary>
 public partial class ErrorRecoveryDialog : Window
 {
+    private RadioButton? _skipFileRadio;
+    private RadioButton? _retryRadio;
+    private RadioButton? _stopRadio;
+    private RadioButton? _skipAllRadio;
+    private CheckBox? _rememberChoiceCheck;
     /// <summary>
     /// 選択された回復オプション
     /// </summary>
@@ -24,18 +31,45 @@ public partial class ErrorRecoveryDialog : Window
     /// </summary>
     public ArchiveErrorInfo ErrorInfo { get; }
 
+    /// <summary>エラーメッセージ（バインディング用）</summary>
+    public string ErrorMessage { get; set; } = string.Empty;
+    /// <summary>エラー詳細（バインディング用）</summary>
+    public string ErrorDetails { get; set; } = string.Empty;
+    /// <summary>推奨アクション（バインディング用）</summary>
+    public string RecommendedAction { get; set; } = string.Empty;
+    /// <summary>問題のファイルパス（バインディング用）</summary>
+    public string ProblematicFilePath { get; set; } = string.Empty;
+    /// <summary>ファイル詳細（バインディング用）</summary>
+    public string FileDetails { get; set; } = string.Empty;
+
+    /// <summary>
+    /// ランタイム XAML ローダー用のパラメータなしコンストラクタ（使用禁止。ErrorRecoveryDialog(ArchiveErrorInfo) を使用すること）
+    /// </summary>
+    public ErrorRecoveryDialog()
+    {
+        ErrorInfo = new ArchiveErrorInfo { ErrorType = ArchiveErrorType.Unknown, Message = "N/A", Details = "N/A", IsRecoverable = false };
+        throw new InvalidOperationException("Use ErrorRecoveryDialog(ArchiveErrorInfo).");
+    }
+
     /// <summary>
     /// コンストラクタ
     /// </summary>
     /// <param name="errorInfo">エラー情報</param>
     public ErrorRecoveryDialog(ArchiveErrorInfo errorInfo)
     {
-        InitializeComponent();
         ErrorInfo = errorInfo;
-        DataContext = this;
-        
-        // エラー情報を設定
+        InitializeComponent();
         SetErrorInfo();
+    }
+
+    private void InitializeComponent()
+    {
+        AvaloniaXamlLoader.Load(this);
+        _skipFileRadio = this.FindControl<RadioButton>("SkipFileRadio");
+        _retryRadio = this.FindControl<RadioButton>("RetryRadio");
+        _stopRadio = this.FindControl<RadioButton>("StopRadio");
+        _skipAllRadio = this.FindControl<RadioButton>("SkipAllRadio");
+        _rememberChoiceCheck = this.FindControl<CheckBox>("RememberChoiceCheck");
     }
 
     /// <summary>
@@ -45,13 +79,16 @@ public partial class ErrorRecoveryDialog : Window
     {
         // ファイル詳細情報を生成
         var fileDetails = GenerateFileDetails();
-        
+
         // データバインディング用のプロパティを設定
-        SetValue(ErrorMessageProperty, ErrorInfo.Message);
-        SetValue(ErrorDetailsProperty, ErrorInfo.Details);
-        SetValue(RecommendedActionProperty, ErrorInfo.RecommendedAction);
-        SetValue(ProblematicFilePathProperty, ErrorInfo.ProblematicFilePath ?? "");
-        SetValue(FileDetailsProperty, fileDetails);
+        ErrorMessage = ErrorInfo.Message;
+        ErrorDetails = ErrorInfo.Details;
+        RecommendedAction = ErrorInfo.RecommendedAction;
+        ProblematicFilePath = ErrorInfo.ProblematicFilePath ?? "";
+        FileDetails = fileDetails;
+
+        // DataContextを設定してバインディングを有効化
+        DataContext = this;
     }
 
     /// <summary>
@@ -60,7 +97,7 @@ public partial class ErrorRecoveryDialog : Window
     private string GenerateFileDetails()
     {
         var details = new System.Text.StringBuilder();
-        
+
         if (!string.IsNullOrEmpty(ErrorInfo.ProblematicFilePath))
         {
             try
@@ -71,7 +108,7 @@ public partial class ErrorRecoveryDialog : Window
                 details.AppendLine($"作成日時: {fileInfo.CreationTime}");
                 details.AppendLine($"更新日時: {fileInfo.LastWriteTime}");
                 details.AppendLine($"属性: {fileInfo.Attributes}");
-                
+
                 // ディスク容量情報
                 var drive = new DriveInfo(Path.GetPathRoot(fileInfo.FullName) ?? "");
                 details.AppendLine($"\nディスク情報:");
@@ -83,7 +120,7 @@ public partial class ErrorRecoveryDialog : Window
                 details.AppendLine($"ファイル情報の取得に失敗: {ex.Message}");
             }
         }
-        
+
         if (ErrorInfo.OriginalException != null)
         {
             details.AppendLine($"\n例外詳細:");
@@ -94,62 +131,45 @@ public partial class ErrorRecoveryDialog : Window
                 details.AppendLine($"内部例外: {ErrorInfo.OriginalException.InnerException.Message}");
             }
         }
-        
+
         return details.ToString();
     }
 
     /// <summary>
     /// OKボタンクリック
     /// </summary>
-    private void OkButton_Click(object sender, RoutedEventArgs e)
+    private void OkButton_Click(object? sender, RoutedEventArgs e)
     {
         // 選択されたオプションを決定
-        if (SkipFileRadio.IsChecked == true)
+        if (_skipFileRadio?.IsChecked == true)
         {
             SelectedOption = PartialExtractionHandler.ErrorHandlingOption.SkipOnError;
         }
-        else if (RetryRadio.IsChecked == true)
+        else if (_retryRadio?.IsChecked == true)
         {
             SelectedOption = PartialExtractionHandler.ErrorHandlingOption.AutoRetry;
         }
-        else if (StopRadio.IsChecked == true)
+        else if (_stopRadio?.IsChecked == true)
         {
             SelectedOption = PartialExtractionHandler.ErrorHandlingOption.StopOnError;
         }
-        else if (SkipAllRadio.IsChecked == true)
+        else if (_skipAllRadio?.IsChecked == true)
         {
             SelectedOption = PartialExtractionHandler.ErrorHandlingOption.SkipOnError;
         }
-        
-        RememberChoice = RememberChoiceCheck.IsChecked == true;
-        
-        DialogResult = true;
-        Close();
+
+        RememberChoice = _rememberChoiceCheck?.IsChecked == true;
+
+        Close(SelectedOption);
     }
 
     /// <summary>
     /// キャンセルボタンクリック
     /// </summary>
-    private void CancelButton_Click(object sender, RoutedEventArgs e)
+    private void CancelButton_Click(object? sender, RoutedEventArgs e)
     {
         SelectedOption = PartialExtractionHandler.ErrorHandlingOption.StopOnError;
-        DialogResult = false;
-        Close();
+        Close(null);
     }
 
-    // データバインディング用の依存プロパティ
-    public static readonly DependencyProperty ErrorMessageProperty =
-        DependencyProperty.Register("ErrorMessage", typeof(string), typeof(ErrorRecoveryDialog));
-
-    public static readonly DependencyProperty ErrorDetailsProperty =
-        DependencyProperty.Register("ErrorDetails", typeof(string), typeof(ErrorRecoveryDialog));
-
-    public static readonly DependencyProperty RecommendedActionProperty =
-        DependencyProperty.Register("RecommendedAction", typeof(string), typeof(ErrorRecoveryDialog));
-
-    public static readonly DependencyProperty ProblematicFilePathProperty =
-        DependencyProperty.Register("ProblematicFilePath", typeof(string), typeof(ErrorRecoveryDialog));
-
-    public static readonly DependencyProperty FileDetailsProperty =
-        DependencyProperty.Register("FileDetails", typeof(string), typeof(ErrorRecoveryDialog));
 }

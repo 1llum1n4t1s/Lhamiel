@@ -30,7 +30,7 @@ public class PartialExtractionHandler
 
         /// <summary>
         /// スキップされたファイル数
-               /// </summary>
+        /// </summary>
         public int SkippedCount { get; set; }
 
         /// <summary>
@@ -130,7 +130,7 @@ public class PartialExtractionHandler
         CancellationToken cancellationToken = default)
     {
         var result = new ExtractionResult();
-        
+
         Logger.Log($"部分展開処理開始: {archivePath} -> {outputPath}, エラー処理: {errorHandling}");
 
         try
@@ -258,7 +258,7 @@ public class PartialExtractionHandler
 
             // 最終結果を判定
             result.IsSuccess = result.SuccessCount > 0;
-            
+
             Logger.Log($"部分展開完了: 成功={result.SuccessCount}, 失敗={result.FailureCount}, スキップ={result.SkippedCount}");
         }
         catch (Exception ex)
@@ -282,7 +282,7 @@ public class PartialExtractionHandler
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             // 進行状況の監視は不要だが、キャンセルは監視したい
             var progress = new CancellableProgress<Report>(_ => { }, cancellationToken);
             reader.Save(tempPath, progress);
@@ -308,7 +308,7 @@ public class PartialExtractionHandler
         {
             return userChoiceCallback(failedFile);
         }
-        
+
         return defaultOption;
     }
 
@@ -338,7 +338,7 @@ public class PartialExtractionHandler
                 }
             }
         }
-        
+
         return false;
     }
 
@@ -348,13 +348,13 @@ public class PartialExtractionHandler
     public static string GenerateResultSummary(ExtractionResult result)
     {
         var summary = new System.Text.StringBuilder();
-        
+
         summary.AppendLine("=== 展開結果サマリー ===");
         summary.AppendLine($"総ファイル数: {result.TotalFiles}");
         summary.AppendLine($"成功: {result.SuccessCount} ({result.SuccessRate:F1}%)");
         summary.AppendLine($"失敗: {result.FailureCount}");
         summary.AppendLine($"スキップ: {result.SkippedCount}");
-        
+
         if (result.FailedFiles.Any())
         {
             summary.AppendLine("\n=== 失敗したファイル ===");
@@ -363,7 +363,7 @@ public class PartialExtractionHandler
                 summary.AppendLine($"- {failedFile.FilePath}: {failedFile.ErrorMessage}");
             }
         }
-        
+
         if (result.SkippedFiles.Any())
         {
             summary.AppendLine("\n=== スキップされたファイル ===");
@@ -372,7 +372,7 @@ public class PartialExtractionHandler
                 summary.AppendLine($"- {skippedFile}");
             }
         }
-        
+
         return summary.ToString();
     }
 

@@ -19,8 +19,8 @@ public class ArchiveCompressor
     /// <returns>圧縮ファイルのパス</returns>
     public static string GetCompressedFileName(string sourcePath, string extension, string outputDirectory = "", bool outputToSameDirectory = false)
     {
-        var directory = outputToSameDirectory 
-            ? Path.GetDirectoryName(sourcePath) ?? "" 
+        var directory = outputToSameDirectory
+            ? Path.GetDirectoryName(sourcePath) ?? ""
             : outputDirectory;
 
         var trimmedPath = sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
