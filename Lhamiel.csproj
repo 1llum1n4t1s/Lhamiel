@@ -43,6 +43,7 @@
     <AvaloniaResource Include="View\MainWindow.xaml" />
     <AvaloniaResource Include="View\ProgressWindow.xaml" />
     <AvaloniaResource Include="View\ErrorRecoveryDialog.xaml" />
+    <AvaloniaResource Include="View\OverwriteConfirmDialog.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -52,6 +53,8 @@
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.11" />
     <PackageReference Include="ActiproSoftware.Controls.Avalonia" Version="25.2.2" />
+    <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="SkiaSharp" Version="3.119.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" />
     <PackageReference Include="HarfBuzzSharp" Version="8.3.1.2" />

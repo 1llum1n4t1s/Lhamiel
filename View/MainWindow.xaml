@@ -65,10 +65,12 @@
                             <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
                                 <RadioButton x:Name="ExtractionOutputToSameDirectoryRadio"
                                              Content="元のファイルと同じディレクトリに出力"
-                                             Margin="0,4" />
+                                             Margin="0,4"
+                                             IsChecked="{Binding ExtractionOutputToSameDirectory}" />
                                 <RadioButton x:Name="ExtractionOutputToDirectoryRadio"
                                              Content="ディレクトリを指定する"
-                                             Margin="0,4" IsChecked="True" />
+                                             Margin="0,4"
+                                             IsChecked="{Binding ExtractionOutputToDirectory}" />
                             </StackPanel>
 
                             <!-- ディレクトリ指定 -->
@@ -76,12 +78,13 @@
                                      VerticalAlignment="Center"
                                      IsReadOnly="True"
                                      Height="32"
-                                     VerticalContentAlignment="Center" />
+                                     VerticalContentAlignment="Center"
+                                     Text="{Binding ExtractionOutputDirectory}" />
                             <Button x:Name="ExtractionBrowseButton" Grid.Row="1" Grid.Column="1"
                                     Content="参照..."
                                     Height="40"
                                     Margin="8,0,0,0"
-                                    Click="ExtractionBrowseButton_Click"
+                                    Command="{Binding BrowseExtractionCommand}"
                                     ToolTip.Tip="展開先フォルダを選択" />
                         </Grid>
                     </primitives:HeaderedContentControl>
@@ -91,6 +94,7 @@
                             <CheckBox x:Name="OpenExtractionOutputFolderCheckBox"
                                       Content="展開後に保存先のフォルダを開く"
                                       Margin="0,4"
+                                      IsChecked="{Binding OpenExtractionOutputFolder}"
                                       ToolTip.Tip="展開が完了したときに、展開先フォルダを自動的に開きます" />
                         </StackPanel>
                     </primitives:HeaderedContentControl>
@@ -115,10 +119,12 @@
                             <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Margin="0,0,0,12">
                                 <RadioButton x:Name="CompressionOutputToSameDirectoryRadio"
                                              Content="元のファイルと同じディレクトリに出力"
-                                             Margin="0,4" />
+                                             Margin="0,4"
+                                             IsChecked="{Binding CompressionOutputToSameDirectory}" />
                                 <RadioButton x:Name="CompressionOutputToDirectoryRadio"
                                              Content="ディレクトリを指定する"
-                                             Margin="0,4" IsChecked="True" />
+                                             Margin="0,4"
+                                             IsChecked="{Binding CompressionOutputToDirectory}" />
                             </StackPanel>
 
                             <!-- ディレクトリ指定 -->
@@ -126,12 +132,13 @@
                                      VerticalAlignment="Center"
                                      IsReadOnly="True"
                                      Height="32"
-                                     VerticalContentAlignment="Center" />
+                                     VerticalContentAlignment="Center"
+                                     Text="{Binding CompressionOutputDirectory}" />
                             <Button x:Name="CompressionBrowseButton" Grid.Row="1" Grid.Column="1"
                                     Content="参照..."
                                     Height="40"
                                     Margin="8,0,0,0"
-                                    Click="CompressionBrowseButton_Click"
+                                    Command="{Binding BrowseCompressionCommand}"
                                     ToolTip.Tip="圧縮先フォルダを選択" />
                         </Grid>
                     </primitives:HeaderedContentControl>
@@ -141,6 +148,7 @@
                             <CheckBox x:Name="OpenCompressionOutputFolderCheckBox"
                                       Content="圧縮後に保存先のフォルダを開く"
                                       Margin="0,4"
+                                      IsChecked="{Binding OpenCompressionOutputFolder}"
                                       ToolTip.Tip="圧縮が完了したときに、圧縮先フォルダを自動的に開きます" />
                         </StackPanel>
                     </primitives:HeaderedContentControl>
@@ -168,11 +176,11 @@
                             <Button x:Name="SelectAllButton" Content="全選択"
                                     Width="70" Height="40"
                                     Margin="0,0,4,0"
-                                    Click="SelectAllButton_Click"
+                                    Command="{Binding SelectAllAssociationsCommand}"
                                     ToolTip.Tip="すべての形式を選択" />
                             <Button x:Name="DeselectAllButton" Content="全解除"
                                     Width="70" Height="40"
-                                    Click="DeselectAllButton_Click"
+                                    Command="{Binding DeselectAllAssociationsCommand}"
                                     ToolTip.Tip="すべての選択を解除" />
                         </StackPanel>
                     </Grid>
@@ -180,24 +188,24 @@
                     <!-- チェックボックス一覧 -->
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <UniformGrid Columns="4" Margin="12,8">
-                            <CheckBox x:Name="ZipCheckBox" Content="ZIP (.zip)" Margin="0,4" />
-                            <CheckBox x:Name="SevenZipCheckBox" Content="7-Zip (.7z)" Margin="0,4" />
-                            <CheckBox x:Name="TarCheckBox" Content="TAR (.tar)" Margin="0,4" />
-                            <CheckBox x:Name="GzCheckBox" Content="GZIP (.gz)" Margin="0,4" />
-                            <CheckBox x:Name="Bz2CheckBox" Content="BZIP2 (.bz2)" Margin="0,4" />
-                            <CheckBox x:Name="LzmaCheckBox" Content="LZMA (.lzma)" Margin="0,4" />
-                            <CheckBox x:Name="XzCheckBox" Content="XZ (.xz)" Margin="0,4" />
-                            <CheckBox x:Name="RarCheckBox" Content="RAR (.rar)" Margin="0,4" />
-                            <CheckBox x:Name="LzhCheckBox" Content="LZH (.lzh)" Margin="0,4" />
-                            <CheckBox x:Name="CabCheckBox" Content="CAB (.cab)" Margin="0,4" />
-                            <CheckBox x:Name="ArjCheckBox" Content="ARJ (.arj)" Margin="0,4" />
-                            <CheckBox x:Name="ZCheckBox" Content="Z (.z)" Margin="0,4" />
-                            <CheckBox x:Name="TgzCheckBox" Content="TAR.GZ (.tgz)" Margin="0,4" />
-                            <CheckBox x:Name="Tbz2CheckBox" Content="TAR.BZ2 (.tbz2)" Margin="0,4" />
-                            <CheckBox x:Name="TbzCheckBox" Content="TAR.BZ (.tbz)" Margin="0,4" />
-                            <CheckBox x:Name="TlzCheckBox" Content="TAR.LZMA (.tlz)" Margin="0,4" />
-                            <CheckBox x:Name="TxzCheckBox" Content="TAR.XZ (.txz)" Margin="0,4" />
-                            <CheckBox x:Name="TZCheckBox" Content="TAR.Z (.tz)" Margin="0,4" />
+                            <CheckBox x:Name="ZipCheckBox" Content="ZIP (.zip)" Margin="0,4" IsChecked="{Binding ZipIsChecked}" />
+                            <CheckBox x:Name="SevenZipCheckBox" Content="7-Zip (.7z)" Margin="0,4" IsChecked="{Binding SevenZipIsChecked}" />
+                            <CheckBox x:Name="TarCheckBox" Content="TAR (.tar)" Margin="0,4" IsChecked="{Binding TarIsChecked}" />
+                            <CheckBox x:Name="GzCheckBox" Content="GZIP (.gz)" Margin="0,4" IsChecked="{Binding GzIsChecked}" />
+                            <CheckBox x:Name="Bz2CheckBox" Content="BZIP2 (.bz2)" Margin="0,4" IsChecked="{Binding Bz2IsChecked}" />
+                            <CheckBox x:Name="LzmaCheckBox" Content="LZMA (.lzma)" Margin="0,4" IsChecked="{Binding LzmaIsChecked}" />
+                            <CheckBox x:Name="XzCheckBox" Content="XZ (.xz)" Margin="0,4" IsChecked="{Binding XzIsChecked}" />
+                            <CheckBox x:Name="RarCheckBox" Content="RAR (.rar)" Margin="0,4" IsChecked="{Binding RarIsChecked}" />
+                            <CheckBox x:Name="LzhCheckBox" Content="LZH (.lzh)" Margin="0,4" IsChecked="{Binding LzhIsChecked}" />
+                            <CheckBox x:Name="CabCheckBox" Content="CAB (.cab)" Margin="0,4" IsChecked="{Binding CabIsChecked}" />
+                            <CheckBox x:Name="ArjCheckBox" Content="ARJ (.arj)" Margin="0,4" IsChecked="{Binding ArjIsChecked}" />
+                            <CheckBox x:Name="ZCheckBox" Content="Z (.z)" Margin="0,4" IsChecked="{Binding ZIsChecked}" />
+                            <CheckBox x:Name="TgzCheckBox" Content="TAR.GZ (.tgz)" Margin="0,4" IsChecked="{Binding TgzIsChecked}" />
+                            <CheckBox x:Name="Tbz2CheckBox" Content="TAR.BZ2 (.tbz2)" Margin="0,4" IsChecked="{Binding Tbz2IsChecked}" />
+                            <CheckBox x:Name="TbzCheckBox" Content="TAR.BZ (.tbz)" Margin="0,4" IsChecked="{Binding TbzIsChecked}" />
+                            <CheckBox x:Name="TlzCheckBox" Content="TAR.LZMA (.tlz)" Margin="0,4" IsChecked="{Binding TlzIsChecked}" />
+                            <CheckBox x:Name="TxzCheckBox" Content="TAR.XZ (.txz)" Margin="0,4" IsChecked="{Binding TxzIsChecked}" />
+                            <CheckBox x:Name="TZCheckBox" Content="TAR.Z (.tz)" Margin="0,4" IsChecked="{Binding TzIsChecked}" />
                         </UniformGrid>
                     </ScrollViewer>
                 </Grid>
@@ -225,7 +233,7 @@
                                     </Grid.RowDefinitions>
 
                                     <TextBlock Text="バージョン:" Grid.Row="0" Grid.Column="0" FontWeight="SemiBold" Margin="0,4" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="VersionTextBlock" Grid.Row="0" Grid.Column="1" Margin="0,4" VerticalAlignment="Center" />
+                                    <TextBlock x:Name="VersionTextBlock" Grid.Row="0" Grid.Column="1" Margin="0,4" VerticalAlignment="Center" Text="{Binding VersionText}" />
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -234,7 +242,7 @@
                         <Border BorderBrush="#DDDDDD" BorderThickness="1" Padding="16" Margin="0,0,0,16" CornerRadius="4">
                             <StackPanel>
                                 <TextBlock Text="コピーライト" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
-                                <TextBlock x:Name="CopyrightTextBlock" TextWrapping="Wrap" Margin="0,4" />
+                                <TextBlock x:Name="CopyrightTextBlock" TextWrapping="Wrap" Margin="0,4" Text="{Binding CopyrightText}" />
                             </StackPanel>
                         </Border>
 
@@ -243,7 +251,7 @@
                             <StackPanel>
                                 <TextBlock Text="ライセンス" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
                                 <TextBlock Text="MIT License" FontWeight="SemiBold" Margin="0,4,0,8" />
-                                <TextBlock x:Name="LicenseTextBlock" TextWrapping="Wrap" FontSize="11" FontFamily="Consolas" Margin="0,4" LineHeight="16" />
+                                <TextBlock x:Name="LicenseTextBlock" TextWrapping="Wrap" FontSize="11" FontFamily="Consolas" Margin="0,4" LineHeight="16" Text="{Binding LicenseText}" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -263,6 +271,8 @@
             <StackPanel Grid.Column="0" Orientation="Horizontal">
                 <TextBlock Text="デフォルトの圧縮形式:" VerticalAlignment="Center" Margin="0,0,8,0" FontSize="13" />
                 <ComboBox x:Name="CompressionFormatComboBox" Width="85" Height="40"
+                          ItemsSource="{Binding CompressionFormats}"
+                          SelectedItem="{Binding SelectedCompressionFormat}"
                           ToolTip.Tip="圧縮時に使用する形式を選択">
                     <ComboBox.SelectionBoxItemTemplate>
                         <DataTemplate>
@@ -280,18 +290,18 @@
                 <Button x:Name="CreateShortcutButton" Content="📌 デスクトップにショートカット作成"
                         Height="40"
                         Margin="0,0,16,0"
-                        Click="CreateShortcutButton_Click"
+                        Command="{Binding CreateShortcutCommand}"
                         ToolTip.Tip="デスクトップにアプリケーションのショートカットを作成" />
                 <Button x:Name="SaveButton" Content="設定を保存"
                         Height="40"
                         MinWidth="100"
                         Margin="0,0,8,0"
-                        Click="SaveSettingsButton_Click"
+                        Command="{Binding SaveCommand}"
                         ToolTip.Tip="現在の設定を保存して閉じる" />
                 <Button x:Name="CancelButton" Content="キャンセル"
                         Height="40"
                         MinWidth="100"
-                        Click="CancelButton_Click"
+                        Command="{Binding CancelCommand}"
                         ToolTip.Tip="設定を保存せずに閉じる" />
             </StackPanel>
         </Grid>

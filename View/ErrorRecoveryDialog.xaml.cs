@@ -43,13 +43,9 @@ public partial class ErrorRecoveryDialog : Window
     public string FileDetails { get; set; } = string.Empty;
 
     /// <summary>
-    /// ランタイム XAML ローダー用のパラメータなしコンストラクタ（使用禁止。ErrorRecoveryDialog(ArchiveErrorInfo) を使用すること）
+    /// パラメータなしコンストラクタ（デザイナー・XAML プレビュー用。実行時は ErrorRecoveryDialog(ArchiveErrorInfo) を推奨）
     /// </summary>
-    public ErrorRecoveryDialog()
-    {
-        ErrorInfo = new ArchiveErrorInfo { ErrorType = ArchiveErrorType.Unknown, Message = "N/A", Details = "N/A", IsRecoverable = false };
-        throw new InvalidOperationException("Use ErrorRecoveryDialog(ArchiveErrorInfo).");
-    }
+    public ErrorRecoveryDialog() : this(new ArchiveErrorInfo { ErrorType = ArchiveErrorType.Unknown, Message = "N/A", Details = "N/A", IsRecoverable = false }) { }
 
     /// <summary>
     /// コンストラクタ

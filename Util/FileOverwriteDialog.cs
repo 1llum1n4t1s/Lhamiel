@@ -2,7 +2,7 @@ using System.IO;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Layout;
+using Lhamiel.View;
 
 namespace Lhamiel.Util;
 
@@ -48,42 +48,13 @@ public static class FileOverwriteDialog
             var title = isDirectory ? "フォルダの上書き確認" : "ファイルの置き換え";
 
             Logger.Log($"ShowOverwriteDialog: 確認ダイアログ表示開始");
-            var tcs = new TaskCompletionSource<OverwriteResult>();
-            var dialog = new Window
-            {
-                Title = title,
-                Width = 450,
-                Height = 180,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner
-            };
-            var yesButton = new Button { Content = "はい", Margin = new Avalonia.Thickness(0, 0, 8, 0) };
-            var noButton = new Button { Content = "いいえ", Margin = new Avalonia.Thickness(0, 0, 8, 0) };
-            yesButton.Click += (_, _) => { tcs.TrySetResult(OverwriteResult.Yes); dialog.Close(); };
-            noButton.Click += (_, _) => { tcs.TrySetResult(OverwriteResult.No); dialog.Close(); };
-            dialog.Content = new StackPanel
-            {
-                Margin = new Avalonia.Thickness(20),
-                Children =
-                {
-                    new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Margin = new Avalonia.Thickness(0, 0, 0, 20) },
-                    new StackPanel
-                    {
-                        Orientation = Avalonia.Layout.Orientation.Horizontal,
-                        HorizontalAlignment = HorizontalAlignment.Right,
-                        Spacing = 8,
-                        Children = { yesButton, noButton }
-                    }
-                }
-            };
-            if (parentWindow != null)
-            {
-                dialog.Closed += (_, _) => tcs.TrySetResult(OverwriteResult.No);
-                _ = dialog.ShowDialog(parentWindow);
-                var result = await tcs.Task;
-                Logger.Log($"ShowOverwriteDialog: 結果 = {result}");
-                return result;
-            }
-            return OverwriteResult.No;
+            if (parentWindow == null)
+                return OverwriteResult.No;
+            var dialog = new OverwriteConfirmDialog(title, message);
+            var result = await dialog.ShowDialog<OverwriteResult?>(parentWindow);
+            var overwriteResult = result ?? OverwriteResult.No;
+            Logger.Log($"ShowOverwriteDialog: 結果 = {overwriteResult}");
+            return overwriteResult;
         }
         catch (Exception ex)
         {

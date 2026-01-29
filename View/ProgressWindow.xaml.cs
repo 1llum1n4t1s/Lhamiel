@@ -34,12 +34,9 @@ public partial class ProgressWindow : Window
     }
 
     /// <summary>
-    /// ランタイム XAML ローダー用のパラメータなしコンストラクタ（使用禁止。ProgressWindow(string) を使用すること）
+    /// パラメータなしコンストラクタ（デザイナー・XAML プレビュー用。実行時は ProgressWindow(string) を推奨）
     /// </summary>
-    public ProgressWindow()
-    {
-        throw new InvalidOperationException("Use ProgressWindow(string operationType).");
-    }
+    public ProgressWindow() : this("処理中") { }
 
     /// <summary>
     /// コンストラクタ

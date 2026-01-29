@@ -1,12 +1,13 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Layout;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 
 namespace Lhamiel.Util;
 
 /// <summary>
-/// メッセージボックス表示を一元管理するサービスクラス
+/// メッセージボックス表示を一元管理するサービスクラス（MessageBox.Avalonia 使用）
 /// </summary>
 public static class MessageService
 {
@@ -30,15 +31,10 @@ public static class MessageService
     /// </summary>
     private static Window? GetActiveWindowInternal(IClassicDesktopStyleApplicationLifetime desktop)
     {
-        // 1. アクティブなウィンドウがあればそれを優先（ProgressWindowなど）
         var activeWindow = desktop.Windows.FirstOrDefault(w => w.IsActive && w.IsVisible);
         if (activeWindow != null) return activeWindow;
-
-        // 2. アクティブなウィンドウがない場合は、最後に表示された表示中のウィンドウを探す
         var lastVisibleWindow = desktop.Windows.LastOrDefault(w => w.IsVisible);
         if (lastVisibleWindow != null) return lastVisibleWindow;
-
-        // 3. 最後にMainWindow
         return desktop.MainWindow;
     }
 
@@ -51,33 +47,11 @@ public static class MessageService
     {
         Logger.Log($"エラーメッセージ表示: {title} - {message}", LogLevel.Error);
         var window = await GetActiveWindowAsync();
-        var dialog = CreateMessageWindow(title, message);
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Error);
         if (window != null)
-        {
-            await dialog.ShowDialog(window);
-        }
-    }
-
-    private static Window CreateMessageWindow(string title, string message)
-    {
-        var dialog = new Window
-        {
-            Title = title,
-            Width = 450,
-            Height = 200,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
-        };
-        var okButton = new Button { Content = "OK", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center, Margin = new Avalonia.Thickness(0, 0, 0, 20) };
-        okButton.Click += (_, _) => dialog.Close();
-        dialog.Content = new StackPanel
-        {
-            Children =
-            {
-                new TextBlock { Text = message, Margin = new Avalonia.Thickness(20), MaxWidth = 400, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
-                okButton
-            }
-        };
-        return dialog;
+            await box.ShowWindowDialogAsync(window);
+        else
+            await box.ShowAsync();
     }
 
     /// <summary>
@@ -89,11 +63,11 @@ public static class MessageService
     {
         Logger.Log($"情報メッセージ表示: {title} - {message}");
         var window = await GetActiveWindowAsync();
-        var dialog = CreateMessageWindow(title, message);
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Info);
         if (window != null)
-        {
-            await dialog.ShowDialog(window);
-        }
+            await box.ShowWindowDialogAsync(window);
+        else
+            await box.ShowAsync();
     }
 
     /// <summary>
@@ -105,11 +79,11 @@ public static class MessageService
     {
         Logger.Log($"警告メッセージ表示: {title} - {message}", LogLevel.Warning);
         var window = await GetActiveWindowAsync();
-        var dialog = CreateMessageWindow(title, message);
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Warning);
         if (window != null)
-        {
-            await dialog.ShowDialog(window);
-        }
+            await box.ShowWindowDialogAsync(window);
+        else
+            await box.ShowAsync();
     }
 
     /// <summary>
@@ -123,11 +97,11 @@ public static class MessageService
         Logger.LogException(context, ex);
         var message = $"{context}\n\n詳細: {ex.Message}";
         var window = await GetActiveWindowAsync();
-        var dialog = CreateMessageWindow(title, message);
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Error);
         if (window != null)
-        {
-            await dialog.ShowDialog(window);
-        }
+            await box.ShowWindowDialogAsync(window);
+        else
+            await box.ShowAsync();
     }
 
     /// <summary>
@@ -139,11 +113,11 @@ public static class MessageService
     {
         Logger.Log($"成功メッセージ表示: {title} - {message}");
         var window = await GetActiveWindowAsync();
-        var dialog = CreateMessageWindow(title, message);
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Success);
         if (window != null)
-        {
-            await dialog.ShowDialog(window);
-        }
+            await box.ShowWindowDialogAsync(window);
+        else
+            await box.ShowAsync();
     }
 
     /// <summary>
@@ -156,39 +130,12 @@ public static class MessageService
     public static async Task<bool> ShowYesNoQuestionAsync(string message, string title, Window? parentWindow = null)
     {
         parentWindow ??= await GetActiveWindowAsync();
-        var tcs = new TaskCompletionSource<bool>();
-        var dialog = new Window
-        {
-            Title = title,
-            Width = 450,
-            Height = 180,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner
-        };
-        var yesButton = new Button { Content = "はい", Margin = new Avalonia.Thickness(0, 0, 8, 0) };
-        var noButton = new Button { Content = "いいえ", Margin = new Avalonia.Thickness(0, 0, 8, 0) };
-        yesButton.Click += (_, _) => { tcs.TrySetResult(true); dialog.Close(); };
-        noButton.Click += (_, _) => { tcs.TrySetResult(false); dialog.Close(); };
-        dialog.Content = new StackPanel
-        {
-            Margin = new Avalonia.Thickness(20),
-            Children =
-            {
-                new TextBlock { Text = message, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Margin = new Avalonia.Thickness(0, 0, 0, 20) },
-                new StackPanel
-                {
-                    Orientation = Avalonia.Layout.Orientation.Horizontal,
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    Spacing = 8,
-                    Children = { yesButton, noButton }
-                }
-            }
-        };
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.YesNo, Icon.Question);
+        ButtonResult result;
         if (parentWindow != null)
-        {
-            dialog.Closed += (_, _) => tcs.TrySetResult(false);
-            _ = dialog.ShowDialog(parentWindow);
-            return await tcs.Task;
-        }
-        return false;
+            result = await box.ShowWindowDialogAsync(parentWindow);
+        else
+            result = await box.ShowAsync();
+        return result == ButtonResult.Yes;
     }
 }
