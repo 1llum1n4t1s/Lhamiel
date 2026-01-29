@@ -40,7 +40,7 @@ jobs:
         with:
           name: build-artifacts-release
           path: |
-            bin/Release/**/*.exe
-            bin/Release/**/*.dll
-            !bin/Release/**/ref/**
+            bin/**/Release/**/*.exe
+            bin/**/Release/**/*.dll
+            !bin/**/Release/**/ref/**
           retention-days: 1
