@@ -7,22 +7,31 @@
     <Platforms>x64</Platforms>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
+    <UseWPF>false</UseWPF>
+    <UseWindowsForms>false</UseWindowsForms>
     <ApplicationIcon>Asset\icon\app.ico</ApplicationIcon>
     <SatelliteResourceLanguages>ja</SatelliteResourceLanguages>
     <Optimize>true</Optimize>
     <DebugType>portable</DebugType>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <Version>1.0.44</Version>
+    <Version>1.0.50</Version>
     <AssemblyTitle>Lhamiel</AssemblyTitle>
     <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
     <AssemblyCompany>1llum1n4t1s</AssemblyCompany>
     <AssemblyProduct>Lhamiel</AssemblyProduct>
     <AssemblyCopyright>Copyright © 2025-2026 ゆろち</AssemblyCopyright>
-    <UseSystemResourceKeys>true</UseSystemResourceKeys>
     <Title>Lhamiel</Title>
     <Authors>ゆろち</Authors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,17 +39,40 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.6" />
+    <AvaloniaResource Include="App.xaml" />
+    <AvaloniaResource Include="View\MainWindow.xaml" />
+    <AvaloniaResource Include="View\ProgressWindow.xaml" />
+    <AvaloniaResource Include="View\ErrorRecoveryDialog.xaml" />
+    <AvaloniaResource Include="View\OverwriteConfirmDialog.xaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.11" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="11.3.11" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.11" />
+    <PackageReference Include="ActiproSoftware.Controls.Avalonia" Version="25.2.2" />
+    <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" />
+    <PackageReference Include="HarfBuzzSharp" Version="8.3.1.2" />
+    <PackageReference Include="HarfBuzzSharp.NativeAssets.Win32" Version="8.3.1.2" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.24" />
     <PackageReference Include="7z.Libs" Version="25.1.0" />
     <PackageReference Include="log4net" Version="3.2.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
   </ItemGroup>
 
-  <!-- アイコンファイルを出力ディレクトリにコピー -->
-  <Target Name="CopyIcons" AfterTargets="Publish">
+  <!-- アイコンおよびネイティブ DLL を Publish 出力にコピー -->
+  <Target Name="CopyIconsAndNativeDlls" AfterTargets="Publish">
     <Copy SourceFiles="Asset\icon\app.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="Asset\icon\file.ico" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="$(OutputPath)7z.dll" DestinationFolder="$(PublishDir)" Condition="Exists('$(OutputPath)7z.dll')" />
+    <Copy SourceFiles="$(OutputPath)libSkiaSharp.dll" DestinationFolder="$(PublishDir)" Condition="Exists('$(OutputPath)libSkiaSharp.dll')" />
+    <Copy SourceFiles="$(OutputPath)libHarfBuzzSharp.dll" DestinationFolder="$(PublishDir)" Condition="Exists('$(OutputPath)libHarfBuzzSharp.dll')" />
   </Target>
 
   <!-- 7z.dllを手動でルートに配置 -->
@@ -51,12 +83,30 @@
     </Content>
   </ItemGroup>
 
-  <!-- ビルド後にx64フォルダを削除し、7z.dllをルートに移動 -->
-  <Target Name="Move7zDllToRoot" AfterTargets="Build">
-    <Move SourceFiles="$(OutputPath)x64\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)x64\7z.dll')" />
-    <RemoveDir Directories="$(OutputPath)x64" Condition="Exists('$(OutputPath)x64')" />
-    <RemoveDir Directories="$(OutputPath)x86" Condition="Exists('$(OutputPath)x86')" />
-    <RemoveDir Directories="$(OutputPath)runtimes" Condition="Exists('$(OutputPath)runtimes')" />
+  <!-- ビルド後に7z.dllとSkiaSharpのネイティブライブラリをルートに配置 -->
+  <Target Name="MoveNativeDllsToRoot" AfterTargets="Build">
+    <!-- 7z.dllを複数の場所から確認して移動 -->
+    <Move SourceFiles="$(OutputPath)x64\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)x64\7z.dll')" ContinueOnError="true" />
+    <Move SourceFiles="$(OutputPath)runtimes\win-x64\native\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)runtimes\win-x64\native\7z.dll')" ContinueOnError="true" />
+    
+    <!-- SkiaSharpのネイティブライブラリを移動 -->
+    <Move SourceFiles="$(OutputPath)runtimes\win-x64\native\libSkiaSharp.dll" DestinationFiles="$(OutputPath)libSkiaSharp.dll" Condition="Exists('$(OutputPath)runtimes\win-x64\native\libSkiaSharp.dll')" ContinueOnError="true" />
+    
+    <!-- HarfBuzzSharpのネイティブライブラリを移動 -->
+    <Move SourceFiles="$(OutputPath)runtimes\win-x64\native\libHarfBuzzSharp.dll" DestinationFiles="$(OutputPath)libHarfBuzzSharp.dll" Condition="Exists('$(OutputPath)runtimes\win-x64\native\libHarfBuzzSharp.dll')" ContinueOnError="true" />
+    
+    <!-- クリーンアップ -->
+    <RemoveDir Directories="$(OutputPath)x64" Condition="Exists('$(OutputPath)x64')" ContinueOnError="true" />
+    <RemoveDir Directories="$(OutputPath)x86" Condition="Exists('$(OutputPath)x86')" ContinueOnError="true" />
+    <RemoveDir Directories="$(OutputPath)runtimes" Condition="Exists('$(OutputPath)runtimes')" ContinueOnError="true" />
+    
+    <!-- 成功したかログ出力 -->
+    <Message Text="7z.dll is at: $(OutputPath)7z.dll" Importance="high" Condition="Exists('$(OutputPath)7z.dll')" />
+    <Warning Text="7z.dll NOT FOUND at $(OutputPath)7z.dll" Condition="!Exists('$(OutputPath)7z.dll')" />
+    <Message Text="libSkiaSharp.dll is at: $(OutputPath)libSkiaSharp.dll" Importance="high" Condition="Exists('$(OutputPath)libSkiaSharp.dll')" />
+    <Warning Text="libSkiaSharp.dll NOT FOUND at $(OutputPath)libSkiaSharp.dll" Condition="!Exists('$(OutputPath)libSkiaSharp.dll')" />
+    <Message Text="libHarfBuzzSharp.dll is at: $(OutputPath)libHarfBuzzSharp.dll" Importance="high" Condition="Exists('$(OutputPath)libHarfBuzzSharp.dll')" />
+    <Warning Text="libHarfBuzzSharp.dll NOT FOUND at $(OutputPath)libHarfBuzzSharp.dll" Condition="!Exists('$(OutputPath)libHarfBuzzSharp.dll')" />
   </Target>
 
 

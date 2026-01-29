@@ -182,15 +182,14 @@ public class ParallelProcessingTests
     }
 
     /// <summary>
-    /// キャンセルトークンが正しく受け取られることを確認
+    /// 有効なキャンセルトークンを渡した場合に展開が正常完了することを確認
     /// </summary>
     [Fact]
-    public async Task ExtractArchivesAsync_CancellationToken_IsRespected()
+    public async Task ExtractArchivesAsync_WithValidToken_CompletesSuccessfully()
     {
         var testDir = CreateTemporaryTestDirectory();
         try
         {
-            // 2つのZIPファイルを作成
             var zipFiles = new List<string>();
             for (var i = 0; i < 2; i++)
             {
@@ -200,7 +199,6 @@ public class ParallelProcessingTests
             var outputDir = Path.Combine(testDir, "output");
             Directory.CreateDirectory(outputDir);
 
-            // キャンセルなしで実行
             var result = await ArchiveProcessor.ExtractArchivesAsync(
                 zipFiles.ToArray(),
                 outputDir,
@@ -209,11 +207,45 @@ public class ParallelProcessingTests
                 cancellationToken: TestContext.Current.CancellationToken
             );
 
-            // 成功するはず
             Assert.True(result, "展開が成功するはず");
-
             var extractedDirs = Directory.GetDirectories(outputDir);
             Assert.Equal(2, extractedDirs.Length);
+        }
+        finally
+        {
+            if (Directory.Exists(testDir))
+            {
+                Directory.Delete(testDir, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// キャンセル済みトークンを渡した場合に OperationCanceledException がスローされることを確認
+    /// </summary>
+    [Fact]
+    public async Task ExtractArchivesAsync_WhenTokenCanceled_ThrowsOperationCanceledException()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var testDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var zipPath = CreateTestZipFile(testDir, "archive");
+            var outputDir = Path.Combine(testDir, "output");
+            Directory.CreateDirectory(outputDir);
+
+            var ex = await Record.ExceptionAsync(async () =>
+                await ArchiveProcessor.ExtractArchivesAsync(
+                    [zipPath],
+                    outputDir,
+                    outputToSameDirectory: false,
+                    progressWindow: null!,
+                    cancellationToken: cts.Token
+                ));
+            Assert.NotNull(ex);
+            Assert.IsAssignableFrom<OperationCanceledException>(ex);
         }
         finally
         {
@@ -335,22 +367,19 @@ public class ParallelProcessingTests
     }
 
     /// <summary>
-    /// キャンセルトークンが複数フォルダ圧縮で正しく受け取られることを確認
+    /// 有効なキャンセルトークンを渡した場合に圧縮が正常完了することを確認
     /// </summary>
     [Fact]
-    public async Task CompressItemsAsync_CancellationToken_IsRespected()
+    public async Task CompressItemsAsync_WithValidToken_CompletesSuccessfully()
     {
         var testDir = CreateTemporaryTestDirectory();
         try
         {
-            // 複数のフォルダを作成
             var folder1 = CreateTestFolder(testDir, "folder1");
             var folder2 = CreateTestFolder(testDir, "folder2");
-
             var outputDir = Path.Combine(testDir, "output");
             Directory.CreateDirectory(outputDir);
 
-            // キャンセルなしで実行
             var result = await ArchiveProcessor.CompressItemsAsync([folder1, folder2],
                 outputDir,
                 outputToSameDirectory: false,
@@ -359,11 +388,45 @@ public class ParallelProcessingTests
                 cancellationToken: TestContext.Current.CancellationToken
             );
 
-            // 成功するはず
             Assert.True(result, "圧縮が成功するはず");
-
             var zipFiles = Directory.GetFiles(outputDir, "*.zip");
             Assert.Equal(2, zipFiles.Length);
+        }
+        finally
+        {
+            if (Directory.Exists(testDir))
+            {
+                Directory.Delete(testDir, true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// キャンセル済みトークンを渡した場合に OperationCanceledException がスローされることを確認
+    /// </summary>
+    [Fact]
+    public async Task CompressItemsAsync_WhenTokenCanceled_ThrowsOperationCanceledException()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var testDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var folder = CreateTestFolder(testDir, "folder");
+            var outputDir = Path.Combine(testDir, "output");
+            Directory.CreateDirectory(outputDir);
+
+            var ex = await Record.ExceptionAsync(async () =>
+                await ArchiveProcessor.CompressItemsAsync([folder],
+                    outputDir,
+                    outputToSameDirectory: false,
+                    format: "zip",
+                    progressWindow: null!,
+                    cancellationToken: cts.Token
+                ));
+            Assert.NotNull(ex);
+            Assert.IsAssignableFrom<OperationCanceledException>(ex);
         }
         finally
         {

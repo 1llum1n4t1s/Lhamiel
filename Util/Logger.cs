@@ -126,14 +126,14 @@ public static class Logger
 
             // 最後のmaxLines行のみを保持
             var linesToKeep = allLines.Skip(lineCount - maxLines).ToArray();
-            
+
             // 一時ファイルに書き込み
             File.WriteAllLines(tempFilePath, linesToKeep, System.Text.Encoding.UTF8);
 
             // 元のファイルを削除して一時ファイルをリネーム
             File.Delete(logFilePath);
             File.Move(tempFilePath, logFilePath);
-            
+
             // コンソールに出力（デバッグ用）
             Console.WriteLine($@"ログファイルをトリミングしました: {lineCount}行 -> {linesToKeep.Length}行（最大行数: {maxLines}行）");
             Debug.WriteLine($"ログファイルをトリミングしました: {lineCount}行 -> {linesToKeep.Length}行（最大行数: {maxLines}行）");
@@ -144,7 +144,7 @@ public static class Logger
             Console.WriteLine($@"ログファイルのトリミングに失敗しました: {ex.Message}");
             Debug.WriteLine($"ログファイルのトリミングに失敗しました: {ex.Message}");
             Debug.WriteLine($"スタックトレース: {ex.StackTrace}");
-            
+
             // 一時ファイルが残っている場合は削除
             try
             {

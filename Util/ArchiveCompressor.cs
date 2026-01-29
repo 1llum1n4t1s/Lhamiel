@@ -19,8 +19,8 @@ public class ArchiveCompressor
     /// <returns>圧縮ファイルのパス</returns>
     public static string GetCompressedFileName(string sourcePath, string extension, string outputDirectory = "", bool outputToSameDirectory = false)
     {
-        var directory = outputToSameDirectory 
-            ? Path.GetDirectoryName(sourcePath) ?? "" 
+        var directory = outputToSameDirectory
+            ? Path.GetDirectoryName(sourcePath) ?? ""
             : outputDirectory;
 
         var trimmedPath = sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
@@ -136,41 +136,85 @@ public class ArchiveCompressor
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
-            // ArchiveWriterを使用して圧縮（形式に応じてオプションを設定）
-            using var writer = CreateArchiveWriter(format);
-
-            // ファイルを圧縮アーカイブに追加
-            var totalFiles = filesToCompress.Count;
-            Logger.Log($"圧縮するファイル数: {totalFiles}");
-
-            foreach (var (fullPath, relativePath) in filesToCompress)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                writer.Add(fullPath, relativePath);
-            }
-
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
             outputCreated = true;
             Logger.Log("圧縮処理を開始します");
 
-            var reportProgress = new CancellableProgress<Report>(report =>
+            try
             {
-                // 進捗率をそのまま使用（GetRatio()で0～1を返す）
-                var ratio = report.GetRatio();
-                var percentage = (int)(ratio * 100);
+                // 重い処理全体を Task.Run で実行
+                await Task.Run(() =>
+                {
+                    // ネイティブ側（7z.dll）との連携を確実に保護するため
+                    // 全ての主要オブジェクトを Task.Run の内部スコープで管理する
+                    using var writer = CreateArchiveWriter(format);
 
-                progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
-            }, cancellationToken);
+                    // ファイルを圧縮アーカイブに追加
+                    foreach (var (fullPath, relativePath) in filesToCompress)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        writer.Add(fullPath, relativePath);
+                    }
 
-            await Task.Run(() =>
+                    // 変数: 最後に報告した進捗率と時間（UIスレッドの負荷軽減用）
+                    var lastPercentage = -1;
+                    var lastReportTime = Environment.TickCount64;
+                    const int reportInterval = 100; // 100ms間隔
+                    // 進捗コールバックが複数スレッドから呼ばれる可能性に備えた同期用オブジェクト
+                    var progressLock = new object();
+
+                    // 進捗報告オブジェクトを生成
+                    using var reportProgress = new CancellableProgress<Report>(report =>
+                    {
+                        // 進捗率を取得（ライブラリの GetRatio() と Report を信じる）
+                        var ratio = report.GetRatio();
+                        var percentage = (int)(ratio * 100);
+
+                        lock (progressLock)
+                        {
+                            // 単調増加を保証（Ice アプリケーションの実装パターンに準拠）
+                            if (percentage <= lastPercentage && percentage > 0 && percentage < 100)
+                            {
+                                return;
+                            }
+
+                            var currentTime = Environment.TickCount64;
+
+                            // 以下のいずれかの条件を満たす場合のみ報告
+                            // 1. 進捗が 0% または 100% (開始と完了を保証)
+                            // 2. 前回の報告から 100ms 以上経過しており、かつ進捗率が変化している
+                            if (percentage > 0 && percentage < 100)
+                            {
+                                if (percentage == lastPercentage) return;
+                                if (currentTime - lastReportTime < reportInterval) return;
+                            }
+
+                            lastPercentage = percentage;
+                            lastReportTime = currentTime;
+                        }
+
+                        progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
+                    }, cancellationToken);
+
+                    // ネイティブメソッドの呼び出し
+                    writer.Save(outputPath, reportProgress);
+
+                    // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    // Terminate で 100% を保証（Ice アプリケーションの実装パターンに準拠）
+                    progressCallback?.Invoke(new ProgressInfo(100, "圧縮処理中..."));
+
+                    // 全てのオブジェクトの生存を、ネイティブ処理完了直後に明示的に保証する
+                    // これにより、JIT最適化による早期解放（およびそれに伴うアクセス違反）を防ぐ
+                    NativeInteropHelper.KeepAliveCallbacks(writer, reportProgress, progressCallback);
+                }, cancellationToken);
+            }
+            catch (Exception ex)
             {
-                writer.Save(outputPath, reportProgress);
-            }, cancellationToken);
-
-            // 重要なオブジェクトを延命させ、ネイティブ側からの不意なコールバックによる
-            // ExecutionEngineException を防止する
-            GC.KeepAlive(writer);
-            GC.KeepAlive(reportProgress);
+                Logger.Log($"圧縮処理実行中にエラーが発生しました: {ex.Message}");
+                throw;
+            }
 
             Logger.Log($"圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
         }

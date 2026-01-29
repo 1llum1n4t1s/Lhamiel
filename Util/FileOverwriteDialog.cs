@@ -1,5 +1,8 @@
 using System.IO;
-using System.Windows;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Lhamiel.View;
 
 namespace Lhamiel.Util;
 
@@ -15,10 +18,10 @@ public static class FileOverwriteDialog
     /// <param name="destinationPath">コピー先パス（存在確認用）</param>
     /// <param name="parentWindow">親ウィンドウ（nullの場合は自動検索）</param>
     /// <returns>ユーザーの選択結果</returns>
-    public static OverwriteResult ShowOverwriteDialog(string sourceFilePath, string destinationPath, Window? parentWindow = null)
+    public static async Task<OverwriteResult> ShowOverwriteDialog(string sourceFilePath, string destinationPath, Window? parentWindow = null)
     {
         // 親ウィンドウが未指定の場合は、現在のアクティブなウィンドウまたは最前面のウィンドウを探す
-        parentWindow ??= GetBestParentWindow();
+        parentWindow ??= await GetBestParentWindowAsync();
 
         Logger.Log($"ShowOverwriteDialog開始: sourceFilePath={sourceFilePath}, destinationPath={destinationPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
 
@@ -38,27 +41,20 @@ public static class FileOverwriteDialog
             var name = Path.GetFileName(destinationPath);
             if (string.IsNullOrEmpty(name)) name = destinationPath;
 
-            var message = isDirectory 
+            var message = isDirectory
                 ? $"フォルダ '{name}' は既に存在します。\n\n既存のフォルダを削除して上書きしますか？"
                 : $"ファイル '{name}' は既に存在します。\n\n置き換えますか？";
-            
+
             var title = isDirectory ? "フォルダの上書き確認" : "ファイルの置き換え";
 
-            Logger.Log($"ShowOverwriteDialog: MessageBox表示開始");
-            
-            // 親ウィンドウを指定してダイアログを表示（親がTopmostならダイアログもTopmostになる）
-            var result = parentWindow != null
-                ? MessageBox.Show(parentWindow, message, title, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No)
-                : MessageBox.Show(message, title, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-
-            Logger.Log($"ShowOverwriteDialog: MessageBox結果 = {result}");
-
-            return result switch
-            {
-                MessageBoxResult.Yes => OverwriteResult.Yes,
-                MessageBoxResult.No => OverwriteResult.No,
-                _ => OverwriteResult.Cancel
-            };
+            Logger.Log($"ShowOverwriteDialog: 確認ダイアログ表示開始");
+            if (parentWindow == null)
+                return OverwriteResult.No;
+            var dialog = new OverwriteConfirmDialog(title, message);
+            var result = await dialog.ShowDialog<OverwriteResult?>(parentWindow);
+            var overwriteResult = result ?? OverwriteResult.No;
+            Logger.Log($"ShowOverwriteDialog: 結果 = {overwriteResult}");
+            return overwriteResult;
         }
         catch (Exception ex)
         {
@@ -74,11 +70,11 @@ public static class FileOverwriteDialog
     /// <param name="destinationPath">コピー先パス</param>
     /// <param name="parentWindow">親ウィンドウ（nullの場合は自動検索）</param>
     /// <returns>上書き可能な場合はtrue、そうでなければfalse</returns>
-    public static bool CanOverwriteFile(string sourceFilePath, string destinationPath, Window? parentWindow = null)
+    public static async Task<bool> CanOverwriteFile(string sourceFilePath, string destinationPath, Window? parentWindow = null)
     {
         Logger.Log($"CanOverwriteFile開始: sourceFilePath={sourceFilePath}, destinationPath={destinationPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
 
-        var result = ShowOverwriteDialog(sourceFilePath, destinationPath, parentWindow);
+        var result = await ShowOverwriteDialog(sourceFilePath, destinationPath, parentWindow);
         var canOverwrite = result == OverwriteResult.Yes;
         Logger.Log($"CanOverwriteFile結果: result={result}, canOverwrite={canOverwrite}");
         return canOverwrite;
@@ -87,36 +83,32 @@ public static class FileOverwriteDialog
     /// <summary>
     /// ダイアログを表示するための最適な親ウィンドウを取得する
     /// </summary>
-    private static Window? GetBestParentWindow()
+    private static async Task<Window?> GetBestParentWindowAsync()
     {
-        if (Application.Current == null) return null;
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            return null;
 
-        // すでにUIスレッドにいる場合は直接実行、そうでなければInvokeしてデッドロックを防ぐ
-        if (Application.Current.Dispatcher.CheckAccess())
-        {
-            return GetBestParentWindowInternal();
-        }
-        else
-        {
-            return Application.Current.Dispatcher.Invoke(GetBestParentWindowInternal);
-        }
+        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+            return GetBestParentWindowInternal(desktop);
+
+        return await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => GetBestParentWindowInternal(desktop));
     }
 
     /// <summary>
     /// UIスレッド上で親ウィンドウを探索する実体
     /// </summary>
-    private static Window? GetBestParentWindowInternal()
+    private static Window? GetBestParentWindowInternal(IClassicDesktopStyleApplicationLifetime desktop)
     {
         // 1. アクティブなウィンドウがあればそれを優先（ProgressWindowなど）
-        var activeWindow = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive && w.IsVisible);
+        var activeWindow = desktop.Windows.FirstOrDefault(w => w.IsActive && w.IsVisible);
         if (activeWindow != null) return activeWindow;
 
         // 2. アクティブなウィンドウがない場合は、最後に表示された表示中のウィンドウを探す
-        var lastVisibleWindow = Application.Current.Windows.OfType<Window>().LastOrDefault(w => w.IsVisible);
+        var lastVisibleWindow = desktop.Windows.LastOrDefault(w => w.IsVisible);
         if (lastVisibleWindow != null) return lastVisibleWindow;
 
         // 3. 最後にMainWindow
-        return Application.Current.MainWindow;
+        return desktop.MainWindow;
     }
 }
 
