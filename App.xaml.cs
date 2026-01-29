@@ -302,7 +302,7 @@ public partial class App : Application
             {
                 // タイムアウトした場合は、更新を中止してユーザーに通知
                 Logger.Log("Velopack: 処理完了の待機がタイムアウトしました。今回のアップデート適用は中止します。", LogLevel.Warning);
-                MessageService.ShowWarning("進行中の処理が完了しなかったため、アップデートの適用を中止しました。アプリケーションを終了してから、再度お試しください。");
+                _ = MessageService.ShowWarning("進行中の処理が完了しなかったため、アップデートの適用を中止しました。アプリケーションを終了してから、再度お試しください。");
                 IsUpdateRestarting = false; // 更新プロセスを中止し、通常の動作に戻す
                 return false; // 更新失敗として終了
             }
@@ -377,7 +377,7 @@ public partial class App : Application
             if (IsUpdateRestarting)
             {
                 Logger.Log("アップデートのための再起動が予定されているため、新しい処理をスキップします。");
-                MessageService.ShowWarning("アップデートの適用準備が整いました。再起動後に再度お試しください。");
+                _ = MessageService.ShowWarning("アップデートの適用準備が整いました。再起動後に再度お試しください。");
                 return;
             }
 
@@ -387,7 +387,7 @@ public partial class App : Application
             if (!File.Exists(path) && !Directory.Exists(path))
             {
                 Logger.Log($"指定されたパスが存在しません: {path}");
-                MessageService.ShowError($"指定されたファイルまたはフォルダが見つかりません。\n{path}");
+                _ = MessageService.ShowError($"指定されたファイルまたはフォルダが見つかりません。\n{path}");
                 ShutdownIfNeeded(shouldShutdown);
                 return;
             }
@@ -432,7 +432,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             Logger.LogException("コマンドライン処理でエラーが発生", ex);
-            MessageService.ShowError($"処理中にエラーが発生しました。\n{ex.Message}");
+            _ = MessageService.ShowError($"処理中にエラーが発生しました。\n{ex.Message}");
             ShutdownIfNeeded(shouldShutdown);
         }
     }
@@ -529,7 +529,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             Logger.LogException("ファイル展開処理でエラーが発生", ex);
-            MessageService.ShowError($"展開中にエラーが発生しました。\n{ex.Message}");
+            _ = MessageService.ShowError($"展開中にエラーが発生しました。\n{ex.Message}");
             ShutdownIfNeeded(shouldShutdown);
         }
     }
@@ -634,7 +634,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             Logger.LogException("ファイル圧縮処理でエラーが発生", ex);
-            MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
+            _ = MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
             ShutdownIfNeeded(shouldShutdown);
         }
     }
@@ -767,7 +767,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             Logger.LogException("フォルダ圧縮処理でエラーが発生", ex);
-            MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
+            _ = MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
             ShutdownIfNeeded(shouldShutdown);
         }
     }

@@ -29,7 +29,7 @@ public static class ArchiveProcessor
         if (!File.Exists(filePath))
         {
             Logger.Log($"指定されたファイルが存在しません: {filePath}");
-            MessageService.ShowError($"指定されたファイルが見つかりません。\n{filePath}");
+            _ = MessageService.ShowError($"指定されたファイルが見つかりません。\n{filePath}");
             return false;
         }
 
@@ -57,7 +57,7 @@ public static class ArchiveProcessor
                 if (!supportedExtensions.Contains(extension))
                 {
                     Logger.Log($"サポートされていないファイル形式です: {extension}");
-                    Dispatcher.UIThread.Post(() => MessageService.ShowError($"サポートされていないファイル形式です。\n{extension}"));
+                    Dispatcher.UIThread.Post(() => _ = MessageService.ShowError($"サポートされていないファイル形式です。\n{extension}"));
                     return false;
                 }
 
@@ -135,7 +135,7 @@ public static class ArchiveProcessor
                 Logger.LogException($"展開処理でエラーが発生: {filePath}", ex);
                 var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, filePath, outputPath);
                 Dispatcher.UIThread.Post(() =>
-                    MessageService.ShowError($"{errorInfo.Message}\n\n詳細: {errorInfo.Details}", "展開エラー"));
+                    _ = MessageService.ShowError($"{errorInfo.Message}\n\n詳細: {errorInfo.Details}", "展開エラー"));
                 return false;
             }
             finally
@@ -251,7 +251,7 @@ public static class ArchiveProcessor
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数ファイル展開処理でエラーが発生", ex);
-            MessageService.ShowError($"展開中にエラーが発生しました。\n{ex.Message}");
+            _ = MessageService.ShowError($"展開中にエラーが発生しました。\n{ex.Message}");
 
             // 例外発生時にも確実にクリーンアップ
             if (closeWindowOnCompletion)
@@ -283,7 +283,7 @@ public static class ArchiveProcessor
         if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
         {
             Logger.Log($"指定された対象が存在しません: {sourcePath}");
-            MessageService.ShowError($"指定されたファイルまたはフォルダが見つかりません。\n{sourcePath}");
+            _ = MessageService.ShowError($"指定されたファイルまたはフォルダが見つかりません。\n{sourcePath}");
             return false;
         }
 
@@ -292,7 +292,7 @@ public static class ArchiveProcessor
         if (!supportedFormats.Contains(format.ToLowerInvariant()))
         {
             Logger.Log($"サポートされていない圧縮形式です: {format}");
-            MessageService.ShowError($"サポートされていない圧縮形式です。\n{format}");
+            _ = MessageService.ShowError($"サポートされていない圧縮形式です。\n{format}");
             return false;
         }
 
@@ -376,7 +376,7 @@ public static class ArchiveProcessor
             {
                 Logger.LogException($"圧縮処理でエラーが発生: {sourcePath}", ex);
                 Dispatcher.UIThread.Post(() =>
-                    MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}"));
+                    _ = MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}"));
                 return false;
             }
             finally
@@ -534,7 +534,7 @@ public static class ArchiveProcessor
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数対象圧縮処理でエラーが発生", ex);
-            MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
+            _ = MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
 
             // 例外発生時にも確実にクリーンアップ
             if (closeWindowOnCompletion)

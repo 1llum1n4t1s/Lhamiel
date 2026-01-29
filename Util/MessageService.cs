@@ -43,7 +43,7 @@ public static class MessageService
     /// </summary>
     /// <param name="message">メッセージ本文</param>
     /// <param name="title">タイトル（省略可）</param>
-    public static async void ShowError(string message, string title = "エラー")
+    public static async Task ShowError(string message, string title = "エラー")
     {
         Logger.Log($"エラーメッセージ表示: {title} - {message}", LogLevel.Error);
         var window = await GetActiveWindowAsync();
@@ -59,7 +59,7 @@ public static class MessageService
     /// </summary>
     /// <param name="message">メッセージ本文</param>
     /// <param name="title">タイトル（省略可）</param>
-    public static async void ShowInfo(string message, string title = "情報")
+    public static async Task ShowInfo(string message, string title = "情報")
     {
         Logger.Log($"情報メッセージ表示: {title} - {message}");
         var window = await GetActiveWindowAsync();
@@ -75,7 +75,7 @@ public static class MessageService
     /// </summary>
     /// <param name="message">メッセージ本文</param>
     /// <param name="title">タイトル（省略可）</param>
-    public static async void ShowWarning(string message, string title = "警告")
+    public static async Task ShowWarning(string message, string title = "警告")
     {
         Logger.Log($"警告メッセージ表示: {title} - {message}", LogLevel.Warning);
         var window = await GetActiveWindowAsync();
@@ -92,7 +92,7 @@ public static class MessageService
     /// <param name="context">エラーの文脈</param>
     /// <param name="ex">例外オブジェクト</param>
     /// <param name="title">タイトル（省略可）</param>
-    public static async void ShowException(string context, Exception ex, string title = "エラー")
+    public static async Task ShowException(string context, Exception ex, string title = "エラー")
     {
         Logger.LogException(context, ex);
         var message = $"{context}\n\n詳細: {ex.Message}";
@@ -109,7 +109,7 @@ public static class MessageService
     /// </summary>
     /// <param name="message">メッセージ本文</param>
     /// <param name="title">タイトル（省略可）</param>
-    public static async void ShowSuccess(string message, string title = "完了")
+    public static async Task ShowSuccess(string message, string title = "完了")
     {
         Logger.Log($"成功メッセージ表示: {title} - {message}");
         var window = await GetActiveWindowAsync();

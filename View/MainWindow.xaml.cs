@@ -60,7 +60,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            Util.MessageService.ShowException("アプリケーションの初期化に失敗しました", ex);
+            _ = Util.MessageService.ShowException("アプリケーションの初期化に失敗しました", ex);
             throw;
         }
     }

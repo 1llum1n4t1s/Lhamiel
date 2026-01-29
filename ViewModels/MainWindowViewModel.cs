@@ -219,7 +219,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageService.ShowException("設定の保存に失敗しました", ex);
+            _ = MessageService.ShowException("設定の保存に失敗しました", ex);
         }
     }
 
@@ -235,13 +235,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             if (ShortcutCreator.CreateDesktopShortcut())
-                MessageService.ShowSuccess("デスクトップにショートカットを作成しました。");
+                _ = MessageService.ShowSuccess("デスクトップにショートカットを作成しました。");
             else
-                MessageService.ShowError("ショートカットの作成に失敗しました。");
+                _ = MessageService.ShowError("ショートカットの作成に失敗しました。");
         }
         catch (Exception ex)
         {
-            MessageService.ShowException("ショートカットの作成中にエラーが発生しました", ex);
+            _ = MessageService.ShowException("ショートカットの作成中にエラーが発生しました", ex);
         }
     }
 
@@ -254,7 +254,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageService.ShowException("全選択処理でエラーが発生しました", ex);
+            _ = MessageService.ShowException("全選択処理でエラーが発生しました", ex);
         }
     }
 
@@ -267,7 +267,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageService.ShowException("全解除処理でエラーが発生しました", ex);
+            _ = MessageService.ShowException("全解除処理でエラーが発生しました", ex);
         }
     }
 
@@ -280,7 +280,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (Avalonia.Application.Current is App { IsUpdateRestarting: true })
         {
             Logger.Log("アップデートのための再起動が予定されているため、新しい処理をスキップします。");
-            MessageService.ShowWarning("アップデートの適用準備が整いました。再起動後に再度お試しください。");
+            _ = MessageService.ShowWarning("アップデートの適用準備が整いました。再起動後に再度お試しください。");
             return;
         }
         ProgressWindow? progressWindow = null;
@@ -346,7 +346,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         catch (Exception ex)
         {
             Logger.LogException("ファイルの処理に失敗しました", ex);
-            MessageService.ShowException("ファイルの処理に失敗しました", ex);
+            _ = MessageService.ShowException("ファイルの処理に失敗しました", ex);
             progressWindow?.CloseSafe();
         }
     }
@@ -421,7 +421,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            MessageService.ShowException("関連付け設定の適用に失敗しました", ex);
+            _ = MessageService.ShowException("関連付け設定の適用に失敗しました", ex);
         }
     }
 
