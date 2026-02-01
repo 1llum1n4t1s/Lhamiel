@@ -69,18 +69,28 @@ public static class ArchiveProcessor
                 // 二重フォルダ構造を検出
                 var rootItemName = ArchiveExtractor.DetectDuplicateFolderStructure(filePath);
 
+                // ルート要素が複数かどうかを判定
+                var hasSingleRootItem = ArchiveExtractor.HasSingleRootItem(filePath);
+
+                // 出力先を決定
                 if (rootItemName != null)
                 {
-                    // 二重フォルダが検出された場合、直下に展開してリフトアップする
+                    // 二重フォルダが検出された場合：baseDirectoryに直接展開してリフトアップ
                     outputPath = baseDirectory;
                     Logger.Log($"スマート解凍適用: 二重フォルダ構造を検出 '{rootItemName}' -> {outputPath}");
                 }
+                else if (hasSingleRootItem)
+                {
+                    // ルート要素が1つだけ：baseDirectoryに直接展開
+                    outputPath = baseDirectory;
+                    Logger.Log($"単一ルート展開: 内容をそのまま展開 -> {outputPath}");
+                }
                 else
                 {
-                    // 通常の展開：アーカイブ名フォルダを作成
+                    // ルート要素が複数：アーカイブ名フォルダを作成して展開
                     var fileName = Path.GetFileNameWithoutExtension(filePath);
                     outputPath = Path.Combine(baseDirectory, fileName);
-                    Logger.Log($"通常解凍: アーカイブ名フォルダを作成 -> {outputPath}");
+                    Logger.Log($"複数ルート展開: アーカイブ名フォルダを作成 -> {outputPath}");
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();

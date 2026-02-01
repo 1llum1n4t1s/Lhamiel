@@ -602,7 +602,7 @@ public partial class App : Application
     /// </summary>
     private void OpenExtractedFolder(string archivePath, string outputDir, bool outputToSameDirectory)
     {
-        var extractionPath = ArchiveExtractor.GetOutputDirectory(archivePath, outputDir, outputToSameDirectory);
+        var extractionPath = ArchiveExtractor.GetBaseOutputDirectory(archivePath, outputDir, outputToSameDirectory);
         if (!string.IsNullOrWhiteSpace(extractionPath) && Directory.Exists(extractionPath))
         {
             FolderOpener.OpenFolder(extractionPath);
