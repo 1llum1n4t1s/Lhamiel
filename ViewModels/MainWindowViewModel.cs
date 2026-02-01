@@ -435,25 +435,12 @@ SOFTWARE.";
             {
                 // アーカイブの構造情報を再利用して、開くべきフォルダを決定
                 var structureInfo = result.StructureInfo;
-                var duplicateFolderName = structureInfo.DuplicateFolderName;
-
-                if (!string.IsNullOrEmpty(duplicateFolderName))
-                {
-                    // 二重フォルダの場合は、その内側のフォルダを開く
-                    var possibleDir = Path.Combine(targetPath, duplicateFolderName);
-                    if (Directory.Exists(possibleDir))
-                        targetPath = possibleDir;
-                }
-                else if (structureInfo.HasSingleRootItem)
+                if (structureInfo.HasSingleRootItem && !string.IsNullOrEmpty(structureInfo.SingleRootItemName))
                 {
                     // 単一ルート要素の場合は、そのフォルダを開く
-                    var singleRootItemName = structureInfo.SingleRootItemName;
-                    if (!string.IsNullOrEmpty(singleRootItemName))
-                    {
-                        var possibleDir = Path.Combine(targetPath, singleRootItemName);
-                        if (Directory.Exists(possibleDir))
-                            targetPath = possibleDir;
-                    }
+                    var possibleDir = Path.Combine(targetPath, structureInfo.SingleRootItemName);
+                    if (Directory.Exists(possibleDir))
+                        targetPath = possibleDir;
                 }
 
                 if (Directory.Exists(targetPath) && openedPaths.Add(targetPath))
