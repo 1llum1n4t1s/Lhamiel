@@ -85,91 +85,6 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
-    /// アーカイブのルート要素が単一かどうかを判定し、その名前を取得する
-    /// </summary>
-    /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <returns>単一のルート要素名（見つからないか複数の場合はnull）</returns>
-    public static string? GetSingleRootItemName(string archivePath)
-    {
-        // メソッド呼び出し: ファイルの存在確認
-        if (!File.Exists(archivePath)) return null;
-
-        try
-        {
-            // 変数: アーカイブリーダーの初期化。usingで確実に解放
-            using var reader = new ArchiveReader(archivePath);
-
-            // 変数: ルートアイテム名を保持するセット（大文字小文字を区別しない）
-            var rootItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            // メソッド呼び出し: アーカイブ内の全アイテムを走査
-            foreach (var item in reader.Items)
-            {
-                // パスを正規化（バックスラッシュをスラッシュに）
-                // 変数: 正規化されたパス
-                // メソッド呼び出し: Replaceを呼び出し
-                var path = item.FullName.Replace('\\', '/');
-
-                // 変数: パスをスラッシュで分割
-                // メソッド呼び出し: Splitを呼び出し
-                var parts = path.Split(['/'], StringSplitOptions.RemoveEmptyEntries);
-
-                if (parts.Length > 0)
-                {
-                    // 変数: ルート要素（最初のパーツ）
-                    var rootItem = parts[0];
-
-                    // システム管理用フォルダ（__MACOSXなど）は無視
-                    // メソッド呼び出し: 無視対象に含まれているか確認
-                    if (IgnoredSystemDirectories.Contains(rootItem))
-                    {
-                        continue;
-                    }
-
-                    // フォルダのみをルートアイテムとしてカウント
-                    // ファイルがルートにある場合は、スマート解凍を適用しない（nullを返す）
-                    if (parts.Length == 1 && !item.IsDirectory)
-                    {
-                        Logger.Log($"ルートにファイルが検出されました: {rootItem}。スマート解凍をスキップします。");
-                        return null;
-                    }
-
-                    // メソッド呼び出し: セットに追加
-                    rootItems.Add(rootItem);
-
-                    // 2つ以上見つかった時点でnull確定
-                    // プロパティ: アイテム数を確認
-                    if (rootItems.Count > 1)
-                    {
-                        return null;
-                    }
-                }
-            }
-
-            // アイテム数が1つの場合のみその名前を返す
-            // プロパティ: カウント確認。メソッド呼び出し: 最初（唯一）の要素を取得
-            return rootItems.Count == 1 ? rootItems.First() : null;
-        }
-        catch (Exception ex)
-        {
-            // メソッド呼び出し: ログの記録
-            Logger.Log($"アーカイブ構造解析エラー: {ex.Message}");
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// アーカイブのルート要素が単一かどうかを判定する
-    /// </summary>
-    /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <returns>ルート要素が単一の場合はtrue</returns>
-    public static bool HasSingleRootItem(string archivePath)
-    {
-        // メソッド呼び出し: ルートアイテム名を取得し、空でないか確認
-        return !string.IsNullOrEmpty(GetSingleRootItemName(archivePath));
-    }
-
-    /// <summary>
     /// アーカイブの先頭2階層の解析結果を保持するデータ構造
     /// </summary>
     private class ArchiveStructure
@@ -349,17 +264,6 @@ public static class ArchiveExtractor
 
         if (targetExists && parentWindow != null)
         {
-            // 保護されたディレクトリ（デスクトップ自体など）の場合は上書き確認（削除）をさせない
-            // メソッド呼び出し: 保護されたディレクトリかチェック
-            if (PathValidator.IsProtectedDirectory(outputPath))
-            {
-                // メソッド呼び出し: ログの記録
-                Logger.Log($"上書き不可: 保護されたディレクトリです: {outputPath}", LogLevel.Warning);
-
-                // 例外の投下
-                throw new InvalidOperationException($"'{outputPath}' はシステムによって保護されているため、上書き展開できません。別の場所を選択してください。");
-            }
-
             // メソッド呼び出し: ログの記録
             Logger.Log($"上書き確認ダイアログを表示します: {outputPath}");
 
@@ -455,64 +359,27 @@ public static class ArchiveExtractor
                 }
             }
 
-            // 上書きが許可された（または確認済み）の場合は既存の対象を削除
-            try
+            // 保護されたディレクトリ（デスクトップ自体など）の場合は上書き確認（削除）をさせない
+            // メソッド呼び出し: 保護されたディレクトリかチェック
+            if (PathValidator.IsProtectedDirectory(outputPath))
             {
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"既存の展開先を削除します: {outputPath}");
-
-                // メソッド呼び出し: ディレクトリの存在確認
-                if (Directory.Exists(outputPath))
-                {
-                    try
-                    {
-                        // メソッド呼び出し: ディレクトリを再帰的に削除
-                        Directory.Delete(outputPath, true);
-                    }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-                    {
-                        // メソッド呼び出し: ログの記録
-                        Logger.Log($"削除再試行（属性解除）: {outputPath}");
-
-                        // メソッド呼び出し: 読み取り専用属性を解除
-                        RemoveReadOnlyAttributes(outputPath);
-
-                        // メソッド呼び出し: OSのファイルロック解除を少し待機
-                        await Task.Delay(100, cancellationToken);
-
-                        // メソッド呼び出し: ディレクトリを再度削除試行
-                        Directory.Delete(outputPath, true);
-                    }
-                }
-                // メソッド呼び出し: ファイルの存在確認
-                else if (File.Exists(outputPath))
-                {
-                    // メソッド呼び出し: ファイルを削除
-                    File.Delete(outputPath);
-                }
-
-                // メソッド呼び出し: ログの記録
-                Logger.Log("既存の対象を正常に削除しました。");
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-            {
-                // メソッド呼び出し: ログの記録
-                Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
+                Logger.Log($"上書き不可: 保護されたディレクトリです: {outputPath}", LogLevel.Warning);
 
                 // 例外の投下
-                throw new InvalidOperationException($"展開先 '{Path.GetFileName(outputPath)}' が使用中か、削除権限がありません。", ex);
+                throw new InvalidOperationException($"'{outputPath}' はシステムによって保護されているため、上書き展開できません。別の場所を選択してください。");
             }
         }
 
+        // 変数: 一時展開先ディレクトリのパスを生成
+        // メソッド呼び出し: Path.GetTempPath と Guid を使用してユニークな一時ディレクトリ名を作成
+        var tempOutputPath = Path.Combine(Path.GetTempPath(), $"Lhamiel_Extract_{Guid.NewGuid():N}");
+
         try
         {
-            // 出力ディレクトリを作成
-            // メソッド呼び出し: ディレクトリの存在確認
-            if (!Directory.Exists(outputPath))
-            {
-                // メソッド呼び出し: ディレクトリを作成
-                Directory.CreateDirectory(outputPath);
-            }
+            // 一時出力ディレクトリを作成
+            // メソッド呼び出し: ディレクトリを作成
+            Directory.CreateDirectory(tempOutputPath);
 
             // メソッド呼び出し: キャンセルの確認
             cancellationToken.ThrowIfCancellationRequested();
@@ -522,7 +389,7 @@ public static class ArchiveExtractor
             using (var reader = new ArchiveReader(archivePath))
             {
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"展開処理開始: {archivePath}");
+                Logger.Log($"一時ディレクトリへの展開処理開始: {archivePath} -> {tempOutputPath}");
 
                 if (progressCallback != null)
                 {
@@ -569,7 +436,7 @@ public static class ArchiveExtractor
                     }, cancellationToken);
 
                     // メソッド呼び出し: アーカイブを保存
-                    reader.Save(outputPath, progress);
+                    reader.Save(tempOutputPath, progress);
 
                     // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）
                     cancellationToken.ThrowIfCancellationRequested();
@@ -583,7 +450,7 @@ public static class ArchiveExtractor
                 else
                 {
                     // メソッド呼び出し: アーカイブを保存
-                    reader.Save(outputPath);
+                    reader.Save(tempOutputPath);
                 }
 
                 // reader自体の生存も保証
@@ -592,9 +459,6 @@ public static class ArchiveExtractor
 
             // メソッド呼び出し: キャンセルの確認
             cancellationToken.ThrowIfCancellationRequested();
-
-            // メソッド呼び出し: ログの記録
-            Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
 
             // スマート解凍：二重フォルダの場合はリフトアップを行う
             if (needsLiftUp)
@@ -605,52 +469,21 @@ public static class ArchiveExtractor
 
                 if (rootItemName != null)
                 {
-                    var rootPath = Path.Combine(outputPath, rootItemName);
+                    var rootPath = Path.Combine(tempOutputPath, rootItemName);
                     if (Directory.Exists(rootPath))
                     {
                         Logger.Log($"スマート解凍：二重フォルダ '{rootItemName}' をリフトアップします");
 
-                        // リフトアップ前の競合チェック
-                        var conflicts = new List<string>();
+                        // ルート要素の中身を tempOutputPath 直下に移動
                         foreach (var dir in Directory.GetDirectories(rootPath))
                         {
-                            var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
-                            if (Directory.Exists(destDir)) conflicts.Add(destDir);
-                        }
-                        foreach (var file in Directory.GetFiles(rootPath))
-                        {
-                            var destFile = Path.Combine(outputPath, Path.GetFileName(file));
-                            if (File.Exists(destFile)) conflicts.Add(destFile);
-                        }
-
-                        // 競合がある場合は確認ダイアログを表示
-                        if (conflicts.Count > 0)
-                        {
-                            Logger.Log($"リフトアップ時に競合が検出されました: {conflicts.Count}件");
-                            var conflictMessage = conflicts.Count == 1
-                                ? $"リフトアップ時に既存のアイテム '{Path.GetFileName(conflicts[0])}' と競合します。\n\n上書きしてリフトアップを続行しますか？"
-                                : $"リフトアップ時に {conflicts.Count} 個の既存アイテムと競合します。\n\n上書きしてリフトアップを続行しますか？";
-                            var canLiftUp = await Dispatcher.UIThread.InvokeAsync(async () =>
-                                await MessageService.ShowYesNoQuestionAsync(conflictMessage, "リフトアップの確認", parentWindow));
-
-                            if (!canLiftUp)
-                            {
-                                // メソッド呼び出し: ログの記録
-                                Logger.Log("ユーザーがリフトアップをキャンセルしました。二重フォルダのまま残します。");
-                                return;
-                            }
-                        }
-
-                        // ルート要素の中身を outputPath 直下に移動
-                        foreach (var dir in Directory.GetDirectories(rootPath))
-                        {
-                            var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+                            var destDir = Path.Combine(tempOutputPath, Path.GetFileName(dir));
                             if (Directory.Exists(destDir)) Directory.Delete(destDir, true);
                             Directory.Move(dir, destDir);
                         }
                         foreach (var file in Directory.GetFiles(rootPath))
                         {
-                            var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                            var destFile = Path.Combine(tempOutputPath, Path.GetFileName(file));
                             if (File.Exists(destFile)) File.Delete(destFile);
                             File.Move(file, destFile);
                         }
@@ -661,52 +494,107 @@ public static class ArchiveExtractor
                     }
                 }
             }
-        }
-        catch (OperationCanceledException)
-        {
+
+            // メソッド呼び出し: キャンセルの確認
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // 最終的な展開先への移動処理
             // メソッド呼び出し: ログの記録
-            Logger.Log($"展開処理がキャンセルされました。クリーンアップを試行: {outputPath}");
+            Logger.Log($"一時ディレクトリから最終展開先へ移動します: {tempOutputPath} -> {outputPath}");
 
-            // 保護されたディレクトリは絶対に削除しない
-            // メソッド呼び出し: 保護されたディレクトリかチェック
-            if (PathValidator.IsProtectedDirectory(outputPath))
-            {
-                // メソッド呼び出し: ログの記録
-                Logger.Log($"クリーンアップをスキップ: 保護されたディレクトリです: {outputPath}", LogLevel.Warning);
-                throw;
-            }
-
+            // 上書きが許可された（または確認済み）の場合は既存の対象を削除
             try
             {
                 // メソッド呼び出し: ディレクトリの存在確認
                 if (Directory.Exists(outputPath))
                 {
-                    // メソッド呼び出し: 属性を解除して削除
-                    RemoveReadOnlyAttributes(outputPath);
-                    Directory.Delete(outputPath, true);
+                    try
+                    {
+                        // メソッド呼び出し: ディレクトリを再帰的に削除
+                        Directory.Delete(outputPath, true);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        // メソッド呼び出し: ログの記録
+                        Logger.Log($"削除再試行（属性解除）: {outputPath}");
 
-                    // メソッド呼び出し: ログの記録
-                    Logger.Log($"キャンセルされた展開先を削除しました: {outputPath}");
+                        // メソッド呼び出し: 読み取り専用属性を解除
+                        RemoveReadOnlyAttributes(outputPath);
+
+                        // メソッド呼び出し: OSのファイルロック解除を少し待機
+                        await Task.Delay(100, cancellationToken);
+
+                        // メソッド呼び出し: ディレクトリを再度削除試行
+                        Directory.Delete(outputPath, true);
+                    }
                 }
                 // メソッド呼び出し: ファイルの存在確認
                 else if (File.Exists(outputPath))
                 {
                     // メソッド呼び出し: ファイルを削除
                     File.Delete(outputPath);
-
-                    // メソッド呼び出し: ログの記録
-                    Logger.Log($"キャンセルされた展開ファイルを削除しました: {outputPath}");
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"キャンセル時のクリーンアップに失敗しました: {outputPath}, {ex.Message}", LogLevel.Warning);
+                Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
+
+                // 例外の投下
+                throw new InvalidOperationException($"展開先 '{Path.GetFileName(outputPath)}' が使用中か、削除権限がありません。", ex);
+            }
+
+            // メソッド呼び出し: 展開先ディレクトリの親ディレクトリを作成
+            var parentDir = Path.GetDirectoryName(outputPath);
+            if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir))
+            {
+                Directory.CreateDirectory(parentDir);
+            }
+
+            // メソッド呼び出し: 一時ディレクトリを最終展開先に移動（アトミックな操作を期待）
+            Directory.Move(tempOutputPath, outputPath);
+
+            // メソッド呼び出し: ログの記録
+            Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
+        }
+        catch (OperationCanceledException)
+        {
+            // メソッド呼び出し: ログの記録
+            Logger.Log($"展開処理がキャンセルされました。一時ディレクトリを削除: {tempOutputPath}");
+
+            try
+            {
+                // メソッド呼び出し: 一時ディレクトリを削除
+                if (Directory.Exists(tempOutputPath))
+                {
+                    // メソッド呼び出し: 属性を解除して削除
+                    RemoveReadOnlyAttributes(tempOutputPath);
+                    Directory.Delete(tempOutputPath, true);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                // メソッド呼び出し: ログの記録
+                Logger.Log($"キャンセル時の一時ディレクトリ削除に失敗しました: {tempOutputPath}, {ex.Message}", LogLevel.Warning);
             }
             throw;
         }
         catch (Exception ex)
         {
+            // 一時ディレクトリのクリーンアップ
+            try
+            {
+                if (Directory.Exists(tempOutputPath))
+                {
+                    RemoveReadOnlyAttributes(tempOutputPath);
+                    Directory.Delete(tempOutputPath, true);
+                }
+            }
+            catch (Exception cleanupEx)
+            {
+                Logger.Log($"エラー発生時の一時ディレクトリ削除に失敗しました: {tempOutputPath}, {cleanupEx.Message}", LogLevel.Warning);
+            }
+
             // 変数: エラー情報の分析結果
             // メソッド呼び出し: エラー内容を分析
             var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath);

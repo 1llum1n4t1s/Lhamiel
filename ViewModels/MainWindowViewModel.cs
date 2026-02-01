@@ -434,15 +434,18 @@ SOFTWARE.";
             var targetPath = baseDir;
             try
             {
-                var rootItemName = ArchiveExtractor.GetSingleRootItemName(archivePath);
-                if (!string.IsNullOrEmpty(rootItemName))
+                // メソッド呼び出し: 二重フォルダ構造を検出
+                var duplicateFolderName = ArchiveExtractor.DetectDuplicateFolderStructure(archivePath);
+                if (!string.IsNullOrEmpty(duplicateFolderName))
                 {
-                    var possibleDir = Path.Combine(baseDir, rootItemName);
+                    // 二重フォルダの場合は、その内側のフォルダを開く
+                    var possibleDir = Path.Combine(baseDir, duplicateFolderName);
                     if (Directory.Exists(possibleDir))
                         targetPath = possibleDir;
                 }
                 else
                 {
+                    // 二重フォルダでない場合は、アーカイブ名フォルダ（または基準ディレクトリ）を開く
                     var fileName = Path.GetFileNameWithoutExtension(archivePath);
                     var possibleDir = Path.Combine(baseDir, fileName);
                     if (Directory.Exists(possibleDir))
