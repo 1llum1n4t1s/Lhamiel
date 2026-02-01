@@ -124,9 +124,12 @@ public static class ArchiveExtractor
 
             var rootFolders = structure.RootFolders;
             var rootFiles = structure.RootFiles;
-            var rootItemsCount = rootFolders.Count + rootFiles.Count;
+
+            var allRootItems = new HashSet<string>(rootFolders, StringComparer.OrdinalIgnoreCase);
+            allRootItems.UnionWith(rootFiles);
+            var rootItemsCount = allRootItems.Count;
             var hasSingleRootItem = rootItemsCount == 1;
-            var singleRootItemName = rootFolders.FirstOrDefault() ?? rootFiles.FirstOrDefault();
+            var singleRootItemName = allRootItems.FirstOrDefault();
 
             string? duplicateFolderName = null;
 
@@ -138,7 +141,7 @@ public static class ArchiveExtractor
                 // 第2階層にフォルダが1つのみで、ファイルがないことを確認
                 if (structure.SecondLevelFolders.TryGetValue(rootFolderName, out var slFolders) &&
                     slFolders.Count == 1 &&
-                    (!structure.SecondLevelFiles.TryGetValue(rootFolderName, out var slFiles) || !slFiles.Any()))
+                    !(structure.SecondLevelFiles.TryGetValue(rootFolderName, out var slFiles) && slFiles.Any()))
                 {
                     var secondLevelFolderName = slFolders.First();
 
