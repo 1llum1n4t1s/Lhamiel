@@ -66,11 +66,10 @@ public static class ArchiveProcessor
                 // 1. スマート解凍の判定 (バックグラウンドで実行)
                 var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(filePath, outputDir, outputToSameDirectory);
 
-                // 二重フォルダ構造を検出
-                var rootItemName = ArchiveExtractor.DetectDuplicateFolderStructure(filePath);
-
-                // ルート要素が複数かどうかを判定
-                var hasSingleRootItem = ArchiveExtractor.HasSingleRootItem(filePath);
+                // アーカイブの構造を一度だけ解析
+                var structureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
+                var rootItemName = structureInfo.DuplicateFolderName;
+                var hasSingleRootItem = structureInfo.HasSingleRootItem;
 
                 // 出力先を決定
                 if (rootItemName != null)

@@ -434,8 +434,10 @@ SOFTWARE.";
             var targetPath = baseDir;
             try
             {
-                // メソッド呼び出し: 二重フォルダ構造を検出
-                var duplicateFolderName = ArchiveExtractor.DetectDuplicateFolderStructure(archivePath);
+                // メソッド呼び出し: アーカイブの構造を一度だけ解析
+                var structureInfo = ArchiveExtractor.GetArchiveStructureInfo(archivePath);
+                var duplicateFolderName = structureInfo.DuplicateFolderName;
+
                 if (!string.IsNullOrEmpty(duplicateFolderName))
                 {
                     // 二重フォルダの場合は、その内側のフォルダを開く
@@ -443,9 +445,20 @@ SOFTWARE.";
                     if (Directory.Exists(possibleDir))
                         targetPath = possibleDir;
                 }
+                else if (structureInfo.HasSingleRootItem)
+                {
+                    // メソッド呼び出し: 単一ルート要素の名前を取得
+                    var singleRootItemName = structureInfo.SingleRootItemName;
+                    if (!string.IsNullOrEmpty(singleRootItemName))
+                    {
+                        var possibleDir = Path.Combine(baseDir, singleRootItemName);
+                        if (Directory.Exists(possibleDir))
+                            targetPath = possibleDir;
+                    }
+                }
                 else
                 {
-                    // 二重フォルダでない場合は、アーカイブ名フォルダ（または基準ディレクトリ）を開く
+                    // 複数ルート要素の場合は、アーカイブ名フォルダを開く
                     var fileName = Path.GetFileNameWithoutExtension(archivePath);
                     var possibleDir = Path.Combine(baseDir, fileName);
                     if (Directory.Exists(possibleDir))

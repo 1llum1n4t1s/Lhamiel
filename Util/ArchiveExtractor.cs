@@ -87,6 +87,87 @@ public static class ArchiveExtractor
     /// <summary>
     /// アーカイブの先頭2階層の解析結果を保持するデータ構造
     /// </summary>
+    public class ArchiveStructureInfo
+    {
+        /// <summary>
+        /// プロパティ: 二重フォルダ構造が検出された場合の内側のフォルダ名
+        /// </summary>
+        public string? DuplicateFolderName { get; init; }
+
+        /// <summary>
+        /// プロパティ: ルートレベルに単一のアイテムのみが存在するかどうか
+        /// </summary>
+        public bool HasSingleRootItem { get; init; }
+
+        /// <summary>
+        /// プロパティ: ルートレベルが単一アイテムの場合、その名前
+        /// </summary>
+        public string? SingleRootItemName { get; init; }
+    }
+
+    /// <summary>
+    /// アーカイブの構造を一度の解析で取得する
+    /// </summary>
+    /// <param name="archivePath">アーカイブファイルのパス</param>
+    /// <returns>解析結果を格納したArchiveStructureInfo</returns>
+    public static ArchiveStructureInfo GetArchiveStructureInfo(string archivePath)
+    {
+        if (!File.Exists(archivePath))
+        {
+            return new ArchiveStructureInfo { HasSingleRootItem = false };
+        }
+
+        try
+        {
+            using var reader = new ArchiveReader(archivePath);
+            var structure = ParseArchiveFirstTwoLevels(reader);
+
+            var rootFolders = structure.RootFolders;
+            var rootFiles = structure.RootFiles;
+            var rootItemsCount = rootFolders.Count + rootFiles.Count;
+            var hasSingleRootItem = rootItemsCount == 1;
+            var singleRootItemName = rootFolders.FirstOrDefault() ?? rootFiles.FirstOrDefault();
+
+            string? duplicateFolderName = null;
+
+            // 二重フォルダ構造の判定
+            if (rootFolders.Count == 1 && !rootFiles.Any())
+            {
+                var rootFolderName = rootFolders.First();
+
+                // 第2階層にフォルダが1つのみで、ファイルがないことを確認
+                if (structure.SecondLevelFolders.TryGetValue(rootFolderName, out var slFolders) &&
+                    slFolders.Count == 1 &&
+                    (!structure.SecondLevelFiles.TryGetValue(rootFolderName, out var slFiles) || !slFiles.Any()))
+                {
+                    var secondLevelFolderName = slFolders.First();
+
+                    // ルートフォルダ名と第2階層フォルダ名が同一か確認
+                    if (string.Equals(rootFolderName, secondLevelFolderName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        duplicateFolderName = secondLevelFolderName;
+                        Logger.Log($"二重フォルダ構造を検出: {rootFolderName}/{secondLevelFolderName}");
+                    }
+                }
+            }
+
+            return new ArchiveStructureInfo
+            {
+                DuplicateFolderName = duplicateFolderName,
+                HasSingleRootItem = hasSingleRootItem,
+                SingleRootItemName = singleRootItemName
+            };
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"アーカイブ構造解析エラー: {ex.Message}");
+            return new ArchiveStructureInfo { HasSingleRootItem = false };
+        }
+    }
+
+    /// <summary>
+    /// アーカイブの先頭2階層の解析結果を保持する内部データ構造
+    /// </summary>
     private class ArchiveStructure
     {
         /// <summary>
@@ -175,87 +256,6 @@ public static class ArchiveExtractor
         }
 
         return structure;
-    }
-
-    /// <summary>
-    /// アーカイブのルートレベルに単一のアイテム（フォルダまたはファイル）しかないかを判定する
-    /// </summary>
-    /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <returns>ルートレベルに単一アイテムのみの場合はtrue、複数アイテムの場合はfalse</returns>
-    public static bool HasSingleRootItem(string archivePath)
-    {
-        if (!File.Exists(archivePath)) return false;
-
-        try
-        {
-            using var reader = new ArchiveReader(archivePath);
-            var structure = ParseArchiveFirstTwoLevels(reader);
-
-            var rootItemsCount = structure.RootFolders.Count + structure.RootFiles.Count;
-            return rootItemsCount == 1;
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"ルート判定エラー: {ex.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// アーカイブ内に二重フォルダ構造が存在するかを判定する
-    /// 二重フォルダ: ルートに単一フォルダがあり、その中に同名の単一フォルダのみが存在する状態
-    /// </summary>
-    /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <returns>二重フォルダの場合は内側のフォルダ名、それ以外はnull</returns>
-    public static string? DetectDuplicateFolderStructure(string archivePath)
-    {
-        // メソッド呼び出し: ファイルの存在確認
-        if (!File.Exists(archivePath)) return null;
-
-        try
-        {
-            // 変数: アーカイブリーダーの初期化。usingで確実に解放
-            using var reader = new ArchiveReader(archivePath);
-            // メソッド呼び出し: アーカイブの先頭2階層を解析
-            var structure = ParseArchiveFirstTwoLevels(reader);
-
-            // 二重フォルダ構造の条件確認
-            // 条件1: ルートフォルダが1つのみ
-            // 条件2: ルートレベルにファイルがない
-            if (structure.RootFolders.Count != 1 || structure.RootFiles.Any()) return null;
-
-            var rootFolderName = structure.RootFolders.First();
-
-            // 条件3: 第2階層にフォルダが1つのみ
-            if (!structure.SecondLevelFolders.TryGetValue(rootFolderName, out var slFolders) || slFolders.Count != 1)
-            {
-                return null;
-            }
-
-            // 条件4: 第2階層にファイルがない
-            if (structure.SecondLevelFiles.TryGetValue(rootFolderName, out var slFiles) && slFiles.Any())
-            {
-                return null;
-            }
-
-            var secondLevelFolderName = slFolders.First();
-
-            // 条件5: ルートフォルダ名と第2階層フォルダ名が同一
-            if (!string.Equals(rootFolderName, secondLevelFolderName, StringComparison.OrdinalIgnoreCase))
-            {
-                return null;
-            }
-
-            // 二重フォルダ構造を検出
-            Logger.Log($"二重フォルダ構造を検出: {rootFolderName}/{secondLevelFolderName}");
-            return secondLevelFolderName;
-        }
-        catch (Exception ex)
-        {
-            // メソッド呼び出し: ログの記録
-            Logger.Log($"二重フォルダ構造解析エラー: {ex.Message}");
-            return null;
-        }
     }
 
     /// <summary>
@@ -487,7 +487,8 @@ public static class ArchiveExtractor
             // スマート解凍：二重フォルダの場合はリフトアップを行う
             if (needsLiftUp)
             {
-                var rootItemName = DetectDuplicateFolderStructure(archivePath);
+                var structureInfo = GetArchiveStructureInfo(archivePath);
+                var rootItemName = structureInfo.DuplicateFolderName;
 
                 if (rootItemName != null)
                 {
@@ -517,6 +518,7 @@ public static class ArchiveExtractor
                             }
 
                             // 空になった内側フォルダを削除
+                            RemoveReadOnlyAttributes(innerFolderPath);
                             Directory.Delete(innerFolderPath, true);
 
                             // 一時ディレクトリの中身を外側のフォルダ(rootPath)に移動

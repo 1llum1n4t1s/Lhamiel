@@ -147,7 +147,7 @@ public static bool HasSingleRootItem(string archivePath)
    - ルート要素が1つだけの場合：`baseDirectory` に直接展開
    - ルート要素が複数の場合：`baseDirectory/アーカイブ名` に展開
 
-### 4. リフトアップ処理
+### 5. リフトアップ処理
 
 **場所**: `Util/ArchiveExtractor.cs` の `ExtractArchive()`メソッド内
 
