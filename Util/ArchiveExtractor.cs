@@ -22,7 +22,7 @@ public static class ArchiveExtractor
     /// <summary>
     /// 定数: スマート解凍判定用：無視するシステムディレクトリ名
     /// </summary>
-    private static readonly string[] IgnoredSystemDirectories = ["__MACOSX"];
+    private static readonly HashSet<string> IgnoredSystemDirectories = new(StringComparer.OrdinalIgnoreCase) { "__MACOSX" };
 
     /// <summary>
     /// 指定されたファイルがサポートされているアーカイブ形式かどうかを確認する
@@ -636,7 +636,7 @@ public static class ArchiveExtractor
                 foreach (var dir in Directory.GetDirectories(tempOutputPath))
                 {
                     var dirName = Path.GetFileName(dir);
-                    if (IgnoredSystemDirectories.Any(ignored => string.Equals(dirName, ignored, StringComparison.OrdinalIgnoreCase)))
+                    if (IgnoredSystemDirectories.Contains(dirName))
                     {
                         continue;
                     }
