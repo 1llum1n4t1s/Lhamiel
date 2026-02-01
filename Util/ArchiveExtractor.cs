@@ -401,16 +401,6 @@ public static class ArchiveExtractor
         // メソッド呼び出し: ログの記録
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}, rootItem={rootItemNameForCleanup ?? "null"}");
 
-        // スマート解凍の自動判定（引数で指定されていない場合）
-        if (rootItemNameForCleanup == null)
-        {
-            rootItemNameForCleanup = GetSingleRootItemName(archivePath);
-            if (rootItemNameForCleanup != null)
-            {
-                Logger.Log($"スマート解凍を自動判定しました: {rootItemNameForCleanup}");
-            }
-        }
-
         // メソッド呼び出し: ファイルの存在確認
         if (!File.Exists(archivePath))
         {
