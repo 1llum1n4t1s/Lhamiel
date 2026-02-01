@@ -104,6 +104,33 @@ public class ArchiveExtractorTests
     }
 
     /// <summary>
+    /// テスト用のZIPファイルを作成する（__MACOSXとProjectDがルートに並ぶ）
+    /// </summary>
+    /// <param name="testDir">テスト用ディレクトリ</param>
+    /// <returns>作成されたZIPファイルのパス</returns>
+    private static string CreateTestZipWithMacOsxAndProject(string testDir)
+    {
+        var parentDir = Path.Combine(testDir, "temp_for_projectd_zip");
+        var macosxDir = Path.Combine(parentDir, "__MACOSX");
+        var projectDir = Path.Combine(parentDir, "ProjectD");
+        var srcDir = Path.Combine(projectDir, "src");
+
+        Directory.CreateDirectory(macosxDir);
+        Directory.CreateDirectory(srcDir);
+
+        File.WriteAllText(Path.Combine(macosxDir, ".DS_Store"), "macOS metadata");
+        File.WriteAllText(Path.Combine(projectDir, "README.md"), "Project D Readme");
+        File.WriteAllText(Path.Combine(srcDir, "main.txt"), "Source content");
+
+        var zipPath = Path.Combine(testDir, "ProjectD.zip");
+        ZipFile.CreateFromDirectory(parentDir, zipPath);
+
+        Directory.Delete(parentDir, true);
+
+        return zipPath;
+    }
+
+    /// <summary>
     /// テスト用のZIPファイルを作成する（再帰的な同名フォルダのネスト）
     /// </summary>
     /// <param name="testDir">テスト用ディレクトリ</param>
@@ -132,6 +159,84 @@ public class ArchiveExtractorTests
         Directory.Delete(parentDir, true);
 
         return zipPath;
+    }
+
+    /// <summary>
+    /// デスクトップに上書き対象のフォルダがない場合、上書き確認ダイアログを表示しないこと（過去の不具合の回帰防止）
+    /// </summary>
+    [Fact]
+    public void ShouldShowOverwriteDialog_WhenOutputPathExistsButOverwriteTargetDoesNotExist_ReturnsFalse()
+    {
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            // Arrange: outputPath（親フォルダ＝デスクトップ相当）は存在するが、実際の上書き対象（ProjectD）は存在しない
+            var outputPath = tempDir;
+            var overwriteTargetPath = Path.Combine(outputPath, "ProjectD");
+            var overwriteCheckPaths = new[] { overwriteTargetPath };
+
+            Assert.True(Directory.Exists(outputPath), "outputPath should exist (like Desktop)");
+            Assert.False(Directory.Exists(overwriteTargetPath), "ProjectD should NOT exist on outputPath");
+
+            // Act
+            var result = ArchiveExtractor.ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths);
+
+            // Assert: 上書き対象が存在しないためダイアログを表示すべきでない
+            Assert.False(result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// overwriteCheckPaths未指定でoutputPathが存在する場合、ダイアログを表示すること
+    /// </summary>
+    [Fact]
+    public void ShouldShowOverwriteDialog_WhenOutputPathExistsAndNoOverwriteCheckPaths_ReturnsTrue()
+    {
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var outputPath = tempDir;
+            Assert.True(Directory.Exists(outputPath));
+
+            var result = ArchiveExtractor.ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths: null);
+
+            Assert.True(result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// overwriteCheckPaths内のいずれかが存在する場合、ダイアログを表示すること
+    /// </summary>
+    [Fact]
+    public void ShouldShowOverwriteDialog_WhenOverwriteTargetExists_ReturnsTrue()
+    {
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var outputPath = tempDir;
+            var existingFolder = Path.Combine(outputPath, "ExistingProject");
+            Directory.CreateDirectory(existingFolder);
+            var overwriteCheckPaths = new[] { existingFolder };
+
+            var result = ArchiveExtractor.ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths);
+
+            Assert.True(result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
     }
 
     [Fact]
@@ -465,6 +570,48 @@ public class ArchiveExtractorTests
 
             Console.WriteLine($"\n✅ Test passed: Multiple root items were correctly extracted");
             Console.WriteLine();
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task ExtractArchive_WithMacOsxFolder_ExcludesMacOsxFromOutput()
+    {
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var zipPath = CreateTestZipWithMacOsxAndProject(tempDir);
+            var baseOutputDir = Path.Combine(tempDir, "extract_output");
+
+            var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(zipPath, baseOutputDir, false);
+            var structureInfo = ArchiveExtractor.GetArchiveStructureInfo(zipPath);
+            var rootItemName = structureInfo.DuplicateFolderName;
+            var hasSingleRootItem = structureInfo.HasSingleRootItem;
+
+            var outputPath = rootItemName != null ? baseDirectory
+                : hasSingleRootItem ? baseDirectory
+                : Path.Combine(baseDirectory, Path.GetFileNameWithoutExtension(zipPath));
+
+            IReadOnlyList<string>? overwriteCheckPaths = null;
+            var topLevelName = rootItemName ?? structureInfo.SingleRootItemName;
+            if (!string.IsNullOrEmpty(topLevelName))
+            {
+                overwriteCheckPaths = [Path.Combine(outputPath, topLevelName)];
+            }
+
+            await ArchiveExtractor.ExtractArchive(zipPath, outputPath, null, null, false, TestContext.Current.CancellationToken, rootItemName, overwriteCheckPaths);
+
+            var projectDPath = Path.Combine(outputPath, "ProjectD");
+            var macOsxPath = Path.Combine(outputPath, "__MACOSX");
+
+            Assert.True(Directory.Exists(projectDPath), "ProjectD folder should exist in output");
+            Assert.False(Directory.Exists(macOsxPath), "__MACOSX folder must not be extracted to output");
+            Assert.True(File.Exists(Path.Combine(projectDPath, "README.md")), "ProjectD/README.md should exist");
+            Assert.True(Directory.Exists(Path.Combine(projectDPath, "src")), "ProjectD/src should exist");
         }
         finally
         {

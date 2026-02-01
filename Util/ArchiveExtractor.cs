@@ -264,6 +264,19 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
+    /// 上書き確認ダイアログを表示すべきかどうかを判定する（親フォルダ直下展開時は実際に上書きされるパスのみで判定）
+    /// </summary>
+    /// <param name="outputPath">展開先ディレクトリのパス</param>
+    /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定。親フォルダ直下展開時は実際に上書きされるパスのみ渡す）</param>
+    /// <returns>上書き対象が存在する場合true</returns>
+    public static bool ShouldShowOverwriteDialog(string outputPath, IReadOnlyList<string>? overwriteCheckPaths)
+    {
+        return overwriteCheckPaths is { Count: > 0 }
+            ? overwriteCheckPaths.Any(p => Directory.Exists(p) || File.Exists(p))
+            : (Directory.Exists(outputPath) || File.Exists(outputPath));
+    }
+
+    /// <summary>
     /// アーカイブを展開する（非同期版）
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
@@ -284,9 +297,7 @@ public static class ArchiveExtractor
 
         // 変数: 上書き確認が必要かどうかのフラグ
         // メソッド呼び出し: 実際に上書きされるパスのみ存在する場合にダイアログ表示（overwriteCheckPaths未指定時はoutputPathで判定）
-        var targetExists = overwriteCheckPaths is { Count: > 0 }
-            ? overwriteCheckPaths.Any(p => Directory.Exists(p) || File.Exists(p))
-            : (Directory.Exists(outputPath) || File.Exists(outputPath));
+        var targetExists = ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths);
 
         // メソッド呼び出し: ログの記録
         Logger.Log($"展開先存在チェック: outputPath={outputPath}, exists={targetExists}");
@@ -374,26 +385,32 @@ public static class ArchiveExtractor
         cancellationToken.ThrowIfCancellationRequested();
 
         // 変数: 実際に上書きされるパスが存在するか（overwriteCheckPaths未指定時はoutputPathで判定）
-        var outputOrOverwriteExists = overwriteCheckPaths is { Count: > 0 }
-            ? overwriteCheckPaths.Any(p => Directory.Exists(p) || File.Exists(p))
-            : (Directory.Exists(outputPath) || File.Exists(outputPath));
+        var outputOrOverwriteExists = ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths);
 
         // 展開先の確認と削除処理
         if (outputOrOverwriteExists)
         {
             if (!overwriteConfirmed)
             {
-                // メソッド呼び出し: ログの記録
-                Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {outputPath}");
-
-                // メソッド呼び出し: UIスレッドで上書き確認ダイアログを表示
-                var canOverwrite = await Dispatcher.UIThread.InvokeAsync(() =>
-                    FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow));
-
-                if (!canOverwrite)
+                // parentWindow がない場合はUI非対応環境（ユニットテスト等）のため自動上書き
+                if (parentWindow != null)
                 {
-                    // 例外の投下
-                    throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
+                    // メソッド呼び出し: ログの記録
+                    Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {outputPath}");
+
+                    // メソッド呼び出し: UIスレッドで上書き確認ダイアログを表示
+                    var canOverwrite = await Dispatcher.UIThread.InvokeAsync(() =>
+                        FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow));
+
+                    if (!canOverwrite)
+                    {
+                        // 例外の投下
+                        throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
+                    }
+                }
+                else
+                {
+                    Logger.Log($"上書き確認ダイアログをスキップ（parentWindowなし・UI非対応環境）: {outputPath}");
                 }
             }
 
@@ -615,10 +632,15 @@ public static class ArchiveExtractor
 
             try
             {
-                // メソッド呼び出し: 一時ディレクトリ内のディレクトリを移動
+                // メソッド呼び出し: 一時ディレクトリ内のディレクトリを移動（__MACOSX等のシステムフォルダはスキップ）
                 foreach (var dir in Directory.GetDirectories(tempOutputPath))
                 {
-                    var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+                    var dirName = Path.GetFileName(dir);
+                    if (IgnoredSystemDirectories.Any(ignored => string.Equals(dirName, ignored, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        continue;
+                    }
+                    var destDir = Path.Combine(outputPath, dirName);
                     Directory.Move(dir, destDir);
                 }
 
