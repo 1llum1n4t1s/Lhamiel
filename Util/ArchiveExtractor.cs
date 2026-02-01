@@ -329,24 +329,20 @@ public static class ArchiveExtractor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="rootItemNameForCleanup">キャンセル時に削除すべき単一ルートアイテム名（スマート解凍用）</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, string? rootItemNameForCleanup = null)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, bool needsLiftUp = false)
     {
         // メソッド呼び出し: ログの記録
-        Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}, rootItem={rootItemNameForCleanup ?? "null"}");
+        Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}, needsLiftUp={needsLiftUp}");
 
         // メソッド呼び出し: キャンセルの確認
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 変数: 実際の展開先ターゲットパス
-        // 三項演算子を使用してパスを構築
-        var actualTargetDir = rootItemNameForCleanup != null ? Path.Combine(outputPath, rootItemNameForCleanup) : outputPath;
-
         // 変数: 上書き確認が必要かどうかのフラグ
         // メソッド呼び出し: ディレクトリまたはファイルの存在確認
-        var targetExists = Directory.Exists(actualTargetDir) || File.Exists(actualTargetDir);
+        var targetExists = Directory.Exists(outputPath) || File.Exists(outputPath);
 
         // メソッド呼び出し: ログの記録
-        Logger.Log($"展開先存在チェック: actualTargetDir={actualTargetDir}, exists={targetExists}");
+        Logger.Log($"展開先存在チェック: outputPath={outputPath}, exists={targetExists}");
 
         // 変数: 上書きが確定したかどうかのフラグ
         var overwriteConfirmed = false;
@@ -355,22 +351,22 @@ public static class ArchiveExtractor
         {
             // 保護されたディレクトリ（デスクトップ自体など）の場合は上書き確認（削除）をさせない
             // メソッド呼び出し: 保護されたディレクトリかチェック
-            if (PathValidator.IsProtectedDirectory(actualTargetDir))
+            if (PathValidator.IsProtectedDirectory(outputPath))
             {
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"上書き不可: 保護されたディレクトリです: {actualTargetDir}", LogLevel.Warning);
+                Logger.Log($"上書き不可: 保護されたディレクトリです: {outputPath}", LogLevel.Warning);
 
                 // 例外の投下
-                throw new InvalidOperationException($"'{actualTargetDir}' はシステムによって保護されているため、上書き展開できません。別の場所を選択してください。");
+                throw new InvalidOperationException($"'{outputPath}' はシステムによって保護されているため、上書き展開できません。別の場所を選択してください。");
             }
 
             // メソッド呼び出し: ログの記録
-            Logger.Log($"上書き確認ダイアログを表示します: {actualTargetDir}");
+            Logger.Log($"上書き確認ダイアログを表示します: {outputPath}");
 
             // UIスレッドで上書き確認を実行
             // メソッド呼び出し: UIスレッドのディスパッチャーを介してダイアログを表示
             var canOverwrite = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
-                await FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow));
+                await FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow));
 
             // メソッド呼び出し: ログの記録
             Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
@@ -388,7 +384,7 @@ public static class ArchiveExtractor
         {
             // parentWindow がない場合は自動的に上書き（または既存仕様に合わせる）
             // メソッド呼び出し: ログの記録
-            Logger.Log($"上書き確認ダイアログをスキップ（parentWindowなし）: {actualTargetDir}");
+            Logger.Log($"上書き確認ダイアログをスキップ（parentWindowなし）: {outputPath}");
 
             // 変数: 上書き確定フラグをtrueに
             overwriteConfirmed = true;
@@ -405,7 +401,7 @@ public static class ArchiveExtractor
             try
             {
                 // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-                await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, overwriteConfirmed, cancellationToken, rootItemNameForCleanup);
+                await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, overwriteConfirmed, cancellationToken, needsLiftUp);
             }
             finally
             {
@@ -601,107 +597,111 @@ public static class ArchiveExtractor
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
 
             // スマート解凍：二重フォルダの場合はリフトアップを行う
-            if (rootItemNameForCleanup != null)
+            if (needsLiftUp)
             {
-                var rootPath = Path.Combine(outputPath, rootItemNameForCleanup);
-                if (Directory.Exists(rootPath))
+                // 二重フォルダ構造の解析を再度行い、リフトアップ対象を特定
+                using var reader = new ArchiveReader(archivePath);
+                var rootItemName = DetectDuplicateFolderStructure(archivePath);
+
+                if (rootItemName != null)
                 {
-                    Logger.Log($"スマート解凍：二重フォルダ '{rootItemNameForCleanup}' をリフトアップします");
-
-                    // リフトアップ前の競合チェック
-                    var conflicts = new List<string>();
-                    foreach (var dir in Directory.GetDirectories(rootPath))
+                    var rootPath = Path.Combine(outputPath, rootItemName);
+                    if (Directory.Exists(rootPath))
                     {
-                        var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
-                        if (Directory.Exists(destDir)) conflicts.Add(destDir);
-                    }
-                    foreach (var file in Directory.GetFiles(rootPath))
-                    {
-                        var destFile = Path.Combine(outputPath, Path.GetFileName(file));
-                        if (File.Exists(destFile)) conflicts.Add(destFile);
-                    }
+                        Logger.Log($"スマート解凍：二重フォルダ '{rootItemName}' をリフトアップします");
 
-                    // 競合がある場合は確認ダイアログを表示
-                    if (conflicts.Count > 0)
-                    {
-                        Logger.Log($"リフトアップ時に競合が検出されました: {conflicts.Count}件");
-                        var conflictMessage = conflicts.Count == 1
-                            ? $"リフトアップ時に既存のアイテム '{Path.GetFileName(conflicts[0])}' と競合します。\n\n上書きしてリフトアップを続行しますか？"
-                            : $"リフトアップ時に {conflicts.Count} 個の既存アイテムと競合します。\n\n上書きしてリフトアップを続行しますか？";
-                        var canLiftUp = await Dispatcher.UIThread.InvokeAsync(async () =>
-                            await MessageService.ShowYesNoQuestionAsync(conflictMessage, "リフトアップの確認", parentWindow));
-
-                        if (!canLiftUp)
+                        // リフトアップ前の競合チェック
+                        var conflicts = new List<string>();
+                        foreach (var dir in Directory.GetDirectories(rootPath))
                         {
-                            // メソッド呼び出し: ログの記録
-                            Logger.Log("ユーザーがリフトアップをキャンセルしました。二重フォルダのまま残します。");
-                            return;
+                            var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+                            if (Directory.Exists(destDir)) conflicts.Add(destDir);
                         }
-                    }
+                        foreach (var file in Directory.GetFiles(rootPath))
+                        {
+                            var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                            if (File.Exists(destFile)) conflicts.Add(destFile);
+                        }
 
-                    // ルート要素の中身を outputPath 直下に移動
-                    foreach (var dir in Directory.GetDirectories(rootPath))
-                    {
-                        var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
-                        if (Directory.Exists(destDir)) Directory.Delete(destDir, true);
-                        Directory.Move(dir, destDir);
-                    }
-                    foreach (var file in Directory.GetFiles(rootPath))
-                    {
-                        var destFile = Path.Combine(outputPath, Path.GetFileName(file));
-                        if (File.Exists(destFile)) File.Delete(destFile);
-                        File.Move(file, destFile);
-                    }
+                        // 競合がある場合は確認ダイアログを表示
+                        if (conflicts.Count > 0)
+                        {
+                            Logger.Log($"リフトアップ時に競合が検出されました: {conflicts.Count}件");
+                            var conflictMessage = conflicts.Count == 1
+                                ? $"リフトアップ時に既存のアイテム '{Path.GetFileName(conflicts[0])}' と競合します。\n\n上書きしてリフトアップを続行しますか？"
+                                : $"リフトアップ時に {conflicts.Count} 個の既存アイテムと競合します。\n\n上書きしてリフトアップを続行しますか？";
+                            var canLiftUp = await Dispatcher.UIThread.InvokeAsync(async () =>
+                                await MessageService.ShowYesNoQuestionAsync(conflictMessage, "リフトアップの確認", parentWindow));
 
-                    // 空になったルート要素を削除
-                    Directory.Delete(rootPath, true);
-                    Logger.Log("リフトアップが完了しました");
+                            if (!canLiftUp)
+                            {
+                                // メソッド呼び出し: ログの記録
+                                Logger.Log("ユーザーがリフトアップをキャンセルしました。二重フォルダのまま残します。");
+                                return;
+                            }
+                        }
+
+                        // ルート要素の中身を outputPath 直下に移動
+                        foreach (var dir in Directory.GetDirectories(rootPath))
+                        {
+                            var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+                            if (Directory.Exists(destDir)) Directory.Delete(destDir, true);
+                            Directory.Move(dir, destDir);
+                        }
+                        foreach (var file in Directory.GetFiles(rootPath))
+                        {
+                            var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                            if (File.Exists(destFile)) File.Delete(destFile);
+                            File.Move(file, destFile);
+                        }
+
+                        // 空になったルート要素を削除
+                        Directory.Delete(rootPath, true);
+                        Logger.Log("リフトアップが完了しました");
+                    }
                 }
             }
         }
         catch (OperationCanceledException)
         {
-            // 変数: クリーンアップ対象のパス
-            var cleanupPath = rootItemNameForCleanup != null ? Path.Combine(outputPath, rootItemNameForCleanup) : outputPath;
-
             // メソッド呼び出し: ログの記録
-            Logger.Log($"展開処理がキャンセルされました。クリーンアップを試行: {cleanupPath}");
+            Logger.Log($"展開処理がキャンセルされました。クリーンアップを試行: {outputPath}");
 
             // 保護されたディレクトリは絶対に削除しない
             // メソッド呼び出し: 保護されたディレクトリかチェック
-            if (PathValidator.IsProtectedDirectory(cleanupPath))
+            if (PathValidator.IsProtectedDirectory(outputPath))
             {
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"クリーンアップをスキップ: 保護されたディレクトリです: {cleanupPath}", LogLevel.Warning);
+                Logger.Log($"クリーンアップをスキップ: 保護されたディレクトリです: {outputPath}", LogLevel.Warning);
                 throw;
             }
 
             try
             {
                 // メソッド呼び出し: ディレクトリの存在確認
-                if (Directory.Exists(cleanupPath))
+                if (Directory.Exists(outputPath))
                 {
                     // メソッド呼び出し: 属性を解除して削除
-                    RemoveReadOnlyAttributes(cleanupPath);
-                    Directory.Delete(cleanupPath, true);
+                    RemoveReadOnlyAttributes(outputPath);
+                    Directory.Delete(outputPath, true);
 
                     // メソッド呼び出し: ログの記録
-                    Logger.Log($"キャンセルされた展開先を削除しました: {cleanupPath}");
+                    Logger.Log($"キャンセルされた展開先を削除しました: {outputPath}");
                 }
                 // メソッド呼び出し: ファイルの存在確認
-                else if (File.Exists(cleanupPath))
+                else if (File.Exists(outputPath))
                 {
                     // メソッド呼び出し: ファイルを削除
-                    File.Delete(cleanupPath);
+                    File.Delete(outputPath);
 
                     // メソッド呼び出し: ログの記録
-                    Logger.Log($"キャンセルされた展開ファイルを削除しました: {cleanupPath}");
+                    Logger.Log($"キャンセルされた展開ファイルを削除しました: {outputPath}");
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"キャンセル時のクリーンアップに失敗しました: {cleanupPath}, {ex.Message}", LogLevel.Warning);
+                Logger.Log($"キャンセル時のクリーンアップに失敗しました: {outputPath}, {ex.Message}", LogLevel.Warning);
             }
             throw;
         }

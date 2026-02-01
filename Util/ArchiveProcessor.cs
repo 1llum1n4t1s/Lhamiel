@@ -122,7 +122,7 @@ public static class ArchiveProcessor
                         progressWindow,
                         false,
                         cancellationToken,
-                        rootItemName);
+                        rootItemName != null);
 
                     if (closeWindowOnCompletion)
                     {
