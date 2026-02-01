@@ -59,7 +59,7 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" />
     <PackageReference Include="HarfBuzzSharp" Version="8.3.1.2" />
     <PackageReference Include="HarfBuzzSharp.NativeAssets.Win32" Version="8.3.1.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.30" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.32" />
     <PackageReference Include="7z.Libs" Version="25.1.0" />
     <PackageReference Include="log4net" Version="3.2.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />

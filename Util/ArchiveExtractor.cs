@@ -222,31 +222,26 @@ public static class ArchiveExtractor
                     rootFolders.Add(rootName);
 
                     var secondLevelName = parts[1];
-                    if (!secondLevelFolders.ContainsKey(rootName))
-                    {
-                        secondLevelFolders[rootName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    }
-                    if (!secondLevelFiles.ContainsKey(rootName))
-                    {
-                        secondLevelFiles[rootName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    }
 
-                    if (parts.Length == 2)
+                    // parts.Length == 2 かつ item がファイルの場合のみ secondLevelFiles に追加
+                    if (parts.Length == 2 && !item.IsDirectory)
                     {
-                        // 第2階層のアイテム
-                        if (item.IsDirectory)
+                        if (!secondLevelFiles.TryGetValue(rootName, out var files))
                         {
-                            secondLevelFolders[rootName].Add(secondLevelName);
+                            files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                            secondLevelFiles[rootName] = files;
                         }
-                        else
-                        {
-                            secondLevelFiles[rootName].Add(secondLevelName);
-                        }
+                        files.Add(secondLevelName);
                     }
                     else
                     {
-                        // より深い階層を持つため、第2階層はフォルダ
-                        secondLevelFolders[rootName].Add(secondLevelName);
+                        // item がディレクトリであるか、より深い階層を持つ場合は、第2階層はフォルダとして扱う
+                        if (!secondLevelFolders.TryGetValue(rootName, out var folders))
+                        {
+                            folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                            secondLevelFolders[rootName] = folders;
+                        }
+                        folders.Add(secondLevelName);
                     }
                 }
             }
