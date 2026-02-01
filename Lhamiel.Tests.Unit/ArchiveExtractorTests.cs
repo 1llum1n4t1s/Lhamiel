@@ -131,6 +131,34 @@ public class ArchiveExtractorTests
     }
 
     /// <summary>
+    /// テスト用のZIPファイルを作成する（無視対象のシステムファイル desktop.ini / Thumbs.db / .DS_Store を含む）
+    /// </summary>
+    /// <param name="testDir">テスト用ディレクトリ</param>
+    /// <returns>作成されたZIPファイルのパス</returns>
+    private static string CreateTestZipWithIgnoredSystemFiles(string testDir)
+    {
+        var parentDir = Path.Combine(testDir, "temp_for_ignored_zip");
+        var projectDir = Path.Combine(parentDir, "ProjectE");
+        var subDir = Path.Combine(projectDir, "sub");
+
+        Directory.CreateDirectory(subDir);
+
+        File.WriteAllText(Path.Combine(projectDir, "README.md"), "Project E Readme");
+        File.WriteAllText(Path.Combine(projectDir, "desktop.ini"), "Windows folder metadata");
+        File.WriteAllText(Path.Combine(projectDir, "Thumbs.db"), "Windows thumbnail cache");
+        File.WriteAllText(Path.Combine(projectDir, ".DS_Store"), "macOS folder metadata");
+        File.WriteAllText(Path.Combine(subDir, "data.txt"), "Data content");
+        File.WriteAllText(Path.Combine(subDir, "desktop.ini"), "Subfolder desktop.ini");
+
+        var zipPath = Path.Combine(testDir, "ProjectE.zip");
+        ZipFile.CreateFromDirectory(parentDir, zipPath);
+
+        Directory.Delete(parentDir, true);
+
+        return zipPath;
+    }
+
+    /// <summary>
     /// テスト用のZIPファイルを作成する（再帰的な同名フォルダのネスト）
     /// </summary>
     /// <param name="testDir">テスト用ディレクトリ</param>
@@ -612,6 +640,47 @@ public class ArchiveExtractorTests
             Assert.False(Directory.Exists(macOsxPath), "__MACOSX folder must not be extracted to output");
             Assert.True(File.Exists(Path.Combine(projectDPath, "README.md")), "ProjectD/README.md should exist");
             Assert.True(Directory.Exists(Path.Combine(projectDPath, "src")), "ProjectD/src should exist");
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// 無視対象のシステムファイル（desktop.ini / Thumbs.db / .DS_Store）が展開結果に含まれないこと
+    /// </summary>
+    [Fact]
+    public async Task ExtractArchive_WithIgnoredSystemFiles_ExcludesDesktopIniThumbsDbAndDS_StoreFromOutput()
+    {
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var zipPath = CreateTestZipWithIgnoredSystemFiles(tempDir);
+            var baseOutputDir = Path.Combine(tempDir, "extract_output");
+            var outputPath = ArchiveExtractor.GetOutputDirectory(zipPath, baseOutputDir);
+
+            await ArchiveExtractor.ExtractArchive(zipPath, outputPath, null, null, false, TestContext.Current.CancellationToken);
+
+            var projectEPath = Path.Combine(outputPath, "ProjectE");
+            var subPath = Path.Combine(projectEPath, "sub");
+
+            Assert.True(Directory.Exists(projectEPath), "ProjectE folder should exist in output");
+            Assert.True(File.Exists(Path.Combine(projectEPath, "README.md")), "ProjectE/README.md should exist");
+            Assert.True(Directory.Exists(subPath), "ProjectE/sub should exist");
+            Assert.True(File.Exists(Path.Combine(subPath, "data.txt")), "ProjectE/sub/data.txt should exist");
+
+            Assert.False(File.Exists(Path.Combine(projectEPath, "desktop.ini")), "desktop.ini must not be extracted");
+            Assert.False(File.Exists(Path.Combine(projectEPath, "Thumbs.db")), "Thumbs.db must not be extracted");
+            Assert.False(File.Exists(Path.Combine(projectEPath, ".DS_Store")), ".DS_Store must not be extracted");
+            Assert.False(File.Exists(Path.Combine(subPath, "desktop.ini")), "desktop.ini in subfolder must not be extracted");
+
+            var allFiles = Directory.GetFiles(outputPath, "*", SearchOption.AllDirectories);
+            var fileNames = allFiles.Select(Path.GetFileName).ToList();
+            Assert.DoesNotContain(fileNames, n => string.Equals(n, "desktop.ini", StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(fileNames, n => string.Equals(n, "Thumbs.db", StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(fileNames, n => string.Equals(n, ".DS_Store", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {
