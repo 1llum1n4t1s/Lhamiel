@@ -184,62 +184,103 @@ public static class ArchiveExtractor
         {
             // 変数: アーカイブリーダーの初期化。usingで確実に解放
             using var reader = new ArchiveReader(archivePath);
-            var items = reader.Items.ToList();
 
-            // 1. 全てのルートアイテムを特定する
-            var rootEntryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var item in items)
+            // 変数: ルートレベルのフォルダとファイルを保持するセット
+            var rootFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var rootFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // 変数: 第2階層のフォルダとファイルを保持する辞書（キー: ルート名）
+            var secondLevelFolders = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+            var secondLevelFiles = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+            // メソッド呼び出し: アーカイブ内の全アイテムを1回のループで走査
+            foreach (var item in reader.Items)
             {
+                // パスを正規化（バックスラッシュをスラッシュに）
                 var path = item.FullName.Replace('\\', '/');
                 var parts = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length > 0)
+
+                if (parts.Length == 0) continue;
+
+                var rootName = parts[0];
+                if (IgnoredSystemDirectories.Contains(rootName)) continue;
+
+                if (parts.Length == 1)
                 {
-                    var rootName = parts[0];
-                    if (!IgnoredSystemDirectories.Contains(rootName))
+                    // ルートレベルのアイテム
+                    if (item.IsDirectory)
                     {
-                        rootEntryNames.Add(rootName);
+                        rootFolders.Add(rootName);
+                    }
+                    else
+                    {
+                        rootFiles.Add(rootName);
+                    }
+                }
+                else
+                {
+                    // 子要素を持つため、ルートはフォルダ
+                    rootFolders.Add(rootName);
+
+                    var secondLevelName = parts[1];
+                    if (!secondLevelFolders.ContainsKey(rootName))
+                    {
+                        secondLevelFolders[rootName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    }
+                    if (!secondLevelFiles.ContainsKey(rootName))
+                    {
+                        secondLevelFiles[rootName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    }
+
+                    if (parts.Length == 2)
+                    {
+                        // 第2階層のアイテム
+                        if (item.IsDirectory)
+                        {
+                            secondLevelFolders[rootName].Add(secondLevelName);
+                        }
+                        else
+                        {
+                            secondLevelFiles[rootName].Add(secondLevelName);
+                        }
+                    }
+                    else
+                    {
+                        // より深い階層を持つため、第2階層はフォルダ
+                        secondLevelFolders[rootName].Add(secondLevelName);
                     }
                 }
             }
 
-            // 2. ルートアイテムが単一のフォルダでなければ対象外
-            if (rootEntryNames.Count != 1) return null;
+            // 二重フォルダ構造の条件確認
+            // 条件1: ルートフォルダが1つのみ
+            // 条件2: ルートレベルにファイルがない
+            if (rootFolders.Count != 1 || rootFiles.Any()) return null;
 
-            var rootFolderName = rootEntryNames.First();
-            // ルートアイテムがフォルダであることを確認（子要素を持つか、ディレクトリとして登録されているか）
-            bool isRootAFolder = items.Any(i =>
-                i.FullName.Replace('\\', '/').StartsWith($"{rootFolderName}/", StringComparison.OrdinalIgnoreCase) ||
-                (i.FullName.Replace('\\', '/').TrimEnd('/') == rootFolderName && i.IsDirectory));
-            if (!isRootAFolder) return null;
+            var rootFolderName = rootFolders.First();
 
-            // 3. 第2階層のアイテムを特定する
-            var secondLevelEntryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var item in items)
+            // 条件3: 第2階層にフォルダが1つのみ
+            if (!secondLevelFolders.TryGetValue(rootFolderName, out var slFolders) || slFolders.Count != 1)
             {
-                var path = item.FullName.Replace('\\', '/');
-                var parts = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length > 1 && parts[0].Equals(rootFolderName, StringComparison.OrdinalIgnoreCase))
-                {
-                    secondLevelEntryNames.Add(parts[1]);
-                }
+                return null;
             }
 
-            // 4. 第2階層が単一の同名フォルダでなければ対象外
-            if (secondLevelEntryNames.Count != 1) return null;
+            // 条件4: 第2階層にファイルがない
+            if (secondLevelFiles.TryGetValue(rootFolderName, out var slFiles) && slFiles.Any())
+            {
+                return null;
+            }
 
-            var secondLevelName = secondLevelEntryNames.First();
-            if (!string.Equals(rootFolderName, secondLevelName, StringComparison.OrdinalIgnoreCase)) return null;
+            var secondLevelFolderName = slFolders.First();
 
-            // 第2階層のアイテムがフォルダであることを確認
-            var secondLevelPath = $"{rootFolderName}/{secondLevelName}";
-            bool isSecondLevelAFolder = items.Any(i =>
-                i.FullName.Replace('\\', '/').StartsWith($"{secondLevelPath}/", StringComparison.OrdinalIgnoreCase) ||
-                (i.FullName.Replace('\\', '/').TrimEnd('/') == secondLevelPath && i.IsDirectory));
-            if (!isSecondLevelAFolder) return null;
+            // 条件5: ルートフォルダ名と第2階層フォルダ名が同一
+            if (!string.Equals(rootFolderName, secondLevelFolderName, StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
 
             // 二重フォルダ構造を検出
-            Logger.Log($"二重フォルダ構造を検出: {rootFolderName}/{secondLevelName}");
-            return secondLevelName;
+            Logger.Log($"二重フォルダ構造を検出: {rootFolderName}/{secondLevelFolderName}");
+            return secondLevelFolderName;
         }
         catch (Exception ex)
         {
