@@ -424,11 +424,11 @@ public static class ArchiveExtractor
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    /// <param name="rootItemNameForCleanup">キャンセル時に削除すべき単一ルートアイテム名</param>
-    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, string? rootItemNameForCleanup = null)
+    /// <param name="needsLiftUp">二重フォルダ解消のためのリフトアップが必要かどうか</param>
+    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, bool needsLiftUp = false)
     {
         // メソッド呼び出し: ログの記録
-        Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}, rootItem={rootItemNameForCleanup ?? "null"}");
+        Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}, needsLiftUp={needsLiftUp}");
 
         // メソッド呼び出し: ファイルの存在確認
         if (!File.Exists(archivePath))
@@ -440,23 +440,17 @@ public static class ArchiveExtractor
         // メソッド呼び出し: キャンセルの確認
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 変数: 実際の展開先パス
-        // 三項演算子を使用してパスを構築
-        var actualTargetDir = rootItemNameForCleanup != null ? Path.Combine(outputPath, rootItemNameForCleanup) : outputPath;
-
-        // 展開先が既に存在する場合の処理
-        // メソッド呼び出し: ディレクトリまたはファイルの存在確認
-        if (Directory.Exists(actualTargetDir) || File.Exists(actualTargetDir))
+        // 展開先の確認と削除処理
+        if (Directory.Exists(outputPath) || File.Exists(outputPath))
         {
             if (!overwriteConfirmed)
             {
-                // まだ確認されていない場合はここで確認
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {actualTargetDir}");
+                Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {outputPath}");
 
                 // メソッド呼び出し: UIスレッドで上書き確認ダイアログを表示
                 var canOverwrite = await Dispatcher.UIThread.InvokeAsync(() =>
-                    FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow));
+                    FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow));
 
                 if (!canOverwrite)
                 {
@@ -469,36 +463,36 @@ public static class ArchiveExtractor
             try
             {
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"既存の展開先を削除します: {actualTargetDir}");
+                Logger.Log($"既存の展開先を削除します: {outputPath}");
 
                 // メソッド呼び出し: ディレクトリの存在確認
-                if (Directory.Exists(actualTargetDir))
+                if (Directory.Exists(outputPath))
                 {
                     try
                     {
                         // メソッド呼び出し: ディレクトリを再帰的に削除
-                        Directory.Delete(actualTargetDir, true);
+                        Directory.Delete(outputPath, true);
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
                     {
                         // メソッド呼び出し: ログの記録
-                        Logger.Log($"削除再試行（属性解除）: {actualTargetDir}");
+                        Logger.Log($"削除再試行（属性解除）: {outputPath}");
 
                         // メソッド呼び出し: 読み取り専用属性を解除
-                        RemoveReadOnlyAttributes(actualTargetDir);
+                        RemoveReadOnlyAttributes(outputPath);
 
                         // メソッド呼び出し: OSのファイルロック解除を少し待機
                         await Task.Delay(100, cancellationToken);
 
                         // メソッド呼び出し: ディレクトリを再度削除試行
-                        Directory.Delete(actualTargetDir, true);
+                        Directory.Delete(outputPath, true);
                     }
                 }
                 // メソッド呼び出し: ファイルの存在確認
-                else if (File.Exists(actualTargetDir))
+                else if (File.Exists(outputPath))
                 {
                     // メソッド呼び出し: ファイルを削除
-                    File.Delete(actualTargetDir);
+                    File.Delete(outputPath);
                 }
 
                 // メソッド呼び出し: ログの記録
@@ -507,10 +501,10 @@ public static class ArchiveExtractor
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"既存対象の削除に失敗しました: {actualTargetDir}, {ex.Message}");
+                Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
 
                 // 例外の投下
-                throw new InvalidOperationException($"展開先 '{Path.GetFileName(actualTargetDir)}' が使用中か、削除権限がありません。", ex);
+                throw new InvalidOperationException($"展開先 '{Path.GetFileName(outputPath)}' が使用中か、削除権限がありません。", ex);
             }
         }
 
