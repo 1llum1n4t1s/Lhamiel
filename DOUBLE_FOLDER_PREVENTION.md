@@ -350,7 +350,6 @@ ProjectD.zip
 A.zip
 └── A/ (フォルダ)
     └── A (拡張子なしのファイル)
-        └── content.txt
 ```
 
 **展開処理の流れ**
@@ -359,7 +358,7 @@ A.zip
    - 理由：第2階層の `A` はファイル（フォルダではない）ため、二重フォルダと判定されない
 3. `HasSingleRootItem()` → `true`
 4. `outputPath = baseDirectory`
-5. 結果: `baseDirectory/A/A/content.txt`
+5. 結果: `baseDirectory/A/A` （ファイルが展開される）
 
 **重要ポイント**:
 - ファイルとフォルダを厳密に区別することで、誤判定を防止
