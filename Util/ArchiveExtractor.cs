@@ -85,80 +85,180 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
-    /// アーカイブのルート要素が単一かどうかを判定し、その名前を取得する
+    /// アーカイブの先頭2階層の解析結果を保持するデータ構造
+    /// </summary>
+    public class ArchiveStructureInfo
+    {
+        /// <summary>
+        /// プロパティ: 二重フォルダ構造が検出された場合の内側のフォルダ名
+        /// </summary>
+        public string? DuplicateFolderName { get; init; }
+
+        /// <summary>
+        /// プロパティ: ルートレベルに単一のアイテムのみが存在するかどうか
+        /// </summary>
+        public bool HasSingleRootItem { get; init; }
+
+        /// <summary>
+        /// プロパティ: ルートレベルが単一アイテムの場合、その名前
+        /// </summary>
+        public string? SingleRootItemName { get; init; }
+    }
+
+    /// <summary>
+    /// アーカイブの構造を一度の解析で取得する
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <returns>単一のルート要素名（見つからないか複数の場合はnull）</returns>
-    public static string? GetSingleRootItemName(string archivePath)
+    /// <returns>解析結果を格納したArchiveStructureInfo</returns>
+    public static ArchiveStructureInfo GetArchiveStructureInfo(string archivePath)
     {
-        // メソッド呼び出し: ファイルの存在確認
-        if (!File.Exists(archivePath)) return null;
+        if (!File.Exists(archivePath))
+        {
+            return new ArchiveStructureInfo { HasSingleRootItem = false };
+        }
 
         try
         {
-            // 変数: アーカイブリーダーの初期化。usingで確実に解放
             using var reader = new ArchiveReader(archivePath);
+            var structure = ParseArchiveFirstTwoLevels(reader);
 
-            // 変数: ルートアイテム名を保持するセット（大文字小文字を区別しない）
-            var rootItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var rootFolders = structure.RootFolders;
+            var rootFiles = structure.RootFiles;
 
-            // メソッド呼び出し: アーカイブ内の全アイテムを走査
-            foreach (var item in reader.Items)
+            var allRootItems = new HashSet<string>(rootFolders, StringComparer.OrdinalIgnoreCase);
+            allRootItems.UnionWith(rootFiles);
+            var rootItemsCount = allRootItems.Count;
+            var hasSingleRootItem = rootItemsCount == 1;
+            var singleRootItemName = allRootItems.FirstOrDefault();
+
+            string? duplicateFolderName = null;
+
+            // 二重フォルダ構造の判定
+            if (rootFolders.Count == 1 && !rootFiles.Any())
             {
-                // パスを正規化（バックスラッシュをスラッシュに）
-                // 変数: 正規化されたパス
-                // メソッド呼び出し: Replaceを呼び出し
-                var path = item.FullName.Replace('\\', '/');
+                var rootFolderName = rootFolders.First();
 
-                // 変数: パスをスラッシュで分割
-                // メソッド呼び出し: Splitを呼び出し
-                var parts = path.Split(['/'], StringSplitOptions.RemoveEmptyEntries);
-
-                if (parts.Length > 0)
+                // 第2階層にフォルダが1つのみで、ファイルがないことを確認
+                if (structure.SecondLevelFolders.TryGetValue(rootFolderName, out var slFolders) &&
+                    slFolders.Count == 1 &&
+                    !(structure.SecondLevelFiles.TryGetValue(rootFolderName, out var slFiles) && slFiles.Any()))
                 {
-                    // 変数: ルート要素（最初のパーツ）
-                    var rootItem = parts[0];
+                    var secondLevelFolderName = slFolders.First();
 
-                    // システム管理用フォルダ（__MACOSXなど）は無視
-                    // メソッド呼び出し: 無視対象に含まれているか確認
-                    if (IgnoredSystemDirectories.Contains(rootItem))
+                    // ルートフォルダ名と第2階層フォルダ名が同一か確認
+                    if (string.Equals(rootFolderName, secondLevelFolderName, StringComparison.OrdinalIgnoreCase))
                     {
-                        continue;
-                    }
-
-                    // メソッド呼び出し: セットに追加
-                    rootItems.Add(rootItem);
-
-                    // 2つ以上見つかった時点でnull確定
-                    // プロパティ: アイテム数を確認
-                    if (rootItems.Count > 1)
-                    {
-                        return null;
+                        duplicateFolderName = secondLevelFolderName;
+                        Logger.Log($"二重フォルダ構造を検出: {rootFolderName}/{secondLevelFolderName}");
                     }
                 }
             }
 
-            // アイテム数が1つの場合のみその名前を返す
-            // プロパティ: カウント確認。メソッド呼び出し: 最初（唯一）の要素を取得
-            return rootItems.Count == 1 ? rootItems.First() : null;
+            return new ArchiveStructureInfo
+            {
+                DuplicateFolderName = duplicateFolderName,
+                HasSingleRootItem = hasSingleRootItem,
+                SingleRootItemName = singleRootItemName
+            };
         }
         catch (Exception ex)
         {
-            // メソッド呼び出し: ログの記録
             Logger.Log($"アーカイブ構造解析エラー: {ex.Message}");
-            return null;
+            return new ArchiveStructureInfo { HasSingleRootItem = false };
         }
     }
 
     /// <summary>
-    /// アーカイブのルート要素が単一かどうかを判定する
+    /// アーカイブの先頭2階層の解析結果を保持する内部データ構造
     /// </summary>
-    /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <returns>ルート要素が単一の場合はtrue</returns>
-    public static bool HasSingleRootItem(string archivePath)
+    private class ArchiveStructure
     {
-        // メソッド呼び出し: ルートアイテム名を取得し、空でないか確認
-        return !string.IsNullOrEmpty(GetSingleRootItemName(archivePath));
+        /// <summary>
+        /// プロパティ: ルートレベルのフォルダ名のセット
+        /// </summary>
+        public HashSet<string> RootFolders { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// プロパティ: ルートレベルのファイル名のセット
+        /// </summary>
+        public HashSet<string> RootFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// プロパティ: 第2階層のフォルダ名の辞書（キー: ルート名）
+        /// </summary>
+        public Dictionary<string, HashSet<string>> SecondLevelFolders { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// プロパティ: 第2階層のファイル名の辞書（キー: ルート名）
+        /// </summary>
+        public Dictionary<string, HashSet<string>> SecondLevelFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// アーカイブの先頭2階層を解析し、フォルダとファイルの情報を格納した構造を返す
+    /// </summary>
+    /// <param name="reader">アーカイブリーダー</param>
+    /// <returns>解析結果を格納したArchiveStructure</returns>
+    private static ArchiveStructure ParseArchiveFirstTwoLevels(ArchiveReader reader)
+    {
+        var structure = new ArchiveStructure();
+
+        // ローカル関数: 辞書のキーに対応する HashSet に値を追加（なければ作成）
+        void AddToHierarchy(Dictionary<string, HashSet<string>> dict, string key, string value)
+        {
+            if (!dict.TryGetValue(key, out var set))
+            {
+                set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                dict[key] = set;
+            }
+            set.Add(value);
+        }
+
+        // メソッド呼び出し: アーカイブ内の全アイテムを1回のループで走査
+        foreach (var item in reader.Items)
+        {
+            // パスを正規化（バックスラッシュをスラッシュに）
+            var path = item.FullName.Replace('\\', '/');
+            var parts = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length == 0) continue;
+
+            var rootName = parts[0];
+            if (IgnoredSystemDirectories.Contains(rootName)) continue;
+
+            if (parts.Length == 1)
+            {
+                // ルートレベルのアイテム
+                if (item.IsDirectory)
+                {
+                    structure.RootFolders.Add(rootName);
+                }
+                else
+                {
+                    structure.RootFiles.Add(rootName);
+                }
+            }
+            else
+            {
+                // 子要素を持つため、ルートはフォルダ
+                structure.RootFolders.Add(rootName);
+
+                var secondLevelName = parts[1];
+
+                // parts.Length == 2 かつ item がファイルの場合のみ SecondLevelFiles に追加
+                if (parts.Length == 2 && !item.IsDirectory)
+                {
+                    AddToHierarchy(structure.SecondLevelFiles, rootName, secondLevelName);
+                }
+                else
+                {
+                    // item がディレクトリであるか、より深い階層を持つ場合は、第2階層はフォルダとして扱う
+                    AddToHierarchy(structure.SecondLevelFolders, rootName, secondLevelName);
+                }
+            }
+        }
+
+        return structure;
     }
 
     /// <summary>
@@ -169,50 +269,35 @@ public static class ArchiveExtractor
     /// <param name="progress">進捗コールバック</param>
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    /// <param name="rootItemNameForCleanup">キャンセル時に削除すべき単一ルートアイテム名（スマート解凍用）</param>
+    /// <param name="duplicateFolderName">二重フォルダ構造が検出された場合の内側のフォルダ名（スマート解凍用）</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, string? rootItemNameForCleanup = null)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, string? duplicateFolderName = null)
     {
         // メソッド呼び出し: ログの記録
-        Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}, rootItem={rootItemNameForCleanup ?? "null"}");
+        Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}, duplicateFolderName={duplicateFolderName}");
 
         // メソッド呼び出し: キャンセルの確認
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 変数: 実際の展開先ターゲットパス
-        // 三項演算子を使用してパスを構築
-        var actualTargetDir = rootItemNameForCleanup != null ? Path.Combine(outputPath, rootItemNameForCleanup) : outputPath;
-
         // 変数: 上書き確認が必要かどうかのフラグ
         // メソッド呼び出し: ディレクトリまたはファイルの存在確認
-        var targetExists = Directory.Exists(actualTargetDir) || File.Exists(actualTargetDir);
+        var targetExists = Directory.Exists(outputPath) || File.Exists(outputPath);
 
         // メソッド呼び出し: ログの記録
-        Logger.Log($"展開先存在チェック: actualTargetDir={actualTargetDir}, exists={targetExists}");
+        Logger.Log($"展開先存在チェック: outputPath={outputPath}, exists={targetExists}");
 
         // 変数: 上書きが確定したかどうかのフラグ
         var overwriteConfirmed = false;
 
         if (targetExists && parentWindow != null)
         {
-            // 保護されたディレクトリ（デスクトップ自体など）の場合は上書き確認（削除）をさせない
-            // メソッド呼び出し: 保護されたディレクトリかチェック
-            if (PathValidator.IsProtectedDirectory(actualTargetDir))
-            {
-                // メソッド呼び出し: ログの記録
-                Logger.Log($"上書き不可: 保護されたディレクトリです: {actualTargetDir}", LogLevel.Warning);
-
-                // 例外の投下
-                throw new InvalidOperationException($"'{actualTargetDir}' はシステムによって保護されているため、上書き展開できません。別の場所を選択してください。");
-            }
-
             // メソッド呼び出し: ログの記録
-            Logger.Log($"上書き確認ダイアログを表示します: {actualTargetDir}");
+            Logger.Log($"上書き確認ダイアログを表示します: {outputPath}");
 
             // UIスレッドで上書き確認を実行
             // メソッド呼び出し: UIスレッドのディスパッチャーを介してダイアログを表示
             var canOverwrite = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
-                await FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow));
+                await FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow));
 
             // メソッド呼び出し: ログの記録
             Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
@@ -230,7 +315,7 @@ public static class ArchiveExtractor
         {
             // parentWindow がない場合は自動的に上書き（または既存仕様に合わせる）
             // メソッド呼び出し: ログの記録
-            Logger.Log($"上書き確認ダイアログをスキップ（parentWindowなし）: {actualTargetDir}");
+            Logger.Log($"上書き確認ダイアログをスキップ（parentWindowなし）: {outputPath}");
 
             // 変数: 上書き確定フラグをtrueに
             overwriteConfirmed = true;
@@ -247,7 +332,7 @@ public static class ArchiveExtractor
             try
             {
                 // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-                await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, overwriteConfirmed, cancellationToken, rootItemNameForCleanup);
+                await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, overwriteConfirmed, cancellationToken, duplicateFolderName);
             }
             finally
             {
@@ -266,21 +351,11 @@ public static class ArchiveExtractor
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    /// <param name="rootItemNameForCleanup">キャンセル時に削除すべき単一ルートアイテム名</param>
-    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, string? rootItemNameForCleanup = null)
+    /// <param name="duplicateFolderName">二重フォルダ構造が検出された場合の内側のフォルダ名（スマート解凍用）</param>
+    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, string? duplicateFolderName = null)
     {
         // メソッド呼び出し: ログの記録
-        Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}, rootItem={rootItemNameForCleanup ?? "null"}");
-
-        // スマート解凍の自動判定（引数で指定されていない場合）
-        if (rootItemNameForCleanup == null)
-        {
-            rootItemNameForCleanup = GetSingleRootItemName(archivePath);
-            if (rootItemNameForCleanup != null)
-            {
-                Logger.Log($"スマート解凍を自動判定しました: {rootItemNameForCleanup}");
-            }
-        }
+        Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}, duplicateFolderName={duplicateFolderName}");
 
         // メソッド呼び出し: ファイルの存在確認
         if (!File.Exists(archivePath))
@@ -292,23 +367,17 @@ public static class ArchiveExtractor
         // メソッド呼び出し: キャンセルの確認
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 変数: 実際の展開先パス
-        // 三項演算子を使用してパスを構築
-        var actualTargetDir = rootItemNameForCleanup != null ? Path.Combine(outputPath, rootItemNameForCleanup) : outputPath;
-
-        // 展開先が既に存在する場合の処理
-        // メソッド呼び出し: ディレクトリまたはファイルの存在確認
-        if (Directory.Exists(actualTargetDir) || File.Exists(actualTargetDir))
+        // 展開先の確認と削除処理
+        if (Directory.Exists(outputPath) || File.Exists(outputPath))
         {
             if (!overwriteConfirmed)
             {
-                // まだ確認されていない場合はここで確認
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {actualTargetDir}");
+                Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {outputPath}");
 
                 // メソッド呼び出し: UIスレッドで上書き確認ダイアログを表示
                 var canOverwrite = await Dispatcher.UIThread.InvokeAsync(() =>
-                    FileOverwriteDialog.CanOverwriteFile(archivePath, actualTargetDir, parentWindow));
+                    FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow));
 
                 if (!canOverwrite)
                 {
@@ -317,64 +386,27 @@ public static class ArchiveExtractor
                 }
             }
 
-            // 上書きが許可された（または確認済み）の場合は既存の対象を削除
-            try
+            // 保護されたディレクトリ（デスクトップ自体など）の場合は上書き確認（削除）をさせない
+            // メソッド呼び出し: 保護されたディレクトリかチェック
+            if (PathValidator.IsProtectedDirectory(outputPath))
             {
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"既存の展開先を削除します: {actualTargetDir}");
-
-                // メソッド呼び出し: ディレクトリの存在確認
-                if (Directory.Exists(actualTargetDir))
-                {
-                    try
-                    {
-                        // メソッド呼び出し: ディレクトリを再帰的に削除
-                        Directory.Delete(actualTargetDir, true);
-                    }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-                    {
-                        // メソッド呼び出し: ログの記録
-                        Logger.Log($"削除再試行（属性解除）: {actualTargetDir}");
-
-                        // メソッド呼び出し: 読み取り専用属性を解除
-                        RemoveReadOnlyAttributes(actualTargetDir);
-
-                        // メソッド呼び出し: OSのファイルロック解除を少し待機
-                        await Task.Delay(100, cancellationToken);
-
-                        // メソッド呼び出し: ディレクトリを再度削除試行
-                        Directory.Delete(actualTargetDir, true);
-                    }
-                }
-                // メソッド呼び出し: ファイルの存在確認
-                else if (File.Exists(actualTargetDir))
-                {
-                    // メソッド呼び出し: ファイルを削除
-                    File.Delete(actualTargetDir);
-                }
-
-                // メソッド呼び出し: ログの記録
-                Logger.Log("既存の対象を正常に削除しました。");
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-            {
-                // メソッド呼び出し: ログの記録
-                Logger.Log($"既存対象の削除に失敗しました: {actualTargetDir}, {ex.Message}");
+                Logger.Log($"上書き不可: 保護されたディレクトリです: {outputPath}", LogLevel.Warning);
 
                 // 例外の投下
-                throw new InvalidOperationException($"展開先 '{Path.GetFileName(actualTargetDir)}' が使用中か、削除権限がありません。", ex);
+                throw new InvalidOperationException($"'{outputPath}' はシステムによって保護されているため、上書き展開できません。別の場所を選択してください。");
             }
         }
 
+        // 変数: 一時展開先ディレクトリのパスを生成
+        // メソッド呼び出し: Path.GetTempPath と Guid を使用してユニークな一時ディレクトリ名を作成
+        var tempOutputPath = Path.Combine(Path.GetTempPath(), $"Lhamiel_Extract_{Guid.NewGuid():N}");
+
         try
         {
-            // 出力ディレクトリを作成
-            // メソッド呼び出し: ディレクトリの存在確認
-            if (!Directory.Exists(outputPath))
-            {
-                // メソッド呼び出し: ディレクトリを作成
-                Directory.CreateDirectory(outputPath);
-            }
+            // 一時出力ディレクトリを作成
+            // メソッド呼び出し: ディレクトリを作成
+            Directory.CreateDirectory(tempOutputPath);
 
             // メソッド呼び出し: キャンセルの確認
             cancellationToken.ThrowIfCancellationRequested();
@@ -384,7 +416,7 @@ public static class ArchiveExtractor
             using (var reader = new ArchiveReader(archivePath))
             {
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"展開処理開始: {archivePath}");
+                Logger.Log($"一時ディレクトリへの展開処理開始: {archivePath} -> {tempOutputPath}");
 
                 if (progressCallback != null)
                 {
@@ -431,7 +463,7 @@ public static class ArchiveExtractor
                     }, cancellationToken);
 
                     // メソッド呼び出し: アーカイブを保存
-                    reader.Save(outputPath, progress);
+                    reader.Save(tempOutputPath, progress);
 
                     // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）
                     cancellationToken.ThrowIfCancellationRequested();
@@ -445,7 +477,7 @@ public static class ArchiveExtractor
                 else
                 {
                     // メソッド呼び出し: アーカイブを保存
-                    reader.Save(outputPath);
+                    reader.Save(tempOutputPath);
                 }
 
                 // reader自体の生存も保証
@@ -455,116 +487,196 @@ public static class ArchiveExtractor
             // メソッド呼び出し: キャンセルの確認
             cancellationToken.ThrowIfCancellationRequested();
 
-            // メソッド呼び出し: ログの記録
-            Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
-
-            // スマート解凍：ルート要素が単一の場合はリフトアップを行う
-            if (rootItemNameForCleanup != null)
+            // スマート解凍：二重フォルダの場合はリフトアップを行う
+            if (duplicateFolderName != null)
             {
-                var rootPath = Path.Combine(outputPath, rootItemNameForCleanup);
-                if (Directory.Exists(rootPath))
+                var rootItemName = duplicateFolderName;
+
+                var rootPath = Path.Combine(tempOutputPath, rootItemName);
+                var innerFolderPath = Path.Combine(rootPath, rootItemName);
+
+                if (Directory.Exists(innerFolderPath))
                 {
-                    Logger.Log($"スマート解凍：ルート要素 '{rootItemNameForCleanup}' をリフトアップします");
+                    Logger.Log($"スマート解凍：二重フォルダ '{rootItemName}' をリフトアップします");
 
-                    // リフトアップ前の競合チェック
-                    var conflicts = new List<string>();
-                    foreach (var dir in Directory.GetDirectories(rootPath))
+                    // 一時ディレクトリを作成して、内側フォルダの中身を移動
+                    var tempLiftUpPath = Path.Combine(Path.GetTempPath(), $"Lhamiel_LiftUp_{Guid.NewGuid():N}");
+                    try
                     {
-                        var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
-                        if (Directory.Exists(destDir)) conflicts.Add(destDir);
-                    }
-                    foreach (var file in Directory.GetFiles(rootPath))
-                    {
-                        var destFile = Path.Combine(outputPath, Path.GetFileName(file));
-                        if (File.Exists(destFile)) conflicts.Add(destFile);
-                    }
+                        Directory.CreateDirectory(tempLiftUpPath);
 
-                    // 競合がある場合は確認ダイアログを表示
-                    if (conflicts.Count > 0)
-                    {
-                        Logger.Log($"リフトアップ時に競合が検出されました: {conflicts.Count}件");
-                        var conflictMessage = conflicts.Count == 1
-                            ? $"リフトアップ時に既存のアイテム '{Path.GetFileName(conflicts[0])}' と競合します。\n\n上書きしてリフトアップを続行しますか？"
-                            : $"リフトアップ時に {conflicts.Count} 個の既存アイテムと競合します。\n\n上書きしてリフトアップを続行しますか？";
-                        var canLiftUp = await Dispatcher.UIThread.InvokeAsync(async () =>
-                            await MessageService.ShowYesNoQuestionAsync(conflictMessage, "リフトアップの確認", parentWindow));
-
-                        if (!canLiftUp)
+                        // 内側フォルダの中身を一時ディレクトリに移動
+                        foreach (var dir in Directory.GetDirectories(innerFolderPath))
                         {
-                            // メソッド呼び出し: ログの記録
-                            Logger.Log("ユーザーがリフトアップをキャンセルしました。ルート要素フォルダのまま残します。");
-                            return;
+                            var destDir = Path.Combine(tempLiftUpPath, Path.GetFileName(dir));
+                            Directory.Move(dir, destDir);
+                        }
+                        foreach (var file in Directory.GetFiles(innerFolderPath))
+                        {
+                            var destFile = Path.Combine(tempLiftUpPath, Path.GetFileName(file));
+                            File.Move(file, destFile);
+                        }
+
+                        // 空になった内側フォルダを削除
+                        RemoveReadOnlyAttributes(innerFolderPath);
+                        Directory.Delete(innerFolderPath, true);
+
+                        // 一時ディレクトリの中身を外側のフォルダ(rootPath)に移動
+                        foreach (var dir in Directory.GetDirectories(tempLiftUpPath))
+                        {
+                            var destDir = Path.Combine(rootPath, Path.GetFileName(dir));
+                            Directory.Move(dir, destDir);
+                        }
+                        foreach (var file in Directory.GetFiles(tempLiftUpPath))
+                        {
+                            var destFile = Path.Combine(rootPath, Path.GetFileName(file));
+                            File.Move(file, destFile);
+                        }
+
+                        Logger.Log("リフトアップが完了しました");
+                    }
+                    finally
+                    {
+                        // 一時ディレクトリをクリーンアップ
+                        try
+                        {
+                            if (Directory.Exists(tempLiftUpPath))
+                            {
+                                RemoveReadOnlyAttributes(tempLiftUpPath);
+                                Directory.Delete(tempLiftUpPath, true);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Log($"リフトアップ処理の一時ディレクトリ削除に失敗しました: {tempLiftUpPath}, {ex.Message}", LogLevel.Warning);
                         }
                     }
-
-                    // ルート要素の中身を outputPath 直下に移動
-                    foreach (var dir in Directory.GetDirectories(rootPath))
-                    {
-                        var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
-                        if (Directory.Exists(destDir)) Directory.Delete(destDir, true);
-                        Directory.Move(dir, destDir);
-                    }
-                    foreach (var file in Directory.GetFiles(rootPath))
-                    {
-                        var destFile = Path.Combine(outputPath, Path.GetFileName(file));
-                        if (File.Exists(destFile)) File.Delete(destFile);
-                        File.Move(file, destFile);
-                    }
-
-                    // 空になったルート要素を削除
-                    Directory.Delete(rootPath, true);
-                    Logger.Log("リフトアップが完了しました");
                 }
             }
-        }
-        catch (OperationCanceledException)
-        {
-            // 変数: クリーンアップ対象のパス
-            var cleanupPath = rootItemNameForCleanup != null ? Path.Combine(outputPath, rootItemNameForCleanup) : outputPath;
 
+            // メソッド呼び出し: キャンセルの確認
+            cancellationToken.ThrowIfCancellationRequested();
+
+            // 最終的な展開先への移動処理
             // メソッド呼び出し: ログの記録
-            Logger.Log($"展開処理がキャンセルされました。クリーンアップを試行: {cleanupPath}");
+            Logger.Log($"一時ディレクトリから最終展開先へ移動します: {tempOutputPath} -> {outputPath}");
 
-            // 保護されたディレクトリは絶対に削除しない
-            // メソッド呼び出し: 保護されたディレクトリかチェック
-            if (PathValidator.IsProtectedDirectory(cleanupPath))
-            {
-                // メソッド呼び出し: ログの記録
-                Logger.Log($"クリーンアップをスキップ: 保護されたディレクトリです: {cleanupPath}", LogLevel.Warning);
-                throw;
-            }
-
+            // 上書きが許可された（または確認済み）の場合は既存の対象を削除
             try
             {
                 // メソッド呼び出し: ディレクトリの存在確認
-                if (Directory.Exists(cleanupPath))
+                if (Directory.Exists(outputPath))
                 {
-                    // メソッド呼び出し: 属性を解除して削除
-                    RemoveReadOnlyAttributes(cleanupPath);
-                    Directory.Delete(cleanupPath, true);
+                    try
+                    {
+                        // メソッド呼び出し: ディレクトリを再帰的に削除
+                        Directory.Delete(outputPath, true);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        // メソッド呼び出し: ログの記録
+                        Logger.Log($"削除再試行（属性解除）: {outputPath}");
 
-                    // メソッド呼び出し: ログの記録
-                    Logger.Log($"キャンセルされた展開先を削除しました: {cleanupPath}");
+                        // メソッド呼び出し: 読み取り専用属性を解除
+                        RemoveReadOnlyAttributes(outputPath);
+
+                        // メソッド呼び出し: OSのファイルロック解除を少し待機
+                        await Task.Delay(100, cancellationToken);
+
+                        // メソッド呼び出し: ディレクトリを再度削除試行
+                        Directory.Delete(outputPath, true);
+                    }
                 }
                 // メソッド呼び出し: ファイルの存在確認
-                else if (File.Exists(cleanupPath))
+                else if (File.Exists(outputPath))
                 {
                     // メソッド呼び出し: ファイルを削除
-                    File.Delete(cleanupPath);
-
-                    // メソッド呼び出し: ログの記録
-                    Logger.Log($"キャンセルされた展開ファイルを削除しました: {cleanupPath}");
+                    File.Delete(outputPath);
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 // メソッド呼び出し: ログの記録
-                Logger.Log($"キャンセル時のクリーンアップに失敗しました: {cleanupPath}, {ex.Message}", LogLevel.Warning);
+                Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
+
+                // 例外の投下
+                throw new InvalidOperationException($"展開先 '{Path.GetFileName(outputPath)}' が使用中か、削除権限がありません。", ex);
+            }
+
+            // メソッド呼び出し: 展開先ディレクトリを作成
+            Directory.CreateDirectory(outputPath);
+
+            // tempOutputPath 直下の内容を outputPath に移動
+            // メソッド呼び出し: ログの記録
+            Logger.Log($"一時ディレクトリの内容を最終展開先に移動します");
+
+            try
+            {
+                // メソッド呼び出し: 一時ディレクトリ内のディレクトリを移動
+                foreach (var dir in Directory.GetDirectories(tempOutputPath))
+                {
+                    var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+                    Directory.Move(dir, destDir);
+                }
+
+                // メソッド呼び出し: 一時ディレクトリ内のファイルを移動
+                foreach (var file in Directory.GetFiles(tempOutputPath))
+                {
+                    var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                    File.Move(file, destFile);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                // メソッド呼び出し: ログの記録
+                Logger.Log($"一時ディレクトリの内容移動に失敗しました: {ex.Message}");
+
+                // 例外の投下
+                throw new InvalidOperationException($"展開先への内容移動に失敗しました。", ex);
+            }
+
+            // メソッド呼び出し: ログの記録
+            Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
+
+        }
+        catch (OperationCanceledException)
+        {
+            // メソッド呼び出し: ログの記録
+            Logger.Log($"展開処理がキャンセルされました。一時ディレクトリを削除: {tempOutputPath}");
+
+            try
+            {
+                // メソッド呼び出し: 一時ディレクトリを削除
+                if (Directory.Exists(tempOutputPath))
+                {
+                    // メソッド呼び出し: 属性を解除して削除
+                    RemoveReadOnlyAttributes(tempOutputPath);
+                    Directory.Delete(tempOutputPath, true);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                // メソッド呼び出し: ログの記録
+                Logger.Log($"キャンセル時の一時ディレクトリ削除に失敗しました: {tempOutputPath}, {ex.Message}", LogLevel.Warning);
             }
             throw;
         }
         catch (Exception ex)
         {
+            // 一時ディレクトリのクリーンアップ
+            try
+            {
+                if (Directory.Exists(tempOutputPath))
+                {
+                    RemoveReadOnlyAttributes(tempOutputPath);
+                    Directory.Delete(tempOutputPath, true);
+                }
+            }
+            catch (Exception cleanupEx)
+            {
+                Logger.Log($"エラー発生時の一時ディレクトリ削除に失敗しました: {tempOutputPath}, {cleanupEx.Message}", LogLevel.Warning);
+            }
+
             // 変数: エラー情報の分析結果
             // メソッド呼び出し: エラー内容を分析
             var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath);

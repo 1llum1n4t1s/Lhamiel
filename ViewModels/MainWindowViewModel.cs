@@ -268,15 +268,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (cancellationToken.IsCancellationRequested) return;
             if (hasExtraction)
             {
-                var success = await ArchiveProcessor.ExtractArchivesAsync(
+                var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
                     filesToExtract.ToArray(),
                     settings.ExtractionOutputDirectory,
                     settings.ExtractionOutputToSameDirectory,
                     progressWindow,
                     cancellationToken,
                     closeWindowOnCompletion: true);
-                if (success && settings.OpenExtractionOutputFolder)
-                    OpenExtractedFolders(filesToExtract, settings.ExtractionOutputDirectory, settings.ExtractionOutputToSameDirectory);
+                if (extractionResults.Count > 0 && settings.OpenExtractionOutputFolder)
+                    OpenExtractedFolders(extractionResults);
             }
             else if (hasCompression && settings.OpenCompressionOutputFolder && !settings.CompressionOutputToSameDirectory)
             {
@@ -425,35 +425,30 @@ SOFTWARE.";
         }
     }
 
-    private void OpenExtractedFolders(IEnumerable<string> archivePaths, string outputDir, bool outputToSameDirectory)
+    private void OpenExtractedFolders(IEnumerable<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)> extractionResults)
     {
         var openedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var archivePath in archivePaths)
+        foreach (var result in extractionResults)
         {
-            var baseDir = ArchiveExtractor.GetBaseOutputDirectory(archivePath, outputDir, outputToSameDirectory);
-            var targetPath = baseDir;
+            var targetPath = result.OutputPath;
             try
             {
-                var rootItemName = ArchiveExtractor.GetSingleRootItemName(archivePath);
-                if (!string.IsNullOrEmpty(rootItemName))
+                // アーカイブの構造情報を再利用して、開くべきフォルダを決定
+                var structureInfo = result.StructureInfo;
+                if (structureInfo.HasSingleRootItem && !string.IsNullOrEmpty(structureInfo.SingleRootItemName))
                 {
-                    var possibleDir = Path.Combine(baseDir, rootItemName);
+                    // 単一ルート要素の場合は、そのフォルダを開く
+                    var possibleDir = Path.Combine(targetPath, structureInfo.SingleRootItemName);
                     if (Directory.Exists(possibleDir))
                         targetPath = possibleDir;
                 }
-                else
-                {
-                    var fileName = Path.GetFileNameWithoutExtension(archivePath);
-                    var possibleDir = Path.Combine(baseDir, fileName);
-                    if (Directory.Exists(possibleDir))
-                        targetPath = possibleDir;
-                }
+
                 if (Directory.Exists(targetPath) && openedPaths.Add(targetPath))
                     FolderOpener.OpenFolder(targetPath);
             }
             catch (Exception ex)
             {
-                Logger.LogException($"展開先フォルダを開く処理でエラー: {archivePath}", ex);
+                Logger.LogException($"展開先フォルダを開く処理でエラー: {result.SourcePath}", ex);
             }
         }
     }

@@ -2,9 +2,37 @@
 
 ## 概要
 
-圧縮ファイル解凍時に、圧縮ファイルのルート内に「単一のフォルダ」のみが存在する場合に二重フォルダが生成されるのを防ぐロジック（スマート解凍）を実装しました。
+圧縮ファイル解凍時に、**二重フォルダ構造**（A/A/... のようなフォルダ内にフォルダ名が一致するフォルダのみが存在する状態）が生成されるのを防ぐロジック（スマート解凍）を実装しました。
 
 ## 変更履歴
+
+### 2026-02-01: 展開仕様の統一と出力パス設計の改善
+
+**修正内容**:
+- `outputPath` と `baseDirectory` の2つの概念を統一
+- アーカイブ名フォルダを作成しない仕様に変更
+- すべての展開で `baseDirectory` に直接展開
+- 一時展開フォルダの内容を `baseDirectory` に移動する方式に変更
+- リフトアップ処理で一時ディレクトリを経由する安全な実装に変更
+
+**変更ファイル**:
+- `Util/ArchiveProcessor.cs`: `outputPath = baseDirectory` に統一
+- `Util/ArchiveExtractor.cs`: 展開先への移動処理を改善、リフトアップ処理を修正
+- `App.xaml.cs`: `OpenExtractedFolder` で `GetBaseOutputDirectory` を使用
+
+**詳細な説明**:
+このドキュメント下部の「処理フロー」セクションを参照
+
+### 2026-02-01: 二重フォルダ判定ロジックの精密化
+
+**修正内容**:
+- 単一ルートフォルダのスマート解凍を廃止
+- **二重フォルダ構造のみをリフトアップ対象に限定**
+- ファイルとフォルダの区別を厳密化
+
+**変更ファイル**:
+- `Util/ArchiveExtractor.cs`: `DetectDuplicateFolderStructure()`メソッドを新規追加、リフトアップ処理を復元
+- `Util/ArchiveProcessor.cs`: 二重フォルダ検出ロジックに変更
 
 ### 2026-01-17: スマート解凍機能の実装と並列処理の最適化
 
@@ -14,59 +42,65 @@
 
 **最適化**:
 - 並列展開/圧縮時のスレッド制御を改善
-- LHA圧縮時の不要な一時コピーを削減
 - 進捗報告の頻度を最適化
 
 **変更ファイル**:
 - `Util/ArchiveExtractor.cs`: `HasSingleRootItem()`, `GetBaseOutputDirectory()`を追加
 - `Util/ArchiveProcessor.cs`: `ExtractArchiveAsync()`でスマート解凍を適用、並列度を最適化
-- `Util/ArchiveCompressor.cs`: `CreateArchiveWriter()`にスレッド数制御を追加、LHA圧縮を最適化
+- `Util/ArchiveCompressor.cs`: `CreateArchiveWriter()`にスレッド数制御を追加
 
 ## 要件
 
 1. **指定された圧縮ファイル（.zipなど）を解凍する**
    - 既存の解凍機能を使用
 
-2. **単一フォルダ・ファイル存在時の動作**
+2. **二重フォルダ構造の防止**
    - 例：
-     - **回避したいケース**：`ProjectA.zip/ProjectA/files/data.txt`が`ProjectA/ProjectA/files/data.txt`と出力
-     - **期待する挙動**：`ProjectA.zip/ProjectA/files/data.txt`が`ProjectA/files/data.txt`と出力
-     - **期待する挙動2**：`ProjectA.zip/data.txt`が`data.txt`と出力
+     - **リフトアップが適用される**：`abcdefg.zip/temp/A/A/content` が `baseDirectory/temp/A/A/content` と出力
+     - その他のケースではリフトアップなし
 
-3. **複数フォルダ・ファイル存在時の動作**
-   - `ProjectA.zip`の直下に複数のファイルがある場合
-   - アーカイブ名の`ProjectA`を使用してフォルダを作成してその中に展開
+3. **出力パス設計**
+   - ルート要素が1つ（単一フォルダ）：`baseDirectory/フォルダ内容`
+   - ルート要素が複数：`baseDirectory/アーカイブ名/複数の内容`
+   - 二重フォルダ：`baseDirectory/外側フォルダ内容` （リフトアップ後）
 
 ## 実装詳細
 
 ### アーキテクチャ
 
-スマート解凍機能は以下の2つのフェーズで動作します：
+スマート解凍機能は以下の3つのフェーズで動作します：
 
-1. **判定フェーズ**: アーカイブのルート要素が単一かどうかを判定
-2. **展開フェーズ**: 判定結果に基づいて適切な展開先パスを決定
+1. **判定フェーズ**: アーカイブ内に二重フォルダ構造が存在するかを判定
+2. **展開フェーズ**: 一時ディレクトリに展開
+3. **リフトアップフェーズ**: 二重フォルダの場合は内容を移動し、外側のフォルダを削除
 
-### 1. ルート要素判定メソッド：`HasSingleRootItem()`
+### 1. 二重フォルダ検出メソッド：`DetectDuplicateFolderStructure()`
 
 **場所**: `Util/ArchiveExtractor.cs`
 
 ```csharp
-public static bool HasSingleRootItem(string archivePath)
+public static string? DetectDuplicateFolderStructure(string archivePath)
 ```
 
 **機能**:
-- アーカイブのルート直下に単一の要素（フォルダまたはファイル）のみが存在するかを判定
-- システム管理用フォルダ（`__MACOSX`など）は無視
+- アーカイブ内に二重フォルダ構造が存在するかを判定
+- **二重フォルダ**：A階層にフォルダが1つだけあり、その中に同名のフォルダが1つだけ存在する状態
 
 **判定ロジック**:
 1. `ArchiveReader`でアーカイブを開く
 2. 各エントリのパスを正規化（バックスラッシュをスラッシュに統一）
-3. パスを`/`で分割し、最初の要素（ルート要素）を取得
-4. システム管理用フォルダ（`IgnoredSystemDirectories`）は除外
-5. ルート要素が1つだけの場合は`true`、2つ以上の場合は`false`を返す
+3. ルート階層（A階層）のフォルダを抽出（**フォルダのみを対象**）
+4. A階層が1つのフォルダの場合、第2階層（B階層）を確認
+5. B階層に同名のフォルダが1つだけ存在する場合のみ、二重フォルダと判定
+6. システム管理用フォルダ（`__MACOSX`など）は除外
+7. **ファイルとフォルダを厳密に区別**（`item.IsDirectory`で判定）
+
+**戻り値**:
+- 二重フォルダの場合：内側のフォルダ名
+- それ以外：`null`
 
 **エラーハンドリング**:
-- アーカイブ読み込みエラー時は`false`を返す（安全側に倒す）
+- アーカイブ読み込みエラー時は`null`を返す（安全側に倒す）
 
 ### 2. 基準出力ディレクトリ取得メソッド：`GetBaseOutputDirectory()`
 
@@ -78,84 +112,189 @@ public static string GetBaseOutputDirectory(string archivePath, string defaultOu
 
 **機能**:
 - アーカイブ名フォルダを含まない、基準となる出力ディレクトリを取得
-- スマート解凍時に、この基準ディレクトリに直接展開する
+- **このメソッドでアーカイブ名は使用されない**
 
 **判定ロジック**:
 - `outputToSameDirectory`が`true`の場合：アーカイブと同じディレクトリ
 - `outputToSameDirectory`が`false`の場合：`defaultOutputDir`を使用
 - `defaultOutputDir`が空の場合：アーカイブと同じディレクトリにフォールバック
 
-### 3. スマート解凍の適用判定
+### 3. ルート要素判定メソッド：`HasSingleRootItem()`
+
+**場所**: `Util/ArchiveExtractor.cs`
+
+```csharp
+public static bool HasSingleRootItem(string archivePath)
+```
+
+**機能**:
+- アーカイブのルートレベルに単一のアイテム（フォルダまたはファイル）しかないかを判定
+
+**戻り値**:
+- ルートレベルに単一アイテムのみ：`true`
+- ルートレベルに複数アイテム：`false`
+
+### 4. スマート解凍の適用判定
 
 **場所**: `Util/ArchiveProcessor.cs` の `ExtractArchiveAsync()`
 
 **処理フロー**:
 1. `GetBaseOutputDirectory()`で基準ディレクトリを取得
-2. `HasSingleRootItem()`でルート要素が単一かを判定
-3. **単一の場合**:
-   - 展開先を基準ディレクトリに設定
-   - アーカイブ名フォルダを作成せず、中身の要素名でフォルダ/ファイルが作成される
-4. **複数の場合**:
-   - 展開先を`基準ディレクトリ/アーカイブ名`に設定
-   - 従来通りアーカイブ名フォルダを作成して展開
+2. `DetectDuplicateFolderStructure()`で二重フォルダ構造を検出
+3. `HasSingleRootItem()`でルート要素の個数を判定
+4. 出力先を決定：
+   - 二重フォルダが検出された場合：`baseDirectory` に直接展開（リフトアップ予定）
+   - ルート要素が1つだけの場合：`baseDirectory` に直接展開
+   - ルート要素が複数の場合：`baseDirectory/アーカイブ名` に展開
+
+### 5. リフトアップ処理
+
+**場所**: `Util/ArchiveExtractor.cs` の `ExtractArchive()`メソッド内
+
+**処理**:
+- リフトアップフラグが設定されている場合のみ実行
+- 一時ディレクトリを経由して安全に内容を移動
+  1. `tempLiftUpPath` という作業用一時ディレクトリを作成
+  2. 内側フォルダ（`tempOutputPath/rootItemName/rootItemName`）の中身を `tempLiftUpPath` に移動
+  3. 内側フォルダと外側フォルダを削除
+  4. `tempLiftUpPath` の中身を `tempOutputPath` に移動
+  5. `tempLiftUpPath` をクリーンアップ
 
 ## 処理フロー
 
 ### 展開処理全体フロー
 
-1. **ファイル検証**
-   - アーカイブファイルの存在確認
-   - サポートされている形式かを確認
+```
+1. ファイル検証
+   ↓
+2. 基準ディレクトリ決定
+   (GetBaseOutputDirectory)
+   ↓
+3. 二重フォルダ構造判定
+   (DetectDuplicateFolderStructure)
+   ↓
+4. ルート要素個数判定
+   (HasSingleRootItem)
+   ↓
+5. 出力先パス決定
+   ├ 二重フォルダ検出？ → outputPath = baseDirectory
+   ├ ルート要素が1つ？ → outputPath = baseDirectory
+   └ ルート要素が複数？ → outputPath = baseDirectory/アーカイブ名
+   ↓
+6. 上書き確認（既存の outputPath が存在する場合）
+   ↓
+7. 一時ディレクトリへ展開
+   (tempOutputPath/)
+   ↓
+8. リフトアップ処理（二重フォルダの場合のみ）
+   - tempOutputPath/rootItemName/rootItemName の中身を
+     一時作業ディレクトリ経由で tempOutputPath に移動
+   - 空になったフォルダを削除
+   ↓
+9. tempOutputPath の中身を outputPath に移動
+   ↓
+10. 完了
+```
 
-2. **スマート解凍判定**
-   - `HasSingleRootItem()`でルート要素が単一かを判定
-   - 基準ディレクトリを`GetBaseOutputDirectory()`で取得
+### 展開先への移動処理の詳細
 
-3. **展開先パス決定**
-   - 単一ルート要素の場合：基準ディレクトリに直接展開
-   - 複数ルート要素の場合：`基準ディレクトリ/アーカイブ名`に展開
+**従来の方式（問題あり）**:
+```
+tempOutputPath 全体を outputPath に移動
+→ resultingPath = baseDirectory/tempOutputPathName/...
+```
 
-4. **上書き確認**
-   - 展開先が既に存在する場合、ユーザーに確認
+**新方式（修正後）**:
+```
+tempOutputPath 直下のディレクトリ・ファイルを
+outputPath に移動
+→ resultingPath = outputPath/... (outputPathは既に決定済み)
+```
 
-5. **展開実行**
-   - `ArchiveExtractor.ExtractArchiveAsync()`で展開
-   - 進捗報告を行いながら処理
-
-6. **完了**
-   - 展開完了メッセージを表示
+**メリット**:
+- 複数ルートの場合、自動的にアーカイブ名フォルダが作成される
+- パスが直感的で予測可能
 
 ## 例
 
-### 例1：スマート解凍が適用されるケース
+### 例1：リフトアップが適用されるケース（二重フォルダ）
 
-**圧縮ファイル構造**
+**圧縮ファイル構造と出力先指定**
 ```
-ProjectA.zip
-├── ProjectA/
-│   ├── src/
-│   │   └── main.cpp
-│   ├── CMakeLists.txt
-│   └── README.md
+c:\Downloads\ProjectA.zip
+出力先: c:\Extracted
+  └── ProjectA/ProjectA/src（アーカイブ内の構造）
 ```
 
-**展開結果**
+**展開処理の流れ**
+1. `GetBaseOutputDirectory("c:\Downloads\ProjectA.zip", "c:\Extracted", false)` → `"c:\Extracted"`
+2. `DetectDuplicateFolderStructure("c:\Downloads\ProjectA.zip")` → `"ProjectA"` (二重フォルダを検出)
+3. `HasSingleRootItem()` → `true` (ルート要素が1つ)
+4. `outputPath = "c:\Extracted"` に設定
+5. 一時展開: `c:\Temp\Lhamiel_Extract_XXXX\ProjectA\ProjectA\src\...`
+6. リフトアップ処理実行: 内側の `ProjectA` フォルダの中身を移動
+   - `c:\Temp\Lhamiel_Extract_XXXX\ProjectA\ProjectA\src` → 一時作業ディレクトリ
+   - 外側フォルダ削除
+   - 一時作業ディレクトリの内容を戻す
+7. 結果: `c:\Extracted\ProjectA\src\...`
+
+**重要ポイント**:
+- アーカイブ名「ProjectA」は出力パス決定に使用されない
+- 二重フォルダ構造（`ProjectA/ProjectA`）がリフトアップにより`ProjectA`に統一される
+
+### 例2：リフトアップが適用されないケース（単一フォルダ）
+
+**圧縮ファイル構造と出力先指定**
 ```
-ProjectA/ (展開先フォルダ)
-├── src/
-│   └── main.cpp
-├── CMakeLists.txt
-└── README.md
+c:\Downloads\ProjectA.zip
+出力先: c:\Extracted
+  └── ProjectA/src（アーカイブ内の構造 - 二重フォルダではない）
 ```
 
-**ロジック**
-1. `HasSingleRootItem()`が`true`を返す（ルート要素は`ProjectA`のみ）
-2. 基準ディレクトリに直接展開
-3. 結果として`ProjectA/ProjectA/...`という二重フォルダが防止される
+**展開処理の流れ**
+1. `GetBaseOutputDirectory()` → `"c:\Extracted"`
+2. `DetectDuplicateFolderStructure()` → `null` (二重フォルダではない)
+3. `HasSingleRootItem()` → `true` (ルート要素が1つ)
+4. `outputPath = "c:\Extracted"` に設定（アーカイブ名を使用しない）
+5. 一時展開: `c:\Temp\Lhamiel_Extract_XXXX\ProjectA\src\...`
+6. リフトアップなし
+7. 一時ディレクトリの内容を `c:\Extracted` に移動
+8. 結果: `c:\Extracted\ProjectA\src\...`
 
-### 例2：スマート解凍が適用されないケース（複数フォルダ）
+**ロジック**:
+1. ルート要素が1つだけのため、単一フォルダ展開
+2. 二重フォルダではないため、リフトアップなし
+3. アーカイブ内の構造がそのまま展開先に反映
 
-**圧縮ファイル構造**
+### 例2-2：アーカイブ名変更時の動作（単一フォルダケース）
+
+**圧縮ファイル構造と出力先指定**
+```
+c:\Downloads\abcdefg.zip （ファイル名を変更）
+出力先: c:\Extracted
+  └── ProjectA/src（アーカイブ内の構造）
+```
+
+**展開処理の流れ**
+1. `GetBaseOutputDirectory()` → `"c:\Extracted"`
+2. `DetectDuplicateFolderStructure()` → `null`
+3. `HasSingleRootItem()` → `true`
+4. `outputPath = "c:\Extracted"` （アーカイブ名「abcdefg」は使用されない）
+5. 結果: `c:\Extracted\ProjectA\src\...`
+
+**重要ポイント**:
+- ファイル名を `ProjectA.zip` から `abcdefg.zip` に変更しても結果は同じ
+- ルート要素が単一の場合、アーカイブ名に依存しない
+
+### 例3：複数フォルダのケース
+
+**圧縮ファイル構造と出力先指定**
+```
+c:\Downloads\ProjectB.zip
+出力先: c:\Extracted
+```
+
+**アーカイブ内の構造**
 ```
 ProjectB.zip
 ├── folder1/
@@ -164,42 +303,18 @@ ProjectB.zip
     └── file2.txt
 ```
 
-**展開結果**
-```
-ProjectB/ (展開先フォルダ)
-├── folder1/
-│   └── file1.txt
-└── folder2/
-    └── file2.txt
-```
+**展開処理の流れ**
+1. `GetBaseOutputDirectory()` → `"c:\Extracted"`
+2. `DetectDuplicateFolderStructure()` → `null` (二重フォルダではない)
+3. `HasSingleRootItem()` → `false` (複数アイテム)
+4. `outputPath = "c:\Extracted\ProjectB"` に設定（アーカイブ名を使用）
+5. 一時展開: `c:\Temp\Lhamiel_Extract_XXXX\folder1\file1.txt`, `folder2\file2.txt`
+6. 一時ディレクトリの内容を `c:\Extracted\ProjectB` に移動
+7. 結果: `c:\Extracted\ProjectB\folder1\file1.txt`, `c:\Extracted\ProjectB\folder2\file2.txt`
 
-**ロジック**
-1. `HasSingleRootItem()`が`false`を返す（ルート要素は`folder1`と`folder2`の2つ）
-2. アーカイブ名フォルダ`ProjectB`を作成して展開
-3. ファイルが散らばらないように保護
-
-### 例3：スマート解凍が適用されないケース（複数ファイル）
-
-**圧縮ファイル構造**
-```
-ProjectC.zip
-├── file1.txt
-├── file2.txt
-└── README.md
-```
-
-**展開結果**
-```
-ProjectC/ (展開先フォルダ)
-├── file1.txt
-├── file2.txt
-└── README.md
-```
-
-**ロジック**
-1. `HasSingleRootItem()`が`false`を返す（ルート要素は3つのファイル）
-2. アーカイブ名フォルダ`ProjectC`を作成して展開
-3. ファイルが散らばらないように保護
+**重要ポイント**:
+- ルート要素が複数の場合、**アーカイブ名「ProjectB」が使用される**
+- ファイルが散らばることを防止
 
 ### 例4：システムフォルダを無視するケース
 
@@ -215,76 +330,91 @@ ProjectD.zip
 
 **展開結果**
 ```
-ProjectD/ (展開先フォルダ)
-├── src/
-└── README.md
+出力先: c:\Extracted\
+├── ProjectD/
+│   ├── src/
+│   └── README.md
 ```
 
 **ロジック**
-1. `__MACOSX`は`IgnoredSystemDirectories`に含まれるため無視
-2. `HasSingleRootItem()`が`true`を返す（実質的なルート要素は`ProjectD`のみ）
-3. スマート解凍が適用される
+1. `__MACOSX` は無視される
+2. `DetectDuplicateFolderStructure()` が `null` を返す
+3. `HasSingleRootItem()` → `true` (有効なルート要素が1つ)
+4. リフトアップなし
+5. 結果: `c:\Extracted\ProjectD\src\...`
 
-## 並列処理の最適化
+### 例5：誤検知を防ぐケース（フォルダとファイルの区別）
 
-### 並列展開の最適化
+**圧縮ファイル構造**
+```
+A.zip
+└── A/ (フォルダ)
+    └── A (拡張子なしのファイル)
+```
 
-**場所**: `Util/ArchiveProcessor.cs` の `ExtractArchivesAsync()`
+**展開処理の流れ**
+1. `GetBaseOutputDirectory()` → `baseDirectory`
+2. `DetectDuplicateFolderStructure()` → `null`
+   - 理由：第2階層の `A` はファイル（フォルダではない）ため、二重フォルダと判定されない
+3. `HasSingleRootItem()` → `true`
+4. `outputPath = baseDirectory`
+5. 結果: `baseDirectory/A/A` （ファイルが展開される）
 
-**最適化内容**:
-- 並列度を`Environment.ProcessorCount / 2`に制限（最小2、最大4）
-- ディスクI/O負荷を考慮した保守的な設定
-- 個別進捗報告を無効化し、全体進捗のみを報告
+**重要ポイント**:
+- ファイルとフォルダを厳密に区別することで、誤判定を防止
+- `item.IsDirectory` で判定
 
-### 並列圧縮の最適化
+## 重要な設計ポイント
 
-**場所**: `Util/ArchiveProcessor.cs` の `CompressItemsAsync()`
+### アーカイブ名を使用するタイミング
 
-**最適化内容**:
-- 並列度を`Environment.ProcessorCount / 2`に制限（最小1、最大4）
-- 7-Zip等の圧縮エンジンが内部でマルチスレッドを使用するため、タスク並列数を抑制
-- CPU競合を防ぎ、全体的なスループットを向上
+1. **複数ルート要素の場合のみ**：ファイルが散らばることを防ぐため
+2. **単一ルート要素の場合**：アーカイブ名を使用しない（アーカイブ内の構造を優先）
+3. **二重フォルダの場合**：アーカイブ名を使用しない（リフトアップで解消）
 
-### スレッド数制御
+### なぜ複数ルート要素の場合はアーカイブ名を使うのか
 
-**場所**: `Util/ArchiveCompressor.cs` の `CreateArchiveWriter()`
+複数のファイルやフォルダがアーカイブのルートレベルにある場合、それらを `baseDirectory` に直接展開するとファイルが散らばってしまいます：
 
-**最適化内容**:
-- `maxThreads`パラメータを追加し、圧縮エンジンのスレッド数を制御可能に
-- 並列圧縮時は各タスクのスレッド数を制限することで、CPU競合を防止
+**問題例**：
+```
+ProjectB.zip に folder1/, folder2/ が含まれる場合
+もし baseDirectory に直接展開すると：
+c:\Extracted\folder1\  ← ProjectBに属しているのに別のアーカイブと混在する可能性
+c:\Extracted\folder2\
+```
 
-### LHA圧縮の最適化
+**解決方法**：
+```
+アーカイブ名でまとめるフォルダを作成：
+c:\Extracted\ProjectB\folder1\
+c:\Extracted\ProjectB\folder2\
+```
 
-**場所**: `Util/ArchiveCompressor.cs` の `CompressFiles()`
+### 一時ディレクトリを経由する理由
 
-**最適化内容**:
-- 単一ディレクトリかつ除外ファイルがない場合、一時コピーを回避
-- `LHAWriter.WriteLHAFile()`に直接ディレクトリパスを渡すことで、ディスクI/Oを削減
+1. **安全性**：展開中にエラーが発生した場合、一時ファイルのみが削除される
+2. **アトミック性**：展開とリフトアップが分離されているため、中断可能
+3. **リカバリ**：一時ディレクトリから復旧できる可能性がある
 
-## パフォーマンス考慮事項
+### リフトアップ処理で作業用一時ディレクトリを使用する理由
 
-### スマート解凍の判定コスト
-- `HasSingleRootItem()`はアーカイブ内の全エントリをスキャンする必要がある
-- ただし、2つ目のルート要素が見つかった時点で早期リターンするため、多くの場合は高速
-- 大規模アーカイブでも無視できるレベルのオーバーヘッド
-
-### 並列処理のトレードオフ
-- 並列度を抑えることで、個々のタスクは遅くなる可能性がある
-- しかし、CPU競合やディスクI/O競合を防ぐことで、全体的なスループットは向上
-- 特にHDDでは、並列度を抑えることでシーク時間を削減できる
+1. **ディレクトリ削除の安全性**：親ディレクトリを削除せずに済む
+2. **スレッドセーフ**：複数のリフトアップ処理が干渉しない
+3. **エラーハンドリング**：移動失敗時のロールバックが容易
 
 ## エラーハンドリング
 
-### スマート解凍のエラー処理
-- `HasSingleRootItem()`でエラーが発生した場合は`false`を返す
-- 安全側に倒し、通常のアーカイブ名フォルダを作成して展開
+### 二重フォルダ判定時のエラー
+- アーカイブ読み込みエラー時は `null` を返す（安全側に倒す）
 - エラーログを出力し、問題の追跡を可能にする
 
-### 並列処理のエラー処理
-- 各タスクのエラーは個別にキャッチし、失敗リストに追加
-- 一部のタスクが失敗しても、他のタスクは継続実行
-- 全タスク完了後に成功/失敗の統計を表示
+### 移動・削除時のエラー
+- ファイル移動失敗時は例外をスロー
+- 一時ディレクトリは finally ブロックでクリーンアップ
+- 属性の問題で削除失敗する場合、読み取り専用属性を解除してリトライ
 
 ### キャンセル処理
-- `CancellationToken`を使用した適切なキャンセル処理
+- `CancellationToken` を使用した適切なキャンセル処理
 - キャンセル時は一時ファイルを削除し、リソースをクリーンアップ
+

@@ -386,18 +386,16 @@ public class ArchiveExtractorTests
             }
 
             // ケース1: ルートアイテムが1つ＋フォルダ
-            // ProjectA フォルダの中身が actualOutputDir に直接リフトアップされている
-            // ProjectA/ フォルダ自体は存在しない（削除される）
-            var readmePath = Path.Combine(actualOutputDir, "readme.txt");
-            var filesPath = Path.Combine(actualOutputDir, "files");
-
-            Assert.True(File.Exists(readmePath), "readme.txt should be lifted up to extracted directory");
-            Assert.True(Directory.Exists(filesPath), "files folder should be lifted up to extracted directory");
-            // ProjectA フォルダ自体は存在しないはず
+            // ProjectA フォルダが actualOutputDir (baseOutputDir/ProjectA) の下に作成されている
             var projectAPath = Path.Combine(actualOutputDir, "ProjectA");
-            Assert.False(Directory.Exists(projectAPath), "ProjectA folder should not exist (lifted up)");
+            var readmePath = Path.Combine(projectAPath, "readme.txt");
+            var filesPath = Path.Combine(projectAPath, "files");
 
-            Console.WriteLine("\n✅ Test passed: Archive folder and its contents were extracted and lifted up correctly");
+            Assert.True(Directory.Exists(projectAPath), "ProjectA folder should exist in output directory");
+            Assert.True(File.Exists(readmePath), "readme.txt should exist in ProjectA folder");
+            Assert.True(Directory.Exists(filesPath), "files folder should exist in ProjectA folder");
+
+            Console.WriteLine("\n✅ Test passed: Archive folder and its contents were extracted correctly");
             Console.WriteLine();
         }
         finally
