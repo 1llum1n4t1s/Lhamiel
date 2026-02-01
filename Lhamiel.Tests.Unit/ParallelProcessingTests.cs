@@ -84,7 +84,7 @@ public class ParallelProcessingTests
             Directory.CreateDirectory(outputDir);
 
             // 複数ファイル展開を実行
-            var result = await ArchiveProcessor.ExtractArchivesAsync([zipFile1, zipFile2, zipFile3],
+            var results = await ArchiveProcessor.ExtractArchivesAsync([zipFile1, zipFile2, zipFile3],
                 outputDir,
                 outputToSameDirectory: false,
                 progressWindow: null!,
@@ -92,7 +92,8 @@ public class ParallelProcessingTests
             );
 
             // 結果を確認
-            Assert.NotNull(result.outputPath);
+            Assert.Equal(3, results.Count);
+            Assert.All(results, r => Assert.NotNull(r.OutputPath));
 
             // 展開されたファイルが存在することを確認
             var extractedDirs = Directory.GetDirectories(outputDir);
@@ -151,7 +152,7 @@ public class ParallelProcessingTests
             // 並列実行のタイミングを測定
             var stopwatch = System.Diagnostics.Stopwatch.StartNew();
 
-            var result = await ArchiveProcessor.ExtractArchivesAsync(
+            var results = await ArchiveProcessor.ExtractArchivesAsync(
                 zipFiles.ToArray(),
                 outputDir,
                 outputToSameDirectory: false,
@@ -162,7 +163,8 @@ public class ParallelProcessingTests
             stopwatch.Stop();
 
             // 結果を確認
-            Assert.NotNull(result.outputPath);
+            Assert.Equal(3, results.Count);
+            Assert.All(results, r => Assert.NotNull(r.OutputPath));
 
             // 並列実行された場合、3ファイルを順序実行するより速いはず
             // （この確認は環境依存のため、参考情報として記録）
@@ -207,7 +209,8 @@ public class ParallelProcessingTests
                 cancellationToken: TestContext.Current.CancellationToken
             );
 
-            Assert.NotNull(result.outputPath);
+            Assert.NotEmpty(result);
+            Assert.All(result, r => Assert.NotNull(r.OutputPath));
             var extractedDirs = Directory.GetDirectories(outputDir);
             Assert.Equal(2, extractedDirs.Length);
         }
@@ -454,7 +457,7 @@ public class ParallelProcessingTests
             Directory.CreateDirectory(outputDir);
 
             // 複数ファイル展開を実行（すべて有効）
-            var result = await ArchiveProcessor.ExtractArchivesAsync([validZip1, validZip2],
+            var results = await ArchiveProcessor.ExtractArchivesAsync([validZip1, validZip2],
                 outputDir,
                 outputToSameDirectory: false,
                 progressWindow: null!,
@@ -462,7 +465,8 @@ public class ParallelProcessingTests
             );
 
             // 両方成功として扱われるはず
-            Assert.NotNull(result.outputPath);
+            Assert.Equal(2, results.Count);
+            Assert.All(results, r => Assert.NotNull(r.OutputPath));
 
             // 有効なファイルは展開されているはず
             var extractedDirs = Directory.GetDirectories(outputDir);

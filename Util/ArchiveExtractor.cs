@@ -489,66 +489,63 @@ public static class ArchiveExtractor
             {
                 var rootItemName = duplicateFolderName;
 
-                if (rootItemName != null)
+                var rootPath = Path.Combine(tempOutputPath, rootItemName);
+                var innerFolderPath = Path.Combine(rootPath, rootItemName);
+
+                if (Directory.Exists(innerFolderPath))
                 {
-                    var rootPath = Path.Combine(tempOutputPath, rootItemName);
-                    var innerFolderPath = Path.Combine(rootPath, rootItemName);
+                    Logger.Log($"スマート解凍：二重フォルダ '{rootItemName}' をリフトアップします");
 
-                    if (Directory.Exists(innerFolderPath))
+                    // 一時ディレクトリを作成して、内側フォルダの中身を移動
+                    var tempLiftUpPath = Path.Combine(Path.GetTempPath(), $"Lhamiel_LiftUp_{Guid.NewGuid():N}");
+                    try
                     {
-                        Logger.Log($"スマート解凍：二重フォルダ '{rootItemName}' をリフトアップします");
+                        Directory.CreateDirectory(tempLiftUpPath);
 
-                        // 一時ディレクトリを作成して、内側フォルダの中身を移動
-                        var tempLiftUpPath = Path.Combine(Path.GetTempPath(), $"Lhamiel_LiftUp_{Guid.NewGuid():N}");
+                        // 内側フォルダの中身を一時ディレクトリに移動
+                        foreach (var dir in Directory.GetDirectories(innerFolderPath))
+                        {
+                            var destDir = Path.Combine(tempLiftUpPath, Path.GetFileName(dir));
+                            Directory.Move(dir, destDir);
+                        }
+                        foreach (var file in Directory.GetFiles(innerFolderPath))
+                        {
+                            var destFile = Path.Combine(tempLiftUpPath, Path.GetFileName(file));
+                            File.Move(file, destFile);
+                        }
+
+                        // 空になった内側フォルダを削除
+                        RemoveReadOnlyAttributes(innerFolderPath);
+                        Directory.Delete(innerFolderPath, true);
+
+                        // 一時ディレクトリの中身を外側のフォルダ(rootPath)に移動
+                        foreach (var dir in Directory.GetDirectories(tempLiftUpPath))
+                        {
+                            var destDir = Path.Combine(rootPath, Path.GetFileName(dir));
+                            Directory.Move(dir, destDir);
+                        }
+                        foreach (var file in Directory.GetFiles(tempLiftUpPath))
+                        {
+                            var destFile = Path.Combine(rootPath, Path.GetFileName(file));
+                            File.Move(file, destFile);
+                        }
+
+                        Logger.Log("リフトアップが完了しました");
+                    }
+                    finally
+                    {
+                        // 一時ディレクトリをクリーンアップ
                         try
                         {
-                            Directory.CreateDirectory(tempLiftUpPath);
-
-                            // 内側フォルダの中身を一時ディレクトリに移動
-                            foreach (var dir in Directory.GetDirectories(innerFolderPath))
+                            if (Directory.Exists(tempLiftUpPath))
                             {
-                                var destDir = Path.Combine(tempLiftUpPath, Path.GetFileName(dir));
-                                Directory.Move(dir, destDir);
+                                RemoveReadOnlyAttributes(tempLiftUpPath);
+                                Directory.Delete(tempLiftUpPath, true);
                             }
-                            foreach (var file in Directory.GetFiles(innerFolderPath))
-                            {
-                                var destFile = Path.Combine(tempLiftUpPath, Path.GetFileName(file));
-                                File.Move(file, destFile);
-                            }
-
-                            // 空になった内側フォルダを削除
-                            RemoveReadOnlyAttributes(innerFolderPath);
-                            Directory.Delete(innerFolderPath, true);
-
-                            // 一時ディレクトリの中身を外側のフォルダ(rootPath)に移動
-                            foreach (var dir in Directory.GetDirectories(tempLiftUpPath))
-                            {
-                                var destDir = Path.Combine(rootPath, Path.GetFileName(dir));
-                                Directory.Move(dir, destDir);
-                            }
-                            foreach (var file in Directory.GetFiles(tempLiftUpPath))
-                            {
-                                var destFile = Path.Combine(rootPath, Path.GetFileName(file));
-                                File.Move(file, destFile);
-                            }
-
-                            Logger.Log("リフトアップが完了しました");
                         }
-                        finally
+                        catch (Exception ex)
                         {
-                            // 一時ディレクトリをクリーンアップ
-                            try
-                            {
-                                if (Directory.Exists(tempLiftUpPath))
-                                {
-                                    RemoveReadOnlyAttributes(tempLiftUpPath);
-                                    Directory.Delete(tempLiftUpPath, true);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Log($"リフトアップ処理の一時ディレクトリ削除に失敗しました: {tempLiftUpPath}, {ex.Message}", LogLevel.Warning);
-                            }
+                            Logger.Log($"リフトアップ処理の一時ディレクトリ削除に失敗しました: {tempLiftUpPath}, {ex.Message}", LogLevel.Warning);
                         }
                     }
                 }

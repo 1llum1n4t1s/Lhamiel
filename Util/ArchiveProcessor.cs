@@ -169,22 +169,7 @@ public static class ArchiveProcessor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <returns>成功したアーカイブのソースパス、展開先パス、構造情報のリスト。すべて失敗した場合は空のリスト</returns>
-    public static async Task<(string outputPath, ArchiveExtractor.ArchiveStructureInfo structureInfo)> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
-    {
-        var results = await ExtractArchivesInternalAsync(filePaths, outputDir, outputToSameDirectory, progressWindow, cancellationToken, closeWindowOnCompletion);
-
-        // 単一ファイルの場合はその結果を、複数ファイルの場合はnullを返す（後方互換性のため）
-        if (filePaths.Length == 1 && results.Count == 1)
-        {
-            return (results[0].OutputPath, results[0].StructureInfo);
-        }
-        return (null!, null!);
-    }
-
-    /// <summary>
-    /// 複数のアーカイブファイルの展開結果を取得する（内部用）
-    /// </summary>
-    internal static async Task<List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>> ExtractArchivesInternalAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    public static async Task<List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
         var results = new List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>();
         try

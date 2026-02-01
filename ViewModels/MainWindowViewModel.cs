@@ -268,7 +268,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (cancellationToken.IsCancellationRequested) return;
             if (hasExtraction)
             {
-                var extractionResults = await ArchiveProcessor.ExtractArchivesInternalAsync(
+                var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
                     filesToExtract.ToArray(),
                     settings.ExtractionOutputDirectory,
                     settings.ExtractionOutputToSameDirectory,
