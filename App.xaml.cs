@@ -488,7 +488,7 @@ public partial class App : Application
                     progressWindow.Activate();
                     await Task.Yield();
 
-                    var (finalOutputPath, _) = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
+                    var (finalOutputPath, structureInfo) = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
 
                     if (finalOutputPath != null)
                     {
@@ -497,9 +497,20 @@ public partial class App : Application
                         // 展開後にフォルダを開く設定を確認
                         if (settings.OpenExtractionOutputFolder)
                         {
-                            if (Directory.Exists(finalOutputPath))
+                            var pathToOpen = finalOutputPath;
+                            // 単一ルート要素の場合、そのフォルダを直接開く
+                            if (structureInfo != null && structureInfo.HasSingleRootItem && !string.IsNullOrEmpty(structureInfo.SingleRootItemName))
                             {
-                                FolderOpener.OpenFolder(finalOutputPath);
+                                var possibleDir = Path.Combine(finalOutputPath, structureInfo.SingleRootItemName);
+                                if (Directory.Exists(possibleDir))
+                                {
+                                    pathToOpen = possibleDir;
+                                }
+                            }
+
+                            if (Directory.Exists(pathToOpen))
+                            {
+                                FolderOpener.OpenFolder(pathToOpen);
                             }
                         }
                     }
