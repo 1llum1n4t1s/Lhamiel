@@ -25,6 +25,11 @@ public static class ArchiveExtractor
     private static readonly HashSet<string> IgnoredSystemDirectories = new(StringComparer.OrdinalIgnoreCase) { "__MACOSX" };
 
     /// <summary>
+    /// 定数: スマート解凍判定用：無視するシステムファイル名
+    /// </summary>
+    private static readonly HashSet<string> IgnoredSystemFiles = new(StringComparer.OrdinalIgnoreCase) { "desktop.ini", "Thumbs.db", ".DS_Store" };
+
+    /// <summary>
     /// 指定されたファイルがサポートされているアーカイブ形式かどうかを確認する
     /// </summary>
     /// <param name="filePath">確認するファイルのパス</param>
@@ -227,6 +232,7 @@ public static class ArchiveExtractor
 
             var rootName = parts[0];
             if (IgnoredSystemDirectories.Contains(rootName)) continue;
+            if (!item.IsDirectory && parts.Length > 0 && IgnoredSystemFiles.Contains(parts[^1])) continue;
 
             if (parts.Length == 1)
             {
@@ -650,6 +656,25 @@ public static class ArchiveExtractor
                         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
                         {
                             Logger.Log($"無視対象ディレクトリの削除に失敗: {dir}, {ex.Message}", LogLevel.Warning);
+                        }
+                    }
+                }
+
+                // メソッド呼び出し: 一時ディレクトリから無視対象のシステムファイルを再帰的に削除
+                foreach (var ignoredFileName in IgnoredSystemFiles)
+                {
+                    foreach (var file in Directory.GetFiles(tempOutputPath, ignoredFileName, SearchOption.AllDirectories))
+                    {
+                        try
+                        {
+                            if (File.Exists(file))
+                            {
+                                File.Delete(file);
+                            }
+                        }
+                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                        {
+                            Logger.Log($"無視対象ファイルの削除に失敗: {file}, {ex.Message}", LogLevel.Warning);
                         }
                     }
                 }
