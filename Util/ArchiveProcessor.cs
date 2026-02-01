@@ -20,8 +20,8 @@ public static class ArchiveProcessor
     /// <param name="enablePartialExtraction">部分展開を有効にするかどうか</param>
     /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
-    /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true)
+    /// <returns>処理が成功した場合は展開先のパス、失敗した場合はnull</returns>
+    public static async Task<string?> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}");
 
@@ -30,7 +30,7 @@ public static class ArchiveProcessor
         {
             Logger.Log($"指定されたファイルが存在しません: {filePath}");
             _ = MessageService.ShowError($"指定されたファイルが見つかりません。\n{filePath}");
-            return false;
+            return null;
         }
 
         // I/Oを含む重い処理全体を Task.Run でバックグラウンドに移動
@@ -58,7 +58,7 @@ public static class ArchiveProcessor
                 {
                     Logger.Log($"サポートされていないファイル形式です: {extension}");
                     Dispatcher.UIThread.Post(() => _ = MessageService.ShowError($"サポートされていないファイル形式です。\n{extension}"));
-                    return false;
+                    return null;
                 }
 
                 // --- ここから重いI/O処理 ---
@@ -119,9 +119,9 @@ public static class ArchiveProcessor
                         {
                             progressWindow?.CloseSafe();
                         }
-                        return true;
+                        return outputPath;
                     }
-                    return false;
+                    return null;
                 }
                 else
                 {
@@ -131,13 +131,13 @@ public static class ArchiveProcessor
                         progressWindow,
                         false,
                         cancellationToken,
-                        rootItemName != null);
+                        rootItemName);
 
                     if (closeWindowOnCompletion)
                     {
                         progressWindow?.CloseSafe();
                     }
-                    return true;
+                    return outputPath;
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -146,7 +146,7 @@ public static class ArchiveProcessor
                 var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, filePath, outputPath);
                 Dispatcher.UIThread.Post(() =>
                     _ = MessageService.ShowError($"{errorInfo.Message}\n\n詳細: {errorInfo.Details}", "展開エラー"));
-                return false;
+                return null;
             }
             finally
             {
@@ -168,9 +168,10 @@ public static class ArchiveProcessor
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
-    /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    /// <returns>成功したアーカイブのソースパスと展開先パスのリスト。すべて失敗した場合は空のリスト</returns>
+    public static async Task<List<(string SourcePath, string OutputPath)>> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
+        var results = new List<(string SourcePath, string OutputPath)>();
         try
         {
             var totalCount = filePaths.Length;
@@ -201,7 +202,7 @@ public static class ArchiveProcessor
                         });
                     });
 
-                    var success = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false);
+                    var finalOutputPath = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false);
 
                     // lock 内で状態のみ更新し、Dispatcher への通知は lock 外で実行
                     int progressToReport = 0;
@@ -209,8 +210,15 @@ public static class ArchiveProcessor
 
                     lock (lockObject)
                     {
-                        if (success) successCount++;
-                        else failedFiles.Add(Path.GetFileName(filePath));
+                        if (finalOutputPath != null)
+                        {
+                            successCount++;
+                            results.Add((filePath, finalOutputPath));
+                        }
+                        else
+                        {
+                            failedFiles.Add(Path.GetFileName(filePath));
+                        }
 
                         // 件数ベースの進捗を計算
                         progressToReport = (int)((double)(successCount + failedFiles.Count) / totalCount * 100);
@@ -256,7 +264,7 @@ public static class ArchiveProcessor
             {
                 progressWindow?.CloseSafe();
             }
-            return successCount > 0;
+            return results;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -269,7 +277,7 @@ public static class ArchiveProcessor
                 progressWindow?.CloseSafe();
             }
 
-            return false;
+            return results;
         }
     }
 

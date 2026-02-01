@@ -488,22 +488,25 @@ public partial class App : Application
                     progressWindow.Activate();
                     await Task.Yield();
 
-                    var success = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
+                    var finalOutputPath = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
 
-                if (success)
-                {
-                    Logger.Log("ファイル展開処理が完了しました");
-
-                    // 展開後にフォルダを開く設定を確認
-                    if (settings.OpenExtractionOutputFolder)
+                    if (finalOutputPath != null)
                     {
-                        OpenExtractedFolder(filePath, outputDir, outputToSameDirectory);
+                        Logger.Log("ファイル展開処理が完了しました");
+
+                        // 展開後にフォルダを開く設定を確認
+                        if (settings.OpenExtractionOutputFolder)
+                        {
+                            if (Directory.Exists(finalOutputPath))
+                            {
+                                FolderOpener.OpenFolder(finalOutputPath);
+                            }
+                        }
                     }
-                }
-                else
-                {
-                    Logger.Log("ファイル展開処理が失敗しました");
-                }
+                    else
+                    {
+                        Logger.Log("ファイル展開処理が失敗しました");
+                    }
                 }
                 finally
                 {
@@ -594,18 +597,6 @@ public partial class App : Application
             Logger.LogException("ファイル圧縮処理でエラーが発生", ex);
             _ = MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
             ShutdownIfNeeded(shouldShutdown);
-        }
-    }
-
-    /// <summary>
-    /// 展開されたフォルダを開く
-    /// </summary>
-    private void OpenExtractedFolder(string archivePath, string outputDir, bool outputToSameDirectory)
-    {
-        var extractionPath = ArchiveExtractor.GetBaseOutputDirectory(archivePath, outputDir, outputToSameDirectory);
-        if (!string.IsNullOrWhiteSpace(extractionPath) && Directory.Exists(extractionPath))
-        {
-            FolderOpener.OpenFolder(extractionPath);
         }
     }
 
