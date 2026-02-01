@@ -126,6 +126,14 @@ public static class ArchiveExtractor
                         continue;
                     }
 
+                    // フォルダのみをルートアイテムとしてカウント
+                    // ファイルがルートにある場合は、スマート解凍を適用しない（nullを返す）
+                    if (parts.Length == 1 && !item.IsDirectory)
+                    {
+                        Logger.Log($"ルートにファイルが検出されました: {rootItem}。スマート解凍をスキップします。");
+                        return null;
+                    }
+
                     // メソッド呼び出し: セットに追加
                     rootItems.Add(rootItem);
 
@@ -159,6 +167,92 @@ public static class ArchiveExtractor
     {
         // メソッド呼び出し: ルートアイテム名を取得し、空でないか確認
         return !string.IsNullOrEmpty(GetSingleRootItemName(archivePath));
+    }
+
+    /// <summary>
+    /// アーカイブ内に二重フォルダ構造が存在するかを判定する
+    /// 二重フォルダ: ルートに単一フォルダがあり、その中に同名の単一フォルダのみが存在する状態
+    /// </summary>
+    /// <param name="archivePath">アーカイブファイルのパス</param>
+    /// <returns>二重フォルダの場合は内側のフォルダ名、それ以外はnull</returns>
+    public static string? DetectDuplicateFolderStructure(string archivePath)
+    {
+        // メソッド呼び出し: ファイルの存在確認
+        if (!File.Exists(archivePath)) return null;
+
+        try
+        {
+            // 変数: アーカイブリーダーの初期化。usingで確実に解放
+            using var reader = new ArchiveReader(archivePath);
+
+            // 変数: ルート要素を保持するセット
+            var rootItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // 変数: 第2階層の要素を保持する辞書（キー: ルート要素名、値: 第2階層の要素セット）
+            var secondLevelItems = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+            // メソッド呼び出し: アーカイブ内の全アイテムを走査
+            foreach (var item in reader.Items)
+            {
+                // パスを正規化（バックスラッシュをスラッシュに）
+                var path = item.FullName.Replace('\\', '/');
+                var parts = path.Split(['/'], StringSplitOptions.RemoveEmptyEntries);
+
+                if (parts.Length == 0) continue;
+
+                // 変数: ルート要素（A階層）
+                var rootItem = parts[0];
+
+                // システム管理用フォルダは無視
+                if (IgnoredSystemDirectories.Contains(rootItem)) continue;
+
+                // ルート要素を記録
+                rootItems.Add(rootItem);
+
+                // 2つ以上のルート要素がある場合は二重フォルダではない
+                if (rootItems.Count > 1) return null;
+
+                // 第2階層（B階層）の要素を記録
+                if (parts.Length >= 2)
+                {
+                    var secondLevelItem = parts[1];
+                    if (!secondLevelItems.ContainsKey(rootItem))
+                    {
+                        secondLevelItems[rootItem] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    }
+                    secondLevelItems[rootItem].Add(secondLevelItem);
+                }
+            }
+
+            // ルート要素が1つだけの場合
+            if (rootItems.Count == 1)
+            {
+                var rootItem = rootItems.First();
+
+                // 第2階層の要素を確認
+                if (secondLevelItems.TryGetValue(rootItem, out var secondLevel))
+                {
+                    // 第2階層に要素が1つだけあり、かつそれがルート要素と同名の場合
+                    if (secondLevel.Count == 1)
+                    {
+                        var secondLevelItem = secondLevel.First();
+                        if (string.Equals(rootItem, secondLevelItem, StringComparison.OrdinalIgnoreCase))
+                        {
+                            // 二重フォルダ構造を検出
+                            Logger.Log($"二重フォルダ構造を検出: {rootItem}/{secondLevelItem}");
+                            return secondLevelItem;
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            // メソッド呼び出し: ログの記録
+            Logger.Log($"二重フォルダ構造解析エラー: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>
@@ -457,6 +551,65 @@ public static class ArchiveExtractor
 
             // メソッド呼び出し: ログの記録
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
+
+            // スマート解凍：二重フォルダの場合はリフトアップを行う
+            if (rootItemNameForCleanup != null)
+            {
+                var rootPath = Path.Combine(outputPath, rootItemNameForCleanup);
+                if (Directory.Exists(rootPath))
+                {
+                    Logger.Log($"スマート解凍：二重フォルダ '{rootItemNameForCleanup}' をリフトアップします");
+
+                    // リフトアップ前の競合チェック
+                    var conflicts = new List<string>();
+                    foreach (var dir in Directory.GetDirectories(rootPath))
+                    {
+                        var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+                        if (Directory.Exists(destDir)) conflicts.Add(destDir);
+                    }
+                    foreach (var file in Directory.GetFiles(rootPath))
+                    {
+                        var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                        if (File.Exists(destFile)) conflicts.Add(destFile);
+                    }
+
+                    // 競合がある場合は確認ダイアログを表示
+                    if (conflicts.Count > 0)
+                    {
+                        Logger.Log($"リフトアップ時に競合が検出されました: {conflicts.Count}件");
+                        var conflictMessage = conflicts.Count == 1
+                            ? $"リフトアップ時に既存のアイテム '{Path.GetFileName(conflicts[0])}' と競合します。\n\n上書きしてリフトアップを続行しますか？"
+                            : $"リフトアップ時に {conflicts.Count} 個の既存アイテムと競合します。\n\n上書きしてリフトアップを続行しますか？";
+                        var canLiftUp = await Dispatcher.UIThread.InvokeAsync(async () =>
+                            await MessageService.ShowYesNoQuestionAsync(conflictMessage, "リフトアップの確認", parentWindow));
+
+                        if (!canLiftUp)
+                        {
+                            // メソッド呼び出し: ログの記録
+                            Logger.Log("ユーザーがリフトアップをキャンセルしました。二重フォルダのまま残します。");
+                            return;
+                        }
+                    }
+
+                    // ルート要素の中身を outputPath 直下に移動
+                    foreach (var dir in Directory.GetDirectories(rootPath))
+                    {
+                        var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
+                        if (Directory.Exists(destDir)) Directory.Delete(destDir, true);
+                        Directory.Move(dir, destDir);
+                    }
+                    foreach (var file in Directory.GetFiles(rootPath))
+                    {
+                        var destFile = Path.Combine(outputPath, Path.GetFileName(file));
+                        if (File.Exists(destFile)) File.Delete(destFile);
+                        File.Move(file, destFile);
+                    }
+
+                    // 空になったルート要素を削除
+                    Directory.Delete(rootPath, true);
+                    Logger.Log("リフトアップが完了しました");
+                }
+            }
 
             // スマート解凍：ルート要素が単一の場合はリフトアップを行う
             if (rootItemNameForCleanup != null)

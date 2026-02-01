@@ -66,17 +66,19 @@ public static class ArchiveProcessor
                 // 1. スマート解凍の判定 (バックグラウンドで実行)
                 var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(filePath, outputDir, outputToSameDirectory);
 
-                // ここで重い処理が走ってもUIは止まらない
-                var rootItemName = ArchiveExtractor.GetSingleRootItemName(filePath);
-                var isSingleRoot = !string.IsNullOrEmpty(rootItemName);
+                // 二重フォルダ構造を検出
+                var duplicateFolderName = ArchiveExtractor.DetectDuplicateFolderStructure(filePath);
+                var rootItemName = duplicateFolderName;
 
-                if (isSingleRoot)
+                if (duplicateFolderName != null)
                 {
+                    // 二重フォルダが検出された場合、直下に展開してリフトアップする
                     outputPath = baseDirectory;
-                    Logger.Log($"スマート解凍適用: 単一ルート要素のため直下に展開 -> {outputPath}");
+                    Logger.Log($"スマート解凍適用: 二重フォルダ構造を検出 '{duplicateFolderName}' -> {outputPath}");
                 }
                 else
                 {
+                    // 通常の展開：アーカイブ名フォルダを作成
                     var fileName = Path.GetFileNameWithoutExtension(filePath);
                     outputPath = Path.Combine(baseDirectory, fileName);
                     Logger.Log($"通常解凍: アーカイブ名フォルダを作成 -> {outputPath}");
