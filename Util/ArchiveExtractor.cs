@@ -516,21 +516,18 @@ public static class ArchiveExtractor
                                 File.Move(file, destFile);
                             }
 
-                            // 内側フォルダを削除
+                            // 空になった内側フォルダを削除
                             Directory.Delete(innerFolderPath, true);
 
-                            // 外側フォルダも削除
-                            Directory.Delete(rootPath, true);
-
-                            // 一時ディレクトリの中身を tempOutputPath に移動
+                            // 一時ディレクトリの中身を外側のフォルダ(rootPath)に移動
                             foreach (var dir in Directory.GetDirectories(tempLiftUpPath))
                             {
-                                var destDir = Path.Combine(tempOutputPath, Path.GetFileName(dir));
+                                var destDir = Path.Combine(rootPath, Path.GetFileName(dir));
                                 Directory.Move(dir, destDir);
                             }
                             foreach (var file in Directory.GetFiles(tempLiftUpPath))
                             {
-                                var destFile = Path.Combine(tempOutputPath, Path.GetFileName(file));
+                                var destFile = Path.Combine(rootPath, Path.GetFileName(file));
                                 File.Move(file, destFile);
                             }
 
