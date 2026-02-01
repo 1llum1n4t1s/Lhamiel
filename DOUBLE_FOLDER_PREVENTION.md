@@ -221,50 +221,70 @@ outputPath に移動
 
 **圧縮ファイル構造と出力先指定**
 ```
-c:\Downloads\abcdefg.zip
+c:\Downloads\ProjectA.zip
 出力先: c:\Extracted
-  └── temp/A/A/content（アーカイブ内の構造）
+  └── ProjectA/ProjectA/src（アーカイブ内の構造）
 ```
 
 **展開処理の流れ**
-1. `GetBaseOutputDirectory("c:\Downloads\abcdefg.zip", "c:\Extracted", false)` → `"c:\Extracted"`
-2. `DetectDuplicateFolderStructure("c:\Downloads\abcdefg.zip")` → `"A"` (二重フォルダを検出)
-3. `outputPath = "c:\Extracted"` に統一
-4. 一時展開: `c:\Temp\Lhamiel_Extract_XXXX\temp\A\A\content`
-5. リフトアップ処理実行: 内側フォルダを移動
-6. 結果: `c:\Extracted\temp\A\A\content`
+1. `GetBaseOutputDirectory("c:\Downloads\ProjectA.zip", "c:\Extracted", false)` → `"c:\Extracted"`
+2. `DetectDuplicateFolderStructure("c:\Downloads\ProjectA.zip")` → `"ProjectA"` (二重フォルダを検出)
+3. `HasSingleRootItem()` → `true` (ルート要素が1つ)
+4. `outputPath = "c:\Extracted"` に設定
+5. 一時展開: `c:\Temp\Lhamiel_Extract_XXXX\ProjectA\ProjectA\src\...`
+6. リフトアップ処理実行: 内側の `ProjectA` フォルダの中身を移動
+   - `c:\Temp\Lhamiel_Extract_XXXX\ProjectA\ProjectA\src` → 一時作業ディレクトリ
+   - 外側フォルダ削除
+   - 一時作業ディレクトリの内容を戻す
+7. 結果: `c:\Extracted\ProjectA\src\...`
 
 **重要ポイント**:
-- `abcdefg` というアーカイブ名は一度も処理に使用されていない
-- アーカイブ内の `temp/A/A/content` という構造がそのまま出力先に反映
+- アーカイブ名「ProjectA」は出力パス決定に使用されない
+- 二重フォルダ構造（`ProjectA/ProjectA`）がリフトアップにより`ProjectA`に統一される
 
 ### 例2：リフトアップが適用されないケース（単一フォルダ）
 
-**圧縮ファイル構造**
+**圧縮ファイル構造と出力先指定**
 ```
-ProjectA.zip
-└── ProjectA/
-    ├── src/
-    │   └── main.cpp
-    ├── CMakeLists.txt
-    └── README.md
+c:\Downloads\ProjectA.zip
+出力先: c:\Extracted
+  └── ProjectA/src（アーカイブ内の構造 - 二重フォルダではない）
 ```
 
-**展開結果**
+**展開処理の流れ**
+1. `GetBaseOutputDirectory()` → `"c:\Extracted"`
+2. `DetectDuplicateFolderStructure()` → `null` (二重フォルダではない)
+3. `HasSingleRootItem()` → `true` (ルート要素が1つ)
+4. `outputPath = "c:\Extracted"` に設定（アーカイブ名を使用しない）
+5. 一時展開: `c:\Temp\Lhamiel_Extract_XXXX\ProjectA\src\...`
+6. リフトアップなし
+7. 一時ディレクトリの内容を `c:\Extracted` に移動
+8. 結果: `c:\Extracted\ProjectA\src\...`
+
+**ロジック**:
+1. ルート要素が1つだけのため、単一フォルダ展開
+2. 二重フォルダではないため、リフトアップなし
+3. アーカイブ内の構造がそのまま展開先に反映
+
+### 例2-2：アーカイブ名変更時の動作（単一フォルダケース）
+
+**圧縮ファイル構造と出力先指定**
 ```
-出力先: c:\Extracted\
-├── ProjectA/
-│   ├── src/
-│   │   └── main.cpp
-│   ├── CMakeLists.txt
-│   └── README.md
+c:\Downloads\abcdefg.zip （ファイル名を変更）
+出力先: c:\Extracted
+  └── ProjectA/src（アーカイブ内の構造）
 ```
 
-**ロジック**
-1. `DetectDuplicateFolderStructure()` が `null` を返す
-2. 一時展開: `c:\Temp\Lhamiel_Extract_XXXX\ProjectA\src\...`
-3. リフトアップなし
-4. 結果: `c:\Extracted\ProjectA\src\...`
+**展開処理の流れ**
+1. `GetBaseOutputDirectory()` → `"c:\Extracted"`
+2. `DetectDuplicateFolderStructure()` → `null`
+3. `HasSingleRootItem()` → `true`
+4. `outputPath = "c:\Extracted"` （アーカイブ名「abcdefg」は使用されない）
+5. 結果: `c:\Extracted\ProjectA\src\...`
+
+**重要ポイント**:
+- ファイル名を `ProjectA.zip` から `abcdefg.zip` に変更しても結果は同じ
+- ルート要素が単一の場合、アーカイブ名に依存しない
 
 ### 例3：複数フォルダのケース
 
@@ -319,8 +339,31 @@ ProjectD.zip
 **ロジック**
 1. `__MACOSX` は無視される
 2. `DetectDuplicateFolderStructure()` が `null` を返す
-3. リフトアップなし
-4. 結果: `c:\Extracted\ProjectD\src\...`
+3. `HasSingleRootItem()` → `true` (有効なルート要素が1つ)
+4. リフトアップなし
+5. 結果: `c:\Extracted\ProjectD\src\...`
+
+### 例5：誤検知を防ぐケース（フォルダとファイルの区別）
+
+**圧縮ファイル構造**
+```
+A.zip
+└── A/ (フォルダ)
+    └── A (拡張子なしのファイル)
+        └── content.txt
+```
+
+**展開処理の流れ**
+1. `GetBaseOutputDirectory()` → `baseDirectory`
+2. `DetectDuplicateFolderStructure()` → `null`
+   - 理由：第2階層の `A` はファイル（フォルダではない）ため、二重フォルダと判定されない
+3. `HasSingleRootItem()` → `true`
+4. `outputPath = baseDirectory`
+5. 結果: `baseDirectory/A/A/content.txt`
+
+**重要ポイント**:
+- ファイルとフォルダを厳密に区別することで、誤判定を防止
+- `item.IsDirectory` で判定
 
 ## 重要な設計ポイント
 
