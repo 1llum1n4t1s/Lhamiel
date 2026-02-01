@@ -170,6 +170,99 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
+    /// アーカイブの先頭2階層の解析結果を保持するデータ構造
+    /// </summary>
+    private class ArchiveStructure
+    {
+        /// <summary>
+        /// プロパティ: ルートレベルのフォルダ名のセット
+        /// </summary>
+        public HashSet<string> RootFolders { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// プロパティ: ルートレベルのファイル名のセット
+        /// </summary>
+        public HashSet<string> RootFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// プロパティ: 第2階層のフォルダ名の辞書（キー: ルート名）
+        /// </summary>
+        public Dictionary<string, HashSet<string>> SecondLevelFolders { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// プロパティ: 第2階層のファイル名の辞書（キー: ルート名）
+        /// </summary>
+        public Dictionary<string, HashSet<string>> SecondLevelFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// アーカイブの先頭2階層を解析し、フォルダとファイルの情報を格納した構造を返す
+    /// </summary>
+    /// <param name="reader">アーカイブリーダー</param>
+    /// <returns>解析結果を格納したArchiveStructure</returns>
+    private static ArchiveStructure ParseArchiveFirstTwoLevels(ArchiveReader reader)
+    {
+        var structure = new ArchiveStructure();
+
+        // ローカル関数: 辞書のキーに対応する HashSet に値を追加（なければ作成）
+        void AddToHierarchy(Dictionary<string, HashSet<string>> dict, string key, string value)
+        {
+            if (!dict.TryGetValue(key, out var set))
+            {
+                set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                dict[key] = set;
+            }
+            set.Add(value);
+        }
+
+        // メソッド呼び出し: アーカイブ内の全アイテムを1回のループで走査
+        foreach (var item in reader.Items)
+        {
+            // パスを正規化（バックスラッシュをスラッシュに）
+            var path = item.FullName.Replace('\\', '/');
+            var parts = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length == 0) continue;
+
+            var rootName = parts[0];
+            if (IgnoredSystemDirectories.Contains(rootName)) continue;
+
+            if (parts.Length == 1)
+            {
+                // ルートレベルのアイテム
+                if (item.IsDirectory)
+                {
+                    structure.RootFolders.Add(rootName);
+                }
+                else
+                {
+                    structure.RootFiles.Add(rootName);
+                }
+            }
+            else
+            {
+                // 子要素を持つため、ルートはフォルダ
+                structure.RootFolders.Add(rootName);
+
+                var secondLevelName = parts[1];
+
+                // parts.Length == 2 かつ item がファイルの場合のみ SecondLevelFiles に追加
+                if (parts.Length == 2 && !item.IsDirectory)
+                {
+                    AddToHierarchy(structure.SecondLevelFiles, rootName, secondLevelName);
+                }
+                else
+                {
+                    // item がディレクトリであるか、より深い階層を持つ場合は、第2階層はフォルダとして扱う
+                    AddToHierarchy(structure.SecondLevelFolders, rootName, secondLevelName);
+                }
+            }
+        }
+
+        return structure;
+    }
+
+    /// <summary>
     /// アーカイブ内に二重フォルダ構造が存在するかを判定する
     /// 二重フォルダ: ルートに単一フォルダがあり、その中に同名の単一フォルダのみが存在する状態
     /// </summary>
@@ -184,84 +277,24 @@ public static class ArchiveExtractor
         {
             // 変数: アーカイブリーダーの初期化。usingで確実に解放
             using var reader = new ArchiveReader(archivePath);
-
-            // 変数: ルートレベルのフォルダとファイルを保持するセット
-            var rootFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var rootFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            // 変数: 第2階層のフォルダとファイルを保持する辞書（キー: ルート名）
-            var secondLevelFolders = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-            var secondLevelFiles = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-
-            // ローカル関数: 辞書のキーに対応する HashSet に値を追加（なければ作成）
-            void AddToHierarchy(Dictionary<string, HashSet<string>> dict, string key, string value)
-            {
-                if (!dict.TryGetValue(key, out var set))
-                {
-                    set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    dict[key] = set;
-                }
-                set.Add(value);
-            }
-
-            // メソッド呼び出し: アーカイブ内の全アイテムを1回のループで走査
-            foreach (var item in reader.Items)
-            {
-                // パスを正規化（バックスラッシュをスラッシュに）
-                var path = item.FullName.Replace('\\', '/');
-                var parts = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-
-                if (parts.Length == 0) continue;
-
-                var rootName = parts[0];
-                if (IgnoredSystemDirectories.Contains(rootName)) continue;
-
-                if (parts.Length == 1)
-                {
-                    // ルートレベルのアイテム
-                    if (item.IsDirectory)
-                    {
-                        rootFolders.Add(rootName);
-                    }
-                    else
-                    {
-                        rootFiles.Add(rootName);
-                    }
-                }
-                else
-                {
-                    // 子要素を持つため、ルートはフォルダ
-                    rootFolders.Add(rootName);
-
-                    var secondLevelName = parts[1];
-
-                    // parts.Length == 2 かつ item がファイルの場合のみ secondLevelFiles に追加
-                    if (parts.Length == 2 && !item.IsDirectory)
-                    {
-                        AddToHierarchy(secondLevelFiles, rootName, secondLevelName);
-                    }
-                    else
-                    {
-                        // item がディレクトリであるか、より深い階層を持つ場合は、第2階層はフォルダとして扱う
-                        AddToHierarchy(secondLevelFolders, rootName, secondLevelName);
-                    }
-                }
-            }
+            // メソッド呼び出し: アーカイブの先頭2階層を解析
+            var structure = ParseArchiveFirstTwoLevels(reader);
 
             // 二重フォルダ構造の条件確認
             // 条件1: ルートフォルダが1つのみ
             // 条件2: ルートレベルにファイルがない
-            if (rootFolders.Count != 1 || rootFiles.Any()) return null;
+            if (structure.RootFolders.Count != 1 || structure.RootFiles.Any()) return null;
 
-            var rootFolderName = rootFolders.First();
+            var rootFolderName = structure.RootFolders.First();
 
             // 条件3: 第2階層にフォルダが1つのみ
-            if (!secondLevelFolders.TryGetValue(rootFolderName, out var slFolders) || slFolders.Count != 1)
+            if (!structure.SecondLevelFolders.TryGetValue(rootFolderName, out var slFolders) || slFolders.Count != 1)
             {
                 return null;
             }
 
             // 条件4: 第2階層にファイルがない
-            if (secondLevelFiles.TryGetValue(rootFolderName, out var slFiles) && slFiles.Any())
+            if (structure.SecondLevelFiles.TryGetValue(rootFolderName, out var slFiles) && slFiles.Any())
             {
                 return null;
             }
