@@ -568,67 +568,39 @@ public static class ArchiveExtractor
             // メソッド呼び出し: キャンセルの確認
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 最終的な展開先への移動処理
+            // 最終的な展開先への移動処理（原子性のため既存は削除せず退避し、移動成功後にバックアップを削除）
             // メソッド呼び出し: ログの記録
             Logger.Log($"一時ディレクトリから最終展開先へ移動します: {tempOutputPath} -> {outputPath}");
 
-            // 上書きが許可された（または確認済み）の場合は既存の対象を削除
+            // 変数: 退避したバックアップパス（移動成功後に削除する）
+            var backupPaths = new List<string>();
+
+            // 上書きが許可された（または確認済み）の場合は既存の対象を退避（削除せず移動で原子性を確保）
             try
             {
                 if (overwriteCheckPaths is { Count: > 0 })
                 {
-                    // 親フォルダ直下展開時: 実際に上書きされるパスのみ削除（outputPathは削除しない）
+                    // 親フォルダ直下展開時: 実際に上書きされるパスのみ退避（outputPathは退避しない）
                     foreach (var path in overwriteCheckPaths)
                     {
-                        if (Directory.Exists(path))
+                        var moved = MoveExistingToBackup(path, backupPaths);
+                        if (moved)
                         {
-                            try
-                            {
-                                RemoveReadOnlyAttributes(path);
-                                Directory.Delete(path, true);
-                            }
-                            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-                            {
-                                Logger.Log($"削除再試行（属性解除）: {path}");
-                                await Task.Delay(100, cancellationToken);
-                                RemoveReadOnlyAttributes(path);
-                                Directory.Delete(path, true);
-                            }
-                        }
-                        else if (File.Exists(path))
-                        {
-                            File.Delete(path);
+                            cancellationToken.ThrowIfCancellationRequested();
                         }
                     }
                 }
                 else
                 {
-                    // 複数ルート等でoutputPathを新規作成する場合: outputPathを削除してから作成
-                    if (Directory.Exists(outputPath))
-                    {
-                        try
-                        {
-                            RemoveReadOnlyAttributes(outputPath);
-                            Directory.Delete(outputPath, true);
-                        }
-                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-                        {
-                            Logger.Log($"削除再試行（属性解除）: {outputPath}");
-                            await Task.Delay(100, cancellationToken);
-                            RemoveReadOnlyAttributes(outputPath);
-                            Directory.Delete(outputPath, true);
-                        }
-                    }
-                    else if (File.Exists(outputPath))
-                    {
-                        File.Delete(outputPath);
-                    }
+                    // 複数ルート等でoutputPathを新規作成する場合: outputPathを退避してから作成
+                    MoveExistingToBackup(outputPath, backupPaths);
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
-                Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
-                throw new InvalidOperationException($"展開先 '{Path.GetFileName(outputPath)}' が使用中か、削除権限がありません。", ex);
+                Logger.Log($"既存対象の退避に失敗しました: {ex.Message}");
+                throw new InvalidOperationException($"展開先の準備中にエラーが発生しました。ファイルが使用中か、削除権限がない可能性があります。", ex);
             }
 
             // メソッド呼び出し: 展開先ディレクトリを作成（存在しない場合のみ）
@@ -661,9 +633,32 @@ public static class ArchiveExtractor
             {
                 // メソッド呼び出し: ログの記録
                 Logger.Log($"一時ディレクトリの内容移動に失敗しました: {ex.Message}");
+                foreach (var backup in backupPaths)
+                {
+                    Logger.Log($"退避先（復元可能）: {backup}");
+                }
+                throw new InvalidOperationException($"展開先への内容移動に失敗しました。元の内容は退避先に残っています。", ex);
+            }
 
-                // 例外の投下
-                throw new InvalidOperationException($"展開先への内容移動に失敗しました。", ex);
+            // 移動成功後のみバックアップを削除（原子性の完了）
+            foreach (var backupPath in backupPaths)
+            {
+                try
+                {
+                    if (Directory.Exists(backupPath))
+                    {
+                        RemoveReadOnlyAttributes(backupPath);
+                        Directory.Delete(backupPath, true);
+                    }
+                    else if (File.Exists(backupPath))
+                    {
+                        File.Delete(backupPath);
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                {
+                    Logger.Log($"バックアップの削除に失敗しました（手動削除可能）: {backupPath}, {ex.Message}", LogLevel.Warning);
+                }
             }
 
             // メソッド呼び出し: ログの記録
@@ -736,6 +731,32 @@ public static class ArchiveExtractor
 
 
 
+
+    /// <summary>
+    /// 既存のファイルまたはディレクトリを退避用バックアップパスへ移動する（原子性のため削除せず移動）
+    /// </summary>
+    /// <param name="path">退避対象のパス（ファイルまたはディレクトリ）</param>
+    /// <param name="backupPaths">退避先パスを追加するリスト</param>
+    /// <returns>退避を行った場合はtrue、対象が存在しなかった場合はfalse</returns>
+    private static bool MoveExistingToBackup(string path, List<string> backupPaths)
+    {
+        if (Directory.Exists(path))
+        {
+            var backupPath = path + ".Lhamiel_backup_" + Guid.NewGuid().ToString("N");
+            RemoveReadOnlyAttributes(path);
+            Directory.Move(path, backupPath);
+            backupPaths.Add(backupPath);
+            return true;
+        }
+        if (File.Exists(path))
+        {
+            var backupPath = path + ".Lhamiel_backup_" + Guid.NewGuid().ToString("N");
+            File.Move(path, backupPath);
+            backupPaths.Add(backupPath);
+            return true;
+        }
+        return false;
+    }
 
     /// <summary>
     /// ファイルまたはディレクトリの読み取り専用属性を削除する
