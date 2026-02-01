@@ -185,10 +185,10 @@ public static class ArchiveExtractor
             // 変数: アーカイブリーダーの初期化。usingで確実に解放
             using var reader = new ArchiveReader(archivePath);
 
-            // 変数: ルート要素を保持するセット
-            var rootItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            // 変数: 第2階層の要素を保持する辞書（キー: ルート要素名、値: 第2階層の要素セット）
-            var secondLevelItems = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+            // 変数: ルート要素を保持するセット（フォルダのみ）
+            var rootFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // 変数: 第2階層の要素を保持する辞書（キー: ルート要素名、値: 第2階層のアイテム情報セット）
+            var secondLevelItems = new Dictionary<string, HashSet<(string name, bool isDirectory)>>(StringComparer.OrdinalIgnoreCase);
 
             // メソッド呼び出し: アーカイブ内の全アイテムを走査
             foreach (var item in reader.Items)
@@ -205,11 +205,14 @@ public static class ArchiveExtractor
                 // システム管理用フォルダは無視
                 if (IgnoredSystemDirectories.Contains(rootItem)) continue;
 
-                // ルート要素を記録
-                rootItems.Add(rootItem);
+                // ルート要素がフォルダの場合のみ記録
+                if (parts.Length == 1 && item.IsDirectory)
+                {
+                    rootFolders.Add(rootItem);
+                }
 
                 // 2つ以上のルート要素がある場合は二重フォルダではない
-                if (rootItems.Count > 1) return null;
+                if (rootFolders.Count > 1) return null;
 
                 // 第2階層（B階層）の要素を記録
                 if (parts.Length >= 2)
@@ -217,29 +220,35 @@ public static class ArchiveExtractor
                     var secondLevelItem = parts[1];
                     if (!secondLevelItems.ContainsKey(rootItem))
                     {
-                        secondLevelItems[rootItem] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        secondLevelItems[rootItem] = new HashSet<(string, bool)>();
                     }
-                    secondLevelItems[rootItem].Add(secondLevelItem);
+                    // 第2階層のアイテムがディレクトリかファイルかを判定して記録
+                    secondLevelItems[rootItem].Add((secondLevelItem, item.IsDirectory));
                 }
             }
 
-            // ルート要素が1つだけの場合
-            if (rootItems.Count == 1)
+            // ルート要素が1つだけのフォルダの場合
+            if (rootFolders.Count == 1)
             {
-                var rootItem = rootItems.First();
+                var rootItem = rootFolders.First();
 
                 // 第2階層の要素を確認
                 if (secondLevelItems.TryGetValue(rootItem, out var secondLevel))
                 {
-                    // 第2階層に要素が1つだけあり、かつそれがルート要素と同名の場合
-                    if (secondLevel.Count == 1)
+                    // 第2階層にフォルダが1つだけあり、かつそれがルート要素と同名の場合
+                    var secondLevelFolders = secondLevel.Where(x => x.isDirectory).ToList();
+                    if (secondLevelFolders.Count == 1)
                     {
-                        var secondLevelItem = secondLevel.First();
+                        var secondLevelItem = secondLevelFolders[0].name;
                         if (string.Equals(rootItem, secondLevelItem, StringComparison.OrdinalIgnoreCase))
                         {
-                            // 二重フォルダ構造を検出
-                            Logger.Log($"二重フォルダ構造を検出: {rootItem}/{secondLevelItem}");
-                            return secondLevelItem;
+                            // 第2階層に他の要素がないかを確認（同名フォルダのみが存在する必要がある）
+                            if (secondLevel.Count == 1)
+                            {
+                                // 二重フォルダ構造を検出
+                                Logger.Log($"二重フォルダ構造を検出: {rootItem}/{secondLevelItem}");
+                                return secondLevelItem;
+                            }
                         }
                     }
                 }
@@ -587,65 +596,6 @@ public static class ArchiveExtractor
                         {
                             // メソッド呼び出し: ログの記録
                             Logger.Log("ユーザーがリフトアップをキャンセルしました。二重フォルダのまま残します。");
-                            return;
-                        }
-                    }
-
-                    // ルート要素の中身を outputPath 直下に移動
-                    foreach (var dir in Directory.GetDirectories(rootPath))
-                    {
-                        var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
-                        if (Directory.Exists(destDir)) Directory.Delete(destDir, true);
-                        Directory.Move(dir, destDir);
-                    }
-                    foreach (var file in Directory.GetFiles(rootPath))
-                    {
-                        var destFile = Path.Combine(outputPath, Path.GetFileName(file));
-                        if (File.Exists(destFile)) File.Delete(destFile);
-                        File.Move(file, destFile);
-                    }
-
-                    // 空になったルート要素を削除
-                    Directory.Delete(rootPath, true);
-                    Logger.Log("リフトアップが完了しました");
-                }
-            }
-
-            // スマート解凍：ルート要素が単一の場合はリフトアップを行う
-            if (rootItemNameForCleanup != null)
-            {
-                var rootPath = Path.Combine(outputPath, rootItemNameForCleanup);
-                if (Directory.Exists(rootPath))
-                {
-                    Logger.Log($"スマート解凍：ルート要素 '{rootItemNameForCleanup}' をリフトアップします");
-
-                    // リフトアップ前の競合チェック
-                    var conflicts = new List<string>();
-                    foreach (var dir in Directory.GetDirectories(rootPath))
-                    {
-                        var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
-                        if (Directory.Exists(destDir)) conflicts.Add(destDir);
-                    }
-                    foreach (var file in Directory.GetFiles(rootPath))
-                    {
-                        var destFile = Path.Combine(outputPath, Path.GetFileName(file));
-                        if (File.Exists(destFile)) conflicts.Add(destFile);
-                    }
-
-                    // 競合がある場合は確認ダイアログを表示
-                    if (conflicts.Count > 0)
-                    {
-                        Logger.Log($"リフトアップ時に競合が検出されました: {conflicts.Count}件");
-                        var conflictMessage = conflicts.Count == 1
-                            ? $"リフトアップ時に既存のアイテム '{Path.GetFileName(conflicts[0])}' と競合します。\n\n上書きしてリフトアップを続行しますか？"
-                            : $"リフトアップ時に {conflicts.Count} 個の既存アイテムと競合します。\n\n上書きしてリフトアップを続行しますか？";
-                        var canLiftUp = await Dispatcher.UIThread.InvokeAsync(async () =>
-                            await MessageService.ShowYesNoQuestionAsync(conflictMessage, "リフトアップの確認", parentWindow));
-
-                        if (!canLiftUp)
-                        {
-                            // メソッド呼び出し: ログの記録
-                            Logger.Log("ユーザーがリフトアップをキャンセルしました。ルート要素フォルダのまま残します。");
                             return;
                         }
                     }
