@@ -192,6 +192,17 @@ public static class ArchiveExtractor
             var secondLevelFolders = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
             var secondLevelFiles = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 
+            // ローカル関数: 辞書のキーに対応する HashSet に値を追加（なければ作成）
+            void AddToHierarchy(Dictionary<string, HashSet<string>> dict, string key, string value)
+            {
+                if (!dict.TryGetValue(key, out var set))
+                {
+                    set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    dict[key] = set;
+                }
+                set.Add(value);
+            }
+
             // メソッド呼び出し: アーカイブ内の全アイテムを1回のループで走査
             foreach (var item in reader.Items)
             {
@@ -226,22 +237,12 @@ public static class ArchiveExtractor
                     // parts.Length == 2 かつ item がファイルの場合のみ secondLevelFiles に追加
                     if (parts.Length == 2 && !item.IsDirectory)
                     {
-                        if (!secondLevelFiles.TryGetValue(rootName, out var files))
-                        {
-                            files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                            secondLevelFiles[rootName] = files;
-                        }
-                        files.Add(secondLevelName);
+                        AddToHierarchy(secondLevelFiles, rootName, secondLevelName);
                     }
                     else
                     {
                         // item がディレクトリであるか、より深い階層を持つ場合は、第2階層はフォルダとして扱う
-                        if (!secondLevelFolders.TryGetValue(rootName, out var folders))
-                        {
-                            folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                            secondLevelFolders[rootName] = folders;
-                        }
-                        folders.Add(secondLevelName);
+                        AddToHierarchy(secondLevelFolders, rootName, secondLevelName);
                     }
                 }
             }

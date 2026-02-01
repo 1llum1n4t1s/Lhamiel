@@ -67,14 +67,13 @@ public static class ArchiveProcessor
                 var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(filePath, outputDir, outputToSameDirectory);
 
                 // 二重フォルダ構造を検出
-                var duplicateFolderName = ArchiveExtractor.DetectDuplicateFolderStructure(filePath);
-                var rootItemName = duplicateFolderName;
+                var rootItemName = ArchiveExtractor.DetectDuplicateFolderStructure(filePath);
 
-                if (duplicateFolderName != null)
+                if (rootItemName != null)
                 {
                     // 二重フォルダが検出された場合、直下に展開してリフトアップする
                     outputPath = baseDirectory;
-                    Logger.Log($"スマート解凍適用: 二重フォルダ構造を検出 '{duplicateFolderName}' -> {outputPath}");
+                    Logger.Log($"スマート解凍適用: 二重フォルダ構造を検出 '{rootItemName}' -> {outputPath}");
                 }
                 else
                 {
