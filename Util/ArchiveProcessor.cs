@@ -20,7 +20,7 @@ public static class ArchiveProcessor
     /// <param name="enablePartialExtraction">部分展開を有効にするかどうか</param>
     /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
-    public static async Task<(string outputPath, ArchiveExtractor.ArchiveStructureInfo structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true)
+    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}");
 
@@ -29,7 +29,7 @@ public static class ArchiveProcessor
         {
             Logger.Log($"指定されたファイルが存在しません: {filePath}");
             _ = MessageService.ShowError($"指定されたファイルが見つかりません。\n{filePath}");
-            return (null!, null!);
+            return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
         }
 
         // I/Oを含む重い処理全体を Task.Run でバックグラウンドに移動
@@ -58,7 +58,7 @@ public static class ArchiveProcessor
                 {
                     Logger.Log($"サポートされていないファイル形式です: {extension}");
                     Dispatcher.UIThread.Post(() => _ = MessageService.ShowError($"サポートされていないファイル形式です。\n{extension}"));
-                    return (null!, null!);
+                    return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
                 }
 
                 // --- ここから重いI/O処理 ---
@@ -119,25 +119,34 @@ public static class ArchiveProcessor
                         {
                             progressWindow?.CloseSafe();
                         }
-                        return (outputPath!, structureInfo!);
+                        return (outputPath, structureInfo);
                     }
-                    return (null!, null!);
+                    return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
                 }
                 else
                 {
+                    // 変数: 親フォルダ直下展開時は実際に上書きされるパスのみを上書き確認対象にする（親フォルダの存在だけでダイアログを出さない）
+                    IReadOnlyList<string>? overwriteCheckPaths = null;
+                    var topLevelName = rootItemName ?? structureInfo.SingleRootItemName;
+                    if (!string.IsNullOrEmpty(topLevelName))
+                    {
+                        overwriteCheckPaths = [Path.Combine(outputPath!, topLevelName)];
+                    }
+
                     // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
                     await ArchiveExtractor.ExtractArchive(filePath, outputPath!,
                         p => progress?.Report(p),
                         progressWindow,
                         false,
                         cancellationToken,
-                        rootItemName);
+                        rootItemName,
+                        overwriteCheckPaths);
 
                     if (closeWindowOnCompletion)
                     {
                         progressWindow?.CloseSafe();
                     }
-                    return (outputPath!, structureInfo!);
+                    return (outputPath, structureInfo);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
@@ -146,7 +155,7 @@ public static class ArchiveProcessor
                 var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, filePath, outputPath ?? string.Empty);
                 Dispatcher.UIThread.Post(() =>
                     _ = MessageService.ShowError($"{errorInfo.Message}\n\n詳細: {errorInfo.Details}", "展開エラー"));
-                return (null!, null!);
+                return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
             }
             finally
             {

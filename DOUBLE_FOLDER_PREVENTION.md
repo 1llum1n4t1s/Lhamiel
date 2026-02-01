@@ -56,7 +56,7 @@
 
 2. **二重フォルダ構造の防止**
    - 例：
-     - **リフトアップが適用される**：`abcdefg.zip/temp/A/A/content` が `baseDirectory/temp/A/A/content` と出力
+     - **リフトアップが適用される**：`A.zip` 内の `A/A/content` が `baseDirectory/A/content` と出力
      - その他のケースではリフトアップなし
 
 3. **出力パス設計**
@@ -156,8 +156,8 @@ public static bool HasSingleRootItem(string archivePath)
 - 一時ディレクトリを経由して安全に内容を移動
   1. `tempLiftUpPath` という作業用一時ディレクトリを作成
   2. 内側フォルダ（`tempOutputPath/rootItemName/rootItemName`）の中身を `tempLiftUpPath` に移動
-  3. 内側フォルダと外側フォルダを削除
-  4. `tempLiftUpPath` の中身を `tempOutputPath` に移動
+  3. 空になった内側フォルダを削除
+  4. `tempLiftUpPath` の中身を、外側のフォルダ（`tempOutputPath/rootItemName`）に移動
   5. `tempLiftUpPath` をクリーンアップ
 
 ## 処理フロー

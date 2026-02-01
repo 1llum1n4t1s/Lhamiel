@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security;
 using Avalonia;
 using Avalonia.Controls;
@@ -270,8 +272,9 @@ public static class ArchiveExtractor
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="duplicateFolderName">二重フォルダ構造が検出された場合の内側のフォルダ名（スマート解凍用）</param>
+    /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定。親フォルダ直下展開時は実際に上書きされるパスのみ渡す）</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, string? duplicateFolderName = null)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, string? duplicateFolderName = null, IReadOnlyList<string>? overwriteCheckPaths = null)
     {
         // メソッド呼び出し: ログの記録
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}, duplicateFolderName={duplicateFolderName}");
@@ -280,8 +283,10 @@ public static class ArchiveExtractor
         cancellationToken.ThrowIfCancellationRequested();
 
         // 変数: 上書き確認が必要かどうかのフラグ
-        // メソッド呼び出し: ディレクトリまたはファイルの存在確認
-        var targetExists = Directory.Exists(outputPath) || File.Exists(outputPath);
+        // メソッド呼び出し: 実際に上書きされるパスのみ存在する場合にダイアログ表示（overwriteCheckPaths未指定時はoutputPathで判定）
+        var targetExists = overwriteCheckPaths is { Count: > 0 }
+            ? overwriteCheckPaths.Any(p => Directory.Exists(p) || File.Exists(p))
+            : (Directory.Exists(outputPath) || File.Exists(outputPath));
 
         // メソッド呼び出し: ログの記録
         Logger.Log($"展開先存在チェック: outputPath={outputPath}, exists={targetExists}");
@@ -332,7 +337,7 @@ public static class ArchiveExtractor
             try
             {
                 // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-                await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, overwriteConfirmed, cancellationToken, duplicateFolderName);
+                await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, overwriteConfirmed, cancellationToken, duplicateFolderName, overwriteCheckPaths);
             }
             finally
             {
@@ -352,7 +357,8 @@ public static class ArchiveExtractor
     /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="duplicateFolderName">二重フォルダ構造が検出された場合の内側のフォルダ名（スマート解凍用）</param>
-    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, string? duplicateFolderName = null)
+    /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
+    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, string? duplicateFolderName = null, IReadOnlyList<string>? overwriteCheckPaths = null)
     {
         // メソッド呼び出し: ログの記録
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}, duplicateFolderName={duplicateFolderName}");
@@ -367,8 +373,13 @@ public static class ArchiveExtractor
         // メソッド呼び出し: キャンセルの確認
         cancellationToken.ThrowIfCancellationRequested();
 
+        // 変数: 実際に上書きされるパスが存在するか（overwriteCheckPaths未指定時はoutputPathで判定）
+        var outputOrOverwriteExists = overwriteCheckPaths is { Count: > 0 }
+            ? overwriteCheckPaths.Any(p => Directory.Exists(p) || File.Exists(p))
+            : (Directory.Exists(outputPath) || File.Exists(outputPath));
+
         // 展開先の確認と削除処理
-        if (Directory.Exists(outputPath) || File.Exists(outputPath))
+        if (outputOrOverwriteExists)
         {
             if (!overwriteConfirmed)
             {
@@ -557,54 +568,46 @@ public static class ArchiveExtractor
             // メソッド呼び出し: キャンセルの確認
             cancellationToken.ThrowIfCancellationRequested();
 
-            // 最終的な展開先への移動処理
+            // 最終的な展開先への移動処理（原子性のため既存は削除せず退避し、移動成功後にバックアップを削除）
             // メソッド呼び出し: ログの記録
             Logger.Log($"一時ディレクトリから最終展開先へ移動します: {tempOutputPath} -> {outputPath}");
 
-            // 上書きが許可された（または確認済み）の場合は既存の対象を削除
+            // 変数: 退避したバックアップパス（移動成功後に削除する）
+            var backupPaths = new List<string>();
+
+            // 上書きが許可された（または確認済み）の場合は既存の対象を退避（削除せず移動で原子性を確保）
             try
             {
-                // メソッド呼び出し: ディレクトリの存在確認
-                if (Directory.Exists(outputPath))
+                if (overwriteCheckPaths is { Count: > 0 })
                 {
-                    try
+                    // 親フォルダ直下展開時: 実際に上書きされるパスのみ退避（outputPathは退避しない）
+                    foreach (var path in overwriteCheckPaths)
                     {
-                        // メソッド呼び出し: ディレクトリを再帰的に削除
-                        Directory.Delete(outputPath, true);
-                    }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-                    {
-                        // メソッド呼び出し: ログの記録
-                        Logger.Log($"削除再試行（属性解除）: {outputPath}");
-
-                        // メソッド呼び出し: 読み取り専用属性を解除
-                        RemoveReadOnlyAttributes(outputPath);
-
-                        // メソッド呼び出し: OSのファイルロック解除を少し待機
-                        await Task.Delay(100, cancellationToken);
-
-                        // メソッド呼び出し: ディレクトリを再度削除試行
-                        Directory.Delete(outputPath, true);
+                        var moved = MoveExistingToBackup(path, backupPaths);
+                        if (moved)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                        }
                     }
                 }
-                // メソッド呼び出し: ファイルの存在確認
-                else if (File.Exists(outputPath))
+                else
                 {
-                    // メソッド呼び出し: ファイルを削除
-                    File.Delete(outputPath);
+                    // 複数ルート等でoutputPathを新規作成する場合: outputPathを退避してから作成
+                    MoveExistingToBackup(outputPath, backupPaths);
+                    cancellationToken.ThrowIfCancellationRequested();
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
-                // メソッド呼び出し: ログの記録
-                Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
-
-                // 例外の投下
-                throw new InvalidOperationException($"展開先 '{Path.GetFileName(outputPath)}' が使用中か、削除権限がありません。", ex);
+                Logger.Log($"既存対象の退避に失敗しました: {ex.Message}");
+                throw new InvalidOperationException($"展開先の準備中にエラーが発生しました。ファイルが使用中か、削除権限がない可能性があります。", ex);
             }
 
-            // メソッド呼び出し: 展開先ディレクトリを作成
-            Directory.CreateDirectory(outputPath);
+            // メソッド呼び出し: 展開先ディレクトリを作成（存在しない場合のみ）
+            if (!Directory.Exists(outputPath))
+            {
+                Directory.CreateDirectory(outputPath);
+            }
 
             // tempOutputPath 直下の内容を outputPath に移動
             // メソッド呼び出し: ログの記録
@@ -630,9 +633,32 @@ public static class ArchiveExtractor
             {
                 // メソッド呼び出し: ログの記録
                 Logger.Log($"一時ディレクトリの内容移動に失敗しました: {ex.Message}");
+                foreach (var backup in backupPaths)
+                {
+                    Logger.Log($"退避先（復元可能）: {backup}");
+                }
+                throw new InvalidOperationException($"展開先への内容移動に失敗しました。元の内容は退避先に残っています。", ex);
+            }
 
-                // 例外の投下
-                throw new InvalidOperationException($"展開先への内容移動に失敗しました。", ex);
+            // 移動成功後のみバックアップを削除（原子性の完了）
+            foreach (var backupPath in backupPaths)
+            {
+                try
+                {
+                    if (Directory.Exists(backupPath))
+                    {
+                        RemoveReadOnlyAttributes(backupPath);
+                        Directory.Delete(backupPath, true);
+                    }
+                    else if (File.Exists(backupPath))
+                    {
+                        File.Delete(backupPath);
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                {
+                    Logger.Log($"バックアップの削除に失敗しました（手動削除可能）: {backupPath}, {ex.Message}", LogLevel.Warning);
+                }
             }
 
             // メソッド呼び出し: ログの記録
@@ -705,6 +731,32 @@ public static class ArchiveExtractor
 
 
 
+
+    /// <summary>
+    /// 既存のファイルまたはディレクトリを退避用バックアップパスへ移動する（原子性のため削除せず移動）
+    /// </summary>
+    /// <param name="path">退避対象のパス（ファイルまたはディレクトリ）</param>
+    /// <param name="backupPaths">退避先パスを追加するリスト</param>
+    /// <returns>退避を行った場合はtrue、対象が存在しなかった場合はfalse</returns>
+    private static bool MoveExistingToBackup(string path, List<string> backupPaths)
+    {
+        if (Directory.Exists(path))
+        {
+            var backupPath = path + ".Lhamiel_backup_" + Guid.NewGuid().ToString("N");
+            RemoveReadOnlyAttributes(path);
+            Directory.Move(path, backupPath);
+            backupPaths.Add(backupPath);
+            return true;
+        }
+        if (File.Exists(path))
+        {
+            var backupPath = path + ".Lhamiel_backup_" + Guid.NewGuid().ToString("N");
+            File.Move(path, backupPath);
+            backupPaths.Add(backupPath);
+            return true;
+        }
+        return false;
+    }
 
     /// <summary>
     /// ファイルまたはディレクトリの読み取り専用属性を削除する
