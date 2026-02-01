@@ -268,7 +268,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (cancellationToken.IsCancellationRequested) return;
             if (hasExtraction)
             {
-                var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
+                var extractionResults = await ArchiveProcessor.ExtractArchivesInternalAsync(
                     filesToExtract.ToArray(),
                     settings.ExtractionOutputDirectory,
                     settings.ExtractionOutputToSameDirectory,
@@ -425,7 +425,7 @@ SOFTWARE.";
         }
     }
 
-    private void OpenExtractedFolders(IEnumerable<(string SourcePath, string OutputPath)> extractionResults)
+    private void OpenExtractedFolders(IEnumerable<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)> extractionResults)
     {
         var openedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var result in extractionResults)
@@ -433,8 +433,8 @@ SOFTWARE.";
             var targetPath = result.OutputPath;
             try
             {
-                // アーカイブの構造を解析して、開くべきフォルダを決定
-                var structureInfo = ArchiveExtractor.GetArchiveStructureInfo(result.SourcePath);
+                // アーカイブの構造情報を再利用して、開くべきフォルダを決定
+                var structureInfo = result.StructureInfo;
                 var duplicateFolderName = structureInfo.DuplicateFolderName;
 
                 if (!string.IsNullOrEmpty(duplicateFolderName))

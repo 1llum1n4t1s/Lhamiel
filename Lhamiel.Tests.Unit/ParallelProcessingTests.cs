@@ -92,7 +92,7 @@ public class ParallelProcessingTests
             );
 
             // 結果を確認
-            Assert.NotEmpty(result);
+            Assert.NotNull(result.outputPath);
 
             // 展開されたファイルが存在することを確認
             var extractedDirs = Directory.GetDirectories(outputDir);
@@ -162,7 +162,7 @@ public class ParallelProcessingTests
             stopwatch.Stop();
 
             // 結果を確認
-            Assert.NotEmpty(result);
+            Assert.NotNull(result.outputPath);
 
             // 並列実行された場合、3ファイルを順序実行するより速いはず
             // （この確認は環境依存のため、参考情報として記録）
@@ -207,7 +207,7 @@ public class ParallelProcessingTests
                 cancellationToken: TestContext.Current.CancellationToken
             );
 
-            Assert.NotEmpty(result);
+            Assert.NotNull(result.outputPath);
             var extractedDirs = Directory.GetDirectories(outputDir);
             Assert.Equal(2, extractedDirs.Length);
         }
@@ -462,7 +462,7 @@ public class ParallelProcessingTests
             );
 
             // 両方成功として扱われるはず
-            Assert.NotEmpty(result);
+            Assert.NotNull(result.outputPath);
 
             // 有効なファイルは展開されているはず
             var extractedDirs = Directory.GetDirectories(outputDir);

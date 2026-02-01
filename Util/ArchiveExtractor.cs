@@ -616,11 +616,6 @@ public static class ArchiveExtractor
                 foreach (var dir in Directory.GetDirectories(tempOutputPath))
                 {
                     var destDir = Path.Combine(outputPath, Path.GetFileName(dir));
-                    if (Directory.Exists(destDir))
-                    {
-                        RemoveReadOnlyAttributes(destDir);
-                        Directory.Delete(destDir, true);
-                    }
                     Directory.Move(dir, destDir);
                 }
 
@@ -628,10 +623,6 @@ public static class ArchiveExtractor
                 foreach (var file in Directory.GetFiles(tempOutputPath))
                 {
                     var destFile = Path.Combine(outputPath, Path.GetFileName(file));
-                    if (File.Exists(destFile))
-                    {
-                        File.Delete(destFile);
-                    }
                     File.Move(file, destFile);
                 }
             }

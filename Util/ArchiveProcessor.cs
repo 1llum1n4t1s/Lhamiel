@@ -20,8 +20,7 @@ public static class ArchiveProcessor
     /// <param name="enablePartialExtraction">部分展開を有効にするかどうか</param>
     /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
-    /// <returns>処理が成功した場合は展開先のパス、失敗した場合はnull</returns>
-    public static async Task<string?> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true)
+    public static async Task<(string outputPath, ArchiveExtractor.ArchiveStructureInfo structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}");
 
@@ -30,13 +29,14 @@ public static class ArchiveProcessor
         {
             Logger.Log($"指定されたファイルが存在しません: {filePath}");
             _ = MessageService.ShowError($"指定されたファイルが見つかりません。\n{filePath}");
-            return null;
+            return (null!, null!);
         }
 
         // I/Oを含む重い処理全体を Task.Run でバックグラウンドに移動
         return await Task.Run(async () =>
         {
-            var outputPath = "";
+            string? outputPath = null;
+            ArchiveExtractor.ArchiveStructureInfo? structureInfo = null;
             try
             {
                 // UIスレッドからアクセスが必要なプログレス表示用のラッパー
@@ -58,7 +58,7 @@ public static class ArchiveProcessor
                 {
                     Logger.Log($"サポートされていないファイル形式です: {extension}");
                     Dispatcher.UIThread.Post(() => _ = MessageService.ShowError($"サポートされていないファイル形式です。\n{extension}"));
-                    return null;
+                    return (null!, null!);
                 }
 
                 // --- ここから重いI/O処理 ---
@@ -67,7 +67,7 @@ public static class ArchiveProcessor
                 var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(filePath, outputDir, outputToSameDirectory);
 
                 // アーカイブの構造を一度だけ解析
-                var structureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
+                structureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
                 var rootItemName = structureInfo.DuplicateFolderName;
                 var hasSingleRootItem = structureInfo.HasSingleRootItem;
 
@@ -101,7 +101,7 @@ public static class ArchiveProcessor
 
                     var result = await PartialExtractionHandler.ExtractWithPartialFailureHandling(
                         filePath,
-                        outputPath,
+                        outputPath!,
                         PartialExtractionHandler.ErrorHandlingOption.AskUser,
                         (percentage, _) => Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(percentage)),
                         (failedFile) => ShowErrorRecoveryDialog(failedFile, progressWindow),
@@ -119,14 +119,14 @@ public static class ArchiveProcessor
                         {
                             progressWindow?.CloseSafe();
                         }
-                        return outputPath;
+                        return (outputPath!, structureInfo!);
                     }
-                    return null;
+                    return (null!, null!);
                 }
                 else
                 {
                     // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-                    await ArchiveExtractor.ExtractArchive(filePath, outputPath,
+                    await ArchiveExtractor.ExtractArchive(filePath, outputPath!,
                         p => progress?.Report(p),
                         progressWindow,
                         false,
@@ -137,16 +137,16 @@ public static class ArchiveProcessor
                     {
                         progressWindow?.CloseSafe();
                     }
-                    return outputPath;
+                    return (outputPath!, structureInfo!);
                 }
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 Logger.LogException($"展開処理でエラーが発生: {filePath}", ex);
-                var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, filePath, outputPath);
+                var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, filePath, outputPath ?? string.Empty);
                 Dispatcher.UIThread.Post(() =>
                     _ = MessageService.ShowError($"{errorInfo.Message}\n\n詳細: {errorInfo.Details}", "展開エラー"));
-                return null;
+                return (null!, null!);
             }
             finally
             {
@@ -168,10 +168,25 @@ public static class ArchiveProcessor
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
-    /// <returns>成功したアーカイブのソースパスと展開先パスのリスト。すべて失敗した場合は空のリスト</returns>
-    public static async Task<List<(string SourcePath, string OutputPath)>> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    /// <returns>成功したアーカイブのソースパス、展開先パス、構造情報のリスト。すべて失敗した場合は空のリスト</returns>
+    public static async Task<(string outputPath, ArchiveExtractor.ArchiveStructureInfo structureInfo)> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
-        var results = new List<(string SourcePath, string OutputPath)>();
+        var results = await ExtractArchivesInternalAsync(filePaths, outputDir, outputToSameDirectory, progressWindow, cancellationToken, closeWindowOnCompletion);
+
+        // 単一ファイルの場合はその結果を、複数ファイルの場合はnullを返す（後方互換性のため）
+        if (filePaths.Length == 1 && results.Count == 1)
+        {
+            return (results[0].OutputPath, results[0].StructureInfo);
+        }
+        return (null!, null!);
+    }
+
+    /// <summary>
+    /// 複数のアーカイブファイルの展開結果を取得する（内部用）
+    /// </summary>
+    internal static async Task<List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>> ExtractArchivesInternalAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    {
+        var results = new List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>();
         try
         {
             var totalCount = filePaths.Length;
@@ -202,7 +217,9 @@ public static class ArchiveProcessor
                         });
                     });
 
-                    var finalOutputPath = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false);
+                    var extractResult = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false);
+                    var finalOutputPath = extractResult.outputPath;
+                    var structureInfo = extractResult.structureInfo;
 
                     // lock 内で状態のみ更新し、Dispatcher への通知は lock 外で実行
                     int progressToReport = 0;
@@ -210,10 +227,10 @@ public static class ArchiveProcessor
 
                     lock (lockObject)
                     {
-                        if (finalOutputPath != null)
+                        if (finalOutputPath != null && structureInfo != null)
                         {
                             successCount++;
-                            results.Add((filePath, finalOutputPath));
+                            results.Add((filePath, finalOutputPath, structureInfo));
                         }
                         else
                         {

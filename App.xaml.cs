@@ -488,7 +488,7 @@ public partial class App : Application
                     progressWindow.Activate();
                     await Task.Yield();
 
-                    var finalOutputPath = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
+                    var (finalOutputPath, _) = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
 
                     if (finalOutputPath != null)
                     {
