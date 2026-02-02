@@ -2,5 +2,4 @@
 <linker>
   <assembly fullname="Lhamiel" preserve="all" />
   <assembly fullname="log4net" preserve="all" />
-  <assembly fullname="Newtonsoft.Json" preserve="all" />
 </linker>

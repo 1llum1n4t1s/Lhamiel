@@ -1,7 +1,7 @@
 using System.IO;
 using System.IO.Pipes;
 using System.Text;
-using Newtonsoft.Json;
+using System.Text.Json;
 
 namespace Lhamiel.Util;
 
@@ -28,7 +28,7 @@ public static class IpcService
             // 既存のインスタンスが接続待ちになるまで少し待機
             await client.ConnectAsync(1000);
 
-            var json = JsonConvert.SerializeObject(args);
+            var json = JsonSerializer.Serialize(args);
             var buffer = Encoding.UTF8.GetBytes(json);
 
             await client.WriteAsync(buffer, 0, buffer.Length);
@@ -71,7 +71,7 @@ public static class IpcService
 
                     if (!string.IsNullOrWhiteSpace(json))
                     {
-                        var args = JsonConvert.DeserializeObject<string[]>(json);
+                        var args = JsonSerializer.Deserialize<string[]>(json);
                         if (args != null)
                         {
                             onArgsReceived(args);

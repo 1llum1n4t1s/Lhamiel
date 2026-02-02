@@ -62,7 +62,6 @@
     <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.32" />
     <PackageReference Include="7z.Libs" Version="25.1.0" />
     <PackageReference Include="log4net" Version="3.2.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
   </ItemGroup>
 

@@ -1,5 +1,6 @@
 using System.IO;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Lhamiel.Util;
 
@@ -21,10 +22,10 @@ public class Settings
     /// <summary>
     /// JSONシリアライザー設定
     /// </summary>
-    private static readonly JsonSerializerSettings JsonSettings = new()
+    private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        Formatting = Formatting.Indented,
-        NullValueHandling = NullValueHandling.Ignore
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     /// <summary>
@@ -149,12 +150,12 @@ public class Settings
             if (File.Exists(SettingsFilePath))
             {
                 var json = File.ReadAllText(SettingsFilePath);
-                var settings = JsonConvert.DeserializeObject<Settings>(json, JsonSettings);
+                var settings = JsonSerializer.Deserialize<Settings>(json, JsonOptions);
                 return settings ?? new Settings();
             }
 
             var defaultSettings = new Settings();
-            var jsonDefault = JsonConvert.SerializeObject(defaultSettings, JsonSettings);
+            var jsonDefault = JsonSerializer.Serialize(defaultSettings, JsonOptions);
             File.WriteAllText(SettingsFilePath, jsonDefault);
             return defaultSettings;
         }
@@ -174,7 +175,7 @@ public class Settings
     {
         try
         {
-            var json = JsonConvert.SerializeObject(this, JsonSettings);
+            var json = JsonSerializer.Serialize(this, JsonOptions);
             File.WriteAllText(SettingsFilePath, json);
         }
         catch (Exception ex)
