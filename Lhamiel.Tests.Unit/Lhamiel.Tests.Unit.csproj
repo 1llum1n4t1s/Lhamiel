@@ -1,13 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <SupportedOSPlatformVersion>8.0</SupportedOSPlatformVersion>
-    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
   <ItemGroup>
@@ -27,14 +22,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Lhamiel.csproj" />
-  </ItemGroup>
-
-  <!-- 7z.dllを手動でルートに配置 -->
-  <ItemGroup>
-    <Content Include="$(NuGetPackageRoot)7z.libs\**\runtimes\win-x64\native\7z.dll">
-      <Link>7z.dll</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <!-- ビルド後にx64フォルダを削除し、7z.dllをルートに移動 -->

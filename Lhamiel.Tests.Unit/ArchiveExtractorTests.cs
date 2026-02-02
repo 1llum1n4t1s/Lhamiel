@@ -7,6 +7,7 @@ namespace Lhamiel.Tests.Unit;
 /// <summary>
 /// ArchiveExtractor class unit tests
 /// </summary>
+[Collection("Sequential")]
 public class ArchiveExtractorTests
 {
     /// <summary>
@@ -104,6 +105,61 @@ public class ArchiveExtractorTests
     }
 
     /// <summary>
+    /// テスト用のZIPファイルを作成する（__MACOSXとProjectDがルートに並ぶ）
+    /// </summary>
+    /// <param name="testDir">テスト用ディレクトリ</param>
+    /// <returns>作成されたZIPファイルのパス</returns>
+    private static string CreateTestZipWithMacOsxAndProject(string testDir)
+    {
+        var parentDir = Path.Combine(testDir, "temp_for_projectd_zip");
+        var macosxDir = Path.Combine(parentDir, "__MACOSX");
+        var projectDir = Path.Combine(parentDir, "ProjectD");
+        var srcDir = Path.Combine(projectDir, "src");
+
+        Directory.CreateDirectory(macosxDir);
+        Directory.CreateDirectory(srcDir);
+
+        File.WriteAllText(Path.Combine(macosxDir, ".DS_Store"), "macOS metadata");
+        File.WriteAllText(Path.Combine(projectDir, "README.md"), "Project D Readme");
+        File.WriteAllText(Path.Combine(srcDir, "main.txt"), "Source content");
+
+        var zipPath = Path.Combine(testDir, "ProjectD.zip");
+        ZipFile.CreateFromDirectory(parentDir, zipPath);
+
+        Directory.Delete(parentDir, true);
+
+        return zipPath;
+    }
+
+    /// <summary>
+    /// テスト用のZIPファイルを作成する（無視対象のシステムファイル desktop.ini / Thumbs.db / .DS_Store を含む）
+    /// </summary>
+    /// <param name="testDir">テスト用ディレクトリ</param>
+    /// <returns>作成されたZIPファイルのパス</returns>
+    private static string CreateTestZipWithIgnoredSystemFiles(string testDir)
+    {
+        var parentDir = Path.Combine(testDir, "temp_for_ignored_zip");
+        var projectDir = Path.Combine(parentDir, "ProjectE");
+        var subDir = Path.Combine(projectDir, "sub");
+
+        Directory.CreateDirectory(subDir);
+
+        File.WriteAllText(Path.Combine(projectDir, "README.md"), "Project E Readme");
+        File.WriteAllText(Path.Combine(projectDir, "desktop.ini"), "Windows folder metadata");
+        File.WriteAllText(Path.Combine(projectDir, "Thumbs.db"), "Windows thumbnail cache");
+        File.WriteAllText(Path.Combine(projectDir, ".DS_Store"), "macOS folder metadata");
+        File.WriteAllText(Path.Combine(subDir, "data.txt"), "Data content");
+        File.WriteAllText(Path.Combine(subDir, "desktop.ini"), "Subfolder desktop.ini");
+
+        var zipPath = Path.Combine(testDir, "ProjectE.zip");
+        ZipFile.CreateFromDirectory(parentDir, zipPath);
+
+        Directory.Delete(parentDir, true);
+
+        return zipPath;
+    }
+
+    /// <summary>
     /// テスト用のZIPファイルを作成する（再帰的な同名フォルダのネスト）
     /// </summary>
     /// <param name="testDir">テスト用ディレクトリ</param>
@@ -132,6 +188,84 @@ public class ArchiveExtractorTests
         Directory.Delete(parentDir, true);
 
         return zipPath;
+    }
+
+    /// <summary>
+    /// デスクトップに上書き対象のフォルダがない場合、上書き確認ダイアログを表示しないこと（過去の不具合の回帰防止）
+    /// </summary>
+    [Fact]
+    public void ShouldShowOverwriteDialog_WhenOutputPathExistsButOverwriteTargetDoesNotExist_ReturnsFalse()
+    {
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            // Arrange: outputPath（親フォルダ＝デスクトップ相当）は存在するが、実際の上書き対象（ProjectD）は存在しない
+            var outputPath = tempDir;
+            var overwriteTargetPath = Path.Combine(outputPath, "ProjectD");
+            var overwriteCheckPaths = new[] { overwriteTargetPath };
+
+            Assert.True(Directory.Exists(outputPath), "outputPath should exist (like Desktop)");
+            Assert.False(Directory.Exists(overwriteTargetPath), "ProjectD should NOT exist on outputPath");
+
+            // Act
+            var result = ArchiveExtractor.ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths);
+
+            // Assert: 上書き対象が存在しないためダイアログを表示すべきでない
+            Assert.False(result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// overwriteCheckPaths未指定でoutputPathが存在する場合、ダイアログを表示すること
+    /// </summary>
+    [Fact]
+    public void ShouldShowOverwriteDialog_WhenOutputPathExistsAndNoOverwriteCheckPaths_ReturnsTrue()
+    {
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var outputPath = tempDir;
+            Assert.True(Directory.Exists(outputPath));
+
+            var result = ArchiveExtractor.ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths: null);
+
+            Assert.True(result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// overwriteCheckPaths内のいずれかが存在する場合、ダイアログを表示すること
+    /// </summary>
+    [Fact]
+    public void ShouldShowOverwriteDialog_WhenOverwriteTargetExists_ReturnsTrue()
+    {
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var outputPath = tempDir;
+            var existingFolder = Path.Combine(outputPath, "ExistingProject");
+            Directory.CreateDirectory(existingFolder);
+            var overwriteCheckPaths = new[] { existingFolder };
+
+            var result = ArchiveExtractor.ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths);
+
+            Assert.True(result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
     }
 
     [Fact]
@@ -465,6 +599,70 @@ public class ArchiveExtractorTests
 
             Console.WriteLine($"\n✅ Test passed: Multiple root items were correctly extracted");
             Console.WriteLine();
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task ExtractArchive_WithMacOsxFolder_ExcludesMacOsxFromOutput()
+    {
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var zipPath = CreateTestZipWithMacOsxAndProject(tempDir);
+            var baseOutputDir = Path.Combine(tempDir, "extract_output");
+            var outputPath = baseOutputDir;
+            IReadOnlyList<string> overwriteCheckPaths = [Path.Combine(outputPath, "ProjectD")];
+
+            await ArchiveExtractor.ExtractArchive(zipPath, outputPath, null, null, false, TestContext.Current.CancellationToken, null, overwriteCheckPaths);
+
+            var projectDPath = Path.Combine(outputPath, "ProjectD");
+            var macOsxPath = Path.Combine(outputPath, "__MACOSX");
+
+            Assert.True(Directory.Exists(projectDPath), "ProjectD folder should exist in output");
+            Assert.False(Directory.Exists(macOsxPath), "__MACOSX folder must not be extracted to output");
+            Assert.True(File.Exists(Path.Combine(projectDPath, "README.md")), "ProjectD/README.md should exist");
+            Assert.True(Directory.Exists(Path.Combine(projectDPath, "src")), "ProjectD/src should exist");
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+                Directory.Delete(tempDir, true);
+        }
+    }
+
+    /// <summary>
+    /// 無視対象のシステムファイル（desktop.ini / Thumbs.db / .DS_Store）が展開結果に含まれないこと
+    /// </summary>
+    [Fact]
+    public async Task ExtractArchive_WithIgnoredSystemFiles_ExcludesDesktopIniThumbsDbAndDS_StoreFromOutput()
+    {
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var zipPath = CreateTestZipWithIgnoredSystemFiles(tempDir);
+            var baseOutputDir = Path.Combine(tempDir, "extract_output");
+            var outputPath = baseOutputDir;
+
+            await ArchiveExtractor.ExtractArchive(zipPath, outputPath, null, null, false, TestContext.Current.CancellationToken);
+
+            var projectEPath = Path.Combine(outputPath, "ProjectE");
+            var subPath = Path.Combine(projectEPath, "sub");
+
+            Assert.True(Directory.Exists(projectEPath), "ProjectE folder should exist in output (single-root extract to baseOutputDir)");
+            Assert.True(File.Exists(Path.Combine(projectEPath, "README.md")), "ProjectE/README.md should exist");
+            Assert.True(Directory.Exists(subPath), "ProjectE/sub should exist");
+            Assert.True(File.Exists(Path.Combine(subPath, "data.txt")), "ProjectE/sub/data.txt should exist");
+
+            var allFiles = Directory.GetFiles(outputPath, "*", SearchOption.AllDirectories);
+            var fileNames = allFiles.Select(Path.GetFileName).ToList();
+            Assert.DoesNotContain(fileNames, n => string.Equals(n, "desktop.ini", StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(fileNames, n => string.Equals(n, "Thumbs.db", StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(fileNames, n => string.Equals(n, ".DS_Store", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {

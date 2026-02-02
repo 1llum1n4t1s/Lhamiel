@@ -344,9 +344,11 @@ public static class ArchiveProcessor
                 {
                     Logger.Log($"出力先が既に存在します: {outputPath}");
 
-                    // UIスレッドで上書き確認を実行
-                    bool canOverwrite = await Dispatcher.UIThread.InvokeAsync(() =>
-                        FileOverwriteDialog.CanOverwriteFile(sourcePath, outputPath, progressWindow));
+                    // progressWindow がない場合はUI非対応環境（ユニットテスト等）のため自動上書き
+                    var canOverwrite = progressWindow != null
+                        ? await Dispatcher.UIThread.InvokeAsync(() =>
+                            FileOverwriteDialog.CanOverwriteFile(sourcePath, outputPath, progressWindow))
+                        : true;
 
                     Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
 
