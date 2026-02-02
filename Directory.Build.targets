@@ -1,0 +1,9 @@
+<Project>
+  <!-- 7z.dll を全プロジェクトでルートに配置 -->
+  <ItemGroup>
+    <Content Include="$(NuGetPackageRoot)7z.libs\**\runtimes\win-x64\native\7z.dll">
+      <Link>7z.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+</Project>
