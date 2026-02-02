@@ -6,6 +6,7 @@ namespace Lhamiel.Tests.Unit;
 /// <summary>
 /// アーカイブ圧縮・展開の統合テスト
 /// </summary>
+[Collection("Sequential")]
 public class ArchiveCompressionTests
 {
     /// <summary>

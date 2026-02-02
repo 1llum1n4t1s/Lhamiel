@@ -278,8 +278,8 @@ public static class ArchiveExtractor
     public static bool ShouldShowOverwriteDialog(string outputPath, IReadOnlyList<string>? overwriteCheckPaths)
     {
         return overwriteCheckPaths is { Count: > 0 }
-            ? overwriteCheckPaths.Any(p => Directory.Exists(p) || File.Exists(p))
-            : (Directory.Exists(outputPath) || File.Exists(outputPath));
+            ? overwriteCheckPaths.Any(Path.Exists)
+            : Path.Exists(outputPath);
     }
 
     /// <summary>

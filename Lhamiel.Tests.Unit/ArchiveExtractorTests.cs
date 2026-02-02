@@ -7,6 +7,7 @@ namespace Lhamiel.Tests.Unit;
 /// <summary>
 /// ArchiveExtractor class unit tests
 /// </summary>
+[Collection("Sequential")]
 public class ArchiveExtractorTests
 {
     /// <summary>
@@ -645,14 +646,14 @@ public class ArchiveExtractorTests
         {
             var zipPath = CreateTestZipWithIgnoredSystemFiles(tempDir);
             var baseOutputDir = Path.Combine(tempDir, "extract_output");
-            var outputPath = ArchiveExtractor.GetOutputDirectory(zipPath, baseOutputDir);
+            var outputPath = baseOutputDir;
 
             await ArchiveExtractor.ExtractArchive(zipPath, outputPath, null, null, false, TestContext.Current.CancellationToken);
 
             var projectEPath = Path.Combine(outputPath, "ProjectE");
             var subPath = Path.Combine(projectEPath, "sub");
 
-            Assert.True(Directory.Exists(projectEPath), "ProjectE folder should exist in output");
+            Assert.True(Directory.Exists(projectEPath), "ProjectE folder should exist in output (single-root extract to baseOutputDir)");
             Assert.True(File.Exists(Path.Combine(projectEPath, "README.md")), "ProjectE/README.md should exist");
             Assert.True(Directory.Exists(subPath), "ProjectE/sub should exist");
             Assert.True(File.Exists(Path.Combine(subPath, "data.txt")), "ProjectE/sub/data.txt should exist");

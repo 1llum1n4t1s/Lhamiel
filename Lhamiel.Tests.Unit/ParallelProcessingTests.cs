@@ -7,6 +7,7 @@ namespace Lhamiel.Tests.Unit;
 /// <summary>
 /// CPU並列処理のユニットテスト
 /// </summary>
+[Collection("Sequential")]
 public class ParallelProcessingTests
 {
     /// <summary>

@@ -1,3 +1,2 @@
-using Xunit;
-
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
+// アセンブリ全体での並列無効化は行わない。
+// ファイルI/O等が必要なテストは [Collection("Sequential")] で逐次実行する。
