@@ -445,9 +445,13 @@ public static class ArchiveExtractor
             // メソッド呼び出し: キャンセルの確認
             cancellationToken.ThrowIfCancellationRequested();
 
+            // 変数: 展開時にスキップするシステム用の名前（Filter で無視しディスクに書き込まない）
+            var filterNames = IgnoredSystemDirectories.Concat(IgnoredSystemFiles).ToArray();
+            var extractOption = new ArchiveOption { Filter = Filter.From(filterNames) };
+
             // ネイティブ側（7z.dll）との連携を確実に保護するため
             // using スコープ内で reader と progress を管理する
-            using (var reader = new ArchiveReader(archivePath))
+            using (var reader = new ArchiveReader(archivePath, (string?)null, extractOption))
             {
                 // メソッド呼び出し: ログの記録
                 Logger.Log($"一時ディレクトリへの展開処理開始: {archivePath} -> {tempOutputPath}");
@@ -638,44 +642,6 @@ public static class ArchiveExtractor
 
             try
             {
-                // メソッド呼び出し: 一時ディレクトリから無視対象のシステムフォルダを再帰的に削除
-                foreach (var ignoredName in IgnoredSystemDirectories)
-                {
-                    var dirsToDelete = Directory.GetDirectories(tempOutputPath, ignoredName, SearchOption.AllDirectories)
-                        .OrderByDescending(static d => d.Length)
-                        .ToList();
-                    foreach (var dir in dirsToDelete)
-                    {
-                        try
-                        {
-                            if (Directory.Exists(dir))
-                            {
-                                Directory.Delete(dir, true);
-                            }
-                        }
-                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-                        {
-                            Logger.Log($"無視対象ディレクトリの削除に失敗: {dir}, {ex.Message}", LogLevel.Warning);
-                        }
-                    }
-                }
-
-                // メソッド呼び出し: 一時ディレクトリから無視対象のシステムファイルを再帰的に削除
-                foreach (var ignoredFileName in IgnoredSystemFiles)
-                {
-                    foreach (var file in Directory.GetFiles(tempOutputPath, ignoredFileName, SearchOption.AllDirectories))
-                    {
-                        try
-                        {
-                            File.Delete(file);
-                        }
-                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-                        {
-                            Logger.Log($"無視対象ファイルの削除に失敗: {file}, {ex.Message}", LogLevel.Warning);
-                        }
-                    }
-                }
-
                 // メソッド呼び出し: 一時ディレクトリ内の残りのディレクトリを移動
                 foreach (var dir in Directory.GetDirectories(tempOutputPath))
                 {

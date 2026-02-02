@@ -614,24 +614,10 @@ public class ArchiveExtractorTests
         {
             var zipPath = CreateTestZipWithMacOsxAndProject(tempDir);
             var baseOutputDir = Path.Combine(tempDir, "extract_output");
+            var outputPath = baseOutputDir;
+            IReadOnlyList<string> overwriteCheckPaths = [Path.Combine(outputPath, "ProjectD")];
 
-            var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(zipPath, baseOutputDir, false);
-            var structureInfo = ArchiveExtractor.GetArchiveStructureInfo(zipPath);
-            var rootItemName = structureInfo.DuplicateFolderName;
-            var hasSingleRootItem = structureInfo.HasSingleRootItem;
-
-            var outputPath = rootItemName != null ? baseDirectory
-                : hasSingleRootItem ? baseDirectory
-                : Path.Combine(baseDirectory, Path.GetFileNameWithoutExtension(zipPath));
-
-            IReadOnlyList<string>? overwriteCheckPaths = null;
-            var topLevelName = rootItemName ?? structureInfo.SingleRootItemName;
-            if (!string.IsNullOrEmpty(topLevelName))
-            {
-                overwriteCheckPaths = [Path.Combine(outputPath, topLevelName)];
-            }
-
-            await ArchiveExtractor.ExtractArchive(zipPath, outputPath, null, null, false, TestContext.Current.CancellationToken, rootItemName, overwriteCheckPaths);
+            await ArchiveExtractor.ExtractArchive(zipPath, outputPath, null, null, false, TestContext.Current.CancellationToken, null, overwriteCheckPaths);
 
             var projectDPath = Path.Combine(outputPath, "ProjectD");
             var macOsxPath = Path.Combine(outputPath, "__MACOSX");
