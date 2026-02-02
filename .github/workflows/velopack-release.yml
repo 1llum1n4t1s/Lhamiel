@@ -49,18 +49,20 @@ jobs:
       - name: ターゲットフレームワークを取得
         shell: pwsh
         run: |
-          # csproj からターゲットフレームワークを読み取る
-          $csprojPath = "Lhamiel.csproj"
+          # csproj または Directory.Build.props からターゲットフレームワークを読み取る
           $targetFramework = $null
-
-          # 正規表現でターゲットフレームワークを抽出
-          $content = Get-Content -Path $csprojPath -Raw
-          if ($content -match '<TargetFramework>([^<]+)</TargetFramework>') {
-            $targetFramework = $matches[1]
+          foreach ($path in @("Lhamiel.csproj", "Directory.Build.props")) {
+            if (-not (Test-Path $path)) { continue }
+            $content = Get-Content -Path $path -Raw
+            if ($content -match '<TargetFramework>([^<]+)</TargetFramework>') {
+              $targetFramework = $matches[1]
+              Write-Host "TargetFramework read from: $path"
+              break
+            }
           }
 
           if ([string]::IsNullOrWhiteSpace($targetFramework)) {
-            Write-Error "TargetFramework not found in csproj"
+            Write-Error "TargetFramework not found in Lhamiel.csproj or Directory.Build.props"
             exit 1
           }
 
