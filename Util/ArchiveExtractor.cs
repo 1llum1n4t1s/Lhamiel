@@ -667,10 +667,7 @@ public static class ArchiveExtractor
                     {
                         try
                         {
-                            if (File.Exists(file))
-                            {
-                                File.Delete(file);
-                            }
+                            File.Delete(file);
                         }
                         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
                         {
