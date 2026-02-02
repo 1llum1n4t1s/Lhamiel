@@ -658,11 +658,6 @@ public class ArchiveExtractorTests
             Assert.True(Directory.Exists(subPath), "ProjectE/sub should exist");
             Assert.True(File.Exists(Path.Combine(subPath, "data.txt")), "ProjectE/sub/data.txt should exist");
 
-            Assert.False(File.Exists(Path.Combine(projectEPath, "desktop.ini")), "desktop.ini must not be extracted");
-            Assert.False(File.Exists(Path.Combine(projectEPath, "Thumbs.db")), "Thumbs.db must not be extracted");
-            Assert.False(File.Exists(Path.Combine(projectEPath, ".DS_Store")), ".DS_Store must not be extracted");
-            Assert.False(File.Exists(Path.Combine(subPath, "desktop.ini")), "desktop.ini in subfolder must not be extracted");
-
             var allFiles = Directory.GetFiles(outputPath, "*", SearchOption.AllDirectories);
             var fileNames = allFiles.Select(Path.GetFileName).ToList();
             Assert.DoesNotContain(fileNames, n => string.Equals(n, "desktop.ini", StringComparison.OrdinalIgnoreCase));
