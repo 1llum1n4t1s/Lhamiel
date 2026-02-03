@@ -4,12 +4,11 @@
 
 Lhamiel（ラミエル）は、Windows向けの使いやすいアーカイブ管理ツールです。ファイルやフォルダの圧縮、多数のアーカイブ形式の展開を、直感的なドラッグ&ドロップ操作で快適に行えます。
 
-<img width="1404" height="1060" alt="image" src="https://github.com/user-attachments/assets/1e0922c8-8c33-40fc-bf2d-172cae49885d" />
+<img src="https://github.com/user-attachments/assets/1e0922c8-8c33-40fc-bf2d-172cae49885d" alt="Lhamiel メイン画面" width="800" />
 
-<img width="1404" height="1060" alt="image" src="https://github.com/user-attachments/assets/d35010b7-6fba-4c2a-9f1d-2a8974c807d3" />
+<img src="https://github.com/user-attachments/assets/d35010b7-6fba-4c2a-9f1d-2a8974c807d3" alt="Lhamiel 展開処理" width="800" />
 
-<img width="1404" height="1060" alt="image" src="https://github.com/user-attachments/assets/fbc5455a-7b9b-4a9e-964d-5bd1a1937f35" />
-
+<img src="https://github.com/user-attachments/assets/fbc5455a-7b9b-4a9e-964d-5bd1a1937f35" alt="Lhamiel 圧縮処理" width="800" />
 
 ## 🚀 主な特徴
 
@@ -35,17 +34,20 @@ Lhamiel（ラミエル）は、Windows向けの使いやすいアーカイブ管
 ## 📖 使い方
 
 ### 圧縮する
+
 1. Lhamiel を起動します。
 2. 圧縮したいファイルやフォルダを、ウィンドウ中央のドロップゾーンにドラッグ&ドロップします。
 3. 自動的に圧縮が開始されます。
 
-※ 下部の「デフォルトの圧縮形式」から、ZIP / 7z / TAR を切り替えられます。
+> 下部の「デフォルトの圧縮形式」から、ZIP / 7z / TAR を切り替えられます。
 
 ### 展開する
+
 1. 展開したいアーカイブファイルを Lhamiel のウィンドウにドラッグ&ドロップします。
 2. スマート展開機能により、最適なフォルダ構成で自動的に展開されます。
 
 ### 便利な設定
+
 - **関連付け設定**: 「関連付け設定」タブから、ダブルクリックで開きたい拡張子にチェックを入れ「設定を保存」してください。
 - **出力先の設定**: 「展開用設定」「圧縮用設定」タブから、保存先を「元のファイルと同じ場所」にするか、特定のフォルダにするかを選択できます。
 - **完了後の動作**: 処理が終わった後に保存先のフォルダを自動で開くように設定できます。
@@ -53,15 +55,16 @@ Lhamiel（ラミエル）は、Windows向けの使いやすいアーカイブ管
 ## 📦 対応形式
 
 ### 圧縮
+
 - ZIP
 - 7z (高圧縮)
 - TAR
 
 ### 展開
+
 - ZIP, 7z, TAR
 - RAR, LZH, CAB, ARJ
 - GZIP, BZIP2, XZ, LZMA
-- 自己展開形式 (.exe) など
 
 ## ❓ 困ったときは
 
