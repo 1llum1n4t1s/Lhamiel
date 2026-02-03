@@ -9,14 +9,17 @@
     <Optimize>true</Optimize>
     <DebugType>portable</DebugType>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <PublishAot>true</PublishAot>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- RuntimeIdentifier / SelfContained は Publish 時に -r win-x64 と self-contained true で指定。csprojに書くとテスト参照時に NETSDK1151 になるためここでは指定しない -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</OutputPath>
     <IntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</IntermediateOutputPath>
+    <!-- Publish 時のみ自己完結にする（ワークフロー等で -r win-x64 と self-contained true を指定） -->
+    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -53,7 +56,7 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" />
     <PackageReference Include="HarfBuzzSharp" Version="8.3.1.2" />
     <PackageReference Include="HarfBuzzSharp.NativeAssets.Win32" Version="8.3.1.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.34" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.36" />
     <PackageReference Include="7z.Libs" Version="25.1.0" />
     <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
     <PackageReference Include="ZLogger" Version="2.5.10" />
