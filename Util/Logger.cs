@@ -55,20 +55,15 @@ public static class Logger
         // ZLogger の初期化
         _loggerFactory = LoggerFactory.Create(logging =>
         {
-            // Microsoft.Extensions.Logging.LogLevel を明示的に使用
             logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
             
-            // ローリングファイル出力の設定（README の options 形式）
-            // https://github.com/Cysharp/ZLogger#rollingfile
-            // FilePathSelector: 戻り値のファイル名は連番のみで終わる必要あり（(\d)+$）。ファイル名を連番のみにすることで検証を通過する。
             logging.AddZLoggerRollingFile(options =>
             {
-                options.FilePathSelector = (_, sequenceNumber) =>
-                    Path.Combine(Settings.AppDataDirectory, sequenceNumber.ToString());
+                options.FilePathSelector = (timestamp, sequenceNumber) =>
+                    Path.Combine(Settings.AppDataDirectory, $"Lhamiel_{timestamp.ToLocalTime():yyyyMMdd}_{sequenceNumber:000}.log");
                 options.RollingSizeKB = settings.LogMaxSizeMB * 1024;
             });
 
-            // コンソール出力
             logging.AddZLoggerConsole();
         });
 
@@ -90,19 +85,31 @@ public static class Logger
 
         Initialize();
 
+        var timestamp = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]";
+        var levelStr = level switch
+        {
+            LogLevel.Debug => "[DEBUG]",
+            LogLevel.Info => "[INFO]",
+            LogLevel.Warning => "[WARN]",
+            LogLevel.Error => "[ERROR]",
+            _ => "[INFO]"
+        };
+
+        var formattedMessage = $"{timestamp} {levelStr} {message}";
+
         switch (level)
         {
             case LogLevel.Debug:
-                _logger?.ZLogDebug($"{message}");
+                _logger?.ZLogDebug($"{formattedMessage}");
                 break;
             case LogLevel.Info:
-                _logger?.ZLogInformation($"{message}");
+                _logger?.ZLogInformation($"{formattedMessage}");
                 break;
             case LogLevel.Warning:
-                _logger?.ZLogWarning($"{message}");
+                _logger?.ZLogWarning($"{formattedMessage}");
                 break;
             case LogLevel.Error:
-                _logger?.ZLogError($"{message}");
+                _logger?.ZLogError($"{formattedMessage}");
                 break;
         }
     }
@@ -119,22 +126,32 @@ public static class Logger
 
         Initialize();
 
+        var timestamp = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]";
+        var levelStr = level switch
+        {
+            LogLevel.Debug => "[DEBUG]",
+            LogLevel.Info => "[INFO]",
+            LogLevel.Warning => "[WARN]",
+            LogLevel.Error => "[ERROR]",
+            _ => "[INFO]"
+        };
+
         foreach (var message in messages)
         {
-            // ZLog*** を直接呼ぶことで、各行で補間文字列ハンドラーの恩恵を受ける
+            var formattedMessage = $"{timestamp} {levelStr} {message}";
             switch (level)
             {
                 case LogLevel.Debug:
-                    _logger?.ZLogDebug($"{message}");
+                    _logger?.ZLogDebug($"{formattedMessage}");
                     break;
                 case LogLevel.Info:
-                    _logger?.ZLogInformation($"{message}");
+                    _logger?.ZLogInformation($"{formattedMessage}");
                     break;
                 case LogLevel.Warning:
-                    _logger?.ZLogWarning($"{message}");
+                    _logger?.ZLogWarning($"{formattedMessage}");
                     break;
                 case LogLevel.Error:
-                    _logger?.ZLogError($"{message}");
+                    _logger?.ZLogError($"{formattedMessage}");
                     break;
             }
         }
@@ -148,7 +165,10 @@ public static class Logger
     public static void LogException(string message, Exception exception)
     {
         Initialize();
-        _logger?.ZLogError(exception, $"{message}");
+        var timestamp = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]";
+        var levelStr = "[ERROR]";
+        var formattedMessage = $"{timestamp} {levelStr} {message}";
+        _logger?.ZLogError(exception, $"{formattedMessage}");
     }
 
     /// <summary>

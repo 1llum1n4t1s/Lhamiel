@@ -58,18 +58,6 @@ public class App : Application
         // 7z.dll をプロセスに固定して、アンロード時のクラッシュを防止
         NativeLibraryManager.Initialize();
 
-        try
-        {
-            // Velopackの初期化：インストール、アンインストール、更新などを処理
-            var velopackApp = VelopackApp.Build();
-            velopackApp.Run();
-            Logger.Log("Velopack: 初期化完了");
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"Velopack: 初期化エラー: {ex.Message}");
-        }
-
         _updateManager = InitializeUpdateManager();
     }
 
@@ -136,25 +124,48 @@ public class App : Application
 
             // メインウィンドウの多重起動チェック
             const string mutexName = "Lhamiel_MainWindow_SingleInstance";
-            _instanceMutex = new Mutex(true, mutexName, out var createdNew);
 
-            if (!createdNew)
+            try
             {
-                // 既に起動しているインスタンスがある場合
-                Logger.Log("アプリケーションは既に起動しています。既存のインスタンスをアクティブ化します。");
-                ActivateExistingInstance();
+                _instanceMutex = new Mutex(true, mutexName, out var createdNew);
 
-                if (startupArgs.Length > 0)
+                if (!createdNew)
                 {
-                    Logger.Log("コマンドライン引数を既存のインスタンスに送信します。");
-                    await IpcService.SendArgsToExistingInstanceAsync(startupArgs);
-                }
+                    // 既に起動しているインスタンスがある場合
+                    Logger.Log("アプリケーションは既に起動しています。既存のインスタンスをアクティブ化します。");
+                    ActivateExistingInstance();
 
-                if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-                {
-                    desktop.Shutdown();
+                    if (startupArgs.Length > 0)
+                    {
+                        Logger.Log("コマンドライン引数を既存のインスタンスに送信します。");
+                        await IpcService.SendArgsToExistingInstanceAsync(startupArgs);
+                    }
+
+                    if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                    {
+                        // 同期で Shutdown すると StartWithClassicDesktopLifetime と競合するため、
+                        // Dispatcher 上で後続に実行して初期化が正常に返るようにする
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            try
+                            {
+                                desktop.Shutdown();
+                            }
+                            catch (InvalidOperationException)
+                            {
+                            }
+                        });
+                    }
+                    return;
                 }
-                return;
+            }
+            catch (AbandonedMutexException)
+            {
+                Logger.Log("前回のアプリケーション終了時に Mutex が正常にリリースされていません。Mutex を再取得しました。");
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"Mutex 初期化エラー: {ex.Message}");
             }
 
             // 初回起動時は IPC サーバーを開始して後続インスタンスからの引数を待機
@@ -187,21 +198,23 @@ public class App : Application
             }
             else
             {
-                // メイン画面起動：更新チェックを待ち、更新があれば強制適用してから起動
-                var updateApplied = await CheckAndApplyUpdatesAsync();
-
+                // メイン画面起動（更新チェックは Program.Main で完了済み）
                 if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
                 {
-                    if (!updateApplied && lifetime.MainWindow == null)
+                    try
                     {
                         lifetime.MainWindow = new MainWindow();
+                    }
+                    catch (Exception windowEx)
+                    {
+                        Logger.LogException("メインウィンドウの作成に失敗しました（グラフィックス初期化などの可能性）", windowEx);
+                        TryShutdownSafely(lifetime);
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            // ログファイルに直接書き込み（Loggerが使えない場合のため）
             var appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lhamiel");
             if (!Directory.Exists(appDataDir))
             {
@@ -209,9 +222,42 @@ public class App : Application
             }
             var logPath = Path.Combine(appDataDir, "error.log");
             File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] アプリケーション起動エラー: {ex}\n");
-            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+            try
             {
-                lifetime.Shutdown();
+                Logger.LogException("OnFrameworkInitializationCompleted でエラー", ex);
+            }
+            catch
+            {
+            }
+
+            // Dispatcher が既にシャットダウンしている場合は Shutdown() を呼ばない
+            // （呼ぶと二重終了や InvalidOperationException の原因になる）
+            var isDispatcherShutDown = ex is InvalidOperationException && ex.Message.Contains("Dispatcher", StringComparison.OrdinalIgnoreCase);
+            if (!isDispatcherShutDown && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+            {
+                TryShutdownSafely(lifetime);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Dispatcher シャットダウン済みなどを考慮して安全に Shutdown を試行する
+    /// </summary>
+    /// <param name="lifetime">デスクトップライフタイム</param>
+    private static void TryShutdownSafely(IClassicDesktopStyleApplicationLifetime lifetime)
+    {
+        try
+        {
+            lifetime.Shutdown();
+        }
+        catch (InvalidOperationException e) when (e.Message.Contains("Dispatcher", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                Logger.Log("Shutdown をスキップしました（Dispatcher 終了済み）", LogLevel.Warning);
+            }
+            catch
+            {
             }
         }
     }
@@ -780,14 +826,42 @@ public class App : Application
     public void OnApplicationExiting()
     {
         Logger.Log("アプリケーション終了");
+
+        try
+        {
+            _ipcCts?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+
+        try
+        {
+            _ipcCts?.Dispose();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+
+        try
+        {
+            _instanceMutex?.ReleaseMutex();
+            Logger.Log("Mutex をリリースしました");
+        }
+        catch (ApplicationException)
+        {
+        }
+
+        try
+        {
+            _instanceMutex?.Dispose();
+            Logger.Log("Mutex を破棄しました");
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+
         Logger.Dispose();
-
-        // IPC サーバーを停止
-        _ipcCts?.Cancel();
-        _ipcCts?.Dispose();
-
-        // Mutex をリリース
-        _instanceMutex?.Dispose();
     }
 }
 

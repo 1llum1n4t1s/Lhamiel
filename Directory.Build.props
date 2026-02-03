@@ -6,7 +6,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>x64</Platforms>
     <SupportedOSPlatformVersion>8.0</SupportedOSPlatformVersion>
-    <Version>1.0.68</Version>
+    <Version>1.0.70</Version>
     <AssemblyTitle>Lhamiel</AssemblyTitle>
     <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
     <AssemblyCompany>1llum1n4t1s</AssemblyCompany>
