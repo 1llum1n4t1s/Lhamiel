@@ -170,12 +170,9 @@ public class App : Application
 
             Logger.LogStartup(startupArgs);
 
-            // 更新チェックをバックグラウンドで開始（起動を妨げない）
-            _ = CheckAndApplyUpdatesAsync();
-
             if (startupArgs.Length > 0)
             {
-                // 引数から圧縮形式とファイルパスを抽出
+                // 関連付けから起動：更新チェックは行わず、プログレスバー画面のみ表示
                 var compressionFormat = "default";
                 var filePath = startupArgs[0];
 
@@ -190,7 +187,9 @@ public class App : Application
             }
             else
             {
-                // 引数がない場合はメインウィンドウを表示
+                // メイン画面起動：更新チェックを待ち、更新があれば強制適用してから起動
+                await CheckAndApplyUpdatesAsync();
+
                 if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
                 {
                     lifetime.MainWindow = new MainWindow();
