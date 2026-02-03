@@ -19,15 +19,6 @@ public class Settings
     private static readonly string SettingsFilePath = Path.Combine(AppDataDirectory, "settings.json");
 
     /// <summary>
-    /// JSONシリアライザー設定
-    /// </summary>
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
-
-    /// <summary>
     /// 圧縮形式の設定
     /// </summary>
     public string CompressionFormat { get; set; } = "ZIP";
@@ -110,9 +101,9 @@ public class Settings
     public static readonly string[] ExtractOnlyFormats = ["RAR", "ARJ", "Z"];
 
     /// <summary>
-    /// ログファイルの最大行数
+    /// ログファイルの最大サイズ (MB)
     /// </summary>
-    public int LogMaxLines { get; set; } = 1000;
+    public int LogMaxSizeMB { get; set; } = 10;
 
     /// <summary>
     /// ZIP圧縮レベルの設定
@@ -159,7 +150,7 @@ public class Settings
             if (File.Exists(SettingsFilePath))
             {
                 var json = File.ReadAllText(SettingsFilePath);
-                var settings = JsonSerializer.Deserialize<Settings>(json, JsonOptions);
+                var settings = JsonSerializer.Deserialize(json, AppJsonContext.Default.Settings);
                 return settings ?? new Settings();
             }
 
@@ -183,7 +174,7 @@ public class Settings
     {
         try
         {
-            var json = JsonSerializer.Serialize(this, JsonOptions);
+            var json = JsonSerializer.Serialize(this, AppJsonContext.Default.Settings);
             File.WriteAllText(SettingsFilePath, json);
         }
         catch (Exception ex)
@@ -219,7 +210,7 @@ public class Settings
         UpdateRepoOwner = "1llum1n4t1s";
         UpdateRepoName = "Lhamiel";
         UpdateChannel = "release";
-        LogMaxLines = 1000;
+        LogMaxSizeMB = 10;
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
     }

@@ -773,6 +773,7 @@ public class App : Application
     public void OnApplicationExiting()
     {
         Logger.Log("アプリケーション終了");
+        Logger.Dispose();
 
         // IPC サーバーを停止
         _ipcCts?.Cancel();

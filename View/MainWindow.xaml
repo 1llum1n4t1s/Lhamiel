@@ -17,6 +17,14 @@
        input:DragDrop.Drop="DropZone_Drop"
        input:DragDrop.DragOver="DropZone_DragOver"
        input:DragDrop.DragLeave="DropZone_DragLeave">
+    <Window.Styles>
+        <!-- ドロップゾーン：ドラッグオーバー時の見た目（デザインは XAML のみ） -->
+        <Style Selector="Border.drop-target-active">
+            <Setter Property="Background" Value="#E6F3FF" />
+            <Setter Property="BorderBrush" Value="#0078D4" />
+            <Setter Property="BorderThickness" Value="3" />
+        </Style>
+    </Window.Styles>
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />      <!-- タブコンテンツ -->
@@ -33,12 +41,13 @@
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
-                        <!-- ドラッグ&ドロップゾーン -->
+                        <!-- ドラッグ&ドロップゾーン（通常時はテーマ、ドラッグ中は .drop-target-active でスタイル適用） -->
                         <Border Grid.Row="0" x:Name="DropZoneBorder"
                                 BorderThickness="1"
+                                BorderBrush="{actipro:ThemeResource Container4BorderBrush}"
                                 Background="{actipro:ThemeResource Container4BackgroundBrush}"
-			                    CornerRadius="{actipro:ScaledCornerRadius 1.5}"
-			                    Padding="{actipro:ScaledThickness 5}">
+                                CornerRadius="{actipro:ScaledCornerRadius 1.5}"
+                                Padding="{actipro:ScaledThickness 5}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <TextBlock Text="📁 ここにファイルをドラッグ&amp;ドロップ"
                                            FontSize="16" FontWeight="SemiBold"

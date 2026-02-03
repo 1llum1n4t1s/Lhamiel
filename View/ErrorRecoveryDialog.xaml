@@ -2,6 +2,8 @@
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:primitives="using:Avalonia.Controls.Primitives"
+        xmlns:view="using:Lhamiel.View"
+        x:DataType="view:ErrorRecoveryDialog"
         Title="エラー回復オプション" Height="500" Width="600"
         WindowStartupLocation="CenterOwner"
         CanResize="True">

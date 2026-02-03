@@ -26,7 +26,7 @@ public static class IpcService
             // 既存のインスタンスが接続待ちになるまで少し待機
             await client.ConnectAsync(1000);
 
-            var json = JsonSerializer.Serialize(args);
+            var json = JsonSerializer.Serialize(args, AppJsonContext.Default.StringArray);
             var buffer = Encoding.UTF8.GetBytes(json);
 
             await client.WriteAsync(buffer, 0, buffer.Length);
@@ -69,7 +69,7 @@ public static class IpcService
 
                     if (!string.IsNullOrWhiteSpace(json))
                     {
-                        var args = JsonSerializer.Deserialize<string[]>(json);
+                        var args = JsonSerializer.Deserialize(json, AppJsonContext.Default.StringArray);
                         if (args != null)
                         {
                             onArgsReceived(args);

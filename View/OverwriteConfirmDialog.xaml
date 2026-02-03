@@ -1,6 +1,8 @@
 <Window x:Class="Lhamiel.View.OverwriteConfirmDialog"
         xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:view="using:Lhamiel.View"
+        x:DataType="view:OverwriteConfirmDialog"
         Title="ファイルの置き換え" Height="180" Width="450"
         WindowStartupLocation="CenterOwner"
         CanResize="False">

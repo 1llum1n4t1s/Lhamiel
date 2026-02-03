@@ -7,7 +7,7 @@ namespace Lhamiel.Util;
 /// Native AOT（BuiltInComInteropSupport=false）でも動作する。
 /// </summary>
 [SupportedOSPlatform("windows")]
-internal static class ShellLinkNative
+internal static partial class ShellLinkNative
 {
     private const int S_OK = 0;
     private const int S_FALSE = 1;
@@ -28,18 +28,18 @@ internal static class ShellLinkNative
     private static readonly Guid IID_IShellLinkW = new("000214F9-0000-0000-C000-000000000046");
     private static readonly Guid IID_IPersistFile = new("0000010b-0000-0000-C000-000000000046");
 
-    [DllImport("ole32.dll", ExactSpelling = true)]
-    private static extern int CoInitializeEx(nint reserved, int dwCoInit);
+    [LibraryImport("ole32.dll")]
+    private static partial int CoInitializeEx(nint reserved, int dwCoInit);
 
-    [DllImport("ole32.dll", ExactSpelling = true)]
-    private static extern void CoUninitialize();
+    [LibraryImport("ole32.dll")]
+    private static partial void CoUninitialize();
 
-    [DllImport("ole32.dll", ExactSpelling = true)]
-    private static extern int CoCreateInstance(
-        [MarshalAs(UnmanagedType.LPStruct)] Guid rclsid,
+    [LibraryImport("ole32.dll")]
+    private static partial int CoCreateInstance(
+        in Guid rclsid,
         nint pUnkOuter,
         int dwClsContext,
-        [MarshalAs(UnmanagedType.LPStruct)] Guid riid,
+        in Guid riid,
         out nint ppv);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]

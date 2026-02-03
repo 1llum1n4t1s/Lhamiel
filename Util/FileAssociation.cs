@@ -21,8 +21,15 @@ public class FileAssociation
         {
             try
             {
-                // 一般的な方法：Process.GetCurrentProcess().MainModule.FileNameを使用
-                var processPath = Process.GetCurrentProcess().MainModule?.FileName;
+                // 一般的な方法：Environment.ProcessPathを使用（単一ファイル公開対応）
+                var processPath = Environment.ProcessPath;
+                if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
+                {
+                    return processPath;
+                }
+
+                // フォールバック：Process.GetCurrentProcess().MainModule.FileName
+                processPath = Process.GetCurrentProcess().MainModule?.FileName;
                 if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
                 {
                     return processPath;
@@ -48,31 +55,12 @@ public class FileAssociation
                     return exeFiles[0];
                 }
 
-                // フォールバック：Assembly.GetExecutingAssembly().Location
-                var assemblyPath = Assembly.GetExecutingAssembly().Location;
-
-                // DLLファイルの場合は、同じディレクトリのexeファイルを探す
-                if (Path.GetExtension(assemblyPath).ToLowerInvariant() == ".dll")
-                {
-                    var assemblyDir = Path.GetDirectoryName(assemblyPath);
-                    if (assemblyDir != null)
-                    {
-                        var assemblyName = Path.GetFileNameWithoutExtension(assemblyPath);
-                        var exePath = Path.Combine(assemblyDir, assemblyName + ".exe");
-
-                        if (File.Exists(exePath))
-                        {
-                            return exePath;
-                        }
-                    }
-                }
-
-                return assemblyPath;
+                return string.Empty;
             }
             catch (Exception ex)
             {
                 Logger.LogException("実行ファイルパスの取得に失敗しました", ex);
-                return Assembly.GetExecutingAssembly().Location;
+                return string.Empty;
             }
         }
     }

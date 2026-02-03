@@ -4,7 +4,7 @@ namespace Lhamiel.Util;
 /// <summary>
 /// ネイティブライブラリのロードと生存期間を管理するクラス
 /// </summary>
-public static class NativeLibraryManager
+public static partial class NativeLibraryManager
 {
     private static IntPtr _hModule = IntPtr.Zero;
 
@@ -18,6 +18,7 @@ public static class NativeLibraryManager
         if (_hModule != IntPtr.Zero) return;
 
         // 7z.dll のパスを取得（実行ファイルと同じディレクトリを想定）
+        // 単一ファイル公開時、ネイティブDLLは展開されず実行ファイルと同じ場所に配置される
         var dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "7z.dll");
 
         if (!File.Exists(dllPath))
@@ -40,6 +41,6 @@ public static class NativeLibraryManager
         }
     }
 
-    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern IntPtr LoadLibrary(string lpFileName);
+    [LibraryImport("kernel32.dll", EntryPoint = "LoadLibraryW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    private static partial IntPtr LoadLibrary(string lpFileName);
 }

@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
-using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Lhamiel.Util;
 using Lhamiel.ViewModels;
@@ -66,19 +65,14 @@ public class MainWindow : Window
     }
 
     /// <summary>
-    /// ドロップゾーンのドラッグオーバー時の処理（View の視覚フィードバック）
+    /// ドロップゾーンのドラッグオーバー時の処理（視覚は XAML の .drop-target-active スタイルで制御）
     /// </summary>
     private void DropZone_DragOver(object? sender, DragEventArgs e)
     {
         if (e.DataTransfer.Contains(DataFormat.File))
         {
             e.DragEffects = DragDropEffects.Copy;
-            if (DropZoneBorder != null)
-            {
-                DropZoneBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(0, 120, 212));
-                DropZoneBorder.BorderThickness = new Thickness(3);
-                DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(230, 243, 255));
-            }
+            DropZoneBorder?.Classes.Add("drop-target-active");
         }
         else
         {
@@ -87,16 +81,11 @@ public class MainWindow : Window
     }
 
     /// <summary>
-    /// ドロップゾーンのドラッグリーブ時の処理（View の視覚フィードバック）
+    /// ドロップゾーンのドラッグリーブ時の処理（視覚は XAML の .drop-target-active スタイルで制御）
     /// </summary>
     private void DropZone_DragLeave(object? sender, DragEventArgs e)
     {
-        if (DropZoneBorder != null)
-        {
-            DropZoneBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(200, 200, 200));
-            DropZoneBorder.BorderThickness = new Thickness(2);
-            DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(249, 249, 249));
-        }
+        DropZoneBorder?.Classes.Remove("drop-target-active");
     }
 
     /// <summary>
@@ -104,12 +93,7 @@ public class MainWindow : Window
     /// </summary>
     private async void DropZone_Drop(object? sender, DragEventArgs e)
     {
-        if (DropZoneBorder != null)
-        {
-            DropZoneBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(200, 200, 200));
-            DropZoneBorder.BorderThickness = new Thickness(2);
-            DropZoneBorder.Background = new SolidColorBrush(Color.FromRgb(249, 249, 249));
-        }
+        DropZoneBorder?.Classes.Remove("drop-target-active");
         if (!e.DataTransfer.Contains(DataFormat.File) || e.DataTransfer.TryGetFiles() is not { } files)
             return;
         var filePaths = new List<string>();

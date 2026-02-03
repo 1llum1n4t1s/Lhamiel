@@ -221,7 +221,7 @@ public static class ArchiveExtractor
         {
             // パスを正規化（バックスラッシュをスラッシュに）
             var path = item.FullName.Replace('\\', '/');
-            var parts = path.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            var parts = path.Split(['/'], StringSplitOptions.RemoveEmptyEntries);
 
             if (parts.Length == 0) continue;
 

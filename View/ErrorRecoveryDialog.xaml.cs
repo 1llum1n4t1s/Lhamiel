@@ -73,7 +73,7 @@ public class ErrorRecoveryDialog : Window
     private void SetErrorInfo()
     {
         // ファイル詳細情報を生成
-        var fileDetails = GenerateFileDetails();
+        var fileDetails = GenerateFileDetails(ErrorInfo);
 
         // データバインディング用のプロパティを設定
         ErrorMessage = ErrorInfo.Message;
@@ -89,15 +89,16 @@ public class ErrorRecoveryDialog : Window
     /// <summary>
     /// ファイル詳細情報を生成
     /// </summary>
-    private string GenerateFileDetails()
+    /// <param name="errorInfo">エラー情報</param>
+    private static string GenerateFileDetails(ArchiveErrorInfo errorInfo)
     {
         var details = new StringBuilder();
 
-        if (!string.IsNullOrEmpty(ErrorInfo.ProblematicFilePath))
+        if (!string.IsNullOrEmpty(errorInfo.ProblematicFilePath))
         {
             try
             {
-                var fileInfo = new FileInfo(ErrorInfo.ProblematicFilePath);
+                var fileInfo = new FileInfo(errorInfo.ProblematicFilePath);
                 details.AppendLine($"ファイル名: {fileInfo.Name}");
                 details.AppendLine($"サイズ: {fileInfo.Length:N0} バイト");
                 details.AppendLine($"作成日時: {fileInfo.CreationTime}");
@@ -116,14 +117,14 @@ public class ErrorRecoveryDialog : Window
             }
         }
 
-        if (ErrorInfo.OriginalException != null)
+        if (errorInfo.OriginalException != null)
         {
             details.AppendLine("\n例外詳細:");
-            details.AppendLine($"種類: {ErrorInfo.OriginalException.GetType().Name}");
-            details.AppendLine($"メッセージ: {ErrorInfo.OriginalException.Message}");
-            if (ErrorInfo.OriginalException.InnerException != null)
+            details.AppendLine($"種類: {errorInfo.OriginalException.GetType().Name}");
+            details.AppendLine($"メッセージ: {errorInfo.OriginalException.Message}");
+            if (errorInfo.OriginalException.InnerException != null)
             {
-                details.AppendLine($"内部例外: {ErrorInfo.OriginalException.InnerException.Message}");
+                details.AppendLine($"内部例外: {errorInfo.OriginalException.InnerException.Message}");
             }
         }
 

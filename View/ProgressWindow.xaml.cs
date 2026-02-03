@@ -54,9 +54,6 @@ public class ProgressWindow : Window
 
         // 処理開始をアプリケーション全体に通知（更新待機などの同期に使用）
         App.NotifyProgressStarted();
-
-        // 所有者が設定されている場合はその中央に、そうでなければ画面中央に表示
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
     }
 
     /// <summary>

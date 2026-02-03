@@ -1,10 +1,9 @@
-using log4net;
-using log4net.Appender;
-using log4net.Config;
-using log4net.Repository.Hierarchy;
 using System.Diagnostics;
-using System.Reflection;
 using System.Text;
+using Microsoft.Extensions.Logging;
+using ZLogger;
+using ZLogger.Providers;
+
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -19,12 +18,13 @@ public enum LogLevel
 }
 
 /// <summary>
-/// Log4netを使用したログ出力機能を提供するクラス
+/// ZLoggerを使用したログ出力機能を提供するクラス
 /// </summary>
 public static class Logger
 {
-    private static readonly ILog log = LogManager.GetLogger(typeof(Logger));
-    private static bool isConfigured;
+    private static ILoggerFactory? _loggerFactory;
+    private static ILogger? _logger;
+    private static bool _isConfigured;
 
     /// <summary>
     /// 最小ログレベル（これ以上のレベルのログのみ出力）
@@ -37,124 +37,45 @@ public static class Logger
 #endif
 
     /// <summary>
-    /// Log4netを初期化する
+    /// ロガーを初期化する
     /// </summary>
     public static void Initialize()
     {
-        if (!isConfigured)
-        {
-            // 旧パス（アプリケーション実行ディレクトリ）
-            var oldLogFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lhamiel.log");
-            var newLogFilePath = Path.Combine(Settings.AppDataDirectory, "Lhamiel.log");
+        if (_isConfigured) return;
 
-            // ディレクトリ作成
-            if (!Directory.Exists(Settings.AppDataDirectory))
-            {
-                Directory.CreateDirectory(Settings.AppDataDirectory);
-            }
-
-            // 移行処理：新しい場所にログファイルがなく、古い場所にある場合は移動する
-            if (!File.Exists(newLogFilePath) && File.Exists(oldLogFilePath))
-            {
-                try
-                {
-                    File.Move(oldLogFilePath, newLogFilePath);
-                }
-                catch
-                {
-                    // ログ出力前なので失敗しても無視
-                }
-            }
-
-            // Log4net初期化前にログファイルをトリミング
-            TruncateLogFileIfNeeded();
-
-            var entryAssembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
-            var logRepository = LogManager.GetRepository(entryAssembly);
-            var configFile = new FileInfo(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "log4net.config"));
-
-            if (configFile.Exists)
-            {
-                XmlConfigurator.Configure(logRepository, configFile);
-
-                // ログファイルのパスを動的に設定（AppDataDirectory を使用）
-                var hierarchy = (Hierarchy)logRepository;
-                var appenders = hierarchy.Root.Appenders.OfType<FileAppender>();
-                foreach (var appender in appenders)
-                {
-                    appender.File = newLogFilePath;
-                    appender.ActivateOptions();
-                }
-            }
-            else
-            {
-                // 設定ファイルがない場合は基本的な設定を使用
-                BasicConfigurator.Configure(logRepository);
-            }
-
-            isConfigured = true;
-        }
-    }
-
-    /// <summary>
-    /// ログファイルが設定された最大行数を超えていたら古い行を削除する（起動時に1回のみ実行）
-    /// </summary>
-    public static void TruncateLogFileIfNeeded()
-    {
         var settings = Settings.Load();
-        var maxLines = settings.LogMaxLines > 0 ? settings.LogMaxLines : 1000;
         var logFilePath = Path.Combine(Settings.AppDataDirectory, "Lhamiel.log");
-        var tempFilePath = Path.Combine(Settings.AppDataDirectory, "Lhamiel.log.tmp");
 
-        try
+        // ディレクトリ作成
+        if (!Directory.Exists(Settings.AppDataDirectory))
         {
-            if (!File.Exists(logFilePath))
-                return;
-
-            // ファイルサイズで簡易チェック（パフォーマンス改善）
-            var fileInfo = new FileInfo(logFilePath);
-            if (fileInfo.Length < maxLines * 80) // 1行あたり平均80バイトと仮定
-                return;
-
-            // 全行を読み込む
-            var allLines = File.ReadAllLines(logFilePath);
-            var lineCount = allLines.Length;
-
-            if (lineCount <= maxLines)
-                return;
-
-            // 最後のmaxLines行のみを保持
-            var linesToKeep = allLines.Skip(lineCount - maxLines).ToArray();
-
-            // 一時ファイルに書き込み
-            File.WriteAllLines(tempFilePath, linesToKeep, Encoding.UTF8);
-
-            // 元のファイルを削除して一時ファイルをリネーム
-            File.Delete(logFilePath);
-            File.Move(tempFilePath, logFilePath);
-
-            // コンソールに出力（デバッグ用）
-            Console.WriteLine($@"ログファイルをトリミングしました: {lineCount}行 -> {linesToKeep.Length}行（最大行数: {maxLines}行）");
-            Debug.WriteLine($"ログファイルをトリミングしました: {lineCount}行 -> {linesToKeep.Length}行（最大行数: {maxLines}行）");
+            Directory.CreateDirectory(Settings.AppDataDirectory);
         }
-        catch (Exception ex)
+        
+        // ZLogger の初期化
+        _loggerFactory = LoggerFactory.Create(logging =>
         {
-            // エラーをコンソールに出力
-            Console.WriteLine($@"ログファイルのトリミングに失敗しました: {ex.Message}");
-            Debug.WriteLine($"ログファイルのトリミングに失敗しました: {ex.Message}");
-            Debug.WriteLine($"スタックトレース: {ex.StackTrace}");
+            // Microsoft.Extensions.Logging.LogLevel を明示的に使用
+            logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+            
+            // ローリングファイル出力の設定（README の options 形式）
+            // https://github.com/Cysharp/ZLogger#rollingfile
+            // FilePathSelector: 戻り値のファイル名は連番のみで終わる必要あり（(\d)+$）。ファイル名を連番のみにすることで検証を通過する。
+            logging.AddZLoggerRollingFile(options =>
+            {
+                options.FilePathSelector = (_, sequenceNumber) =>
+                    Path.Combine(Settings.AppDataDirectory, sequenceNumber.ToString());
+                options.RollingSizeKB = settings.LogMaxSizeMB * 1024;
+            });
 
-            // 一時ファイルが残っている場合は削除
-            try
-            {
-                if (File.Exists(tempFilePath))
-                    File.Delete(tempFilePath);
-            }
-            catch
-            {
-                // 無視
-            }
-        }
+            // コンソール出力
+            logging.AddZLoggerConsole();
+        });
+
+        _logger = _loggerFactory.CreateLogger("Lhamiel");
+        _isConfigured = true;
+
+        Log("Logger initialized with ZLogger (RollingFile)", LogLevel.Debug);
     }
 
     /// <summary>
@@ -172,16 +93,16 @@ public static class Logger
         switch (level)
         {
             case LogLevel.Debug:
-                log.Debug(message);
+                _logger?.ZLogDebug($"{message}");
                 break;
             case LogLevel.Info:
-                log.Info(message);
+                _logger?.ZLogInformation($"{message}");
                 break;
             case LogLevel.Warning:
-                log.Warn(message);
+                _logger?.ZLogWarning($"{message}");
                 break;
             case LogLevel.Error:
-                log.Error(message);
+                _logger?.ZLogError($"{message}");
                 break;
         }
     }
@@ -193,11 +114,29 @@ public static class Logger
     /// <param name="level">ログレベル（デフォルト: Info）</param>
     public static void LogLines(string[] messages, LogLevel level = LogLevel.Info)
     {
+        if (messages == null || messages.Length == 0) return;
+        if (level < MinLogLevel) return;
+
         Initialize();
 
         foreach (var message in messages)
         {
-            Log(message, level);
+            // ZLog*** を直接呼ぶことで、各行で補間文字列ハンドラーの恩恵を受ける
+            switch (level)
+            {
+                case LogLevel.Debug:
+                    _logger?.ZLogDebug($"{message}");
+                    break;
+                case LogLevel.Info:
+                    _logger?.ZLogInformation($"{message}");
+                    break;
+                case LogLevel.Warning:
+                    _logger?.ZLogWarning($"{message}");
+                    break;
+                case LogLevel.Error:
+                    _logger?.ZLogError($"{message}");
+                    break;
+            }
         }
     }
 
@@ -209,8 +148,7 @@ public static class Logger
     public static void LogException(string message, Exception exception)
     {
         Initialize();
-
-        log.Error(message, exception);
+        _logger?.ZLogError(exception, $"{message}");
     }
 
     /// <summary>
@@ -219,22 +157,26 @@ public static class Logger
     /// <param name="args">コマンドライン引数</param>
     public static void LogStartup(string[] args)
     {
+        if (LogLevel.Debug < MinLogLevel) return;
+
         Initialize();
 
-        var messages = new List<string>
-        {
-            "=== Lhamiel 起動ログ ===",
-            $"起動時刻: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}",
-            $"実行ファイルパス: {Environment.ProcessPath}",
-            $"コマンドライン引数の数: {args.Length}",
-            "コマンドライン引数:"
-        };
+        _logger?.ZLogDebug($"""
+            === Lhamiel 起動ログ ===
+            起動時刻: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}
+            実行ファイルパス: {Environment.ProcessPath}
+            コマンドライン引数の数: {args.Length}
+            コマンドライン引数:
+            {string.Join(Environment.NewLine, args.Select((a, i) => $"  [{i}]: {a}"))}
+            """);
+    }
 
-        for (var i = 0; i < args.Length; i++)
-        {
-            messages.Add($"  [{i}]: {args[i]}");
-        }
-
-        LogLines(messages.ToArray(), LogLevel.Debug);
+    /// <summary>
+    /// ロガーを明示的に終了する（バッファのフラッシュなど）
+    /// </summary>
+    public static void Dispose()
+    {
+        _loggerFactory?.Dispose();
+        _isConfigured = false;
     }
 }
