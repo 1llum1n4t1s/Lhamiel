@@ -11,6 +11,11 @@ using Lhamiel.View;
 namespace Lhamiel.ViewModels;
 
 /// <summary>
+/// 圧縮レベルの表示用クラス
+/// </summary>
+public record CompressionLevelItem(int Level, string Name);
+
+/// <summary>
 /// MainWindow の ViewModel（MVVM）
 /// </summary>
 public sealed partial class MainWindowViewModel : ObservableObject
@@ -48,6 +53,51 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _openCompressionOutputFolder = true;
 
+    [ObservableProperty]
+    private int _zipCompressionLevel = 5;
+
+    [ObservableProperty]
+    private int _sevenZipCompressionLevel = 5;
+
+    [ObservableProperty]
+    private CompressionLevelItem? _selectedZipLevel;
+
+    [ObservableProperty]
+    private CompressionLevelItem? _selectedSevenZipLevel;
+
+    partial void OnZipCompressionLevelChanged(int value)
+    {
+        SelectedZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == value) ?? CompressionLevels.FirstOrDefault(l => l.Level == 5);
+    }
+
+    partial void OnSevenZipCompressionLevelChanged(int value)
+    {
+        SelectedSevenZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == value) ?? CompressionLevels.FirstOrDefault(l => l.Level == 5);
+    }
+
+    partial void OnSelectedZipLevelChanged(CompressionLevelItem? value)
+    {
+        if (value != null) ZipCompressionLevel = value.Level;
+    }
+
+    partial void OnSelectedSevenZipLevelChanged(CompressionLevelItem? value)
+    {
+        if (value != null) SevenZipCompressionLevel = value.Level;
+    }
+
+    /// <summary>
+    /// 圧縮レベルの選択肢
+    /// </summary>
+    public ObservableCollection<CompressionLevelItem> CompressionLevels { get; } =
+    [
+        new CompressionLevelItem(0, "無圧縮"),
+        new CompressionLevelItem(1, "最速"),
+        new CompressionLevelItem(3, "高速"),
+        new CompressionLevelItem(5, "標準"),
+        new CompressionLevelItem(7, "最大"),
+        new CompressionLevelItem(9, "超圧縮")
+    ];
+
     /// <summary>
     /// ファイル関連付けの一覧（拡張子・表示名・関連付け状態）
     /// </summary>
@@ -84,6 +134,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         LoadFromSettings();
         LoadAssociationStatus();
         LoadVersionInfo();
+        
+        // 初期選択状態を設定
+        OnZipCompressionLevelChanged(ZipCompressionLevel);
+        OnSevenZipCompressionLevelChanged(SevenZipCompressionLevel);
     }
 
     /// <summary>
@@ -105,6 +159,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CompressionOutputToDirectory = !s.CompressionOutputToSameDirectory;
         OpenExtractionOutputFolder = s.OpenExtractionOutputFolder;
         OpenCompressionOutputFolder = s.OpenCompressionOutputFolder;
+        ZipCompressionLevel = s.ZipCompressionLevel;
+        SevenZipCompressionLevel = s.SevenZipCompressionLevel;
     }
 
     partial void OnExtractionOutputToSameDirectoryChanged(bool value)
@@ -159,6 +215,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _settingsManager.Current.CompressionOutputToSameDirectory = CompressionOutputToSameDirectory;
             _settingsManager.Current.OpenExtractionOutputFolder = OpenExtractionOutputFolder;
             _settingsManager.Current.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
+            _settingsManager.Current.ZipCompressionLevel = ZipCompressionLevel;
+            _settingsManager.Current.SevenZipCompressionLevel = SevenZipCompressionLevel;
             _settingsManager.Save();
             ApplyAssociationSettings();
             _closeWindow();

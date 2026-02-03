@@ -116,6 +116,16 @@ public class Settings
     public int LogMaxLines { get; set; } = 1000;
 
     /// <summary>
+    /// ZIP圧縮レベルの設定
+    /// </summary>
+    public int ZipCompressionLevel { get; set; } = 5; // Normal
+
+    /// <summary>
+    /// 7z圧縮レベルの設定
+    /// </summary>
+    public int SevenZipCompressionLevel { get; set; } = 5; // Normal
+
+    /// <summary>
     /// 設定をファイルから読み込むメソッド
     /// </summary>
     /// <returns>読み込まれた設定オブジェクト</returns>
@@ -155,8 +165,7 @@ public class Settings
             }
 
             var defaultSettings = new Settings();
-            var jsonDefault = JsonSerializer.Serialize(defaultSettings, JsonOptions);
-            File.WriteAllText(SettingsFilePath, jsonDefault);
+            defaultSettings.Save(); // 新規作成時にファイルに書き込む
             return defaultSettings;
         }
         catch (Exception ex)
@@ -212,5 +221,7 @@ public class Settings
         UpdateRepoName = "Lhamiel";
         UpdateChannel = "release";
         LogMaxLines = 1000;
+        ZipCompressionLevel = 5;
+        SevenZipCompressionLevel = 5;
     }
 }

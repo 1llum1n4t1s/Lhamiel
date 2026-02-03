@@ -147,7 +147,7 @@ public class ArchiveCompressor
                 {
                     // ネイティブ側（7z.dll）との連携を確実に保護するため
                     // 全ての主要オブジェクトを Task.Run の内部スコープで管理する
-                    using var writer = CreateArchiveWriter(format);
+                    using var writer = CreateArchiveWriter(format, settings);
 
                     // ファイルを圧縮アーカイブに追加
                     foreach (var (fullPath, relativePath) in filesToCompress)
@@ -245,9 +245,10 @@ public class ArchiveCompressor
     /// ArchiveWriterを作成する（スレッド数制御追加）
     /// </summary>
     /// <param name="format">圧縮形式</param>
+    /// <param name="settings">設定オブジェクト</param>
     /// <param name="maxThreads">最大スレッド数（0または負の値で自動設定）</param>
     /// <returns>ArchiveWriterインスタンス</returns>
-    private static ArchiveWriter CreateArchiveWriter(Format format, int maxThreads = -1)
+    private static ArchiveWriter CreateArchiveWriter(Format format, Settings settings, int maxThreads = -1)
     {
         // デフォルトはプロセッサ数、制限がある場合はその値
         var threadCount = maxThreads > 0 ? maxThreads : Environment.ProcessorCount;
@@ -255,10 +256,10 @@ public class ArchiveCompressor
         // 形式に応じたオプションを設定
         if (format == Format.SevenZip)
         {
-            // 7z形式: Normal圧縮レベル + LZMA2 + スレッド数制御
+            // 7z形式: LZMA2 + スレッド数制御
             var options = new CompressionOption
             {
-                CompressionLevel = CompressionLevel.Ultra,
+                CompressionLevel = (Cube.FileSystem.SevenZip.CompressionLevel)settings.SevenZipCompressionLevel,
                 CompressionMethod = CompressionMethod.Lzma2,
                 ThreadCount = threadCount
             };
@@ -266,10 +267,10 @@ public class ArchiveCompressor
         }
         else if (format == Format.Zip)
         {
-            // ZIP形式: Normal圧縮レベル + UTF-8エンコーディング
+            // ZIP形式: UTF-8エンコーディング
             var options = new CompressionOption
             {
-                CompressionLevel = CompressionLevel.Normal,
+                CompressionLevel = (Cube.FileSystem.SevenZip.CompressionLevel)settings.ZipCompressionLevel,
                 CompressionMethod = CompressionMethod.Deflate,
                 ThreadCount = threadCount,
                 CodePage = CodePage.Utf8

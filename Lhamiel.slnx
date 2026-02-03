@@ -5,5 +5,7 @@
   <Project Path="Lhamiel.csproj">
     <Platform Project="x64" />
   </Project>
-  <Project Path="Lhamiel.Tests.Unit/Lhamiel.Tests.Unit.csproj" />
+  <Project Path="Lhamiel.Tests.Unit/Lhamiel.Tests.Unit.csproj">
+    <Platform Project="x64" />
+  </Project>
 </Solution>

@@ -4,7 +4,7 @@
     <OutputType>WinExe</OutputType>
     <UseWPF>false</UseWPF>
     <UseWindowsForms>false</UseWindowsForms>
-    <ApplicationIcon>Asset\icon\app.ico</ApplicationIcon>
+    <ApplicationIcon>icon\app.ico</ApplicationIcon>
     <SatelliteResourceLanguages>ja</SatelliteResourceLanguages>
     <Optimize>true</Optimize>
     <DebugType>portable</DebugType>
@@ -62,8 +62,8 @@
 
   <!-- アイコンおよびネイティブ DLL を Publish 出力にコピー -->
   <Target Name="CopyIconsAndNativeDlls" AfterTargets="Publish">
-    <Copy SourceFiles="Asset\icon\app.ico" DestinationFolder="$(PublishDir)" />
-    <Copy SourceFiles="Asset\icon\file.ico" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="icon\app.ico" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="icon\file.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="$(OutputPath)7z.dll" DestinationFolder="$(PublishDir)" Condition="Exists('$(OutputPath)7z.dll')" />
     <Copy SourceFiles="$(OutputPath)libSkiaSharp.dll" DestinationFolder="$(PublishDir)" Condition="Exists('$(OutputPath)libSkiaSharp.dll')" />
     <Copy SourceFiles="$(OutputPath)libHarfBuzzSharp.dll" DestinationFolder="$(PublishDir)" Condition="Exists('$(OutputPath)libHarfBuzzSharp.dll')" />

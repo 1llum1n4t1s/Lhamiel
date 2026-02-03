@@ -11,7 +11,7 @@ $csprojPath = Join-Path $root "Lhamiel.csproj"
 $project = $csprojPath
 $publishDir = Join-Path $root "bin/Release/net10.0-windows8.0/win-x64/publish"
 $releaseDir = Join-Path $root "Releases"
-$iconPath = Join-Path $root "Asset/icon/app.ico"
+$iconPath = Join-Path $root "icon/app.ico"
 
 # バージョンが指定されていない場合はcsprojから取得
 if ([string]::IsNullOrWhiteSpace($Version)) {

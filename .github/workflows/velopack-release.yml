@@ -114,7 +114,7 @@ jobs:
         run: |
           $publishDir = Join-Path "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
           $outputDir = "artifacts"
-          $iconPath = Join-Path "Asset" "icon" "app.ico"
+          $iconPath = Join-Path "icon" "app.ico"
 
           if (-not (Test-Path $publishDir)) {
             Write-Error "Publish directory not found: $publishDir"
