@@ -26,20 +26,20 @@ jobs:
       - name: リリースバージョンを設定
         shell: pwsh
         run: |
-          # csproj からバージョンを読み取る
-          $csprojPath = "Lhamiel.csproj"
+          # Directory.Build.props からバージョンを読み取る
+          $path = "Directory.Build.props"
           $version = $null
 
-          # 正規表現でバージョンを抽出
-          $content = Get-Content -Path $csprojPath -Raw
-          if ($content -match '<Version>([^<]+)</Version>') {
-            $version = $matches[1]
+          if (Test-Path $path) {
+            $content = Get-Content -Path $path -Raw
+            if ($content -match '<Version>([^<]+)</Version>') {
+              $version = $matches[1]
+              Write-Host "Version read from: $path"
+            }
           }
 
           if ([string]::IsNullOrWhiteSpace($version)) {
-            Write-Error "Version not found in csproj at: $csprojPath"
-            Write-Host "csproj content:"
-            Get-Content -Path $csprojPath | Select-Object -First 30
+            Write-Error "Version not found in $path"
             exit 1
           }
 
@@ -49,20 +49,20 @@ jobs:
       - name: ターゲットフレームワークを取得
         shell: pwsh
         run: |
-          # csproj または Directory.Build.props からターゲットフレームワークを読み取る
+          # Directory.Build.props からターゲットフレームワークを読み取る
+          $path = "Directory.Build.props"
           $targetFramework = $null
-          foreach ($path in @("Lhamiel.csproj", "Directory.Build.props")) {
-            if (-not (Test-Path $path)) { continue }
+
+          if (Test-Path $path) {
             $content = Get-Content -Path $path -Raw
             if ($content -match '<TargetFramework>([^<]+)</TargetFramework>') {
               $targetFramework = $matches[1]
               Write-Host "TargetFramework read from: $path"
-              break
             }
           }
 
           if ([string]::IsNullOrWhiteSpace($targetFramework)) {
-            Write-Error "TargetFramework not found in Lhamiel.csproj or Directory.Build.props"
+            Write-Error "TargetFramework not found in $path"
             exit 1
           }
 
