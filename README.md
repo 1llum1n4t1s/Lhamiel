@@ -4,6 +4,13 @@
 
 Lhamiel（ラミエル）は、Windows向けの使いやすいアーカイブ管理ツールです。ファイルやフォルダの圧縮、多数のアーカイブ形式の展開を、直感的なドラッグ&ドロップ操作で快適に行えます。
 
+<img width="1404" height="1060" alt="image" src="https://github.com/user-attachments/assets/1e0922c8-8c33-40fc-bf2d-172cae49885d" />
+
+<img width="1404" height="1060" alt="image" src="https://github.com/user-attachments/assets/d35010b7-6fba-4c2a-9f1d-2a8974c807d3" />
+
+<img width="1404" height="1060" alt="image" src="https://github.com/user-attachments/assets/fbc5455a-7b9b-4a9e-964d-5bd1a1937f35" />
+
+
 ## 🚀 主な特徴
 
 - **かんたん操作**: ファイルをウィンドウにドラッグ&ドロップするだけで、自動的に圧縮または展開を開始します。
