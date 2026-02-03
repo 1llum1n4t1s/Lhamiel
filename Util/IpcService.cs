@@ -1,8 +1,6 @@
-using System.IO;
 using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
-
 namespace Lhamiel.Util;
 
 /// <summary>

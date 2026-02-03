@@ -1,15 +1,14 @@
-using System.IO;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Lhamiel.Util;
-
+using System.Text;
 namespace Lhamiel.View;
 
 /// <summary>
 /// エラー回復オプション選択ダイアログ
 /// </summary>
-public partial class ErrorRecoveryDialog : Window
+public class ErrorRecoveryDialog : Window
 {
     private RadioButton? _skipFileRadio;
     private RadioButton? _retryRadio;
@@ -92,7 +91,7 @@ public partial class ErrorRecoveryDialog : Window
     /// </summary>
     private string GenerateFileDetails()
     {
-        var details = new System.Text.StringBuilder();
+        var details = new StringBuilder();
 
         if (!string.IsNullOrEmpty(ErrorInfo.ProblematicFilePath))
         {
@@ -107,7 +106,7 @@ public partial class ErrorRecoveryDialog : Window
 
                 // ディスク容量情報
                 var drive = new DriveInfo(Path.GetPathRoot(fileInfo.FullName) ?? "");
-                details.AppendLine($"\nディスク情報:");
+                details.AppendLine("\nディスク情報:");
                 details.AppendLine($"利用可能容量: {drive.AvailableFreeSpace:N0} バイト");
                 details.AppendLine($"総容量: {drive.TotalSize:N0} バイト");
             }
@@ -119,7 +118,7 @@ public partial class ErrorRecoveryDialog : Window
 
         if (ErrorInfo.OriginalException != null)
         {
-            details.AppendLine($"\n例外詳細:");
+            details.AppendLine("\n例外詳細:");
             details.AppendLine($"種類: {ErrorInfo.OriginalException.GetType().Name}");
             details.AppendLine($"メッセージ: {ErrorInfo.OriginalException.Message}");
             if (ErrorInfo.OriginalException.InnerException != null)

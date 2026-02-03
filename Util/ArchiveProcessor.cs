@@ -1,7 +1,5 @@
-using System.IO;
-using Avalonia;
 using Avalonia.Threading;
-
+using Lhamiel.View;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -20,7 +18,7 @@ public static class ArchiveProcessor
     /// <param name="enablePartialExtraction">部分展開を有効にするかどうか</param>
     /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
-    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true)
+    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}");
 
@@ -29,7 +27,7 @@ public static class ArchiveProcessor
         {
             Logger.Log($"指定されたファイルが存在しません: {filePath}");
             _ = MessageService.ShowError($"指定されたファイルが見つかりません。\n{filePath}");
-            return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
+            return (null, null);
         }
 
         // I/Oを含む重い処理全体を Task.Run でバックグラウンドに移動
@@ -58,7 +56,7 @@ public static class ArchiveProcessor
                 {
                     Logger.Log($"サポートされていないファイル形式です: {extension}");
                     Dispatcher.UIThread.Post(() => _ = MessageService.ShowError($"サポートされていないファイル形式です。\n{extension}"));
-                    return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
+                    return (null, null);
                 }
 
                 // --- ここから重いI/O処理 ---
@@ -101,10 +99,10 @@ public static class ArchiveProcessor
 
                     var result = await PartialExtractionHandler.ExtractWithPartialFailureHandling(
                         filePath,
-                        outputPath!,
+                        outputPath,
                         PartialExtractionHandler.ErrorHandlingOption.AskUser,
                         (percentage, _) => Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(percentage)),
-                        (failedFile) => ShowErrorRecoveryDialog(failedFile, progressWindow),
+                        failedFile => ShowErrorRecoveryDialog(failedFile, progressWindow),
                         cancellationToken);
 
                     if (result.SuccessCount > 0)
@@ -121,7 +119,7 @@ public static class ArchiveProcessor
                         }
                         return (outputPath, structureInfo);
                     }
-                    return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
+                    return (null, null);
                 }
                 else
                 {
@@ -130,11 +128,11 @@ public static class ArchiveProcessor
                     var topLevelName = rootItemName ?? structureInfo.SingleRootItemName;
                     if (!string.IsNullOrEmpty(topLevelName))
                     {
-                        overwriteCheckPaths = [Path.Combine(outputPath!, topLevelName)];
+                        overwriteCheckPaths = [Path.Combine(outputPath, topLevelName)];
                     }
 
                     // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-                    await ArchiveExtractor.ExtractArchive(filePath, outputPath!,
+                    await ArchiveExtractor.ExtractArchive(filePath, outputPath,
                         p => progress?.Report(p),
                         progressWindow,
                         false,
@@ -178,7 +176,7 @@ public static class ArchiveProcessor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <returns>成功したアーカイブのソースパス、展開先パス、構造情報のリスト。すべて失敗した場合は空のリスト</returns>
-    public static async Task<List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    public static async Task<List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
         var results = new List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>();
         try
@@ -216,8 +214,8 @@ public static class ArchiveProcessor
                     var structureInfo = extractResult.structureInfo;
 
                     // lock 内で状態のみ更新し、Dispatcher への通知は lock 外で実行
-                    int progressToReport = 0;
-                    bool shouldReportProgress = false;
+                    var progressToReport = 0;
+                    var shouldReportProgress = false;
 
                     lock (lockObject)
                     {
@@ -304,7 +302,7 @@ public static class ArchiveProcessor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
         Logger.Log($"ArchiveProcessor.CompressItemAsync開始: sourcePath={sourcePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}");
 
@@ -432,7 +430,7 @@ public static class ArchiveProcessor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressItemsAsync(string[] sourcePaths, string outputDir, bool outputToSameDirectory, string format, View.ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    public static async Task<bool> CompressItemsAsync(string[] sourcePaths, string outputDir, bool outputToSameDirectory, string format, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
         try
         {
@@ -485,8 +483,8 @@ public static class ArchiveProcessor
                     var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false);
 
                     // lock 内で状態のみ更新し、Dispatcher への通知は lock 外で実行
-                    int completedProgress = 0;
-                    bool shouldReportProgress = false;
+                    var completedProgress = 0;
+                    var shouldReportProgress = false;
 
                     lock (lockObject)
                     {
@@ -551,16 +549,13 @@ public static class ArchiveProcessor
                 }
                 return true;
             }
-            else
-            {
-                Logger.Log($"複数対象圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
+            Logger.Log($"複数対象圧縮完了: {successCount}成功, {totalCount - successCount}失敗");
 
-                if (closeWindowOnCompletion)
-                {
-                    progressWindow?.CloseSafe();
-                }
-                return successCount > 0;
+            if (closeWindowOnCompletion)
+            {
+                progressWindow?.CloseSafe();
             }
+            return successCount > 0;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -585,7 +580,7 @@ public static class ArchiveProcessor
     /// <returns>選択されたエラー処理オプション</returns>
     private static PartialExtractionHandler.ErrorHandlingOption ShowErrorRecoveryDialog(
         PartialExtractionHandler.FailedFileInfo failedFile,
-        View.ProgressWindow? parentWindow)
+        ProgressWindow? parentWindow)
     {
         try
         {
@@ -603,16 +598,13 @@ public static class ArchiveProcessor
             {
                 var result = Dispatcher.UIThread.InvokeAsync(async () =>
                 {
-                    var dialog = new View.ErrorRecoveryDialog(errorInfo);
+                    var dialog = new ErrorRecoveryDialog(errorInfo);
                     var option = await dialog.ShowDialog<PartialExtractionHandler.ErrorHandlingOption?>(parentWindow);
                     return option ?? PartialExtractionHandler.ErrorHandlingOption.StopOnError;
                 }).GetAwaiter().GetResult();
                 return result;
             }
-            else
-            {
-                return PartialExtractionHandler.ErrorHandlingOption.SkipOnError;
-            }
+            return PartialExtractionHandler.ErrorHandlingOption.SkipOnError;
         }
         catch (Exception ex)
         {

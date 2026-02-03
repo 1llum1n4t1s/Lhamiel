@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.IO;
-
 namespace Lhamiel.Util;
 
 /// <summary>

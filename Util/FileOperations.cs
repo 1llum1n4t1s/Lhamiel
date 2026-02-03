@@ -1,5 +1,4 @@
-using System.IO;
-
+using System.Security;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -49,7 +48,7 @@ internal static class FileOperations
         if (!combinedPath.StartsWith(basePath + Path.DirectorySeparatorChar, PathComparison) &&
             !string.Equals(combinedPath, basePath, PathComparison))
         {
-            throw new System.Security.SecurityException($"Path traversal attempt detected in {pathLabel} path.");
+            throw new SecurityException($"Path traversal attempt detected in {pathLabel} path.");
         }
 
         return combinedPath;

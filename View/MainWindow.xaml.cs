@@ -4,14 +4,14 @@ using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Lhamiel.Util;
 using Lhamiel.ViewModels;
-
 namespace Lhamiel.View;
 
 /// <summary>
 /// MainWindow.xaml の相互作用ロジック（View のみ。ビジネスロジックは MainWindowViewModel）
 /// </summary>
-public partial class MainWindow : Window
+public class MainWindow : Window
 {
     private Border? DropZoneBorder;
 
@@ -31,8 +31,8 @@ public partial class MainWindow : Window
             InitializeComponent();
             var pickExtractionFolder = async () =>
             {
-                var topLevel = TopLevel.GetTopLevel(this);
-                if (topLevel == null) return (string?)null;
+                var topLevel = GetTopLevel(this);
+                if (topLevel == null) return null;
                 var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
                 {
                     Title = "展開先ディレクトリを選択",
@@ -42,8 +42,8 @@ public partial class MainWindow : Window
             };
             var pickCompressionFolder = async () =>
             {
-                var topLevel = TopLevel.GetTopLevel(this);
-                if (topLevel == null) return (string?)null;
+                var topLevel = GetTopLevel(this);
+                if (topLevel == null) return null;
                 var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
                 {
                     Title = "圧縮先ディレクトリを選択",
@@ -60,7 +60,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            _ = Util.MessageService.ShowException("アプリケーションの初期化に失敗しました", ex);
+            _ = MessageService.ShowException("アプリケーションの初期化に失敗しました", ex);
             throw;
         }
     }

@@ -1,7 +1,6 @@
-using System.IO;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -149,11 +148,11 @@ public class Settings
                 {
                     File.Move(oldSettingsFilePath, SettingsFilePath);
                     // Logger.Log を使うと再帰の恐れがあるため、デバッグ出力のみ
-                    System.Diagnostics.Debug.WriteLine($"設定ファイルを移行しました: {oldSettingsFilePath} -> {SettingsFilePath}");
+                    Debug.WriteLine($"設定ファイルを移行しました: {oldSettingsFilePath} -> {SettingsFilePath}");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"設定ファイルの移行に失敗しました: {ex.Message}");
+                    Debug.WriteLine($"設定ファイルの移行に失敗しました: {ex.Message}");
                 }
             }
 
@@ -171,7 +170,7 @@ public class Settings
         catch (Exception ex)
         {
             // ここも再帰回避のため Logger.Log は控える
-            System.Diagnostics.Debug.WriteLine($"設定ファイルの読み込みに失敗しました: {ex.Message}");
+            Debug.WriteLine($"設定ファイルの読み込みに失敗しました: {ex.Message}");
         }
 
         return new Settings();

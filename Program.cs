@@ -1,8 +1,5 @@
-using System;
 using Avalonia;
-using Avalonia.Controls.ApplicationLifetimes;
 using Lhamiel.Util;
-
 namespace Lhamiel;
 
 /// <summary>

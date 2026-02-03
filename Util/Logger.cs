@@ -1,11 +1,10 @@
 using log4net;
-using log4net.Config;
 using log4net.Appender;
+using log4net.Config;
 using log4net.Repository.Hierarchy;
 using System.Diagnostics;
-using System.IO;
 using System.Reflection;
-
+using System.Text;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -25,7 +24,7 @@ public enum LogLevel
 public static class Logger
 {
     private static readonly ILog log = LogManager.GetLogger(typeof(Logger));
-    private static bool isConfigured = false;
+    private static bool isConfigured;
 
     /// <summary>
     /// 最小ログレベル（これ以上のレベルのログのみ出力）
@@ -128,7 +127,7 @@ public static class Logger
             var linesToKeep = allLines.Skip(lineCount - maxLines).ToArray();
 
             // 一時ファイルに書き込み
-            File.WriteAllLines(tempFilePath, linesToKeep, System.Text.Encoding.UTF8);
+            File.WriteAllLines(tempFilePath, linesToKeep, Encoding.UTF8);
 
             // 元のファイルを削除して一時ファイルをリネーム
             File.Delete(logFilePath);

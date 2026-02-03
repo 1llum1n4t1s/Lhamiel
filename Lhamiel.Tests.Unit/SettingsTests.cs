@@ -1,6 +1,5 @@
 using Lhamiel.Util;
 using Xunit;
-
 namespace Lhamiel.Tests.Unit;
 
 /// <summary>

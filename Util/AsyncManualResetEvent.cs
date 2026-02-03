@@ -74,12 +74,7 @@ public class AsyncManualResetEvent
     /// <summary>
     /// イベントがセットされているかどうか（タスクが完了しているかどうか）を取得します。
     /// </summary>
-    public bool IsSet
-    {
-        get
-        {
-            // 現在のタスクの状態を返す
-            return _tcs.Task.IsCompleted;
-        }
-    }
+    public bool IsSet =>
+        // 現在のタスクの状態を返す
+        _tcs.Task.IsCompleted;
 }

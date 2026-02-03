@@ -1,9 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
-
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -20,10 +20,10 @@ public static class MessageService
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return null;
 
-        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        if (Dispatcher.UIThread.CheckAccess())
             return GetActiveWindowInternal(desktop);
 
-        return await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => GetActiveWindowInternal(desktop));
+        return await Dispatcher.UIThread.InvokeAsync(() => GetActiveWindowInternal(desktop));
     }
 
     /// <summary>

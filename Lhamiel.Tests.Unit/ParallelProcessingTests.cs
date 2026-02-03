@@ -1,7 +1,7 @@
-using System.IO.Compression;
 using Lhamiel.Util;
+using System.Diagnostics;
+using System.IO.Compression;
 using Xunit;
-
 namespace Lhamiel.Tests.Unit;
 
 /// <summary>
@@ -16,7 +16,7 @@ public class ParallelProcessingTests
     /// <returns>一時ディレクトリのパス</returns>
     private static string CreateTemporaryTestDirectory()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "ParallelProcessingTests_" + Guid.NewGuid().ToString());
+        var tempDir = Path.Combine(Path.GetTempPath(), "ParallelProcessingTests_" + Guid.NewGuid());
         Directory.CreateDirectory(tempDir);
         return tempDir;
     }
@@ -151,7 +151,7 @@ public class ParallelProcessingTests
             Directory.CreateDirectory(outputDir);
 
             // 並列実行のタイミングを測定
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var stopwatch = Stopwatch.StartNew();
 
             var results = await ArchiveProcessor.ExtractArchivesAsync(
                 zipFiles.ToArray(),
@@ -339,7 +339,7 @@ public class ParallelProcessingTests
             Directory.CreateDirectory(outputDir);
 
             // 並列実行のタイミングを測定
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var stopwatch = Stopwatch.StartNew();
 
             var result = await ArchiveProcessor.CompressItemsAsync(
                 folders.ToArray(),

@@ -3,13 +3,12 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Lhamiel.Util;
-
 namespace Lhamiel.View;
 
 /// <summary>
 /// ProgressWindow.xaml の相互作用ロジック
 /// </summary>
-public partial class ProgressWindow : Window
+public class ProgressWindow : Window
 {
     private ProgressBar? _progressBar;
     private TextBlock? _progressTextBlock;

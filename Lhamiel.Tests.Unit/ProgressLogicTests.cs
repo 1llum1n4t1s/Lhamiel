@@ -1,8 +1,5 @@
-using Xunit;
 using Cube.FileSystem.SevenZip;
-using Lhamiel.Util;
-using System;
-
+using Xunit;
 namespace Lhamiel.Tests.Unit;
 
 public class ProgressLogicTests
@@ -16,7 +13,7 @@ public class ProgressLogicTests
         var lastP = -1;
 
         // ライブラリの新しいロジック（per-file）をシミュレート
-        for (int i = 1; i <= totalCount; i++)
+        for (var i = 1; i <= totalCount; i++)
         {
             // 1. 各ファイルの準備段階 (Prepare)
             var prepareReport = new Report
@@ -32,7 +29,7 @@ public class ProgressLogicTests
             lastP = pp;
 
             // 2. 各ファイルの進行段階 (Progress)
-            for (int b = 0; b < 1000; b += 200)
+            for (var b = 0; b < 1000; b += 200)
             {
                 var report = new Report
                 {

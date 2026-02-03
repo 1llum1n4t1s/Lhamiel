@@ -10,14 +10,6 @@
     <DebugType>portable</DebugType>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
-    <Version>1.0.58</Version>
-    <AssemblyTitle>Lhamiel</AssemblyTitle>
-    <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
-    <AssemblyCompany>1llum1n4t1s</AssemblyCompany>
-    <AssemblyProduct>Lhamiel</AssemblyProduct>
-    <AssemblyCopyright>Copyright © 2025-2026 ゆろち</AssemblyCopyright>
-    <Title>Lhamiel</Title>
-    <Authors>ゆろち</Authors>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

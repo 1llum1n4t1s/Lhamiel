@@ -2,13 +2,12 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Lhamiel.Util;
-
 namespace Lhamiel.View;
 
 /// <summary>
 /// ファイル/フォルダ上書き確認ダイアログ（XAML で View 定義）
 /// </summary>
-public partial class OverwriteConfirmDialog : Window
+public class OverwriteConfirmDialog : Window
 {
     /// <summary>
     /// パラメータなしコンストラクタ（デザイナー・XAML プレビュー用）

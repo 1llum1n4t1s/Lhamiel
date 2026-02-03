@@ -1,6 +1,5 @@
-using System.IO;
 using Cube.FileSystem.SevenZip;
-
+using System.Text;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -347,7 +346,7 @@ public class PartialExtractionHandler
     /// </summary>
     public static string GenerateResultSummary(ExtractionResult result)
     {
-        var summary = new System.Text.StringBuilder();
+        var summary = new StringBuilder();
 
         summary.AppendLine("=== 展開結果サマリー ===");
         summary.AppendLine($"総ファイル数: {result.TotalFiles}");

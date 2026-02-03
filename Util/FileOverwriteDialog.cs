@@ -1,9 +1,8 @@
-using System.IO;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
 using Lhamiel.View;
-
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -47,7 +46,7 @@ public static class FileOverwriteDialog
 
             var title = isDirectory ? "フォルダの上書き確認" : "ファイルの置き換え";
 
-            Logger.Log($"ShowOverwriteDialog: 確認ダイアログ表示開始");
+            Logger.Log("ShowOverwriteDialog: 確認ダイアログ表示開始");
             if (parentWindow == null)
                 return OverwriteResult.No;
             var dialog = new OverwriteConfirmDialog(title, message);
@@ -88,10 +87,10 @@ public static class FileOverwriteDialog
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return null;
 
-        if (Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        if (Dispatcher.UIThread.CheckAccess())
             return GetBestParentWindowInternal(desktop);
 
-        return await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => GetBestParentWindowInternal(desktop));
+        return await Dispatcher.UIThread.InvokeAsync(() => GetBestParentWindowInternal(desktop));
     }
 
     /// <summary>

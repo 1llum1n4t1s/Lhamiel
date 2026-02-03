@@ -1,13 +1,12 @@
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Reflection;
+using Avalonia;
 using Avalonia.Controls;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lhamiel.Models;
 using Lhamiel.Util;
 using Lhamiel.View;
-
+using System.Collections.ObjectModel;
+using System.Reflection;
 namespace Lhamiel.ViewModels;
 
 /// <summary>
@@ -281,7 +280,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public async Task ProcessDroppedPathsAsync(IReadOnlyList<string> paths)
     {
         if (paths.Count == 0) return;
-        if (Avalonia.Application.Current is App { IsUpdateRestarting: true })
+        if (Application.Current is App { IsUpdateRestarting: true })
         {
             Logger.Log("アップデートのための再起動が予定されているため、新しい処理をスキップします。");
             _ = MessageService.ShowWarning("アップデートの適用準備が整いました。再起動後に再度お試しください。");

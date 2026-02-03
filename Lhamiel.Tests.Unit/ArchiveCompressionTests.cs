@@ -1,6 +1,6 @@
 using Lhamiel.Util;
+using System.Text;
 using Xunit;
-
 namespace Lhamiel.Tests.Unit;
 
 /// <summary>
@@ -15,7 +15,7 @@ public class ArchiveCompressionTests
     /// <returns>一時ディレクトリのパス</returns>
     private static string CreateTemporaryTestDirectory()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "ArchiveCompressionTests_" + Guid.NewGuid().ToString());
+        var tempDir = Path.Combine(Path.GetTempPath(), "ArchiveCompressionTests_" + Guid.NewGuid());
         Directory.CreateDirectory(tempDir);
         return tempDir;
     }
@@ -76,7 +76,7 @@ public class ArchiveCompressionTests
     /// </summary>
     private static string GetDirectoryStructure(string path, string indent = "")
     {
-        var sb = new System.Text.StringBuilder();
+        var sb = new StringBuilder();
         try
         {
             var di = new DirectoryInfo(path);
@@ -369,7 +369,7 @@ public class ArchiveCompressionTests
             await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             Assert.True(File.Exists(archivePath), "ZIP archive should be created");
-            Console.WriteLine($"✓ 圧縮成功");
+            Console.WriteLine("✓ 圧縮成功");
 
             // Act: 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
@@ -394,7 +394,7 @@ public class ArchiveCompressionTests
             var extractedDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories);
             Assert.True(extractedDirs.Any(d => d.Contains("日本語フォルダ") || d.Contains("サブフォルダ")), "日本語フォルダ名が保持されているべき");
 
-            Console.WriteLine($"\n✅ ZIP形式: 日本語ファイル名のエンコーディングが正しく保持されました");
+            Console.WriteLine("\n✅ ZIP形式: 日本語ファイル名のエンコーディングが正しく保持されました");
         }
         finally
         {
@@ -425,7 +425,7 @@ public class ArchiveCompressionTests
             await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             Assert.True(File.Exists(archivePath), "7z archive should be created");
-            Console.WriteLine($"✓ 圧縮成功");
+            Console.WriteLine("✓ 圧縮成功");
 
             // Act: 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
@@ -450,7 +450,7 @@ public class ArchiveCompressionTests
             var extractedDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories);
             Assert.True(extractedDirs.Any(d => d.Contains("日本語フォルダ") || d.Contains("サブフォルダ")), "日本語フォルダ名が保持されているべき");
 
-            Console.WriteLine($"\n✅ 7z形式: 日本語ファイル名のエンコーディングが正しく保持されました");
+            Console.WriteLine("\n✅ 7z形式: 日本語ファイル名のエンコーディングが正しく保持されました");
         }
         finally
         {
@@ -481,7 +481,7 @@ public class ArchiveCompressionTests
             await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             Assert.True(File.Exists(archivePath), "TAR archive should be created");
-            Console.WriteLine($"✓ 圧縮成功");
+            Console.WriteLine("✓ 圧縮成功");
 
             // Act: 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
@@ -506,7 +506,7 @@ public class ArchiveCompressionTests
             var extractedDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories);
             Assert.True(extractedDirs.Any(d => d.Contains("日本語フォルダ") || d.Contains("サブフォルダ")), "日本語フォルダ名が保持されているべき");
 
-            Console.WriteLine($"\n✅ TAR形式: 日本語ファイル名のエンコーディングが正しく保持されました");
+            Console.WriteLine("\n✅ TAR形式: 日本語ファイル名のエンコーディングが正しく保持されました");
         }
         finally
         {
@@ -537,7 +537,7 @@ public class ArchiveCompressionTests
             await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, null, TestContext.Current.CancellationToken);
 
             Assert.True(File.Exists(archivePath), "TAR archive should be created");
-            Console.WriteLine($"✓ 圧縮成功");
+            Console.WriteLine("✓ 圧縮成功");
 
             // Act: 展開
             // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
@@ -562,7 +562,7 @@ public class ArchiveCompressionTests
             var extractedDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories);
             Assert.True(extractedDirs.Any(d => d.Contains("日本語フォルダ") || d.Contains("サブフォルダ")), "日本語フォルダ名が保持されているべき");
 
-            Console.WriteLine($"\n✅ TAR形式: 日本語ファイル名のエンコーディングが正しく保持されました");
+            Console.WriteLine("\n✅ TAR形式: 日本語ファイル名のエンコーディングが正しく保持されました");
         }
         finally
         {

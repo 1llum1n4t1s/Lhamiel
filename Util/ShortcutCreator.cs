@@ -1,7 +1,5 @@
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.Versioning;
-
 namespace Lhamiel.Util;
 
 /// <summary>

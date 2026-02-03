@@ -1,5 +1,4 @@
 using Cube.FileSystem.SevenZip;
-using System.IO;
 using CompressionMethod = Cube.FileSystem.SevenZip.CompressionMethod;
 
 namespace Lhamiel.Util;
@@ -259,29 +258,26 @@ public class ArchiveCompressor
             // 7z形式: LZMA2 + スレッド数制御
             var options = new CompressionOption
             {
-                CompressionLevel = (Cube.FileSystem.SevenZip.CompressionLevel)settings.SevenZipCompressionLevel,
+                CompressionLevel = (CompressionLevel)settings.SevenZipCompressionLevel,
                 CompressionMethod = CompressionMethod.Lzma2,
                 ThreadCount = threadCount
             };
             return new ArchiveWriter(format, options);
         }
-        else if (format == Format.Zip)
+        if (format == Format.Zip)
         {
             // ZIP形式: UTF-8エンコーディング
             var options = new CompressionOption
             {
-                CompressionLevel = (Cube.FileSystem.SevenZip.CompressionLevel)settings.ZipCompressionLevel,
+                CompressionLevel = (CompressionLevel)settings.ZipCompressionLevel,
                 CompressionMethod = CompressionMethod.Deflate,
                 ThreadCount = threadCount,
                 CodePage = CodePage.Utf8
             };
             return new ArchiveWriter(format, options);
         }
-        else
-        {
-            // TAR形式など、その他の形式ではオプションを設定しない
-            return new ArchiveWriter(format);
-        }
+        // TAR形式など、その他の形式ではオプションを設定しない
+        return new ArchiveWriter(format);
     }
 
     /// <summary>

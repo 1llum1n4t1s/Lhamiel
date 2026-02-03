@@ -1,5 +1,4 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-
 namespace Lhamiel.Models;
 
 /// <summary>

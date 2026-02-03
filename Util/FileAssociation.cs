@@ -1,9 +1,7 @@
 using Microsoft.Win32;
 using System.Diagnostics;
-using System.IO;
 using System.Reflection;
 using System.Runtime.Versioning;
-
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -162,7 +160,7 @@ public class FileAssociation
             using var typeKey = Registry.CurrentUser.CreateSubKey(typeKeyPath);
             typeKey?.SetValue("", $"{AppName} {extension.ToUpper()} ファイル");
 
-            Logger.Log($"[関連付け設定] エクスプローラーに通知", LogLevel.Debug);
+            Logger.Log("[関連付け設定] エクスプローラーに通知", LogLevel.Debug);
             SafeNotifyExplorer();
 
             Logger.Log($"[関連付け設定] 完了: {extension}", LogLevel.Debug);
@@ -204,7 +202,7 @@ public class FileAssociation
             Logger.Log($"[関連付け解除] OpenWithキー削除: {openWithKeyPath}", LogLevel.Debug);
             Registry.CurrentUser.DeleteSubKeyTree(openWithKeyPath, false);
 
-            Logger.Log($"[関連付け解除] エクスプローラーに通知", LogLevel.Debug);
+            Logger.Log("[関連付け解除] エクスプローラーに通知", LogLevel.Debug);
             SafeNotifyExplorer();
             Logger.Log($"[関連付け解除] 完了: {extension}", LogLevel.Debug);
             return true;

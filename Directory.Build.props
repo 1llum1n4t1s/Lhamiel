@@ -6,5 +6,13 @@
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>x64</Platforms>
     <SupportedOSPlatformVersion>8.0</SupportedOSPlatformVersion>
+    <Version>1.0.60</Version>
+    <AssemblyTitle>Lhamiel</AssemblyTitle>
+    <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
+    <AssemblyCompany>1llum1n4t1s</AssemblyCompany>
+    <AssemblyProduct>Lhamiel</AssemblyProduct>
+    <AssemblyCopyright>Copyright © 2025-2026 ゆろち</AssemblyCopyright>
+    <Title>Lhamiel</Title>
+    <Authors>ゆろち</Authors>
   </PropertyGroup>
 </Project>

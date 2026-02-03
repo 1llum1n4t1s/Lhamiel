@@ -1,20 +1,19 @@
-using System.IO;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Styling;
 using Avalonia.Threading;
 using Lhamiel.Util;
+using Lhamiel.View;
+using System.Diagnostics;
 using Velopack;
 using Velopack.Sources;
-
 namespace Lhamiel;
 
 /// <summary>
 /// App.xaml の相互作用ロジック
 /// </summary>
-public partial class App : Application
+public class App : Application
 {
     /// <summary>
     /// アプリケーションインスタンス管理用の Mutex
@@ -100,7 +99,7 @@ public partial class App : Application
             Dispatcher.UIThread.Post(() =>
             {
                 // 他に ProgressWindow が残っていない場合、全ての処理が完了したとみなしてイベントをセットする
-                var hasProgressWindow = desktop.Windows.OfType<View.ProgressWindow>().Any();
+                var hasProgressWindow = desktop.Windows.OfType<ProgressWindow>().Any();
                 if (!hasProgressWindow)
                 {
                     ProcessingCompletionEvent.Set();
@@ -194,7 +193,7 @@ public partial class App : Application
                 // 引数がない場合はメインウィンドウを表示
                 if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
                 {
-                    lifetime.MainWindow = new View.MainWindow();
+                    lifetime.MainWindow = new MainWindow();
                 }
             }
         }
@@ -222,8 +221,8 @@ public partial class App : Application
     {
         try
         {
-            var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
-            var otherProcess = System.Diagnostics.Process.GetProcessesByName(currentProcess.ProcessName).FirstOrDefault(p => p.Id != currentProcess.Id);
+            var currentProcess = Process.GetCurrentProcess();
+            var otherProcess = Process.GetProcessesByName(currentProcess.ProcessName).FirstOrDefault(p => p.Id != currentProcess.Id);
 
             if (otherProcess != null)
             {
@@ -440,9 +439,9 @@ public partial class App : Application
     /// </summary>
     /// <param name="operationType">操作タイプ（"展開"、"圧縮"など）</param>
     /// <returns>(progressWindow, cts, cancelHandler)</returns>
-    private static (View.ProgressWindow progressWindow, CancellationTokenSource cts, EventHandler cancelHandler) SetupProgressWindow(string operationType)
+    private static (ProgressWindow progressWindow, CancellationTokenSource cts, EventHandler cancelHandler) SetupProgressWindow(string operationType)
     {
-        var progressWindow = new View.ProgressWindow(operationType);
+        var progressWindow = new ProgressWindow(operationType);
         if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null && desktop.MainWindow != progressWindow)
             progressWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         else
@@ -471,7 +470,7 @@ public partial class App : Application
     /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
     private async Task ProcessFileExtraction(string filePath, Settings settings, bool shouldShutdown = true)
     {
-        View.ProgressWindow? progressWindow = null;
+        ProgressWindow? progressWindow = null;
         try
         {
             var outputDir = settings.ExtractionOutputDirectory;
@@ -550,7 +549,7 @@ public partial class App : Application
     /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
     private async Task ProcessFileCompression(string filePath, Settings settings, string compressionFormat = "default", bool shouldShutdown = true)
     {
-        View.ProgressWindow? progressWindow = null;
+        ProgressWindow? progressWindow = null;
         try
         {
             var outputDir = settings.CompressionOutputDirectory;
@@ -636,7 +635,7 @@ public partial class App : Application
     /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
     private async Task ProcessFolderCompression(string folderPath, Settings settings, string compressionFormat = "default", bool shouldShutdown = true)
     {
-        View.ProgressWindow? progressWindow = null;
+        ProgressWindow? progressWindow = null;
         try
         {
             var outputDir = settings.CompressionOutputDirectory;

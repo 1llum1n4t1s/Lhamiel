@@ -1,6 +1,7 @@
 <Window x:Class="Lhamiel.View.MainWindow"
        xmlns="https://github.com/avaloniaui"
        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+       xmlns:actipro="http://schemas.actiprosoftware.com/avaloniaui"
        xmlns:vm="using:Lhamiel.ViewModels"
        xmlns:primitives="using:Avalonia.Controls.Primitives"
        xmlns:input="using:Avalonia.Input"
@@ -34,16 +35,14 @@
 
                         <!-- ドラッグ&ドロップゾーン -->
                         <Border Grid.Row="0" x:Name="DropZoneBorder"
-                                BorderThickness="2"
-                                CornerRadius="8"
-                                Background="#F9F9F9"
-                                Padding="24"
-                                MinHeight="100">
+                                BorderThickness="1"
+                                Background="{actipro:ThemeResource Container4BackgroundBrush}"
+			                    CornerRadius="{actipro:ScaledCornerRadius 1.5}"
+			                    Padding="{actipro:ScaledThickness 5}">
                             <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                                 <TextBlock Text="📁 ここにファイルをドラッグ&amp;ドロップ"
                                            FontSize="16" FontWeight="SemiBold"
-                                           HorizontalAlignment="Center"
-                                           Foreground="#666666" />
+                                           HorizontalAlignment="Center" />
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -254,7 +253,7 @@
                         <TextBlock Text="圧縮・展開ソフトウェア" FontSize="16" Foreground="Gray" Margin="0,0,0,24" />
 
                         <!-- バージョン情報 -->
-                        <Border BorderBrush="#DDDDDD" BorderThickness="1" Padding="16" Margin="0,0,0,16" CornerRadius="4">
+                        <Border Background="{actipro:ThemeResource Container2BackgroundBrush}" CornerRadius="{actipro:ScaledCornerRadius 1.5}" BorderThickness="1" Padding="16" Margin="0,0,0,16">
                             <StackPanel>
                                 <TextBlock Text="バージョン情報" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,12" />
                                 <Grid>
@@ -273,7 +272,7 @@
                         </Border>
 
                         <!-- コピーライト -->
-                        <Border BorderBrush="#DDDDDD" BorderThickness="1" Padding="16" Margin="0,0,0,16" CornerRadius="4">
+                        <Border Background="{actipro:ThemeResource Container2BackgroundBrush}" CornerRadius="{actipro:ScaledCornerRadius 1.5}" BorderThickness="1" Padding="16" Margin="0,0,0,16">
                             <StackPanel>
                                 <TextBlock Text="コピーライト" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
                                 <TextBlock x:Name="CopyrightTextBlock" TextWrapping="Wrap" Margin="0,4" Text="{Binding CopyrightText}" />
@@ -281,7 +280,7 @@
                         </Border>
 
                         <!-- ライセンス -->
-                        <Border BorderBrush="#DDDDDD" BorderThickness="1" Padding="16" CornerRadius="4">
+                        <Border Background="{actipro:ThemeResource Container2BackgroundBrush}" CornerRadius="{actipro:ScaledCornerRadius 1.5}" BorderThickness="1" Padding="16">
                             <StackPanel>
                                 <TextBlock Text="ライセンス" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
                                 <TextBlock Text="MIT License" FontWeight="SemiBold" Margin="0,4,0,8" />

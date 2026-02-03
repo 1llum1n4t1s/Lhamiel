@@ -1,12 +1,7 @@
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Security;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Cube.FileSystem.SevenZip;
-
+using System.Security;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -318,7 +313,7 @@ public static class ArchiveExtractor
 
             // UIスレッドで上書き確認を実行
             // メソッド呼び出し: UIスレッドのディスパッチャーを介してダイアログを表示
-            var canOverwrite = await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
+            var canOverwrite = await Dispatcher.UIThread.InvokeAsync(async () =>
                 await FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow));
 
             // メソッド呼び出し: ログの記録
@@ -627,7 +622,7 @@ public static class ArchiveExtractor
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 Logger.Log($"既存対象の退避に失敗しました: {ex.Message}");
-                throw new InvalidOperationException($"展開先の準備中にエラーが発生しました。ファイルが使用中か、削除権限がない可能性があります。", ex);
+                throw new InvalidOperationException("展開先の準備中にエラーが発生しました。ファイルが使用中か、削除権限がない可能性があります。", ex);
             }
 
             // メソッド呼び出し: 展開先ディレクトリを作成（存在しない場合のみ）
@@ -638,7 +633,7 @@ public static class ArchiveExtractor
 
             // tempOutputPath 直下の内容を outputPath に移動
             // メソッド呼び出し: ログの記録
-            Logger.Log($"一時ディレクトリの内容を最終展開先に移動します");
+            Logger.Log("一時ディレクトリの内容を最終展開先に移動します");
 
             try
             {
@@ -664,7 +659,7 @@ public static class ArchiveExtractor
                 {
                     Logger.Log($"退避先（復元可能）: {backup}");
                 }
-                throw new InvalidOperationException($"展開先への内容移動に失敗しました。元の内容は退避先に残っています。", ex);
+                throw new InvalidOperationException("展開先への内容移動に失敗しました。元の内容は退避先に残っています。", ex);
             }
 
             // 移動成功後のみバックアップを削除（原子性の完了）
@@ -791,11 +786,6 @@ public static class ArchiveExtractor
     /// <param name="path">対象のファイルまたはディレクトリパス</param>
     internal static void RemoveReadOnlyAttributes(string path)
     {
-        /// <summary>
-        /// メソッド内: 例外処理をラップして実行するローカル関数
-        /// </summary>
-        /// <param name="action">実行する処理</param>
-        /// <param name="logMessage">エラー時に表示するメッセージ</param>
         void TryExecute(Action action, string logMessage)
         {
             try
@@ -861,12 +851,6 @@ public static class ArchiveExtractor
         // メソッド呼び出し: 初期のディレクトリをスタックに追加
         stack.Push(dirInfo);
 
-        /// <summary>
-        /// メソッド内: 例外処理をラップして実行するローカル関数
-        /// </summary>
-        /// <param name="action">実行する処理</param>
-        /// <param name="logMessage">エラー時に表示するメッセージ</param>
-        /// <param name="logLevel">ログの重要度レベル</param>
         void TryExecute(Action action, string logMessage, LogLevel logLevel = LogLevel.Error)
         {
             try

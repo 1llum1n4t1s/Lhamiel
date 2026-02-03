@@ -1,7 +1,7 @@
-using System.IO.Compression;
+using Cube.FileSystem.SevenZip;
 using Lhamiel.Util;
+using System.IO.Compression;
 using Xunit;
-
 namespace Lhamiel.Tests.Unit;
 
 /// <summary>
@@ -16,7 +16,7 @@ public class ArchiveExtractorTests
     /// <returns>一時ディレクトリのパス</returns>
     private static string CreateTemporaryTestDirectory()
     {
-        var tempDir = Path.Combine(Path.GetTempPath(), "ArchiveExtractorTests_" + Guid.NewGuid().ToString());
+        var tempDir = Path.Combine(Path.GetTempPath(), "ArchiveExtractorTests_" + Guid.NewGuid());
         Directory.CreateDirectory(tempDir);
         return tempDir;
     }
@@ -330,7 +330,7 @@ public class ArchiveExtractorTests
             Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
             Console.WriteLine($"Output directory: {outputDir}");
 
-            using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
+            using (var reader = new ArchiveReader(zipPath))
             {
                 var contents = reader.Items.Select(item => item.FullName).ToList();
                 Console.WriteLine($"\nArchive contents ({contents.Count} items):");
@@ -382,7 +382,7 @@ public class ArchiveExtractorTests
             Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
             Console.WriteLine($"Output directory: {outputDir}");
 
-            using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
+            using (var reader = new ArchiveReader(zipPath))
             {
                 var contents = reader.Items.Select(item => item.FullName).ToList();
                 Console.WriteLine($"\nArchive contents ({contents.Count} items):");
@@ -435,7 +435,7 @@ public class ArchiveExtractorTests
             Console.WriteLine($"ZIP file name (without extension): {zipFileName}");
             Console.WriteLine($"Output directory: {outputDir}");
 
-            using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
+            using (var reader = new ArchiveReader(zipPath))
             {
                 var contents = reader.Items.Select(item => item.FullName).ToList();
                 Console.WriteLine($"\nArchive contents ({contents.Count} items):");
@@ -485,7 +485,7 @@ public class ArchiveExtractorTests
             Console.WriteLine($"ZIP file: {zipPath}");
             Console.WriteLine($"Base output directory: {baseOutputDir}");
 
-            using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
+            using (var reader = new ArchiveReader(zipPath))
             {
                 var contents = reader.Items.Select(item => item.FullName).ToList();
                 Console.WriteLine($"\nArchive contents ({contents.Count} items):");
@@ -554,7 +554,7 @@ public class ArchiveExtractorTests
             Console.WriteLine($"ZIP file: {zipPath}");
             Console.WriteLine($"Base output directory: {baseOutputDir}");
 
-            using (var reader = new Cube.FileSystem.SevenZip.ArchiveReader(zipPath))
+            using (var reader = new ArchiveReader(zipPath))
             {
                 var contents = reader.Items.Select(item => item.FullName).ToList();
                 Console.WriteLine($"\nArchive contents ({contents.Count} items):");
@@ -597,7 +597,7 @@ public class ArchiveExtractorTests
             Assert.True(File.Exists(file1Path), "file1.txt should exist in folder1");
             Assert.True(File.Exists(file2Path), "file2.txt should exist in folder2");
 
-            Console.WriteLine($"\n✅ Test passed: Multiple root items were correctly extracted");
+            Console.WriteLine("\n✅ Test passed: Multiple root items were correctly extracted");
             Console.WriteLine();
         }
         finally

@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -70,7 +69,7 @@ internal static class ShellLinkNative
     /// <returns>成功した場合 true</returns>
     public static bool CreateShortcut(string targetPath, string shortcutPath, string description)
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) == false)
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             return false;
         }

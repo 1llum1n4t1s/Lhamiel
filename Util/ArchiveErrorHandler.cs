@@ -1,7 +1,5 @@
-using System.IO;
-using System.Text;
 using Cube.FileSystem.SevenZip;
-
+using System.Text;
 namespace Lhamiel.Util;
 
 /// <summary>

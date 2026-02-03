@@ -1,5 +1,4 @@
 using Cube.FileSystem.SevenZip;
-
 namespace Lhamiel.Util;
 
 /// <summary>
