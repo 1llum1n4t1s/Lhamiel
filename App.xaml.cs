@@ -188,11 +188,14 @@ public class App : Application
             else
             {
                 // メイン画面起動：更新チェックを待ち、更新があれば強制適用してから起動
-                await CheckAndApplyUpdatesAsync();
+                var updateApplied = await CheckAndApplyUpdatesAsync();
 
                 if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
                 {
-                    lifetime.MainWindow = new MainWindow();
+                    if (!updateApplied && lifetime.MainWindow == null)
+                    {
+                        lifetime.MainWindow = new MainWindow();
+                    }
                 }
             }
         }
@@ -261,10 +264,20 @@ public class App : Application
 
         try
         {
-            using var cts = new CancellationTokenSource(UpdateCheckTimeoutMs);
             Logger.Log("Velopack: 更新チェックを開始します。");
 
-            var updateInfo = await _updateManager.CheckForUpdatesAsync();
+            UpdateInfo? updateInfo = null;
+            try
+            {
+                using var cts = new CancellationTokenSource(UpdateCheckTimeoutMs);
+                updateInfo = await _updateManager.CheckForUpdatesAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Log("Velopack: 更新チェックがタイムアウトしました。今回のチェックをスキップします。");
+                return false;
+            }
+
             if (updateInfo == null)
             {
                 Logger.Log("Velopack: 利用可能な更新はありません。");
@@ -273,21 +286,25 @@ public class App : Application
 
             Logger.Log("Velopack: 新しいバージョンを検出しました。更新をダウンロードしています...");
 
-            await _updateManager.DownloadUpdatesAsync(updateInfo);
+            try
+            {
+                using var downloadCts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+                await _updateManager.DownloadUpdatesAsync(updateInfo, null, downloadCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Log("Velopack: ダウンロードがタイムアウトしました。今回のアップデート適用を中止します。", LogLevel.Warning);
+                return false;
+            }
 
             Logger.Log("Velopack: ダウンロード完了。更新を適用します。");
 
-            // 再起動フラグを立てて、新しい処理が開始されないようにする
             IsUpdateRestarting = true;
 
-            // 進行中の処理（圧縮・展開）が完了するのを待機します
             Logger.Log("Velopack: 進行中の処理の完了を待機しています...");
             try
             {
-                // 定義されたタイムアウト時間を設定
                 using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(UpdateProcessingWaitTimeoutMinutes));
-
-                // イベントがセットされるのを待つ（実行中の処理がなければ即時完了）
                 await ProcessingCompletionEvent.WaitAsync(timeoutCts.Token);
 
                 Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
@@ -296,23 +313,14 @@ public class App : Application
             }
             catch (OperationCanceledException)
             {
-                // タイムアウトした場合は、更新を中止してユーザーに通知
                 Logger.Log("Velopack: 処理完了の待機がタイムアウトしました。今回のアップデート適用は中止します。", LogLevel.Warning);
                 _ = MessageService.ShowWarning("進行中の処理が完了しなかったため、アップデートの適用を中止しました。アプリケーションを終了してから、再度お試しください。");
-                IsUpdateRestarting = false; // 更新プロセスを中止し、通常の動作に戻す
-                return false; // 更新失敗として終了
+                IsUpdateRestarting = false;
+                return false;
             }
-        }
-        catch (OperationCanceledException)
-        {
-            // 待機中にキャンセルされた場合もフラグをリセットして通常動作を継続可能にする
-            IsUpdateRestarting = false;
-            Logger.Log("Velopack: 更新チェックがタイムアウトしました。アプリケーションを続行します。");
-            return false;
         }
         catch (Exception ex)
         {
-            // 更新の適用（再起動の準備）に失敗した場合はフラグをリセットして通常動作を継続可能にする
             IsUpdateRestarting = false;
             Logger.Log($"Velopack: 更新チェック中にエラーが発生しました: {ex.Message}");
             return false;
