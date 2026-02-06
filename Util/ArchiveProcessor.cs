@@ -48,11 +48,10 @@ public static class ArchiveProcessor
                     });
                 }
 
-                // ファイル拡張子の確認
+                // ファイル拡張子の確認（ArchiveExtractor.SupportedExtensions を参照して重複管理を回避）
                 var extension = Path.GetExtension(filePath).ToLowerInvariant();
-                var supportedExtensions = new[] { ".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tz" };
 
-                if (!supportedExtensions.Contains(extension))
+                if (!ArchiveExtractor.SupportedExtensions.Contains(extension))
                 {
                     Logger.Log($"サポートされていないファイル形式です: {extension}");
                     Dispatcher.UIThread.Post(() => _ = MessageService.ShowError($"サポートされていないファイル形式です。\n{extension}"));
@@ -497,8 +496,8 @@ public static class ArchiveProcessor
                             failedPaths.Add(Path.GetFileName(sourcePath));
                         }
 
-                        // 各対象完了時に確実に進捗を更新
-                        completedProgress = (int)((double)(index + 1) / totalCount * 100);
+                        // 各対象完了時に確実に進捗を更新（完了数ベースで計算。indexだと並列時に不正確になる）
+                        completedProgress = (int)((double)(successCount + failedPaths.Count) / totalCount * 100);
                         shouldReportProgress = true;
                     }
 

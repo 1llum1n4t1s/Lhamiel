@@ -74,8 +74,8 @@ public class ArchiveCompressor
         // 圧縮形式を決定
         var format = GetFormatFromExtension(outputPath);
 
-        // 設定から除外パターンを取得
-        var settings = Settings.Load();
+        // 設定から除外パターンを取得（SettingsManager経由でシングルトンを使用）
+        var settings = SettingsManager.Instance.Current;
         var excludedPatterns = settings.ExcludedFilePatterns ?? [];
 
         var outputCreated = false;

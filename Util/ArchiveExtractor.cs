@@ -12,7 +12,7 @@ public static class ArchiveExtractor
     /// <summary>
     /// 定数: サポートされている展開形式の一覧
     /// </summary>
-    private static readonly string[] SupportedExtensions = [".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tZ"];
+    internal static readonly string[] SupportedExtensions = [".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tz"];
 
     /// <summary>
     /// 定数: スマート解凍判定用：無視するシステムディレクトリ名
