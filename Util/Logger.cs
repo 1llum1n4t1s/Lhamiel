@@ -39,12 +39,15 @@ public static class Logger
     /// <summary>
     /// ロガーを初期化する
     /// </summary>
-    public static void Initialize()
+    /// <summary>
+    /// ロガーを初期化する
+    /// </summary>
+    /// <param name="settings">設定オブジェクト（省略時は Settings.Load で取得）</param>
+    public static void Initialize(Settings? settings = null)
     {
         if (_isConfigured) return;
 
-        var settings = Settings.Load();
-        var logFilePath = Path.Combine(Settings.AppDataDirectory, "Lhamiel.log");
+        settings ??= Settings.Load();
 
         // ディレクトリ作成
         if (!Directory.Exists(Settings.AppDataDirectory))

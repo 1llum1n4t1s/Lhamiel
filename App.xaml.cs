@@ -30,7 +30,7 @@ public class App : Application
     /// </summary>
     private const int UpdateProcessingWaitTimeoutMinutes = 5;
 
-    private readonly UpdateManager? _updateManager;
+    private UpdateManager? _updateManager;
 
     /// <summary>
     /// IPC サーバーのキャンセル用トークンソース
@@ -52,13 +52,13 @@ public class App : Application
     {
         InitializeComponent();
         RequestedThemeVariant = null;
-        // Log4netを早期に初期化
-        Logger.Initialize();
+
+        // SettingsManager を先に初期化し、Logger に設定を渡して初期化（Settings.Load の重複呼び出しを防止）
+        var settings = SettingsManager.Instance.Current;
+        Logger.Initialize(settings);
 
         // 7z.dll をプロセスに固定して、アンロード時のクラッシュを防止
         NativeLibraryManager.Initialize();
-
-        _updateManager = InitializeUpdateManager();
     }
 
     /// <summary>
@@ -198,7 +198,7 @@ public class App : Application
             }
             else
             {
-                // メイン画面起動（更新チェックは Program.Main で完了済み）
+                // メイン画面起動
                 if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
                 {
                     try
@@ -209,7 +209,18 @@ public class App : Application
                     {
                         Logger.LogException("メインウィンドウの作成に失敗しました（グラフィックス初期化などの可能性）", windowEx);
                         TryShutdownSafely(lifetime);
+                        return;
                     }
+
+                    // メインウィンドウ表示後にバックグラウンドで更新チェック
+                    _ = Task.Run(() =>
+                    {
+                        _updateManager = InitializeUpdateManager();
+                        if (_updateManager != null)
+                        {
+                            _ = CheckAndApplyUpdatesAsync();
+                        }
+                    });
                 }
             }
         }
