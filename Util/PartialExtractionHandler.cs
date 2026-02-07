@@ -283,7 +283,7 @@ public class PartialExtractionHandler
             cancellationToken.ThrowIfCancellationRequested();
 
             // 進行状況の監視は不要だが、キャンセルは監視したい
-            var progress = new CancellableProgress<Report>(_ => { }, cancellationToken);
+            using var progress = new CancellableProgress<Report>(_ => { }, cancellationToken);
             reader.Save(tempPath, progress);
         }
         catch (Exception ex)

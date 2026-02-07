@@ -313,8 +313,10 @@ public static class ArchiveExtractor
 
             // UIスレッドで上書き確認を実行
             // メソッド呼び出し: UIスレッドのディスパッチャーを介してダイアログを表示
+            // overwriteCheckPaths がある場合は実際に上書きされるパスをダイアログに表示する
+            var dialogDestination = overwriteCheckPaths is { Count: > 0 } ? overwriteCheckPaths[0] : outputPath;
             var canOverwrite = await Dispatcher.UIThread.InvokeAsync(async () =>
-                await FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow));
+                await FileOverwriteDialog.CanOverwriteFile(archivePath, dialogDestination, parentWindow));
 
             // メソッド呼び出し: ログの記録
             Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
@@ -400,8 +402,10 @@ public static class ArchiveExtractor
                     Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {outputPath}");
 
                     // メソッド呼び出し: UIスレッドで上書き確認ダイアログを表示
+                    // overwriteCheckPaths がある場合は実際に上書きされるパスをダイアログに表示する
+                    var dialogDest = overwriteCheckPaths is { Count: > 0 } ? overwriteCheckPaths[0] : outputPath;
                     var canOverwrite = await Dispatcher.UIThread.InvokeAsync(() =>
-                        FileOverwriteDialog.CanOverwriteFile(archivePath, outputPath, parentWindow));
+                        FileOverwriteDialog.CanOverwriteFile(archivePath, dialogDest, parentWindow));
 
                     if (!canOverwrite)
                     {
@@ -416,14 +420,18 @@ public static class ArchiveExtractor
             }
 
             // 保護されたディレクトリ（デスクトップ自体など）の場合は上書き確認（削除）をさせない
-            // メソッド呼び出し: 保護されたディレクトリかチェック
-            if (PathValidator.IsProtectedDirectory(outputPath))
+            // overwriteCheckPaths がある場合は実際に退避・削除される各パスをチェック、
+            // ない場合は outputPath 自体が退避・削除対象となるのでそちらをチェック
+            var pathsToProtect = overwriteCheckPaths is { Count: > 0 }
+                ? (IEnumerable<string>)overwriteCheckPaths
+                : [outputPath];
+            foreach (var protectPath in pathsToProtect)
             {
-                // メソッド呼び出し: ログの記録
-                Logger.Log($"上書き不可: 保護されたディレクトリです: {outputPath}", LogLevel.Warning);
-
-                // 例外の投下
-                throw new InvalidOperationException($"'{outputPath}' はシステムによって保護されているため、上書き展開できません。別の場所を選択してください。");
+                if (PathValidator.IsProtectedDirectory(protectPath))
+                {
+                    Logger.Log($"上書き不可: 保護されたディレクトリです: {protectPath}", LogLevel.Warning);
+                    throw new InvalidOperationException($"'{protectPath}' はシステムによって保護されているため、上書き展開できません。別の場所を選択してください。");
+                }
             }
         }
 

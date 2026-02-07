@@ -56,7 +56,7 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" />
     <PackageReference Include="HarfBuzzSharp" Version="8.3.1.2" />
     <PackageReference Include="HarfBuzzSharp.NativeAssets.Win32" Version="8.3.1.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.36" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.38" />
     <PackageReference Include="7z.Libs" Version="25.1.0" />
     <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
     <PackageReference Include="ZLogger" Version="2.5.10" />

@@ -213,5 +213,12 @@ public class Settings
         LogMaxSizeMB = 10;
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
+        ExcludedFilePatterns =
+        [
+            ".DS_Store",
+            "Thumbs.db",
+            "__MACOSX",
+            "desktop.ini"
+        ];
     }
 }

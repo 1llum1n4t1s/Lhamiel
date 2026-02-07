@@ -859,7 +859,7 @@ public class App : Application
             _instanceMutex?.ReleaseMutex();
             Logger.Log("Mutex をリリースしました");
         }
-        catch (ApplicationException)
+        catch (Exception ex) when (ex is ApplicationException or ObjectDisposedException)
         {
         }
 
