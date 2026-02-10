@@ -9,17 +9,14 @@
     <Optimize>true</Optimize>
     <DebugType>portable</DebugType>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
-    <!-- RuntimeIdentifier / SelfContained は Publish 時に -r win-x64 と self-contained true で指定。csprojに書くとテスト参照時に NETSDK1151 になるためここでは指定しない -->
-    <PublishSingleFile>true</PublishSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- ネイティブAOT: Publish 時に -r win-x64 で指定 -->
+    <PublishAot>true</PublishAot>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</OutputPath>
     <IntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</IntermediateOutputPath>
-    <!-- Publish 時のみ自己完結にする（ワークフロー等で -r win-x64 と self-contained true を指定） -->
-    <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -52,16 +49,10 @@
     <PackageReference Include="ActiproSoftware.Controls.Avalonia" Version="25.2.2" />
     <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="SkiaSharp" Version="3.119.1" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" />
-    <PackageReference Include="HarfBuzzSharp" Version="8.3.1.2" />
-    <PackageReference Include="HarfBuzzSharp.NativeAssets.Win32" Version="8.3.1.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.38" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.42" />
     <PackageReference Include="7z.Libs" Version="25.1.0" />
     <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
-    <PackageReference Include="ZLogger" Version="2.5.10" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.2" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.2" />
+    <PackageReference Include="NLog" Version="5.4.0" />
   </ItemGroup>
 
   <!-- アイコンおよびネイティブ DLL を Publish 出力にコピー -->
@@ -69,22 +60,14 @@
     <Copy SourceFiles="icon\app.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\file.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="$(OutputPath)7z.dll" DestinationFolder="$(PublishDir)" Condition="Exists('$(OutputPath)7z.dll')" />
-    <Copy SourceFiles="$(OutputPath)libSkiaSharp.dll" DestinationFolder="$(PublishDir)" Condition="Exists('$(OutputPath)libSkiaSharp.dll')" />
-    <Copy SourceFiles="$(OutputPath)libHarfBuzzSharp.dll" DestinationFolder="$(PublishDir)" Condition="Exists('$(OutputPath)libHarfBuzzSharp.dll')" />
   </Target>
 
-  <!-- ビルド後に7z.dllとSkiaSharpのネイティブライブラリをルートに配置 -->
+  <!-- ビルド後に7z.dllをルートに配置 -->
   <Target Name="MoveNativeDllsToRoot" AfterTargets="Build">
     <!-- 7z.dllを複数の場所から確認して移動 -->
     <Move SourceFiles="$(OutputPath)x64\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)x64\7z.dll')" ContinueOnError="true" />
     <Move SourceFiles="$(OutputPath)runtimes\win-x64\native\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)runtimes\win-x64\native\7z.dll')" ContinueOnError="true" />
-    
-    <!-- SkiaSharpのネイティブライブラリを移動 -->
-    <Move SourceFiles="$(OutputPath)runtimes\win-x64\native\libSkiaSharp.dll" DestinationFiles="$(OutputPath)libSkiaSharp.dll" Condition="Exists('$(OutputPath)runtimes\win-x64\native\libSkiaSharp.dll')" ContinueOnError="true" />
-    
-    <!-- HarfBuzzSharpのネイティブライブラリを移動 -->
-    <Move SourceFiles="$(OutputPath)runtimes\win-x64\native\libHarfBuzzSharp.dll" DestinationFiles="$(OutputPath)libHarfBuzzSharp.dll" Condition="Exists('$(OutputPath)runtimes\win-x64\native\libHarfBuzzSharp.dll')" ContinueOnError="true" />
-    
+
     <!-- クリーンアップ -->
     <RemoveDir Directories="$(OutputPath)x64" Condition="Exists('$(OutputPath)x64')" ContinueOnError="true" />
     <RemoveDir Directories="$(OutputPath)x86" Condition="Exists('$(OutputPath)x86')" ContinueOnError="true" />
@@ -93,32 +76,13 @@
     <!-- 成功したかログ出力 -->
     <Message Text="7z.dll is at: $(OutputPath)7z.dll" Importance="high" Condition="Exists('$(OutputPath)7z.dll')" />
     <Warning Text="7z.dll NOT FOUND at $(OutputPath)7z.dll" Condition="!Exists('$(OutputPath)7z.dll')" />
-    <Message Text="libSkiaSharp.dll is at: $(OutputPath)libSkiaSharp.dll" Importance="high" Condition="Exists('$(OutputPath)libSkiaSharp.dll')" />
-    <Warning Text="libSkiaSharp.dll NOT FOUND at $(OutputPath)libSkiaSharp.dll" Condition="!Exists('$(OutputPath)libSkiaSharp.dll')" />
-    <Message Text="libHarfBuzzSharp.dll is at: $(OutputPath)libHarfBuzzSharp.dll" Importance="high" Condition="Exists('$(OutputPath)libHarfBuzzSharp.dll')" />
-    <Warning Text="libHarfBuzzSharp.dll NOT FOUND at $(OutputPath)libHarfBuzzSharp.dll" Condition="!Exists('$(OutputPath)libHarfBuzzSharp.dll')" />
   </Target>
 
-
-  <ItemGroup>
-    <Compile Update="Properties\Settings.Designer.cs">
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Settings.settings</DependentUpon>
-    </Compile>
-  </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Update="Properties\Resources.resx">
       <Generator></Generator>
     </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Properties\Settings.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
-    </None>
   </ItemGroup>
 
 </Project>

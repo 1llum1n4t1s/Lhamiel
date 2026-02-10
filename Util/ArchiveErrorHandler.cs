@@ -302,7 +302,7 @@ public static class ArchiveErrorHandler
     private static bool IsDiskSpaceError(IOException ex)
     {
         var message = ex.Message.ToLowerInvariant();
-        return message.Contains("disk") && message.Contains("space") ||
+        return (message.Contains("disk") && message.Contains("space")) ||
                message.Contains("not enough space") ||
                message.Contains("insufficient space");
     }

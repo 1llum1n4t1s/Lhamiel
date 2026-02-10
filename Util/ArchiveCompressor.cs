@@ -59,7 +59,7 @@ public class ArchiveCompressor
     public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         var sourceList = sourcePaths.ToList();
-        if (!sourceList.Any())
+        if (sourceList.Count == 0)
         {
             throw new ArgumentException("圧縮するファイルが指定されていません。");
         }

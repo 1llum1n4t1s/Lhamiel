@@ -136,14 +136,14 @@ public static class ArchiveExtractor
             string? duplicateFolderName = null;
 
             // 二重フォルダ構造の判定
-            if (rootFolders.Count == 1 && !rootFiles.Any())
+            if (rootFolders.Count == 1 && rootFiles.Count == 0)
             {
                 var rootFolderName = rootFolders.First();
 
                 // 第2階層にフォルダが1つのみで、ファイルがないことを確認
                 if (structure.SecondLevelFolders.TryGetValue(rootFolderName, out var slFolders) &&
                     slFolders.Count == 1 &&
-                    !(structure.SecondLevelFiles.TryGetValue(rootFolderName, out var slFiles) && slFiles.Any()))
+                    !(structure.SecondLevelFiles.TryGetValue(rootFolderName, out var slFiles) && slFiles.Count > 0))
                 {
                     var secondLevelFolderName = slFolders.First();
 

@@ -44,9 +44,11 @@ internal static class FileOperations
 
     private static string EnsureSafePath(string basePath, string relativePath, string pathLabel)
     {
+        var normalizedBase = Path.GetFullPath(basePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                             + Path.DirectorySeparatorChar;
         var combinedPath = Path.GetFullPath(Path.Combine(basePath, relativePath));
-        if (!combinedPath.StartsWith(basePath + Path.DirectorySeparatorChar, PathComparison) &&
-            !string.Equals(combinedPath, basePath, PathComparison))
+        if (!combinedPath.StartsWith(normalizedBase, PathComparison) &&
+            !string.Equals(combinedPath, normalizedBase.TrimEnd(Path.DirectorySeparatorChar), PathComparison))
         {
             throw new SecurityException($"Path traversal attempt detected in {pathLabel} path.");
         }

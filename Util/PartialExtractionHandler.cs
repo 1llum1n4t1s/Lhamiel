@@ -125,7 +125,7 @@ public class PartialExtractionHandler
         string outputPath,
         ErrorHandlingOption errorHandling = ErrorHandlingOption.AskUser,
         Action<int, string>? progressCallback = null,
-        Func<FailedFileInfo, ErrorHandlingOption>? userChoiceCallback = null,
+        Func<FailedFileInfo, Task<ErrorHandlingOption>>? userChoiceCallback = null,
         CancellationToken cancellationToken = default)
     {
         var result = new ExtractionResult();
@@ -188,7 +188,7 @@ public class PartialExtractionHandler
                         Logger.Log($"ファイル展開失敗: {fullName}, エラー: {error.Message}", LogLevel.Error);
 
                         // エラー処理オプションに基づいて処理を決定
-                        var handlingOption = DetermineErrorHandling(failedFile, errorHandling, userChoiceCallback);
+                        var handlingOption = await DetermineErrorHandlingAsync(failedFile, errorHandling, userChoiceCallback);
 
                         switch (handlingOption)
                         {
@@ -298,14 +298,14 @@ public class PartialExtractionHandler
     /// <summary>
     /// エラー処理方法を決定
     /// </summary>
-    private static ErrorHandlingOption DetermineErrorHandling(
+    private static async Task<ErrorHandlingOption> DetermineErrorHandlingAsync(
         FailedFileInfo failedFile,
         ErrorHandlingOption defaultOption,
-        Func<FailedFileInfo, ErrorHandlingOption>? userChoiceCallback)
+        Func<FailedFileInfo, Task<ErrorHandlingOption>>? userChoiceCallback)
     {
         if (defaultOption == ErrorHandlingOption.AskUser && userChoiceCallback != null)
         {
-            return userChoiceCallback(failedFile);
+            return await userChoiceCallback(failedFile);
         }
 
         return defaultOption;

@@ -55,7 +55,12 @@ public class App : Application
 
         // SettingsManager を先に初期化し、Logger に設定を渡して初期化（Settings.Load の重複呼び出しを防止）
         var settings = SettingsManager.Instance.Current;
-        Logger.Initialize(settings);
+        Logger.Initialize(new LoggerConfig
+        {
+            LogDirectory = Settings.AppDataDirectory,
+            FilePrefix = "Lhamiel",
+            MaxSizeMB = settings.LogMaxSizeMB
+        });
 
         // 7z.dll をプロセスに固定して、アンロード時のクラッシュを防止
         NativeLibraryManager.Initialize();

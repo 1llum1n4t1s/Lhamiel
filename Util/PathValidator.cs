@@ -13,6 +13,10 @@ public static class PathValidator
         "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
     ];
 
+    // 不正文字セットをキャッシュ（毎回配列生成を避ける）
+    private static readonly HashSet<char> InvalidPathCharSet = new(Path.GetInvalidPathChars());
+    private static readonly HashSet<char> InvalidFileNameCharSet = new(Path.GetInvalidFileNameChars());
+
     // 最大パス長（Windowsのデフォルト制限）
     private const int MaxPathLength = 260;
     private const int MaxDirectoryLength = 248;
@@ -120,10 +124,9 @@ public static class PathValidator
     {
         errorMessage = null;
 
-        var invalidChars = Path.GetInvalidPathChars();
         foreach (var c in path)
         {
-            if (invalidChars.Contains(c))
+            if (InvalidPathCharSet.Contains(c))
             {
                 errorMessage = $"パスに不正な文字が含まれています: '{c}' (0x{((int)c):X2})";
                 return false;
@@ -135,10 +138,9 @@ public static class PathValidator
             var filename = Path.GetFileName(path);
             if (!string.IsNullOrEmpty(filename))
             {
-                var invalidFileNameChars = Path.GetInvalidFileNameChars();
                 foreach (var c in filename)
                 {
-                    if (invalidFileNameChars.Contains(c))
+                    if (InvalidFileNameCharSet.Contains(c))
                     {
                         errorMessage = $"ファイル名に不正な文字が含まれています: '{c}' (0x{((int)c):X2})";
                         return false;
