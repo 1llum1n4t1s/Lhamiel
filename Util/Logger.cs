@@ -31,6 +31,9 @@ public sealed class LoggerConfig
 
     /// <summary>アーカイブファイルの最大保持数</summary>
     public int MaxArchiveFiles { get; init; } = 10;
+
+    /// <summary>ログファイルの保持日数（0以下の場合は削除しない）</summary>
+    public int RetentionDays { get; init; } = 7;
 }
 
 /// <summary>
@@ -96,6 +99,77 @@ public static class Logger
         _isConfigured = true;
 
         Log("Logger initialized with NLog (RollingFile)", LogLevel.Debug);
+
+        // 過去のバグで作成された不要な "0" ファイルを削除
+        CleanupStaleFile(Path.Combine(config.LogDirectory, "0"));
+
+        // 保持期間を超えた古いログファイルを削除
+        CleanupOldLogFiles(config.LogDirectory, config.FilePrefix, config.RetentionDays);
+    }
+
+    /// <summary>
+    /// 過去のバグで作成された不要ファイルを削除する
+    /// </summary>
+    /// <param name="filePath">削除対象のファイルパス</param>
+    private static void CleanupStaleFile(string filePath)
+    {
+        try
+        {
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+                Log($"不要なファイルを削除しました: {Path.GetFileName(filePath)}", LogLevel.Debug);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"不要ファイルの削除に失敗しました: {filePath} - {ex.Message}", LogLevel.Warning);
+        }
+    }
+
+    /// <summary>
+    /// 保持期間を超えた古いログファイルを削除する
+    /// </summary>
+    /// <param name="logDirectory">ログディレクトリ</param>
+    /// <param name="filePrefix">ログファイル名のプレフィックス</param>
+    /// <param name="retentionDays">保持日数（0以下の場合は削除しない）</param>
+    private static void CleanupOldLogFiles(string logDirectory, string filePrefix, int retentionDays)
+    {
+        if (retentionDays <= 0) return;
+
+        try
+        {
+            var cutoffDate = DateTime.Now.Date.AddDays(-retentionDays);
+            var logFiles = Directory.GetFiles(logDirectory, $"{filePrefix}_*.log");
+
+            foreach (var file in logFiles)
+            {
+                try
+                {
+                    // ファイル名から日付部分を抽出（例: Lhamiel_20260206.log or Lhamiel_20260206_000.log）
+                    var fileName = Path.GetFileNameWithoutExtension(file);
+                    var parts = fileName.Split('_');
+                    if (parts.Length >= 2 && parts[1].Length == 8 &&
+                        DateTime.TryParseExact(parts[1], "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var fileDate))
+                    {
+                        if (fileDate < cutoffDate)
+                        {
+                            File.Delete(file);
+                            Log($"古いログファイルを削除しました: {Path.GetFileName(file)}", LogLevel.Debug);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // 個別ファイルの削除失敗はログに記録して続行
+                    Log($"ログファイルの削除に失敗しました: {Path.GetFileName(file)} - {ex.Message}", LogLevel.Warning);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"ログファイルのクリーンアップ中にエラーが発生しました: {ex.Message}", LogLevel.Warning);
+        }
     }
 
     /// <summary>

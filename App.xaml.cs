@@ -6,8 +6,6 @@ using Avalonia.Threading;
 using Lhamiel.Util;
 using Lhamiel.View;
 using System.Diagnostics;
-using Velopack;
-using Velopack.Sources;
 namespace Lhamiel;
 
 /// <summary>
@@ -19,18 +17,6 @@ public class App : Application
     /// アプリケーションインスタンス管理用の Mutex
     /// </summary>
     private static Mutex? _instanceMutex;
-
-    /// <summary>
-    /// 更新チェックのタイムアウト時間（ミリ秒）
-    /// </summary>
-    private const int UpdateCheckTimeoutMs = 10000;
-
-    /// <summary>
-    /// アップデート適用前の進行中処理待機タイムアウト（分）
-    /// </summary>
-    private const int UpdateProcessingWaitTimeoutMinutes = 5;
-
-    private UpdateManager? _updateManager;
 
     /// <summary>
     /// IPC サーバーのキャンセル用トークンソース
@@ -59,53 +45,13 @@ public class App : Application
         {
             LogDirectory = Settings.AppDataDirectory,
             FilePrefix = "Lhamiel",
-            MaxSizeMB = settings.LogMaxSizeMB
+            MaxSizeMB = settings.LogMaxSizeMB,
+            RetentionDays = settings.LogRetentionDays
         });
 
         // 7z.dll をプロセスに固定して、アンロード時のクラッシュを防止
         NativeLibraryManager.Initialize();
     }
-
-    /// <summary>
-    /// 処理（圧縮・展開）の完了状態を管理するイベント
-    /// </summary>
-    public static AsyncManualResetEvent ProcessingCompletionEvent { get; } = new(true);
-
-    /// <summary>
-    /// プログレスウィンドウが開かれたときに呼び出されます
-    /// </summary>
-    public static void NotifyProgressStarted()
-    {
-        // イベントをリセットして非完了状態にする
-        ProcessingCompletionEvent.Reset();
-    }
-
-    /// <summary>
-    /// プログレスウィンドウが閉じられたときに呼び出されます
-    /// </summary>
-    public static void NotifyProgressFinished()
-    {
-        // UIスレッドで現在開いているプログレスウィンドウがないか確認
-        // AvaloniaではApplication.Current経由でアクセス
-        if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                // 他に ProgressWindow が残っていない場合、全ての処理が完了したとみなしてイベントをセットする
-                var hasProgressWindow = desktop.Windows.OfType<ProgressWindow>().Any();
-                if (!hasProgressWindow)
-                {
-                    ProcessingCompletionEvent.Set();
-                }
-            });
-        }
-    }
-
-    /// <summary>
-    /// アップデートによる再起動が予定されているかどうかを取得します。
-    /// これが true の場合、新しい圧縮・展開処理の開始を抑制します。
-    /// </summary>
-    public bool IsUpdateRestarting { get; private set; }
 
     /// <summary>
     /// アプリケーション起動時の処理
@@ -216,16 +162,6 @@ public class App : Application
                         TryShutdownSafely(lifetime);
                         return;
                     }
-
-                    // メインウィンドウ表示後にバックグラウンドで更新チェック
-                    _ = Task.Run(() =>
-                    {
-                        _updateManager = InitializeUpdateManager();
-                        if (_updateManager != null)
-                        {
-                            _ = CheckAndApplyUpdatesAsync();
-                        }
-                    });
                 }
             }
         }
@@ -314,122 +250,6 @@ public class App : Application
     }
 
     /// <summary>
-    /// 更新をチェックして適用する
-    /// </summary>
-    /// <returns>更新が適用された場合はtrue、適用されなかった場合はfalse</returns>
-    private async Task<bool> CheckAndApplyUpdatesAsync()
-    {
-        if (_updateManager == null)
-        {
-            return false;
-        }
-
-        try
-        {
-            Logger.Log("Velopack: 更新チェックを開始します。");
-
-            UpdateInfo? updateInfo = null;
-            try
-            {
-                using var cts = new CancellationTokenSource(UpdateCheckTimeoutMs);
-                updateInfo = await _updateManager.CheckForUpdatesAsync();
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.Log("Velopack: 更新チェックがタイムアウトしました。今回のチェックをスキップします。");
-                return false;
-            }
-
-            if (updateInfo == null)
-            {
-                Logger.Log("Velopack: 利用可能な更新はありません。");
-                return false;
-            }
-
-            Logger.Log("Velopack: 新しいバージョンを検出しました。更新をダウンロードしています...");
-
-            try
-            {
-                using var downloadCts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
-                await _updateManager.DownloadUpdatesAsync(updateInfo, null, downloadCts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.Log("Velopack: ダウンロードがタイムアウトしました。今回のアップデート適用を中止します。", LogLevel.Warning);
-                return false;
-            }
-
-            Logger.Log("Velopack: ダウンロード完了。更新を適用します。");
-
-            IsUpdateRestarting = true;
-
-            Logger.Log("Velopack: 進行中の処理の完了を待機しています...");
-            try
-            {
-                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(UpdateProcessingWaitTimeoutMinutes));
-                await ProcessingCompletionEvent.WaitAsync(timeoutCts.Token);
-
-                Logger.Log("Velopack: 処理が完了しました。再起動して更新を適用します。");
-                _updateManager.ApplyUpdatesAndRestart(updateInfo);
-                return true;
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.Log("Velopack: 処理完了の待機がタイムアウトしました。今回のアップデート適用は中止します。", LogLevel.Warning);
-                _ = MessageService.ShowWarning("進行中の処理が完了しなかったため、アップデートの適用を中止しました。アプリケーションを終了してから、再度お試しください。");
-                IsUpdateRestarting = false;
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            IsUpdateRestarting = false;
-            Logger.Log($"Velopack: 更新チェック中にエラーが発生しました: {ex.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// 更新マネージャーを初期化する
-    /// </summary>
-    /// <returns>初期化された更新マネージャー、またはnull</returns>
-    private static UpdateManager? InitializeUpdateManager()
-    {
-        try
-        {
-            var settings = SettingsManager.Instance.Current;
-            var repoOwner = settings.UpdateRepoOwner;
-            var repoName = settings.UpdateRepoName;
-            var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "release" : settings.UpdateChannel;
-
-            if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName))
-            {
-                Logger.Log("Velopack: 更新元リポジトリが未設定のため更新チェックをスキップします。");
-                return null;
-            }
-
-            var repoUrl = $"https://github.com/{repoOwner}/{repoName}";
-            var isPrerelease = channel.Equals("prerelease", StringComparison.OrdinalIgnoreCase);
-            var source = new GithubSource(repoUrl, string.Empty, isPrerelease);
-            var updateManager = new UpdateManager(source);
-
-            if (!updateManager.IsInstalled)
-            {
-                Logger.Log("Velopack: 開発実行のため更新チェックをスキップします。");
-                return null;
-            }
-
-            Logger.Log($"Velopack: 初期化完了 - リポジトリ: {repoUrl}, チャンネル: {channel}");
-            return updateManager;
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"Velopack: 初期化エラー: {ex.Message}");
-            return null;
-        }
-    }
-
-    /// <summary>
     /// コマンドラインで指定されたファイルまたはフォルダの処理を実行
     /// </summary>
     /// <param name="path">処理するファイルまたはフォルダのパス</param>
@@ -439,14 +259,6 @@ public class App : Application
     {
         try
         {
-            // 再起動が予定されている場合は、新しい処理を開始しない
-            if (IsUpdateRestarting)
-            {
-                Logger.Log("アップデートのための再起動が予定されているため、新しい処理をスキップします。");
-                _ = MessageService.ShowWarning("アップデートの適用準備が整いました。再起動後に再度お試しください。");
-                return;
-            }
-
             Logger.Log($"コマンドラインから処理を開始: {path}, 圧縮形式: {compressionFormat}, 終了フラグ: {shouldShutdown}");
 
             // パスが存在するかチェック

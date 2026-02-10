@@ -280,12 +280,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public async Task ProcessDroppedPathsAsync(IReadOnlyList<string> paths)
     {
         if (paths.Count == 0) return;
-        if (Application.Current is App { IsUpdateRestarting: true })
-        {
-            Logger.Log("アップデートのための再起動が予定されているため、新しい処理をスキップします。");
-            _ = MessageService.ShowWarning("アップデートの適用準備が整いました。再起動後に再度お試しください。");
-            return;
-        }
         ProgressWindow? progressWindow = null;
         try
         {

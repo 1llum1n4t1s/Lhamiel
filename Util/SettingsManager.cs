@@ -36,7 +36,8 @@ public sealed class SettingsManager
             {
                 LogDirectory = Settings.AppDataDirectory,
                 FilePrefix = "Lhamiel",
-                MaxSizeMB = _settings.LogMaxSizeMB
+                MaxSizeMB = _settings.LogMaxSizeMB,
+                RetentionDays = _settings.LogRetentionDays
             });
             Logger.Log("設定を読み込みました");
         }

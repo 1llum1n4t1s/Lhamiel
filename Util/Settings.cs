@@ -106,6 +106,11 @@ public class Settings
     public int LogMaxSizeMB { get; set; } = 10;
 
     /// <summary>
+    /// ログファイルの保持日数（この日数より古いログファイルは自動削除される）
+    /// </summary>
+    public int LogRetentionDays { get; set; } = 7;
+
+    /// <summary>
     /// ZIP圧縮レベルの設定
     /// </summary>
     public int ZipCompressionLevel { get; set; } = 5; // Normal
@@ -211,6 +216,7 @@ public class Settings
         UpdateRepoName = "Lhamiel";
         UpdateChannel = "release";
         LogMaxSizeMB = 10;
+        LogRetentionDays = 7;
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
         ExcludedFilePatterns =
