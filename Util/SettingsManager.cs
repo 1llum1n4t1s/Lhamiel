@@ -32,7 +32,12 @@ public sealed class SettingsManager
         {
             _settings = Settings.Load();
             // Logger が未初期化の場合は設定を渡して初期化（循環参照防止）
-            Logger.Initialize(_settings);
+            Logger.Initialize(new LoggerConfig
+            {
+                LogDirectory = Settings.AppDataDirectory,
+                FilePrefix = "Lhamiel",
+                MaxSizeMB = _settings.LogMaxSizeMB
+            });
             Logger.Log("設定を読み込みました");
         }
         catch (Exception ex)

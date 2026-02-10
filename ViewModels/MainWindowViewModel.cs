@@ -443,14 +443,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         try
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var informationalVersionAttribute = assembly.GetCustomAttributes(typeof(AssemblyInformationalVersionAttribute), false)
-                .FirstOrDefault() as AssemblyInformationalVersionAttribute;
-            var rawVersion = informationalVersionAttribute?.InformationalVersion ?? "1.0.0";
+            var assembly = typeof(MainWindowViewModel).Assembly;
+            var rawVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "1.0.0";
             VersionText = rawVersion.Contains('+') ? rawVersion.Split('+')[0] : rawVersion;
-            var copyrightAttribute = assembly.GetCustomAttributes(typeof(AssemblyCopyrightAttribute), false)
-                .FirstOrDefault() as AssemblyCopyrightAttribute;
-            CopyrightText = copyrightAttribute?.Copyright ?? "Copyright © 2025-2026 ゆろち";
+            CopyrightText = assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "Copyright © 2025-2026 ゆろち";
             LicenseText = @"MIT License
 
 Copyright (c) 2024 Lhamiel

@@ -101,7 +101,7 @@ public static class ArchiveProcessor
                         outputPath,
                         PartialExtractionHandler.ErrorHandlingOption.AskUser,
                         (percentage, _) => Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(percentage)),
-                        failedFile => ShowErrorRecoveryDialog(failedFile, progressWindow),
+                        failedFile => ShowErrorRecoveryDialogAsync(failedFile, progressWindow),
                         cancellationToken);
 
                     if (result.SuccessCount > 0)
@@ -577,7 +577,7 @@ public static class ArchiveProcessor
     /// <param name="failedFile">失敗したファイル情報</param>
     /// <param name="parentWindow">親ウィンドウ</param>
     /// <returns>選択されたエラー処理オプション</returns>
-    private static PartialExtractionHandler.ErrorHandlingOption ShowErrorRecoveryDialog(
+    private static async Task<PartialExtractionHandler.ErrorHandlingOption> ShowErrorRecoveryDialogAsync(
         PartialExtractionHandler.FailedFileInfo failedFile,
         ProgressWindow? parentWindow)
     {
@@ -595,13 +595,12 @@ public static class ArchiveProcessor
 
             if (parentWindow != null)
             {
-                var result = Dispatcher.UIThread.InvokeAsync(async () =>
+                return await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     var dialog = new ErrorRecoveryDialog(errorInfo);
                     var option = await dialog.ShowDialog<PartialExtractionHandler.ErrorHandlingOption?>(parentWindow);
                     return option ?? PartialExtractionHandler.ErrorHandlingOption.StopOnError;
-                }).GetAwaiter().GetResult();
-                return result;
+                });
             }
             return PartialExtractionHandler.ErrorHandlingOption.SkipOnError;
         }

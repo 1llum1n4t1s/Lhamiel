@@ -1,8 +1,6 @@
-using System.Diagnostics;
-using System.Text;
-using Microsoft.Extensions.Logging;
-using ZLogger;
-using ZLogger.Providers;
+using NLog;
+using NLog.Config;
+using NLog.Targets;
 
 namespace Lhamiel.Util;
 
@@ -18,13 +16,31 @@ public enum LogLevel
 }
 
 /// <summary>
-/// ZLoggerを使用したログ出力機能を提供するクラス
+/// ログ初期化設定
+/// </summary>
+public sealed class LoggerConfig
+{
+    /// <summary>ログ出力ディレクトリ</summary>
+    public required string LogDirectory { get; init; }
+
+    /// <summary>ログファイル名のプレフィックス（例: "MyApp"）</summary>
+    public required string FilePrefix { get; init; }
+
+    /// <summary>ローリングサイズ上限（MB）</summary>
+    public int MaxSizeMB { get; init; } = 10;
+
+    /// <summary>アーカイブファイルの最大保持数</summary>
+    public int MaxArchiveFiles { get; init; } = 10;
+}
+
+/// <summary>
+/// NLogを使用した汎用ログ出力クラス
 /// </summary>
 public static class Logger
 {
-    private static ILoggerFactory? _loggerFactory;
-    private static ILogger? _logger;
+    private static NLog.Logger? _logger;
     private static bool _isConfigured;
+    private static string _appName = "App";
 
     /// <summary>
     /// 最小ログレベル（これ以上のレベルのログのみ出力）
@@ -39,41 +55,47 @@ public static class Logger
     /// <summary>
     /// ロガーを初期化する
     /// </summary>
-    /// <summary>
-    /// ロガーを初期化する
-    /// </summary>
-    /// <param name="settings">設定オブジェクト（省略時は Settings.Load で取得）</param>
-    public static void Initialize(Settings? settings = null)
+    /// <param name="config">ログ設定</param>
+    public static void Initialize(LoggerConfig config)
     {
         if (_isConfigured) return;
 
-        settings ??= Settings.Load();
+        _appName = config.FilePrefix;
 
-        // ディレクトリ作成
-        if (!Directory.Exists(Settings.AppDataDirectory))
+        if (!Directory.Exists(config.LogDirectory))
         {
-            Directory.CreateDirectory(Settings.AppDataDirectory);
+            Directory.CreateDirectory(config.LogDirectory);
         }
-        
-        // ZLogger の初期化
-        _loggerFactory = LoggerFactory.Create(logging =>
+
+        var nlogConfig = new LoggingConfiguration();
+
+        var fileTarget = new FileTarget("file")
         {
-            logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
-            
-            logging.AddZLoggerRollingFile(options =>
-            {
-                options.FilePathSelector = (timestamp, sequenceNumber) =>
-                    Path.Combine(Settings.AppDataDirectory, $"Lhamiel_{timestamp.ToLocalTime():yyyyMMdd}_{sequenceNumber:000}.log");
-                options.RollingSizeKB = settings.LogMaxSizeMB * 1024;
-            });
+            FileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}.log"),
+            ArchiveAboveSize = config.MaxSizeMB * 1024 * 1024,
+            ArchiveFileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}_{{##}}.log"),
+            ArchiveNumbering = ArchiveNumberingMode.Rolling,
+            MaxArchiveFiles = config.MaxArchiveFiles,
+            Layout = "${longdate} [${uppercase:${level}}] ${message}${onexception:inner=${newline}${exception:format=tostring}}",
+            Encoding = System.Text.Encoding.UTF8
+        };
 
-            logging.AddZLoggerConsole();
-        });
+        var consoleTarget = new ConsoleTarget("console")
+        {
+            Layout = "${longdate} [${uppercase:${level}}] ${message}${onexception:inner=${newline}${exception:format=tostring}}"
+        };
 
-        _logger = _loggerFactory.CreateLogger("Lhamiel");
+        nlogConfig.AddTarget(fileTarget);
+        nlogConfig.AddTarget(consoleTarget);
+
+        nlogConfig.AddRule(NLog.LogLevel.Trace, NLog.LogLevel.Fatal, fileTarget);
+        nlogConfig.AddRule(NLog.LogLevel.Trace, NLog.LogLevel.Fatal, consoleTarget);
+
+        LogManager.Configuration = nlogConfig;
+        _logger = LogManager.GetLogger(config.FilePrefix);
         _isConfigured = true;
 
-        Log("Logger initialized with ZLogger (RollingFile)", LogLevel.Debug);
+        Log("Logger initialized with NLog (RollingFile)", LogLevel.Debug);
     }
 
     /// <summary>
@@ -86,35 +108,7 @@ public static class Logger
         if (level < MinLogLevel)
             return;
 
-        Initialize();
-
-        var timestamp = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]";
-        var levelStr = level switch
-        {
-            LogLevel.Debug => "[DEBUG]",
-            LogLevel.Info => "[INFO]",
-            LogLevel.Warning => "[WARN]",
-            LogLevel.Error => "[ERROR]",
-            _ => "[INFO]"
-        };
-
-        var formattedMessage = $"{timestamp} {levelStr} {message}";
-
-        switch (level)
-        {
-            case LogLevel.Debug:
-                _logger?.ZLogDebug($"{formattedMessage}");
-                break;
-            case LogLevel.Info:
-                _logger?.ZLogInformation($"{formattedMessage}");
-                break;
-            case LogLevel.Warning:
-                _logger?.ZLogWarning($"{formattedMessage}");
-                break;
-            case LogLevel.Error:
-                _logger?.ZLogError($"{formattedMessage}");
-                break;
-        }
+        _logger?.Log(ToNLogLevel(level), message);
     }
 
     /// <summary>
@@ -127,36 +121,10 @@ public static class Logger
         if (messages == null || messages.Length == 0) return;
         if (level < MinLogLevel) return;
 
-        Initialize();
-
-        var timestamp = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]";
-        var levelStr = level switch
-        {
-            LogLevel.Debug => "[DEBUG]",
-            LogLevel.Info => "[INFO]",
-            LogLevel.Warning => "[WARN]",
-            LogLevel.Error => "[ERROR]",
-            _ => "[INFO]"
-        };
-
+        var nlogLevel = ToNLogLevel(level);
         foreach (var message in messages)
         {
-            var formattedMessage = $"{timestamp} {levelStr} {message}";
-            switch (level)
-            {
-                case LogLevel.Debug:
-                    _logger?.ZLogDebug($"{formattedMessage}");
-                    break;
-                case LogLevel.Info:
-                    _logger?.ZLogInformation($"{formattedMessage}");
-                    break;
-                case LogLevel.Warning:
-                    _logger?.ZLogWarning($"{formattedMessage}");
-                    break;
-                case LogLevel.Error:
-                    _logger?.ZLogError($"{formattedMessage}");
-                    break;
-            }
+            _logger?.Log(nlogLevel, message);
         }
     }
 
@@ -167,11 +135,7 @@ public static class Logger
     /// <param name="exception">例外オブジェクト</param>
     public static void LogException(string message, Exception exception)
     {
-        Initialize();
-        var timestamp = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}]";
-        var levelStr = "[ERROR]";
-        var formattedMessage = $"{timestamp} {levelStr} {message}";
-        _logger?.ZLogError(exception, $"{formattedMessage}");
+        _logger?.Error(exception, message);
     }
 
     /// <summary>
@@ -182,10 +146,9 @@ public static class Logger
     {
         if (LogLevel.Debug < MinLogLevel) return;
 
-        Initialize();
-
-        _logger?.ZLogDebug($"""
-            === Lhamiel 起動ログ ===
+        _logger?.Debug(
+            $"""
+            === {_appName} 起動ログ ===
             起動時刻: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}
             実行ファイルパス: {Environment.ProcessPath}
             コマンドライン引数の数: {args.Length}
@@ -199,7 +162,19 @@ public static class Logger
     /// </summary>
     public static void Dispose()
     {
-        _loggerFactory?.Dispose();
+        LogManager.Shutdown();
         _isConfigured = false;
     }
+
+    /// <summary>
+    /// 独自LogLevelをNLogのLogLevelに変換
+    /// </summary>
+    private static NLog.LogLevel ToNLogLevel(LogLevel level) => level switch
+    {
+        LogLevel.Debug => NLog.LogLevel.Debug,
+        LogLevel.Info => NLog.LogLevel.Info,
+        LogLevel.Warning => NLog.LogLevel.Warn,
+        LogLevel.Error => NLog.LogLevel.Error,
+        _ => NLog.LogLevel.Info
+    };
 }
