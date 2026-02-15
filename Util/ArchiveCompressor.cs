@@ -23,11 +23,10 @@ public class ArchiveCompressor
             : outputDirectory;
 
         var trimmedPath = sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var fileName = Path.GetFileNameWithoutExtension(trimmedPath);
-        if (string.IsNullOrEmpty(fileName))
-        {
-            fileName = Path.GetFileName(trimmedPath);
-        }
+        var name = Path.GetFileName(trimmedPath);
+        // ドットで始まるフォルダ名（.cursor など）は GetFileNameWithoutExtension が空を返すため、
+        // ファイル（拡張子あり）の場合のみ拡張子を除去する
+        var fileName = Directory.Exists(sourcePath) ? name : (Path.GetFileNameWithoutExtension(trimmedPath) is { Length: > 0 } stem ? stem : name);
 
         var lowerExtension = extension.ToLowerInvariant();
 

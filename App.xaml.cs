@@ -145,7 +145,7 @@ public class App : Application
                     filePath = startupArgs[2];
                 }
 
-                _ = ProcessCommandLineFile(filePath, compressionFormat);
+                await ProcessCommandLineFile(filePath, compressionFormat);
             }
             else
             {
