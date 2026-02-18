@@ -131,7 +131,7 @@ public static class ArchiveExtractor
             allRootItems.UnionWith(rootFiles);
             var rootItemsCount = allRootItems.Count;
             var hasSingleRootItem = rootItemsCount == 1;
-            var singleRootItemName = allRootItems.FirstOrDefault();
+            var singleRootItemName = hasSingleRootItem ? allRootItems.FirstOrDefault() : null;
 
             string? duplicateFolderName = null;
 
