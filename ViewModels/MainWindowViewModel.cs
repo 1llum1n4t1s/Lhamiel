@@ -112,6 +112,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _licenseText = string.Empty;
 
     /// <summary>
+    /// 更新チェックの状態メッセージ
+    /// </summary>
+    [ObservableProperty]
+    private string _updateStatusText = string.Empty;
+
+    /// <summary>
+    /// 更新チェック中かどうか
+    /// </summary>
+    [ObservableProperty]
+    private bool _isCheckingUpdate;
+
+    /// <summary>
     /// 圧縮形式の選択肢（ComboBox ItemsSource）
     /// </summary>
     public ObservableCollection<string> CompressionFormats { get; } = new(Settings.SupportedCompressionFormats);
@@ -469,6 +481,58 @@ SOFTWARE.";
             Logger.LogException("バージョン情報の読み込みでエラーが発生", ex);
             VersionText = "不明";
             CopyrightText = "Copyright © 2024";
+        }
+    }
+
+    /// <summary>
+    /// 最新バージョンの確認コマンド
+    /// </summary>
+    [RelayCommand]
+    private async Task CheckForUpdateAsync()
+    {
+        if (IsCheckingUpdate) return;
+
+        IsCheckingUpdate = true;
+        UpdateStatusText = string.Empty;
+
+        try
+        {
+            var statusProgress = new Progress<string>(message => UpdateStatusText = message);
+            var result = await UpdateChecker.CheckAndDownloadAsync(statusProgress);
+
+            switch (result.Result)
+            {
+                case UpdateChecker.UpdateResult.Downloaded when result.Info != null && result.Manager != null:
+                    UpdateStatusText = "更新を適用中...再起動します。";
+                    // ApplyUpdatesAndRestart でアプリを再起動 → 通常起動フローでメイン画面が表示される
+                    result.Manager.ApplyUpdatesAndRestart(result.Info);
+                    break;
+
+                case UpdateChecker.UpdateResult.NoUpdate:
+                    UpdateStatusText = "✅ 最新バージョンです。";
+                    break;
+
+                case UpdateChecker.UpdateResult.NotInstalled:
+                    UpdateStatusText = "⚠ 開発環境では更新チェックできません。";
+                    break;
+
+                case UpdateChecker.UpdateResult.NotConfigured:
+                    UpdateStatusText = "⚠ 更新元リポジトリが未設定です。";
+                    break;
+
+                default:
+                    UpdateStatusText = $"⚠ {result.Message}";
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("更新チェックコマンドでエラーが発生", ex);
+            UpdateStatusText = "⚠ 更新チェック中にエラーが発生しました。";
+        }
+        finally
+        {
+            IsCheckingUpdate = false;
         }
     }
 

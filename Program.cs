@@ -2,7 +2,6 @@ using System;
 using Avalonia;
 using Lhamiel.Util;
 using Velopack;
-using Velopack.Sources;
 namespace Lhamiel;
 
 /// <summary>
@@ -10,11 +9,6 @@ namespace Lhamiel;
 /// </summary>
 internal class Program
 {
-    /// <summary>
-    /// 更新チェックのタイムアウト時間（ミリ秒）
-    /// </summary>
-    private const int UpdateCheckTimeoutMs = 10000;
-
     /// <summary>
     /// アプリケーションのエントリーポイント。Velopack のブートストラップを実行後、Avalonia を起動する。
     /// --update-check 引数が指定された場合は UI なしでサイレント更新チェックのみ実行する。
@@ -55,68 +49,19 @@ internal class Program
     {
         try
         {
-            // 設定とロガーを初期化
-            var settings = SettingsManager.Instance.Current;
-
             Logger.Log("サイレント更新チェックを開始します。");
 
-            var repoOwner = settings.UpdateRepoOwner;
-            var repoName = settings.UpdateRepoName;
-            var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "release" : settings.UpdateChannel;
+            var result = UpdateChecker.CheckAndDownloadAsync().GetAwaiter().GetResult();
 
-            if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName))
+            if (result.Result == UpdateChecker.UpdateResult.Downloaded && result.Info != null && result.Manager != null)
             {
-                Logger.Log("更新元リポジトリが未設定のため更新チェックをスキップします。");
-                return;
+                Logger.Log("ダウンロード完了。更新を適用します。");
+                result.Manager.ApplyUpdatesAndExit(result.Info);
             }
-
-            var repoUrl = $"https://github.com/{repoOwner}/{repoName}";
-            var isPrerelease = channel.Equals("prerelease", StringComparison.OrdinalIgnoreCase);
-            var source = new GithubSource(repoUrl, string.Empty, isPrerelease);
-            var updateManager = new UpdateManager(source);
-
-            if (!updateManager.IsInstalled)
+            else
             {
-                Logger.Log("開発実行のため更新チェックをスキップします。");
-                return;
+                Logger.Log($"サイレント更新チェック完了: {result.Result} - {result.Message}");
             }
-
-            Logger.Log($"更新チェック: リポジトリ: {repoUrl}, チャンネル: {channel}");
-
-            // 同期的に更新チェックを実行
-            UpdateInfo? updateInfo;
-            try
-            {
-                using var cts = new CancellationTokenSource(UpdateCheckTimeoutMs);
-                updateInfo = updateManager.CheckForUpdatesAsync().GetAwaiter().GetResult();
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.Log("更新チェックがタイムアウトしました。");
-                return;
-            }
-
-            if (updateInfo == null)
-            {
-                Logger.Log("利用可能な更新はありません。");
-                return;
-            }
-
-            Logger.Log("新しいバージョンを検出しました。更新をダウンロードしています...");
-
-            try
-            {
-                using var downloadCts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
-                updateManager.DownloadUpdatesAsync(updateInfo, null, downloadCts.Token).GetAwaiter().GetResult();
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.Log("ダウンロードがタイムアウトしました。", LogLevel.Warning);
-                return;
-            }
-
-            Logger.Log("ダウンロード完了。更新を適用します。");
-            updateManager.ApplyUpdatesAndExit(updateInfo);
         }
         catch (Exception ex)
         {
