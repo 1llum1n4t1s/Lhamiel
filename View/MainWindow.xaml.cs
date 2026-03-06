@@ -28,28 +28,8 @@ public class MainWindow : Window
         try
         {
             InitializeComponent();
-            var pickExtractionFolder = async () =>
-            {
-                var topLevel = GetTopLevel(this);
-                if (topLevel == null) return null;
-                var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-                {
-                    Title = "展開先ディレクトリを選択",
-                    AllowMultiple = false
-                });
-                return folders.Count > 0 && folders[0].TryGetLocalPath() is { } path ? path : null;
-            };
-            var pickCompressionFolder = async () =>
-            {
-                var topLevel = GetTopLevel(this);
-                if (topLevel == null) return null;
-                var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-                {
-                    Title = "圧縮先ディレクトリを選択",
-                    AllowMultiple = false
-                });
-                return folders.Count > 0 && folders[0].TryGetLocalPath() is { } path ? path : null;
-            };
+            var pickExtractionFolder = () => PickFolderAsync("展開先ディレクトリを選択");
+            var pickCompressionFolder = () => PickFolderAsync("圧縮先ディレクトリを選択");
             void ShowProgressWindow(ProgressWindow w)
             {
                 w.Show();
@@ -62,6 +42,18 @@ public class MainWindow : Window
             _ = MessageService.ShowException("アプリケーションの初期化に失敗しました", ex);
             throw;
         }
+    }
+
+    private async Task<string?> PickFolderAsync(string title)
+    {
+        var topLevel = GetTopLevel(this);
+        if (topLevel == null) return null;
+        var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = title,
+            AllowMultiple = false
+        });
+        return folders.Count > 0 && folders[0].TryGetLocalPath() is { } path ? path : null;
     }
 
     /// <summary>

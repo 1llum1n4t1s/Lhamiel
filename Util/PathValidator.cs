@@ -6,12 +6,12 @@ namespace Lhamiel.Util;
 public static class PathValidator
 {
     // Windows予約デバイス名
-    private static readonly string[] ReservedDeviceNames =
-    [
+    private static readonly HashSet<string> ReservedDeviceNames = new(StringComparer.OrdinalIgnoreCase)
+    {
         "CON", "PRN", "AUX", "NUL",
         "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
         "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
-    ];
+    };
 
     // 不正文字セットをキャッシュ（毎回配列生成を避ける）
     private static readonly HashSet<char> InvalidPathCharSet = new(Path.GetInvalidPathChars());
@@ -202,8 +202,7 @@ public static class PathValidator
             if (string.IsNullOrEmpty(filename))
                 return true;
 
-            var upperFilename = filename.ToUpperInvariant();
-            if (ReservedDeviceNames.Contains(upperFilename))
+            if (ReservedDeviceNames.Contains(filename))
             {
                 errorMessage = $"予約されたデバイス名が使用されています: {filename}";
                 return false;
@@ -223,6 +222,44 @@ public static class PathValidator
     /// </summary>
     /// <param name="path">検証するパス</param>
     /// <returns>保護されている場合はtrue</returns>
+    // 保護フォルダのキャッシュ（初回アクセス時に構築）
+    private static readonly Lazy<HashSet<string>> ProtectedFolders = new(BuildProtectedFolders);
+
+    private static HashSet<string> BuildProtectedFolders()
+    {
+        var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var specialFolders = new[]
+        {
+            Environment.SpecialFolder.Desktop,
+            Environment.SpecialFolder.MyDocuments,
+            Environment.SpecialFolder.UserProfile,
+            Environment.SpecialFolder.Windows,
+            Environment.SpecialFolder.ProgramFiles,
+            Environment.SpecialFolder.ProgramFilesX86,
+            Environment.SpecialFolder.System,
+            Environment.SpecialFolder.CommonDocuments,
+            Environment.SpecialFolder.MyMusic,
+            Environment.SpecialFolder.MyPictures,
+            Environment.SpecialFolder.MyVideos
+        };
+
+        foreach (var sf in specialFolders)
+        {
+            var p = Environment.GetFolderPath(sf);
+            if (!string.IsNullOrEmpty(p))
+                folders.Add(Path.GetFullPath(p).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        }
+
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrEmpty(userProfile))
+        {
+            var downloads = Path.Combine(userProfile, "Downloads");
+            folders.Add(Path.GetFullPath(downloads).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        }
+
+        return folders;
+    }
+
     public static bool IsProtectedDirectory(string path)
     {
         try
@@ -240,31 +277,7 @@ public static class PathValidator
             }
 
             // 2. 特殊なフォルダ（シェルフォルダ）をチェック
-            var protectedFolders = new List<string>
-            {
-                Environment.GetFolderPath(Environment.SpecialFolder.Desktop),
-                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                Environment.GetFolderPath(Environment.SpecialFolder.System),
-                Environment.GetFolderPath(Environment.SpecialFolder.CommonDocuments),
-                Environment.GetFolderPath(Environment.SpecialFolder.MyMusic),
-                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-                Environment.GetFolderPath(Environment.SpecialFolder.MyVideos)
-            };
-
-            // Downloads フォルダの追加（SpecialFolderにない場合が多いため）
-            var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            if (!string.IsNullOrEmpty(userProfile))
-            {
-                protectedFolders.Add(Path.Combine(userProfile, "Downloads"));
-            }
-
-            return protectedFolders.Any(f => !string.IsNullOrEmpty(f) &&
-                                             string.Equals(Path.GetFullPath(f).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
-                                                           fullPath, StringComparison.OrdinalIgnoreCase));
+            return ProtectedFolders.Value.Contains(fullPath);
         }
         catch
         {

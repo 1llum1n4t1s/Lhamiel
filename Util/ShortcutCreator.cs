@@ -88,7 +88,8 @@ public static class ShortcutCreator
     {
         try
         {
-            var processPath = Process.GetCurrentProcess().MainModule?.FileName;
+            using var process = Process.GetCurrentProcess();
+            var processPath = process.MainModule?.FileName;
             if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
             {
                 Logger.Log($"Process.GetCurrentProcess().MainModule.FileName: {processPath}");

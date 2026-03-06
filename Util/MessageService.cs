@@ -15,7 +15,7 @@ public static class MessageService
     /// アクティブなウィンドウを取得する
     /// </summary>
     /// <returns>アクティブなウィンドウ、またはnull</returns>
-    private static async Task<Window?> GetActiveWindowAsync()
+    internal static async Task<Window?> GetActiveWindowAsync()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return null;

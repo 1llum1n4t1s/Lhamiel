@@ -437,6 +437,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         Logger.Log($"関連付け解除失敗: {item.Extension}", LogLevel.Warning);
                 }
             }
+            FileAssociation.NotifyExplorer();
             Logger.Log("関連付け設定の適用が完了しました");
         }
         catch (Exception ex)

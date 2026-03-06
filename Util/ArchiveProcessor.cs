@@ -7,6 +7,11 @@ namespace Lhamiel.Util;
 /// </summary>
 public static class ArchiveProcessor
 {
+    private static readonly HashSet<string> SupportedCompressionFormats = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "zip", "7z", "tar", "gz", "bz2", "xz"
+    };
+
     /// <summary>
     /// アーカイブファイルの展開処理を実行
     /// </summary>
@@ -314,8 +319,7 @@ public static class ArchiveProcessor
         }
 
         // 圧縮形式の確認
-        var supportedFormats = new[] { "zip", "7z", "tar", "gz", "bz2", "xz" };
-        if (!supportedFormats.Contains(format.ToLowerInvariant()))
+        if (!SupportedCompressionFormats.Contains(format))
         {
             Logger.Log($"サポートされていない圧縮形式です: {format}");
             _ = MessageService.ShowError($"サポートされていない圧縮形式です。\n{format}");

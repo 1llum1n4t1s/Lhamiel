@@ -1,6 +1,5 @@
 using Microsoft.Win32;
 using System.Diagnostics;
-using System.Reflection;
 using System.Runtime.Versioning;
 namespace Lhamiel.Util;
 
@@ -15,53 +14,55 @@ public class FileAssociation
     /// アプリケーションの実行ファイルパス
     /// 現在実行中のアプリケーションのパスを取得
     /// </summary>
-    private static string AppPath
+    private static readonly Lazy<string> _appPath = new(ResolveAppPath);
+
+    private static string AppPath => _appPath.Value;
+
+    private static string ResolveAppPath()
     {
-        get
+        try
         {
-            try
+            // 一般的な方法：Environment.ProcessPathを使用（単一ファイル公開対応）
+            var processPath = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
             {
-                // 一般的な方法：Environment.ProcessPathを使用（単一ファイル公開対応）
-                var processPath = Environment.ProcessPath;
-                if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
-                {
-                    return processPath;
-                }
-
-                // フォールバック：Process.GetCurrentProcess().MainModule.FileName
-                processPath = Process.GetCurrentProcess().MainModule?.FileName;
-                if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
-                {
-                    return processPath;
-                }
-
-                // .NET 9の新しい実行モデルに対応
-                // アプリケーションのベースディレクトリからexeファイルを探す
-                var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-
-                // ベースディレクトリ内のexeファイルを探す
-                var exeFiles = Directory.GetFiles(baseDirectory, "*.exe");
-                if (exeFiles.Length > 0)
-                {
-                    // メインのアプリケーションexeファイルを特定
-                    // Lhamiel.exeを優先し、見つからない場合は最初のexeファイルを使用
-                    var mainExe = exeFiles.FirstOrDefault(f => Path.GetFileName(f).Equals("Lhamiel.exe", StringComparison.OrdinalIgnoreCase));
-                    if (mainExe != null)
-                    {
-                        return mainExe;
-                    }
-
-                    // Lhamiel.exeが見つからない場合は、最初のexeファイルを使用
-                    return exeFiles[0];
-                }
-
-                return string.Empty;
+                return processPath;
             }
-            catch (Exception ex)
+
+            // フォールバック：Process.GetCurrentProcess().MainModule.FileName
+            using var process = Process.GetCurrentProcess();
+            processPath = process.MainModule?.FileName;
+            if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
             {
-                Logger.LogException("実行ファイルパスの取得に失敗しました", ex);
-                return string.Empty;
+                return processPath;
             }
+
+            // .NET 9の新しい実行モデルに対応
+            // アプリケーションのベースディレクトリからexeファイルを探す
+            var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+
+            // ベースディレクトリ内のexeファイルを探す
+            var exeFiles = Directory.GetFiles(baseDirectory, "*.exe");
+            if (exeFiles.Length > 0)
+            {
+                // メインのアプリケーションexeファイルを特定
+                // Lhamiel.exeを優先し、見つからない場合は最初のexeファイルを使用
+                var mainExe = exeFiles.FirstOrDefault(f => Path.GetFileName(f).Equals("Lhamiel.exe", StringComparison.OrdinalIgnoreCase));
+                if (mainExe != null)
+                {
+                    return mainExe;
+                }
+
+                // Lhamiel.exeが見つからない場合は、最初のexeファイルを使用
+                return exeFiles[0];
+            }
+
+            return string.Empty;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("実行ファイルパスの取得に失敗しました", ex);
+            return string.Empty;
         }
     }
 
@@ -86,12 +87,15 @@ public class FileAssociation
     /// <summary>
     /// エクスプローラーに変更を通知する（安全な方法）
     /// </summary>
-    private static void SafeNotifyExplorer()
+    /// <summary>
+    /// エクスプローラーに関連付け変更を一括通知する。
+    /// 複数の拡張子を変更した後に一度だけ呼び出すこと。
+    /// </summary>
+    public static void NotifyExplorer()
     {
         try
         {
             NativeMethods.SHChangeNotify(NativeMethods.SHCNE_ASSOCCHANGED, NativeMethods.SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
-            Thread.Sleep(200);
         }
         catch (Exception ex)
         {
@@ -148,9 +152,6 @@ public class FileAssociation
             using var typeKey = Registry.CurrentUser.CreateSubKey(typeKeyPath);
             typeKey?.SetValue("", $"{AppName} {extension.ToUpper()} ファイル");
 
-            Logger.Log("[関連付け設定] エクスプローラーに通知", LogLevel.Debug);
-            SafeNotifyExplorer();
-
             Logger.Log($"[関連付け設定] 完了: {extension}", LogLevel.Debug);
             return true;
         }
@@ -190,8 +191,6 @@ public class FileAssociation
             Logger.Log($"[関連付け解除] OpenWithキー削除: {openWithKeyPath}", LogLevel.Debug);
             Registry.CurrentUser.DeleteSubKeyTree(openWithKeyPath, false);
 
-            Logger.Log("[関連付け解除] エクスプローラーに通知", LogLevel.Debug);
-            SafeNotifyExplorer();
             Logger.Log($"[関連付け解除] 完了: {extension}", LogLevel.Debug);
             return true;
         }

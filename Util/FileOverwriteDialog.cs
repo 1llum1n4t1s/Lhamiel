@@ -1,7 +1,4 @@
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Threading;
 using Lhamiel.View;
 namespace Lhamiel.Util;
 
@@ -20,7 +17,7 @@ public static class FileOverwriteDialog
     public static async Task<OverwriteResult> ShowOverwriteDialog(string sourceFilePath, string destinationPath, Window? parentWindow = null)
     {
         // 親ウィンドウが未指定の場合は、現在のアクティブなウィンドウまたは最前面のウィンドウを探す
-        parentWindow ??= await GetBestParentWindowAsync();
+        parentWindow ??= await MessageService.GetActiveWindowAsync();
 
         Logger.Log($"ShowOverwriteDialog開始: sourceFilePath={sourceFilePath}, destinationPath={destinationPath}, parentWindow={parentWindow?.GetType().Name ?? "null"}");
 
@@ -79,36 +76,6 @@ public static class FileOverwriteDialog
         return canOverwrite;
     }
 
-    /// <summary>
-    /// ダイアログを表示するための最適な親ウィンドウを取得する
-    /// </summary>
-    private static async Task<Window?> GetBestParentWindowAsync()
-    {
-        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
-            return null;
-
-        if (Dispatcher.UIThread.CheckAccess())
-            return GetBestParentWindowInternal(desktop);
-
-        return await Dispatcher.UIThread.InvokeAsync(() => GetBestParentWindowInternal(desktop));
-    }
-
-    /// <summary>
-    /// UIスレッド上で親ウィンドウを探索する実体
-    /// </summary>
-    private static Window? GetBestParentWindowInternal(IClassicDesktopStyleApplicationLifetime desktop)
-    {
-        // 1. アクティブなウィンドウがあればそれを優先（ProgressWindowなど）
-        var activeWindow = desktop.Windows.FirstOrDefault(w => w.IsActive && w.IsVisible);
-        if (activeWindow != null) return activeWindow;
-
-        // 2. アクティブなウィンドウがない場合は、最後に表示された表示中のウィンドウを探す
-        var lastVisibleWindow = desktop.Windows.LastOrDefault(w => w.IsVisible);
-        if (lastVisibleWindow != null) return lastVisibleWindow;
-
-        // 3. 最後にMainWindow
-        return desktop.MainWindow;
-    }
 }
 
 /// <summary>

@@ -39,15 +39,8 @@ public class App : Application
         InitializeComponent();
         RequestedThemeVariant = null;
 
-        // SettingsManager を先に初期化し、Logger に設定を渡して初期化（Settings.Load の重複呼び出しを防止）
-        var settings = SettingsManager.Instance.Current;
-        Logger.Initialize(new LoggerConfig
-        {
-            LogDirectory = Settings.AppDataDirectory,
-            FilePrefix = "Lhamiel",
-            MaxSizeMB = settings.LogMaxSizeMB,
-            RetentionDays = settings.LogRetentionDays
-        });
+        // SettingsManager を先に初期化（コンストラクタ内で Logger.Initialize も実行される）
+        _ = SettingsManager.Instance.Current;
 
         // 7z.dll をプロセスに固定して、アンロード時のクラッシュを防止
         NativeLibraryManager.Initialize();
@@ -290,21 +283,21 @@ public class App : Application
                     {
                         // 圧縮形式が指定されている場合は、アーカイブファイルそのものを圧縮
                         Logger.Log($"アーカイブファイルを{compressionFormat}で圧縮処理します: {path}");
-                        await ProcessFileCompression(path, settings, compressionFormat, shouldShutdown);
+                        await ProcessCompression(path, settings, compressionFormat, shouldShutdown);
                     }
                 }
                 else
                 {
                     // 通常ファイルの場合は圧縮処理を実行
                     Logger.Log($"ファイルを圧縮処理します: {path}");
-                    await ProcessFileCompression(path, settings, compressionFormat, shouldShutdown);
+                    await ProcessCompression(path, settings, compressionFormat, shouldShutdown);
                 }
             }
             else if (Directory.Exists(path))
             {
                 // フォルダの場合は圧縮処理を実行
                 Logger.Log($"フォルダを圧縮処理します: {path}");
-                await ProcessFolderCompression(path, settings, compressionFormat, shouldShutdown);
+                await ProcessCompression(path, settings, compressionFormat, shouldShutdown);
             }
         }
         catch (Exception ex)
@@ -422,13 +415,13 @@ public class App : Application
     }
 
     /// <summary>
-    /// ファイルの圧縮処理を実行
+    /// ファイルまたはフォルダの圧縮処理を実行
     /// </summary>
-    /// <param name="filePath">圧縮するファイルのパス</param>
+    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
     /// <param name="settings">アプリケーション設定</param>
     /// <param name="compressionFormat">圧縮形式（"default"の場合は設定から取得）</param>
     /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
-    private async Task ProcessFileCompression(string filePath, Settings settings, string compressionFormat = "default", bool shouldShutdown = true)
+    private async Task ProcessCompression(string sourcePath, Settings settings, string compressionFormat = "default", bool shouldShutdown = true)
     {
         ProgressWindow? progressWindow = null;
         try
@@ -448,15 +441,15 @@ public class App : Application
                     progressWindow.Activate();
                     await Task.Yield();
 
-                    var success = await ArchiveProcessor.CompressItemAsync(filePath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
+                    var success = await ArchiveProcessor.CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
 
                     if (success)
                     {
-                        Logger.Log("ファイル圧縮処理が完了しました");
+                        Logger.Log("圧縮処理が完了しました");
 
                         if (settings.OpenCompressionOutputFolder)
                         {
-                            var finalOutputPath = ArchiveCompressor.GetCompressedFileName(filePath, format, outputDir, outputToSameDirectory);
+                            var finalOutputPath = ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
                             var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
                             if (directoryToOpen != null)
                             {
@@ -466,7 +459,7 @@ public class App : Application
                     }
                     else
                     {
-                        Logger.Log("ファイル圧縮処理が失敗しました");
+                        Logger.Log("圧縮処理が失敗しました");
                     }
                 }
                 finally
@@ -479,13 +472,13 @@ public class App : Application
         }
         catch (OperationCanceledException)
         {
-            Logger.Log("ファイル圧縮処理がキャンセルされました");
+            Logger.Log("圧縮処理がキャンセルされました");
             progressWindow?.CloseSafe();
             ShutdownIfNeeded(shouldShutdown);
         }
         catch (Exception ex)
         {
-            Logger.LogException("ファイル圧縮処理でエラーが発生", ex);
+            Logger.LogException("圧縮処理でエラーが発生", ex);
             _ = MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
             ShutdownIfNeeded(shouldShutdown);
         }
@@ -504,76 +497,6 @@ public class App : Application
             {
                 desktop.Shutdown();
             }
-        }
-    }
-
-    /// <summary>
-    /// フォルダの圧縮処理を実行
-    /// </summary>
-    /// <param name="folderPath">圧縮するフォルダのパス</param>
-    /// <param name="settings">アプリケーション設定</param>
-    /// <param name="compressionFormat">圧縮形式（"default"の場合は設定から取得）</param>
-    /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
-    private async Task ProcessFolderCompression(string folderPath, Settings settings, string compressionFormat = "default", bool shouldShutdown = true)
-    {
-        ProgressWindow? progressWindow = null;
-        try
-        {
-            var outputDir = settings.CompressionOutputDirectory;
-            var outputToSameDirectory = settings.CompressionOutputToSameDirectory;
-            var format = compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
-
-            (progressWindow, var cancellationTokenSource, var cancelHandler) = SetupProgressWindow("圧縮");
-
-            using (cancellationTokenSource)
-            {
-                try
-                {
-                    progressWindow.CancelRequested += cancelHandler;
-                    progressWindow.Show();
-                    progressWindow.Activate();
-                    await Task.Yield();
-
-                    var success = await ArchiveProcessor.CompressItemAsync(folderPath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
-
-                    if (success)
-                    {
-                        Logger.Log("フォルダ圧縮処理が完了しました");
-
-                        if (settings.OpenCompressionOutputFolder)
-                        {
-                            var finalOutputPath = ArchiveCompressor.GetCompressedFileName(folderPath, format, outputDir, outputToSameDirectory);
-                            var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
-                            if (directoryToOpen != null)
-                            {
-                                FolderOpener.OpenFolder(directoryToOpen);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Logger.Log("フォルダ圧縮処理が失敗しました");
-                    }
-                }
-                finally
-                {
-                    progressWindow.CancelRequested -= cancelHandler;
-                }
-            }
-
-            ShutdownIfNeeded(shouldShutdown);
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.Log("フォルダ圧縮処理がキャンセルされました");
-            progressWindow?.CloseSafe();
-            ShutdownIfNeeded(shouldShutdown);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogException("フォルダ圧縮処理でエラーが発生", ex);
-            _ = MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
-            ShutdownIfNeeded(shouldShutdown);
         }
     }
 
