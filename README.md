@@ -6,10 +6,6 @@ Lhamiel（ラミエル）は、Windows向けの使いやすいアーカイブ管
 
 <img width="600" alt="image" src="https://github.com/user-attachments/assets/fc544ca1-385f-4c26-ac5d-7fefe77f89cc" />
 
-<img width="600" alt="image" src="https://github.com/user-attachments/assets/860a1c82-f8b5-45d0-987f-3f7b58e42d86" />
-
-<img width="600" alt="image" src="https://github.com/user-attachments/assets/467f9794-6f12-4cb3-b297-dfb18fa85b24" />
-
 <img width="600" alt="image" src="https://github.com/user-attachments/assets/54eaf1d7-bb1d-47e2-9865-020d0638ee86" />
 
 
