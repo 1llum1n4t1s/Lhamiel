@@ -576,6 +576,99 @@ public static class ArchiveProcessor
     }
 
     /// <summary>
+    /// 複数のファイル・フォルダを1つのアーカイブにまとめて圧縮する
+    /// </summary>
+    /// <param name="sourcePaths">圧縮する対象のパスの配列</param>
+    /// <param name="outputDir">出力ディレクトリ</param>
+    /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
+    /// <param name="format">圧縮形式</param>
+    /// <param name="progressWindow">進行状況ウィンドウ</param>
+    /// <param name="cancellationToken">キャンセルトークン</param>
+    /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
+    /// <returns>処理が成功した場合はtrue</returns>
+    public static async Task<bool> CompressMergedAsync(string[] sourcePaths, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    {
+        if (sourcePaths.Length == 0) return false;
+
+        Logger.Log($"まとめ圧縮開始: {sourcePaths.Length}個の対象を1つのアーカイブに圧縮、形式={format}");
+
+        // 圧縮形式の確認
+        if (!SupportedCompressionFormats.Contains(format))
+        {
+            Logger.Log($"サポートされていない圧縮形式です: {format}");
+            _ = MessageService.ShowError($"サポートされていない圧縮形式です。\n{format}");
+            return false;
+        }
+
+        // 出力先ディレクトリを決定（最初のファイルの場所を基準にする）
+        var baseDir = outputToSameDirectory
+            ? Path.GetDirectoryName(sourcePaths[0]) ?? ""
+            : outputDir;
+
+        // アーカイブ名: 最初のアイテム名を使用
+        var firstPath = sourcePaths[0].TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var archiveName = Path.GetFileNameWithoutExtension(firstPath) is { Length: > 0 } stem
+            ? stem
+            : Path.GetFileName(firstPath);
+
+        var lowerFormat = format.ToLowerInvariant();
+        var outputPath = Path.Combine(baseDir, $"{archiveName}.{lowerFormat}");
+
+        // ProgressWindow からキャンセルトークンを取得
+        var actualCancellationToken = progressWindow?.GetCancellationToken() ?? cancellationToken;
+
+        return await Task.Run(async () =>
+        {
+            try
+            {
+                // 出力先が既に存在する場合は上書き確認
+                if (File.Exists(outputPath))
+                {
+                    var canOverwrite = progressWindow != null
+                        ? await Dispatcher.UIThread.InvokeAsync(() =>
+                            FileOverwriteDialog.CanOverwriteFile(sourcePaths[0], outputPath, progressWindow))
+                        : true;
+
+                    if (!canOverwrite)
+                    {
+                        Logger.Log("ユーザーがまとめ圧縮をキャンセルしました");
+                        return false;
+                    }
+
+                    File.Delete(outputPath);
+                }
+
+                IProgress<ProgressInfo> progress = new Progress<ProgressInfo>(info =>
+                {
+                    Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage));
+                });
+
+                // 全パスをまとめて圧縮
+                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, p => progress.Report(p), actualCancellationToken);
+
+                Logger.Log($"まとめ圧縮完了: {outputPath}（{sourcePaths.Length}個の対象）");
+
+                if (closeWindowOnCompletion)
+                    progressWindow?.CloseSafe();
+
+                return true;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Logger.LogException("まとめ圧縮でエラーが発生", ex);
+                Dispatcher.UIThread.Post(() =>
+                    _ = MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}"));
+                return false;
+            }
+            finally
+            {
+                if (closeWindowOnCompletion)
+                    progressWindow?.CloseSafe();
+            }
+        }, actualCancellationToken);
+    }
+
+    /// <summary>
     /// エラー回復ダイアログを表示
     /// </summary>
     /// <param name="failedFile">失敗したファイル情報</param>

@@ -56,6 +56,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _openCompressionOutputFolder = true;
 
     [ObservableProperty]
+    private bool _compressMultipleAsOne;
+
+    [ObservableProperty]
     private int _zipCompressionLevel = 5;
 
     [ObservableProperty]
@@ -190,6 +193,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CompressionOutputToDirectory = !s.CompressionOutputToSameDirectory;
         OpenExtractionOutputFolder = s.OpenExtractionOutputFolder;
         OpenCompressionOutputFolder = s.OpenCompressionOutputFolder;
+        CompressMultipleAsOne = s.CompressMultipleAsOne;
         ZipCompressionLevel = s.ZipCompressionLevel;
         SevenZipCompressionLevel = s.SevenZipCompressionLevel;
     }
@@ -247,6 +251,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _settingsManager.Current.CompressionOutputToSameDirectory = CompressionOutputToSameDirectory;
             _settingsManager.Current.OpenExtractionOutputFolder = OpenExtractionOutputFolder;
             _settingsManager.Current.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
+            _settingsManager.Current.CompressMultipleAsOne = CompressMultipleAsOne;
             _settingsManager.Current.ZipCompressionLevel = ZipCompressionLevel;
             _settingsManager.Current.SevenZipCompressionLevel = SevenZipCompressionLevel;
             _settingsManager.Save();
@@ -340,14 +345,30 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var hasExtraction = filesToExtract.Count > 0;
             if (hasCompression)
             {
-                await ArchiveProcessor.CompressItemsAsync(
-                    filesToCompress.ToArray(),
-                    settings.CompressionOutputDirectory,
-                    settings.CompressionOutputToSameDirectory,
-                    settings.CompressionFormat,
-                    progressWindow,
-                    cancellationToken,
-                    closeWindowOnCompletion: !hasExtraction);
+                if (settings.CompressMultipleAsOne && filesToCompress.Count > 1)
+                {
+                    // 複数ファイル・フォルダを1つのアーカイブにまとめて圧縮
+                    await ArchiveProcessor.CompressMergedAsync(
+                        filesToCompress.ToArray(),
+                        settings.CompressionOutputDirectory,
+                        settings.CompressionOutputToSameDirectory,
+                        settings.CompressionFormat,
+                        progressWindow,
+                        cancellationToken,
+                        closeWindowOnCompletion: !hasExtraction);
+                }
+                else
+                {
+                    // 個別に圧縮
+                    await ArchiveProcessor.CompressItemsAsync(
+                        filesToCompress.ToArray(),
+                        settings.CompressionOutputDirectory,
+                        settings.CompressionOutputToSameDirectory,
+                        settings.CompressionFormat,
+                        progressWindow,
+                        cancellationToken,
+                        closeWindowOnCompletion: !hasExtraction);
+                }
             }
             if (cancellationToken.IsCancellationRequested) return;
             if (hasExtraction)

@@ -79,6 +79,11 @@ public class Settings
     public bool OpenCompressionOutputFolder { get; set; } = true;
 
     /// <summary>
+    /// 複数ファイル・フォルダを1つのアーカイブにまとめて圧縮するかどうか
+    /// </summary>
+    public bool CompressMultipleAsOne { get; set; }
+
+    /// <summary>
     /// 圧縮時に除外するファイル・フォルダのパターン
     /// </summary>
     public List<string> ExcludedFilePatterns { get; set; } =
@@ -223,6 +228,7 @@ public class Settings
         UpdateChannel = "release";
         LogMaxSizeMB = 10;
         LogRetentionDays = 7;
+        CompressMultipleAsOne = false;
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
         ExcludedFilePatterns =

@@ -177,6 +177,18 @@
                                 </StackPanel>
                             </primitives:HeaderedContentControl>
 
+                            <primitives:HeaderedContentControl Header="まとめ圧縮">
+                                <StackPanel>
+                                    <CheckBox Content="複数ファイルを1つにまとめて圧縮" IsChecked="{Binding CompressMultipleAsOne}" />
+                                    <TextBlock
+                                        Margin="28,4,0,0"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="OFFの場合、ファイルごとに個別のアーカイブが作成されます"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
+
                             <primitives:HeaderedContentControl Header="圧縮レベル設定">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -424,7 +436,7 @@
         <!--  ═══ ドラッグオーバーレイ（ドラッグ中のみ表示） ═══  -->
         <Border
             x:Name="DropOverlay"
-            Background="#CC1C1C1E"
+            Background="#1C1C1E"
             CornerRadius="8"
             IsHitTestVisible="False"
             IsVisible="False">
