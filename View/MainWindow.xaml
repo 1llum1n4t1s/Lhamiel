@@ -43,12 +43,11 @@
                                 <StackPanel Orientation="Horizontal">
                                     <ComboBox
                                         Width="200"
-                                        SelectedIndex="{Binding SelectedTheme, Converter={x:Static vm:ThemeIndexConverter.Instance}}"
-                                        ToolTip.Tip="アプリケーションのテーマを切り替えます">
-                                        <ComboBoxItem Content="システム（追従）" />
-                                        <ComboBoxItem Content="ダーク" />
-                                        <ComboBoxItem Content="ライト" />
-                                    </ComboBox>
+                                        DisplayMemberBinding="{ReflectionBinding Value}"
+                                        ItemsSource="{x:Static vm:MainWindowViewModel.ThemeOptions}"
+                                        SelectedValue="{Binding SelectedTheme}"
+                                        SelectedValueBinding="{ReflectionBinding Key}"
+                                        ToolTip.Tip="アプリケーションのテーマを切り替えます" />
                                 </StackPanel>
                             </primitives:HeaderedContentControl>
 
@@ -431,7 +430,7 @@
             IsVisible="False">
             <Border
                 Margin="24"
-                BorderBrush="#60FFFFFF"
+                BorderBrush="{DynamicResource Brush.Border}"
                 BorderThickness="1.5"
                 CornerRadius="18">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">

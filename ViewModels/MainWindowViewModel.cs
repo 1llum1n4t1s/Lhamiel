@@ -1,39 +1,13 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Data.Converters;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lhamiel.Models;
 using Lhamiel.Util;
 using Lhamiel.View;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Reflection;
 namespace Lhamiel.ViewModels;
-
-/// <summary>
-/// テーマ名 ⇔ ComboBox インデックスの変換コンバーター
-/// </summary>
-public sealed class ThemeIndexConverter : IValueConverter
-{
-    public static readonly ThemeIndexConverter Instance = new();
-
-    private static readonly string[] Themes = ["System", "Dark", "Light"];
-
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        if (value is string theme)
-            return Array.IndexOf(Themes, theme) is var idx && idx >= 0 ? idx : 0;
-        return 0;
-    }
-
-    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-    {
-        if (value is int idx && idx >= 0 && idx < Themes.Length)
-            return Themes[idx];
-        return "System";
-    }
-}
 
 /// <summary>
 /// 圧縮レベルの表示用クラス
@@ -159,19 +133,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _isCheckingUpdate;
 
     /// <summary>
-    /// テーマの選択肢
+    /// テーマの選択肢（キー: 設定値、値: 表示名）
     /// </summary>
-    public static readonly string[] ThemeOptions = ["System", "Dark", "Light"];
-
-    /// <summary>
-    /// テーマの表示名
-    /// </summary>
-    public static readonly Dictionary<string, string> ThemeDisplayNames = new()
-    {
-        ["System"] = "システム（追従）",
-        ["Dark"] = "ダーク",
-        ["Light"] = "ライト"
-    };
+    public static readonly KeyValuePair<string, string>[] ThemeOptions =
+    [
+        new("System", "システム（追従）"),
+        new("Dark", "ダーク"),
+        new("Light", "ライト")
+    ];
 
     /// <summary>
     /// 圧縮形式の選択肢（ComboBox ItemsSource）
@@ -207,7 +176,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public void LoadFromSettings()
     {
         var s = _settingsManager.Current;
-        SelectedTheme = ThemeOptions.Contains(s.Theme) ? s.Theme : "System";
+        SelectedTheme = ThemeOptions.Any(t => t.Key == s.Theme) ? s.Theme : "System";
         ExtractionOutputDirectory = s.ExtractionOutputDirectory;
         CompressionOutputDirectory = s.CompressionOutputDirectory;
         var format = s.CompressionFormat;

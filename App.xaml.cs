@@ -43,13 +43,7 @@ public class App : Application
         _ = SettingsManager.Instance.Current;
 
         // テーマ設定を適用
-        var theme = SettingsManager.Instance.Current.Theme;
-        RequestedThemeVariant = theme switch
-        {
-            "Light" => ThemeVariant.Light,
-            "Dark" => ThemeVariant.Dark,
-            _ => ThemeVariant.Default
-        };
+        RequestedThemeVariant = GetThemeVariant(SettingsManager.Instance.Current.Theme);
 
         // 7z.dll をプロセスに固定して、アンロード時のクラッシュを防止
         NativeLibraryManager.Initialize();
@@ -625,6 +619,17 @@ public class App : Application
     }
 
     /// <summary>
+    /// テーマ文字列から ThemeVariant を取得する
+    /// </summary>
+    /// <param name="theme">テーマ名（"System", "Dark", "Light"）</param>
+    private static ThemeVariant GetThemeVariant(string theme) => theme switch
+    {
+        "Light" => ThemeVariant.Light,
+        "Dark" => ThemeVariant.Dark,
+        _ => ThemeVariant.Default // "System" → OS追従
+    };
+
+    /// <summary>
     /// テーマを切り替える
     /// </summary>
     /// <param name="theme">テーマ名（"System", "Dark", "Light"）</param>
@@ -633,12 +638,7 @@ public class App : Application
         if (Current is not App app)
             return;
 
-        app.RequestedThemeVariant = theme switch
-        {
-            "Light" => ThemeVariant.Light,
-            "Dark" => ThemeVariant.Dark,
-            _ => ThemeVariant.Default // "System" → OS追従
-        };
+        app.RequestedThemeVariant = GetThemeVariant(theme);
     }
 }
 
