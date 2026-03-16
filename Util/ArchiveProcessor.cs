@@ -648,9 +648,6 @@ public static class ArchiveProcessor
 
                 Logger.Log($"まとめ圧縮完了: {outputPath}（{sourcePaths.Length}個の対象）");
 
-                if (closeWindowOnCompletion)
-                    progressWindow?.CloseSafe();
-
                 return true;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

@@ -131,17 +131,8 @@ public class App : Application
             if (startupArgs.Length > 0)
             {
                 // 関連付けから起動：更新チェックは行わず、プログレスバー画面のみ表示
-                var compressionFormat = "default";
-                var filePath = startupArgs[0];
-
-                // --format オプションがある場合は圧縮形式を取得
-                if (startupArgs.Length >= 3 && startupArgs[0] == "--format")
-                {
-                    compressionFormat = startupArgs[1];
-                    filePath = startupArgs[2];
-                }
-
-                await ProcessCommandLineFile(filePath, compressionFormat);
+                var (compressionFormat, filePaths) = ParseCommandLineArgs(startupArgs);
+                await ProcessCommandLineFiles(filePaths, compressionFormat);
             }
             else
             {
@@ -246,7 +237,146 @@ public class App : Application
     }
 
     /// <summary>
-    /// コマンドラインで指定されたファイルまたはフォルダの処理を実行
+    /// コマンドライン引数を解析して圧縮形式とファイルパスのリストを返す
+    /// </summary>
+    private static (string compressionFormat, string[] filePaths) ParseCommandLineArgs(string[] args)
+    {
+        if (args.Length >= 2 && args[0] == "--format")
+            return (args[1], args[2..]);
+        return ("default", args.Where(a => !a.StartsWith("--")).ToArray());
+    }
+
+    /// <summary>
+    /// コマンドライン経由の複数ファイル処理。まとめ圧縮設定に応じて分岐する。
+    /// </summary>
+    private async Task ProcessCommandLineFiles(string[] filePaths, string compressionFormat = "default", bool shouldShutdown = true)
+    {
+        if (filePaths.Length == 0) return;
+
+        // 単一ファイルの場合は従来の処理
+        if (filePaths.Length == 1)
+        {
+            await ProcessCommandLineFile(filePaths[0], compressionFormat, shouldShutdown);
+            return;
+        }
+
+        // 複数ファイルの場合: 展開対象と圧縮対象に分類
+        var filesToExtract = new List<string>();
+        var filesToCompress = new List<string>();
+        foreach (var path in filePaths)
+        {
+            if (Directory.Exists(path))
+                filesToCompress.Add(path);
+            else if (File.Exists(path))
+            {
+                if (compressionFormat == "default" && ArchiveExtractor.IsSupportedArchiveType(path))
+                    filesToExtract.Add(path);
+                else
+                    filesToCompress.Add(path);
+            }
+            else
+                Logger.Log($"指定されたパスが存在しません: {path}");
+        }
+
+        var settings = SettingsManager.Instance.Current;
+
+        // 展開処理（個別に実行）
+        foreach (var file in filesToExtract)
+            await ProcessCommandLineFile(file, "default", false);
+
+        // 圧縮処理
+        if (filesToCompress.Count > 0)
+        {
+            if (settings.CompressMultipleAsOne && filesToCompress.Count > 1)
+            {
+                // まとめ圧縮
+                var format = compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
+                await ProcessMergedCompression(filesToCompress.ToArray(), settings, format, shouldShutdown);
+            }
+            else
+            {
+                // 個別に圧縮
+                for (var i = 0; i < filesToCompress.Count; i++)
+                {
+                    var isLast = i == filesToCompress.Count - 1;
+                    await ProcessCommandLineFile(filesToCompress[i], compressionFormat, isLast && shouldShutdown && filesToExtract.Count == 0);
+                }
+            }
+        }
+        else if (shouldShutdown && filesToExtract.Count > 0)
+        {
+            ShutdownIfNeeded(shouldShutdown);
+        }
+    }
+
+    /// <summary>
+    /// 複数ファイルをまとめて1つのアーカイブに圧縮
+    /// </summary>
+    private async Task ProcessMergedCompression(string[] sourcePaths, Settings settings, string format, bool shouldShutdown = true)
+    {
+        ProgressWindow? progressWindow = null;
+        try
+        {
+            Logger.Log($"コマンドラインからまとめ圧縮を開始: {sourcePaths.Length}個の対象、形式={format}");
+
+            var outputDir = settings.CompressionOutputDirectory;
+            var outputToSameDirectory = settings.CompressionOutputToSameDirectory;
+
+            (progressWindow, var cancellationTokenSource, var cancelHandler) = SetupProgressWindow("圧縮");
+
+            using (cancellationTokenSource)
+            {
+                try
+                {
+                    progressWindow.CancelRequested += cancelHandler;
+                    progressWindow.Show();
+                    progressWindow.Activate();
+                    await Task.Yield();
+
+                    var success = await ArchiveProcessor.CompressMergedAsync(
+                        sourcePaths, outputDir, outputToSameDirectory, format,
+                        progressWindow, cancellationTokenSource.Token);
+
+                    if (success)
+                    {
+                        Logger.Log("まとめ圧縮処理が完了しました");
+                        if (settings.OpenCompressionOutputFolder)
+                        {
+                            var baseDir = outputToSameDirectory
+                                ? Path.GetDirectoryName(sourcePaths[0]) ?? ""
+                                : outputDir;
+                            FolderOpener.OpenFolder(baseDir);
+                        }
+                    }
+                    else
+                    {
+                        Logger.Log("まとめ圧縮処理が失敗しました");
+                    }
+                }
+                finally
+                {
+                    progressWindow.CancelRequested -= cancelHandler;
+                }
+            }
+
+            ShutdownIfNeeded(shouldShutdown);
+        }
+        catch (OperationCanceledException)
+        {
+            Logger.Log("まとめ圧縮処理がキャンセルされました");
+            progressWindow?.CloseSafe();
+            ShutdownIfNeeded(shouldShutdown);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("まとめ圧縮処理でエラーが発生", ex);
+            _ = MessageService.ShowError($"圧縮中にエラーが発生しました。\n{ex.Message}");
+            ShutdownIfNeeded(shouldShutdown);
+        }
+    }
+
+    /// <summary>
+    /// コマンドラインで指定されたファイルまたはフォルダの処理を実行（単一ファイル）
     /// </summary>
     /// <param name="path">処理するファイルまたはフォルダのパス</param>
     /// <param name="compressionFormat">圧縮形式（"default"の場合は展開、具体的な形式の場合は圧縮）</param>
@@ -517,15 +647,7 @@ public class App : Application
 
                 if (args.Length > 0)
                 {
-                    // 引数から圧縮形式とファイルパスを抽出
-                    var compressionFormat = "default";
-                    var filePath = args[0];
-
-                    if (args.Length >= 3 && args[0] == "--format")
-                    {
-                        compressionFormat = args[1];
-                        filePath = args[2];
-                    }
+                    var (compressionFormat, filePaths) = ParseCommandLineArgs(args);
 
                     // メインウィンドウを前面に出す
                     if (desktop.MainWindow != null)
@@ -540,7 +662,11 @@ public class App : Application
 
                     // 受信した引数で処理を実行
                     // IPC 経由の場合は処理終了後にアプリを終了させないようにする
-                    _ = ProcessCommandLineFile(filePath, compressionFormat, false);
+                    _ = ProcessCommandLineFiles(filePaths, compressionFormat, false).ContinueWith(t =>
+                    {
+                        if (t.IsFaulted)
+                            Logger.LogException("IPC経由の処理でエラーが発生", t.Exception!);
+                    }, TaskScheduler.FromCurrentSynchronizationContext());
                 }
             });
         }

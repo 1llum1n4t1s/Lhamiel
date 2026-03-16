@@ -43,11 +43,16 @@
                                 <StackPanel Orientation="Horizontal">
                                     <ComboBox
                                         Width="200"
-                                        DisplayMemberBinding="{ReflectionBinding Value}"
                                         ItemsSource="{x:Static vm:MainWindowViewModel.ThemeOptions}"
                                         SelectedValue="{Binding SelectedTheme}"
                                         SelectedValueBinding="{ReflectionBinding Key}"
-                                        ToolTip.Tip="アプリケーションのテーマを切り替えます" />
+                                        ToolTip.Tip="アプリケーションのテーマを切り替えます">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{ReflectionBinding Value}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
                                 </StackPanel>
                             </primitives:HeaderedContentControl>
 
