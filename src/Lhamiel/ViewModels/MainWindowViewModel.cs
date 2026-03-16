@@ -265,6 +265,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _isLoading = true;
         LoadFromSettings();
         LoadAssociationStatus();
+        SubscribeAssociationChanges();
         LoadVersionInfo();
 
         // 初期選択状態を設定
@@ -523,8 +524,28 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void SetAllAssociations(bool isChecked)
     {
+        _suppressAssociationApply = true;
         foreach (var item in Associations)
             item.IsAssociated = isChecked;
+        _suppressAssociationApply = false;
+        ApplyAssociationSettings();
+    }
+
+    private bool _suppressAssociationApply;
+
+    /// <summary>
+    /// 各関連付け項目の変更を購読し、チェックボックス操作時に即座に適用する
+    /// </summary>
+    private void SubscribeAssociationChanges()
+    {
+        foreach (var item in Associations)
+        {
+            item.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(FileAssociationItem.IsAssociated) && !_isLoading && !_suppressAssociationApply)
+                    ApplyAssociationSettings();
+            };
+        }
     }
 
     private void ApplyAssociationSettings()
