@@ -1,0 +1,47 @@
+﻿<Window
+    x:Class="Lhamiel.View.ProgressWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:view="using:Lhamiel.View"
+    Title="{DynamicResource Text.Progress.Title}"
+    Width="400"
+    Height="200"
+    x:DataType="view:ProgressWindow"
+    Background="{DynamicResource Brush.Window}"
+    WindowStartupLocation="CenterScreen"
+    mc:Ignorable="d">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!--  進行状況バー  -->
+        <ProgressBar
+            x:Name="ProgressBar"
+            Grid.Row="0"
+            Height="8"
+            Margin="0,15,0,10" />
+
+        <!--  進行状況テキスト  -->
+        <TextBlock
+            x:Name="ProgressTextBlock"
+            Grid.Row="1"
+            Margin="0,0,0,15"
+            HorizontalAlignment="Center"
+            Text="0%" />
+
+        <!--  キャンセルボタン  -->
+        <Button
+            x:Name="CancelButton"
+            Grid.Row="3"
+            Width="100"
+            HorizontalAlignment="Right"
+            Click="CancelButton_Click"
+            Content="{DynamicResource Text.Button.Cancel}" />
+    </Grid>
+</Window>

@@ -1,0 +1,205 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://Lhamiel/Resources/Locales/en_US.axaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <!-- Window Titles -->
+  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Alat Kompresi &amp; Ekstraksi Arsip</x:String>
+  <x:String x:Key="Text.Progress.Title" xml:space="preserve">Memproses...</x:String>
+  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Ganti Berkas</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Opsi Pemulihan Kesalahan</x:String>
+
+  <!-- Drop Zone -->
+  <x:String x:Key="Text.DropZone.Message" xml:space="preserve">Letakkan berkas di sini untuk mengompresi atau mengekstrak</x:String>
+  <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">Seret &amp; letakkan berkas ke jendela ini untuk mengompresi atau mengekstrak</x:String>
+
+  <!-- Settings Tabs -->
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Umum</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Ekstraksi</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Kompresi</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Asosiasi Berkas</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Versi</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Umum</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Ekstraksi</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Kompresi</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Asosiasi</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Versi</x:String>
+
+  <!-- General Settings -->
+  <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">Tema</x:String>
+  <x:String x:Key="Text.Settings.Theme.Tooltip" xml:space="preserve">Ganti tema aplikasi</x:String>
+  <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">Sistem (Ikuti OS)</x:String>
+  <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Gelap</x:String>
+  <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Terang</x:String>
+  <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Format Kompresi Bawaan</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Pintasan</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Buat Pintasan Desktop</x:String>
+  <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Bahasa</x:String>
+
+  <!-- Output Settings (shared) -->
+  <x:String x:Key="Text.Settings.Output.Header" xml:space="preserve">Direktori Keluaran</x:String>
+  <x:String x:Key="Text.Settings.Output.SameDirectory" xml:space="preserve">Keluarkan ke direktori yang sama dengan berkas sumber</x:String>
+  <x:String x:Key="Text.Settings.Output.SpecifyDirectory" xml:space="preserve">Tentukan direktori</x:String>
+  <x:String x:Key="Text.Settings.Output.Browse" xml:space="preserve">Telusuri...</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseExtraction" xml:space="preserve">Pilih folder ekstraksi</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseCompression" xml:space="preserve">Pilih folder kompresi</x:String>
+
+  <!-- Extraction Settings -->
+  <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Buka folder tujuan setelah ekstraksi</x:String>
+
+  <!-- Compression Settings -->
+  <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Buka folder tujuan setelah kompresi</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Kompresi Gabungan</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Kompres beberapa berkas menjadi satu arsip</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Jika MATI, setiap berkas akan dikompres menjadi arsip terpisah</x:String>
+  <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Tingkat Kompresi</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Tingkat Kompresi ZIP</x:String>
+  <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Tingkat Kompresi 7z</x:String>
+
+  <!-- Compression Level Names -->
+  <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Tanpa Kompresi</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fastest" xml:space="preserve">Tercepat</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fast" xml:space="preserve">Cepat</x:String>
+  <x:String x:Key="Text.CompressionLevel.Normal" xml:space="preserve">Normal</x:String>
+  <x:String x:Key="Text.CompressionLevel.Maximum" xml:space="preserve">Maksimum</x:String>
+  <x:String x:Key="Text.CompressionLevel.Ultra" xml:space="preserve">Ultra</x:String>
+
+  <!-- Association Settings -->
+  <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">Pilih Semua</x:String>
+  <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">Batalkan Semua Pilihan</x:String>
+
+  <!-- Version Tab -->
+  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Description" xml:space="preserve">Alat Kompresi &amp; Ekstraksi Arsip</x:String>
+  <x:String x:Key="Text.Version.Label" xml:space="preserve">Versi</x:String>
+  <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Periksa Pembaruan</x:String>
+  <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Hak Cipta</x:String>
+  <x:String x:Key="Text.Version.License" xml:space="preserve">Lisensi</x:String>
+
+  <!-- Buttons -->
+  <x:String x:Key="Text.Button.Save" xml:space="preserve">Simpan</x:String>
+  <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Batal</x:String>
+  <x:String x:Key="Text.Button.OK" xml:space="preserve">OK</x:String>
+  <x:String x:Key="Text.Button.Yes" xml:space="preserve">Ya</x:String>
+  <x:String x:Key="Text.Button.No" xml:space="preserve">Tidak</x:String>
+
+  <!-- Progress Window -->
+  <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Memproses</x:String>
+  <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Dibatalkan.</x:String>
+
+  <!-- Error Recovery Dialog -->
+  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informasi Kesalahan</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">Berkas Bermasalah</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">Opsi Pemulihan</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">Lewati berkas ini dan lanjutkan</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">Coba Lagi</x:String>
+  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">Hentikan ekstraksi</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">Lewati semua kesalahan berikutnya</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Ingat pilihan ini</x:String>
+
+  <!-- Overwrite Dialog -->
+  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">Folder '{0}' sudah ada.\n\nHapus folder yang ada dan timpa?</x:String>
+  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">Berkas '{0}' sudah ada.\n\nGanti berkas ini?</x:String>
+  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Konfirmasi Penimpaan Folder</x:String>
+  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Ganti Berkas</x:String>
+  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">Berkas sudah ada.\n\nGanti berkas ini?</x:String>
+
+  <!-- Dialog Titles (MessageService) -->
+  <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Kesalahan</x:String>
+  <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Informasi</x:String>
+  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Peringatan</x:String>
+  <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Selesai</x:String>
+  <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Detail: </x:String>
+
+  <!-- Error Messages -->
+  <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Berkas yang ditentukan tidak ditemukan.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Berkas atau folder yang ditentukan tidak ditemukan.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Format berkas tidak didukung.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Format kompresi tidak didukung.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Terjadi kesalahan saat ekstraksi.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Terjadi kesalahan saat kompresi.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Terjadi kesalahan saat pemrosesan.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Keluaran '{0}' sedang digunakan atau akses ditolak.</x:String>
+  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">Gagal menyimpan pengaturan.</x:String>
+  <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">Gagal memproses berkas.</x:String>
+  <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">Gagal menerapkan pengaturan asosiasi berkas.</x:String>
+  <x:String x:Key="Text.Error.InitApp" xml:space="preserve">Gagal menginisialisasi aplikasi.</x:String>
+  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">Gagal menampilkan dialog konfirmasi penimpaan: {0}</x:String>
+  <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">Terjadi kesalahan saat memilih semua.</x:String>
+  <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">Terjadi kesalahan saat membatalkan semua pilihan.</x:String>
+  <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Kesalahan Ekstraksi</x:String>
+
+  <!-- Shortcut Messages -->
+  <x:String x:Key="Text.Shortcut.Created" xml:space="preserve">Pintasan telah dibuat di desktop.</x:String>
+  <x:String x:Key="Text.Shortcut.Failed" xml:space="preserve">Gagal membuat pintasan.</x:String>
+  <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">Terjadi kesalahan saat membuat pintasan.</x:String>
+
+  <!-- Update Messages -->
+  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Menerapkan pembaruan... Memulai ulang.</x:String>
+  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Sudah versi terbaru.</x:String>
+  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ Tidak dapat memeriksa pembaruan di lingkungan pengembangan.</x:String>
+  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ Repositori pembaruan belum dikonfigurasi.</x:String>
+  <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ Terjadi kesalahan saat memeriksa pembaruan.</x:String>
+  <x:String x:Key="Text.Update.Timeout" xml:space="preserve">Pemeriksaan pembaruan habis waktu.</x:String>
+  <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Mengunduh pembaruan...</x:String>
+  <x:String x:Key="Text.Update.Downloaded" xml:space="preserve">Pembaruan telah diunduh. Menerapkan...</x:String>
+  <x:String x:Key="Text.Update.Latest" xml:space="preserve">Sudah versi terbaru.</x:String>
+  <x:String x:Key="Text.Update.DownloadTimeout" xml:space="preserve">Pengunduhan habis waktu.</x:String>
+  <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Terjadi kesalahan saat memeriksa pembaruan.</x:String>
+  <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Repositori pembaruan belum dikonfigurasi.</x:String>
+  <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Tidak dapat memeriksa pembaruan di lingkungan pengembangan.</x:String>
+
+  <!-- Error Handler -->
+  <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">Berkas arsip tidak ditemukan</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundDetail" xml:space="preserve">Berkas yang ditentukan tidak ada: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundAction" xml:space="preserve">Harap verifikasi jalur berkas dan pastikan berkas tersebut ada.</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDenied" xml:space="preserve">Akses ditolak</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedDetail" xml:space="preserve">Akses ke berkas atau direktori ditolak: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedAction" xml:space="preserve">Jalankan sebagai administrator atau periksa izin berkas.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFull" xml:space="preserve">Ruang disk tidak mencukupi</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullDetail" xml:space="preserve">Disk tujuan tidak memiliki cukup ruang: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullAction" xml:space="preserve">Kosongkan ruang disk atau ekstrak ke disk lain.</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">Berkas sedang digunakan</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">Berkas sedang digunakan oleh aplikasi lain: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">Tutup aplikasi yang menggunakan berkas tersebut dan coba lagi.</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Terjadi kesalahan I/O</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Periksa status berkas dan coba lagi.</x:String>
+  <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Berkas arsip rusak</x:String>
+  <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Coba unduh ulang atau perbaiki berkas tersebut.</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">Operasi tidak valid dilakukan</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperationAction" xml:space="preserve">Verifikasi operasi dan coba lagi.</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormat" xml:space="preserve">Format berkas tidak didukung</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatDetail" xml:space="preserve">Format berkas ini tidak didukung: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatAction" xml:space="preserve">Gunakan format yang didukung (ZIP, 7Z, RAR, dll.).</x:String>
+  <x:String x:Key="Text.ErrorHandler.Unexpected" xml:space="preserve">Terjadi kesalahan yang tidak terduga</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnexpectedAction" xml:space="preserve">Tinjau detail kesalahan dan hubungi dukungan jika perlu.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ArchiveFile" xml:space="preserve">Berkas arsip: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.ErrorMessage" xml:space="preserve">Pesan kesalahan: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileSize" xml:space="preserve">Ukuran berkas: {0:N0} byte</x:String>
+  <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">Terakhir diubah: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">Gagal mengambil informasi berkas</x:String>
+
+  <!-- Error Recovery File Info -->
+  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">Nama berkas: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">Ukuran: {0:N0} byte</x:String>
+  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">Dibuat: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">Diubah: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">Atribut: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">Informasi disk:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">Ruang tersedia: {0:N0} byte</x:String>
+  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">Kapasitas total: {0:N0} byte</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">Gagal mengambil info berkas: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">Detail pengecualian:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">Tipe: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">Pesan: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">Pengecualian dalam: {0}</x:String>
+
+  <!-- Partial Extraction -->
+  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Mengekstrak: {0}</x:String>
+  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Mengekstrak ulang: {0}</x:String>
+  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">Berkas target tidak ditemukan dalam arsip.</x:String>
+  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Berkas: {0}\nKesalahan: {1}</x:String>
+  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Anda dapat memilih untuk mencoba lagi atau melewati.</x:String>
+
+</ResourceDictionary>

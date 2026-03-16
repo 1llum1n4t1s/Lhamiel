@@ -1,0 +1,499 @@
+﻿<Window
+    x:Class="Lhamiel.View.MainWindow"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:input="using:Avalonia.Input"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:primitives="using:Avalonia.Controls.Primitives"
+    xmlns:vm="using:Lhamiel.ViewModels"
+    Title="{DynamicResource Text.App.Title}"
+    Width="700"
+    Height="600"
+    input:DragDrop.AllowDrop="True"
+    input:DragDrop.DragLeave="DropZone_DragLeave"
+    input:DragDrop.DragOver="DropZone_DragOver"
+    input:DragDrop.Drop="DropZone_Drop"
+    x:DataType="vm:MainWindowViewModel"
+    Background="Transparent"
+    CanResize="False"
+    ExtendClientAreaChromeHints="PreferSystemChrome"
+    ExtendClientAreaTitleBarHeightHint="32"
+    ExtendClientAreaToDecorationsHint="True"
+    TransparencyLevelHint="AcrylicBlur"
+    WindowStartupLocation="CenterScreen"
+    mc:Ignorable="d">
+
+    <Panel>
+        <!--  ウィンドウ背景：アクリルブラー  -->
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial
+                    BackgroundSource="Digger"
+                    MaterialOpacity="0.8"
+                    TintColor="{DynamicResource Color.Window}"
+                    TintOpacity="0.92" />
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+        <Grid>
+            <!--  ═══ サイドバー + コンテンツ ═══  -->
+            <TabControl Margin="16,36,16,16" Classes="sidebar">
+
+                <!--  ━━━ 全般設定タブ ━━━  -->
+                <TabItem Header="{DynamicResource Text.Sidebar.General}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,0">
+                            <TextBlock
+                                Margin="4,0,0,12"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{DynamicResource Text.Settings.Tab.General}" />
+
+                            <!--  テーマ選択  -->
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Theme.Header}">
+                                <StackPanel Orientation="Horizontal">
+                                    <ComboBox
+                                        Width="200"
+                                        ItemsSource="{Binding ThemeOptions}"
+                                        SelectedValue="{Binding SelectedTheme}"
+                                        SelectedValueBinding="{Binding Key, DataType=vm:ThemeItem}"
+                                        ToolTip.Tip="{DynamicResource Text.Settings.Theme.Tooltip}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:ThemeItem">
+                                                <TextBlock Text="{Binding DisplayName}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
+
+                            <!--  言語選択  -->
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Language.Header}">
+                                <StackPanel Orientation="Horizontal">
+                                    <ComboBox
+                                        Width="200"
+                                        ItemsSource="{x:Static vm:MainWindowViewModel.LocaleOptions}"
+                                        SelectedValue="{Binding SelectedLocale}"
+                                        SelectedValueBinding="{Binding Key, DataType=vm:LocaleItem}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:LocaleItem">
+                                                <TextBlock Text="{Binding DisplayName}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
+
+                            <!--  圧縮形式  -->
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.CompressionFormat.Header}">
+                                <ComboBox
+                                    x:Name="CompressionFormatComboBox"
+                                    Width="120"
+                                    ItemsSource="{Binding CompressionFormats}"
+                                    SelectedItem="{Binding SelectedCompressionFormat}">
+                                    <ComboBox.SelectionBoxItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" />
+                                        </DataTemplate>
+                                    </ComboBox.SelectionBoxItemTemplate>
+                                </ComboBox>
+                            </primitives:HeaderedContentControl>
+
+                            <!--  ショートカット作成  -->
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Shortcut.Header}">
+                                <Button
+                                    x:Name="CreateShortcutButton"
+                                    Command="{Binding CreateShortcutCommand}"
+                                    Content="{DynamicResource Text.Settings.Shortcut.Create}" />
+                            </primitives:HeaderedContentControl>
+
+                            <!--  説明テキスト  -->
+                            <TextBlock
+                                Margin="4,4,0,0"
+                                FontSize="12"
+                                Foreground="{DynamicResource Brush.FG2}"
+                                Text="{DynamicResource Text.DropZone.Footer}" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!--  ━━━ 展開用設定タブ ━━━  -->
+                <TabItem Header="{DynamicResource Text.Sidebar.Extraction}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,0">
+                            <TextBlock
+                                Margin="4,0,0,12"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{DynamicResource Text.Settings.Tab.Extraction}" />
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Output.Header}">
+                                <StackPanel>
+                                    <RadioButton
+                                        x:Name="ExtractionOutputToSameDirectoryRadio"
+                                        Margin="0,4"
+                                        Content="{DynamicResource Text.Settings.Output.SameDirectory}"
+                                        IsChecked="{Binding ExtractionOutputToSameDirectory}" />
+                                    <RadioButton
+                                        x:Name="ExtractionOutputToDirectoryRadio"
+                                        Margin="0,4"
+                                        Content="{DynamicResource Text.Settings.Output.SpecifyDirectory}"
+                                        IsChecked="{Binding ExtractionOutputToDirectory}" />
+
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox
+                                            x:Name="ExtractionOutputPathTextBox"
+                                            Grid.Column="0"
+                                            VerticalContentAlignment="Center"
+                                            IsReadOnly="True"
+                                            Text="{Binding ExtractionOutputDirectory}" />
+                                        <Button
+                                            x:Name="ExtractionBrowseButton"
+                                            Grid.Column="1"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding BrowseExtractionCommand}"
+                                            Content="{DynamicResource Text.Settings.Output.Browse}"
+                                            ToolTip.Tip="{DynamicResource Text.Settings.Output.BrowseExtraction}" />
+                                    </Grid>
+
+                                    <CheckBox
+                                        x:Name="OpenExtractionOutputFolderCheckBox"
+                                        Margin="0,12,0,0"
+                                        Content="{DynamicResource Text.Settings.Extraction.OpenFolder}"
+                                        IsChecked="{Binding OpenExtractionOutputFolder}" />
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!--  ━━━ 圧縮用設定タブ ━━━  -->
+                <TabItem Header="{DynamicResource Text.Sidebar.Compression}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,0">
+                            <TextBlock
+                                Margin="4,0,0,12"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{DynamicResource Text.Settings.Tab.Compression}" />
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Output.Header}">
+                                <StackPanel>
+                                    <RadioButton
+                                        x:Name="CompressionOutputToSameDirectoryRadio"
+                                        Margin="0,4"
+                                        Content="{DynamicResource Text.Settings.Output.SameDirectory}"
+                                        IsChecked="{Binding CompressionOutputToSameDirectory}" />
+                                    <RadioButton
+                                        x:Name="CompressionOutputToDirectoryRadio"
+                                        Margin="0,4"
+                                        Content="{DynamicResource Text.Settings.Output.SpecifyDirectory}"
+                                        IsChecked="{Binding CompressionOutputToDirectory}" />
+
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox
+                                            x:Name="CompressionOutputPathTextBox"
+                                            Grid.Column="0"
+                                            VerticalContentAlignment="Center"
+                                            IsReadOnly="True"
+                                            Text="{Binding CompressionOutputDirectory}" />
+                                        <Button
+                                            x:Name="CompressionBrowseButton"
+                                            Grid.Column="1"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding BrowseCompressionCommand}"
+                                            Content="{DynamicResource Text.Settings.Output.Browse}"
+                                            ToolTip.Tip="{DynamicResource Text.Settings.Output.BrowseCompression}" />
+                                    </Grid>
+
+                                    <CheckBox
+                                        x:Name="OpenCompressionOutputFolderCheckBox"
+                                        Margin="0,12,0,0"
+                                        Content="{DynamicResource Text.Settings.Compression.OpenFolder}"
+                                        IsChecked="{Binding OpenCompressionOutputFolder}" />
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
+
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Compression.MergeHeader}">
+                                <StackPanel>
+                                    <CheckBox Content="{DynamicResource Text.Settings.Compression.MergeOption}" IsChecked="{Binding CompressMultipleAsOne}" />
+                                    <TextBlock
+                                        Margin="28,4,0,0"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="{DynamicResource Text.Settings.Compression.MergeDescription}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
+
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Compression.LevelHeader}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock
+                                            Margin="0,0,0,6"
+                                            FontSize="13"
+                                            Text="{DynamicResource Text.Settings.Compression.ZipLevel}" />
+                                        <ComboBox
+                                            HorizontalAlignment="Stretch"
+                                            ItemsSource="{Binding CompressionLevels}"
+                                            SelectedItem="{Binding SelectedZipLevel}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:CompressionLevelItem">
+                                                    <TextBlock Text="{Binding Name}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <TextBlock
+                                            Margin="0,0,0,6"
+                                            FontSize="13"
+                                            Text="{DynamicResource Text.Settings.Compression.SevenZipLevel}" />
+                                        <ComboBox
+                                            HorizontalAlignment="Stretch"
+                                            ItemsSource="{Binding CompressionLevels}"
+                                            SelectedItem="{Binding SelectedSevenZipLevel}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:CompressionLevelItem">
+                                                    <TextBlock Text="{Binding Name}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+                            </primitives:HeaderedContentControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!--  ━━━ 関連付け設定タブ ━━━  -->
+                <TabItem Header="{DynamicResource Text.Sidebar.Association}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,0">
+                            <TextBlock
+                                Margin="4,0,0,12"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{DynamicResource Text.Settings.Tab.Association}" />
+
+                            <!--  全選択 / 全解除  -->
+                            <StackPanel
+                                Margin="0,0,0,12"
+                                Orientation="Horizontal"
+                                Spacing="8">
+                                <Button
+                                    x:Name="SelectAllButton"
+                                    Command="{Binding SelectAllAssociationsCommand}"
+                                    Content="{DynamicResource Text.Settings.Association.SelectAll}" />
+                                <Button
+                                    x:Name="DeselectAllButton"
+                                    Command="{Binding DeselectAllAssociationsCommand}"
+                                    Content="{DynamicResource Text.Settings.Association.DeselectAll}" />
+                            </StackPanel>
+
+                            <!--  Apple 式カード内リスト  -->
+                            <Border
+                                Padding="4,0"
+                                Background="{DynamicResource Brush.Container}"
+                                BorderBrush="{DynamicResource Brush.Border}"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                                <ItemsControl ItemsSource="{Binding Associations}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border
+                                                Padding="12,8"
+                                                BorderBrush="{DynamicResource Brush.Border}"
+                                                BorderThickness="0,0,0,1">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock
+                                                        Grid.Column="0"
+                                                        VerticalAlignment="Center"
+                                                        FontSize="13"
+                                                        Text="{Binding Description}" />
+                                                    <ToggleSwitch
+                                                        Grid.Column="1"
+                                                        Margin="0"
+                                                        Padding="0"
+                                                        VerticalAlignment="Center"
+                                                        IsChecked="{Binding IsAssociated}"
+                                                        OffContent=""
+                                                        OnContent="" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!--  ━━━ バージョン情報タブ ━━━  -->
+                <TabItem Header="{DynamicResource Text.Sidebar.Version}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,0,8,12">
+                            <TextBlock
+                                Margin="4,0,0,4"
+                                FontSize="28"
+                                FontWeight="Bold"
+                                Text="Lhamiel" />
+                            <TextBlock
+                                Margin="4,0,0,20"
+                                FontSize="14"
+                                Foreground="{DynamicResource Brush.FG2}"
+                                Text="{DynamicResource Text.Version.Description}" />
+
+                            <!--  バージョン情報パネル  -->
+                            <Border
+                                Margin="0,0,0,12"
+                                Padding="16"
+                                Background="{DynamicResource Brush.Container}"
+                                BorderBrush="{DynamicResource Brush.Border}"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock
+                                        Grid.Row="0"
+                                        Grid.Column="0"
+                                        Margin="0,0,12,0"
+                                        VerticalAlignment="Center"
+                                        FontSize="13"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="{DynamicResource Text.Version.Label}" />
+                                    <TextBlock
+                                        x:Name="VersionTextBlock"
+                                        Grid.Row="0"
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        FontSize="13"
+                                        Text="{Binding VersionText}" />
+                                    <Button
+                                        Grid.Row="0"
+                                        Grid.Column="2"
+                                        Command="{Binding CheckForUpdateCommand}"
+                                        Content="{DynamicResource Text.Version.CheckUpdate}"
+                                        FontSize="12"
+                                        IsEnabled="{Binding !IsCheckingUpdate}" />
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Grid.Column="0"
+                                        Grid.ColumnSpan="3"
+                                        Margin="0,6,0,0"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        IsVisible="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                        Text="{Binding UpdateStatusText}"
+                                        TextWrapping="Wrap" />
+                                </Grid>
+                            </Border>
+
+                            <!--  コピーライト  -->
+                            <Border
+                                Margin="0,0,0,12"
+                                Padding="16"
+                                Background="{DynamicResource Brush.Container}"
+                                BorderBrush="{DynamicResource Brush.Border}"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                                <StackPanel>
+                                    <TextBlock
+                                        Margin="0,0,0,6"
+                                        FontSize="13"
+                                        FontWeight="SemiBold"
+                                        Text="{DynamicResource Text.Version.Copyright}" />
+                                    <TextBlock
+                                        x:Name="CopyrightTextBlock"
+                                        FontSize="13"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="{Binding CopyrightText}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <!--  ライセンス  -->
+                            <Border
+                                Padding="16"
+                                Background="{DynamicResource Brush.Container}"
+                                BorderBrush="{DynamicResource Brush.Border}"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                                <StackPanel>
+                                    <TextBlock
+                                        Margin="0,0,0,6"
+                                        FontSize="13"
+                                        FontWeight="SemiBold"
+                                        Text="{DynamicResource Text.Version.License}" />
+                                    <TextBlock
+                                        Margin="0,0,0,4"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="MIT License" />
+                                    <TextBlock
+                                        x:Name="LicenseTextBlock"
+                                        FontFamily="Consolas"
+                                        FontSize="11"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        LineHeight="16"
+                                        Text="{Binding LicenseText}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+
+        </Grid>
+
+        <!--  ═══ ドラッグオーバーレイ（ドラッグ中のみ表示） ═══  -->
+        <Border
+            x:Name="DropOverlay"
+            Background="#1C1C1E"
+            CornerRadius="8"
+            IsHitTestVisible="False"
+            IsVisible="False">
+            <Border
+                Margin="24"
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="1.5"
+                CornerRadius="18">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="40"
+                        Text="📁" />
+                    <TextBlock
+                        Margin="0,12,0,0"
+                        HorizontalAlignment="Center"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        Foreground="#CCFFFFFF"
+                        Text="{DynamicResource Text.DropZone.Message}" />
+                </StackPanel>
+            </Border>
+        </Border>
+    </Panel>
+</Window>

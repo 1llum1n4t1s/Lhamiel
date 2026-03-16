@@ -1,0 +1,205 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://Lhamiel/Resources/Locales/en_US.axaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <!-- Window Titles -->
+  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Strumento di compressione &amp; estrazione archivi</x:String>
+  <x:String x:Key="Text.Progress.Title" xml:space="preserve">Elaborazione in corso...</x:String>
+  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Sostituisci file</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Opzioni di ripristino errore</x:String>
+
+  <!-- Drop Zone -->
+  <x:String x:Key="Text.DropZone.Message" xml:space="preserve">Trascina qui i file per comprimere o estrarre</x:String>
+  <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">Trascina i file in questa finestra per comprimere o estrarre</x:String>
+
+  <!-- Settings Tabs -->
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Generale</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Estrazione</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Compressione</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Associazioni file</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Versione</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Generale</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Estrazione</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Compressione</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Associazioni</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Versione</x:String>
+
+  <!-- General Settings -->
+  <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">Tema</x:String>
+  <x:String x:Key="Text.Settings.Theme.Tooltip" xml:space="preserve">Cambia il tema dell'applicazione</x:String>
+  <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">Sistema (segui il SO)</x:String>
+  <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Scuro</x:String>
+  <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Chiaro</x:String>
+  <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Formato di compressione predefinito</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Collegamento</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Crea collegamento sul desktop</x:String>
+  <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Lingua</x:String>
+
+  <!-- Output Settings (shared) -->
+  <x:String x:Key="Text.Settings.Output.Header" xml:space="preserve">Cartella di output</x:String>
+  <x:String x:Key="Text.Settings.Output.SameDirectory" xml:space="preserve">Salva nella stessa cartella del file di origine</x:String>
+  <x:String x:Key="Text.Settings.Output.SpecifyDirectory" xml:space="preserve">Specifica una cartella</x:String>
+  <x:String x:Key="Text.Settings.Output.Browse" xml:space="preserve">Sfoglia...</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseExtraction" xml:space="preserve">Seleziona la cartella di estrazione</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseCompression" xml:space="preserve">Seleziona la cartella di compressione</x:String>
+
+  <!-- Extraction Settings -->
+  <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Apri la cartella di destinazione dopo l'estrazione</x:String>
+
+  <!-- Compression Settings -->
+  <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Apri la cartella di destinazione dopo la compressione</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Compressione unificata</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Comprimi più file in un unico archivio</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Se disattivato, ogni file verrà compresso in un archivio separato</x:String>
+  <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Livello di compressione</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Livello di compressione ZIP</x:String>
+  <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Livello di compressione 7z</x:String>
+
+  <!-- Compression Level Names -->
+  <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Nessuna compressione</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fastest" xml:space="preserve">Velocissimo</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fast" xml:space="preserve">Veloce</x:String>
+  <x:String x:Key="Text.CompressionLevel.Normal" xml:space="preserve">Normale</x:String>
+  <x:String x:Key="Text.CompressionLevel.Maximum" xml:space="preserve">Massimo</x:String>
+  <x:String x:Key="Text.CompressionLevel.Ultra" xml:space="preserve">Ultra</x:String>
+
+  <!-- Association Settings -->
+  <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">Seleziona tutto</x:String>
+  <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">Deseleziona tutto</x:String>
+
+  <!-- Version Tab -->
+  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Description" xml:space="preserve">Strumento di compressione &amp; estrazione archivi</x:String>
+  <x:String x:Key="Text.Version.Label" xml:space="preserve">Versione</x:String>
+  <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Controlla aggiornamenti</x:String>
+  <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Copyright</x:String>
+  <x:String x:Key="Text.Version.License" xml:space="preserve">Licenza</x:String>
+
+  <!-- Buttons -->
+  <x:String x:Key="Text.Button.Save" xml:space="preserve">Salva</x:String>
+  <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Annulla</x:String>
+  <x:String x:Key="Text.Button.OK" xml:space="preserve">OK</x:String>
+  <x:String x:Key="Text.Button.Yes" xml:space="preserve">Sì</x:String>
+  <x:String x:Key="Text.Button.No" xml:space="preserve">No</x:String>
+
+  <!-- Progress Window -->
+  <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Elaborazione in corso</x:String>
+  <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Annullato.</x:String>
+
+  <!-- Error Recovery Dialog -->
+  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informazioni sull'errore</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">File problematico</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">Opzioni di ripristino</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">Ignora questo file e continua</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">Riprova</x:String>
+  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">Interrompi l'estrazione</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">Ignora tutti gli errori successivi</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Ricorda questa scelta</x:String>
+
+  <!-- Overwrite Dialog -->
+  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">La cartella '{0}' esiste già.\n\nEliminare la cartella esistente e sovrascrivere?</x:String>
+  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">Il file '{0}' esiste già.\n\nSostituirlo?</x:String>
+  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Conferma sovrascrittura cartella</x:String>
+  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Sostituisci file</x:String>
+  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">Il file esiste già.\n\nSostituirlo?</x:String>
+
+  <!-- Dialog Titles (MessageService) -->
+  <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Errore</x:String>
+  <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Informazione</x:String>
+  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Avviso</x:String>
+  <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Completato</x:String>
+  <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Dettagli: </x:String>
+
+  <!-- Error Messages -->
+  <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Il file specificato non è stato trovato.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Il file o la cartella specificata non è stata trovata.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Formato di file non supportato.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Formato di compressione non supportato.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Si è verificato un errore durante l'estrazione.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Si è verificato un errore durante la compressione.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Si è verificato un errore durante l'elaborazione.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">L'output '{0}' è in uso o l'accesso è negato.</x:String>
+  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">Impossibile salvare le impostazioni.</x:String>
+  <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">Impossibile elaborare i file.</x:String>
+  <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">Impossibile applicare le impostazioni di associazione file.</x:String>
+  <x:String x:Key="Text.Error.InitApp" xml:space="preserve">Impossibile inizializzare l'applicazione.</x:String>
+  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">Impossibile mostrare la finestra di conferma sovrascrittura: {0}</x:String>
+  <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">Si è verificato un errore in Seleziona tutto.</x:String>
+  <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">Si è verificato un errore in Deseleziona tutto.</x:String>
+  <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Errore di estrazione</x:String>
+
+  <!-- Shortcut Messages -->
+  <x:String x:Key="Text.Shortcut.Created" xml:space="preserve">Il collegamento è stato creato sul desktop.</x:String>
+  <x:String x:Key="Text.Shortcut.Failed" xml:space="preserve">Impossibile creare il collegamento.</x:String>
+  <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">Si è verificato un errore durante la creazione del collegamento.</x:String>
+
+  <!-- Update Messages -->
+  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Applicazione dell'aggiornamento... Riavvio in corso.</x:String>
+  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Già aggiornato.</x:String>
+  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ Impossibile verificare gli aggiornamenti nell'ambiente di sviluppo.</x:String>
+  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ Il repository degli aggiornamenti non è configurato.</x:String>
+  <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ Si è verificato un errore durante il controllo degli aggiornamenti.</x:String>
+  <x:String x:Key="Text.Update.Timeout" xml:space="preserve">Il controllo degli aggiornamenti è scaduto.</x:String>
+  <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Download dell'aggiornamento in corso...</x:String>
+  <x:String x:Key="Text.Update.Downloaded" xml:space="preserve">Aggiornamento scaricato. Applicazione in corso...</x:String>
+  <x:String x:Key="Text.Update.Latest" xml:space="preserve">È già l'ultima versione.</x:String>
+  <x:String x:Key="Text.Update.DownloadTimeout" xml:space="preserve">Il download è scaduto.</x:String>
+  <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Si è verificato un errore durante il controllo degli aggiornamenti.</x:String>
+  <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Il repository degli aggiornamenti non è configurato.</x:String>
+  <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Impossibile verificare gli aggiornamenti nell'ambiente di sviluppo.</x:String>
+
+  <!-- Error Handler -->
+  <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">File di archivio non trovato</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundDetail" xml:space="preserve">Il file specificato non esiste: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundAction" xml:space="preserve">Verifica il percorso del file e assicurati che il file esista.</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDenied" xml:space="preserve">Accesso negato</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedDetail" xml:space="preserve">L'accesso al file o alla cartella è stato negato: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedAction" xml:space="preserve">Esegui come amministratore o controlla i permessi del file.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFull" xml:space="preserve">Spazio su disco insufficiente</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullDetail" xml:space="preserve">Il disco di destinazione non ha spazio sufficiente: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullAction" xml:space="preserve">Libera spazio su disco o estrai su un altro disco.</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">File in uso</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">Il file è utilizzato da un'altra applicazione: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">Chiudi l'applicazione che sta usando il file e riprova.</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Si è verificato un errore di I/O</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Controlla lo stato del file e riprova.</x:String>
+  <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Il file di archivio è danneggiato</x:String>
+  <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Prova a scaricare nuovamente o riparare il file.</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">È stata eseguita un'operazione non valida</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperationAction" xml:space="preserve">Verifica l'operazione e riprova.</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormat" xml:space="preserve">Formato di file non supportato</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatDetail" xml:space="preserve">Questo formato di file non è supportato: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatAction" xml:space="preserve">Utilizza un formato supportato (ZIP, 7Z, RAR, ecc.).</x:String>
+  <x:String x:Key="Text.ErrorHandler.Unexpected" xml:space="preserve">Si è verificato un errore imprevisto</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnexpectedAction" xml:space="preserve">Esamina i dettagli dell'errore e contatta l'assistenza se necessario.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ArchiveFile" xml:space="preserve">File di archivio: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.ErrorMessage" xml:space="preserve">Messaggio di errore: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileSize" xml:space="preserve">Dimensione file: {0:N0} byte</x:String>
+  <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">Ultima modifica: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">Impossibile recuperare le informazioni del file</x:String>
+
+  <!-- Error Recovery File Info -->
+  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">Nome file: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">Dimensione: {0:N0} byte</x:String>
+  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">Creato: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">Modificato: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">Attributi: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">Informazioni disco:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">Spazio disponibile: {0:N0} byte</x:String>
+  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">Capacità totale: {0:N0} byte</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">Impossibile recuperare le informazioni del file: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">Dettagli eccezione:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">Tipo: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">Messaggio: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">Eccezione interna: {0}</x:String>
+
+  <!-- Partial Extraction -->
+  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Estrazione: {0}</x:String>
+  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Ri-estrazione: {0}</x:String>
+  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">File di destinazione non trovato nell'archivio.</x:String>
+  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">File: {0}\nErrore: {1}</x:String>
+  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Puoi scegliere di riprovare o ignorare.</x:String>
+
+</ResourceDictionary>

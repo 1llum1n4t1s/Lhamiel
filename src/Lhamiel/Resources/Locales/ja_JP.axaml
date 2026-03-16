@@ -1,0 +1,205 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://Lhamiel/Resources/Locales/en_US.axaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <!-- Window Titles -->
+  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - アーカイブ圧縮・展開ツール</x:String>
+  <x:String x:Key="Text.Progress.Title" xml:space="preserve">処理中...</x:String>
+  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">ファイルの置き換え</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">エラー回復オプション</x:String>
+
+  <!-- Drop Zone -->
+  <x:String x:Key="Text.DropZone.Message" xml:space="preserve">ここにドロップして圧縮・展開</x:String>
+  <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">ウィンドウにファイルをドラッグ＆ドロップして圧縮・展開できます</x:String>
+
+  <!-- Settings Tabs -->
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ 全般設定</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 展開用設定</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 圧縮用設定</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 関連付け設定</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ バージョン</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ 全般</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 展開</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 圧縮</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 関連付け</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ バージョン</x:String>
+
+  <!-- General Settings -->
+  <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">テーマ</x:String>
+  <x:String x:Key="Text.Settings.Theme.Tooltip" xml:space="preserve">アプリケーションのテーマを切り替えます</x:String>
+  <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">システム（追従）</x:String>
+  <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">ダーク</x:String>
+  <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">ライト</x:String>
+  <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">デフォルトの圧縮形式</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">ショートカット</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 デスクトップにショートカット作成</x:String>
+  <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">言語</x:String>
+
+  <!-- Output Settings (shared) -->
+  <x:String x:Key="Text.Settings.Output.Header" xml:space="preserve">出力先設定</x:String>
+  <x:String x:Key="Text.Settings.Output.SameDirectory" xml:space="preserve">元のファイルと同じディレクトリに出力</x:String>
+  <x:String x:Key="Text.Settings.Output.SpecifyDirectory" xml:space="preserve">ディレクトリを指定する</x:String>
+  <x:String x:Key="Text.Settings.Output.Browse" xml:space="preserve">参照...</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseExtraction" xml:space="preserve">展開先ディレクトリを選択</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseCompression" xml:space="preserve">圧縮先ディレクトリを選択</x:String>
+
+  <!-- Extraction Settings -->
+  <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">展開後に保存先のフォルダを開く</x:String>
+
+  <!-- Compression Settings -->
+  <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">圧縮後に保存先のフォルダを開く</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">まとめ圧縮</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">複数ファイルを1つにまとめて圧縮</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">OFFの場合、ファイルごとに個別のアーカイブが作成されます</x:String>
+  <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">圧縮レベル設定</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP 圧縮レベル</x:String>
+  <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z 圧縮レベル</x:String>
+
+  <!-- Compression Level Names -->
+  <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">無圧縮</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fastest" xml:space="preserve">最速</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fast" xml:space="preserve">高速</x:String>
+  <x:String x:Key="Text.CompressionLevel.Normal" xml:space="preserve">標準</x:String>
+  <x:String x:Key="Text.CompressionLevel.Maximum" xml:space="preserve">最大</x:String>
+  <x:String x:Key="Text.CompressionLevel.Ultra" xml:space="preserve">超圧縮</x:String>
+
+  <!-- Association Settings -->
+  <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">全選択</x:String>
+  <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">全解除</x:String>
+
+  <!-- Version Tab -->
+  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Description" xml:space="preserve">アーカイブ圧縮・展開ツール</x:String>
+  <x:String x:Key="Text.Version.Label" xml:space="preserve">バージョン</x:String>
+  <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">アップデート確認</x:String>
+  <x:String x:Key="Text.Version.Copyright" xml:space="preserve">コピーライト</x:String>
+  <x:String x:Key="Text.Version.License" xml:space="preserve">ライセンス</x:String>
+
+  <!-- Buttons -->
+  <x:String x:Key="Text.Button.Save" xml:space="preserve">保存</x:String>
+  <x:String x:Key="Text.Button.Cancel" xml:space="preserve">キャンセル</x:String>
+  <x:String x:Key="Text.Button.OK" xml:space="preserve">OK</x:String>
+  <x:String x:Key="Text.Button.Yes" xml:space="preserve">はい</x:String>
+  <x:String x:Key="Text.Button.No" xml:space="preserve">いいえ</x:String>
+
+  <!-- Progress Window -->
+  <x:String x:Key="Text.Progress.Processing" xml:space="preserve">処理中</x:String>
+  <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">キャンセルしました。</x:String>
+
+  <!-- Error Recovery Dialog -->
+  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">エラー情報</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">問題のあるファイル</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">回復オプション</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">このファイルをスキップして続行</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">再試行する</x:String>
+  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">展開を停止する</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">以降のエラーもすべてスキップ</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">この選択を記憶する</x:String>
+
+  <!-- Overwrite Dialog -->
+  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">フォルダ '{0}' は既に存在します。\n\n既存のフォルダを削除して上書きしますか？</x:String>
+  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">ファイル '{0}' は既に存在します。\n\n置き換えますか？</x:String>
+  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">フォルダの上書き確認</x:String>
+  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">ファイルの置き換え</x:String>
+  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">ファイルは既に存在します。\n\n置き換えますか？</x:String>
+
+  <!-- Dialog Titles (MessageService) -->
+  <x:String x:Key="Text.Dialog.Error" xml:space="preserve">エラー</x:String>
+  <x:String x:Key="Text.Dialog.Info" xml:space="preserve">情報</x:String>
+  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">警告</x:String>
+  <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">完了</x:String>
+  <x:String x:Key="Text.Dialog.Details" xml:space="preserve">詳細: </x:String>
+
+  <!-- Error Messages -->
+  <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">指定されたファイルが見つかりません。\n{0}</x:String>
+  <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">指定されたファイルまたはフォルダが見つかりません。\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">サポートされていないファイル形式です。\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">サポートされていない圧縮形式です。\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">展開中にエラーが発生しました。\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">圧縮中にエラーが発生しました。\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">処理中にエラーが発生しました。\n{0}</x:String>
+  <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">出力先 '{0}' が使用中か、アクセス権限がありません。</x:String>
+  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">設定の保存に失敗しました。</x:String>
+  <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">ファイルの処理に失敗しました。</x:String>
+  <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">関連付け設定の適用に失敗しました。</x:String>
+  <x:String x:Key="Text.Error.InitApp" xml:space="preserve">アプリケーションの初期化に失敗しました。</x:String>
+  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">上書き確認ダイアログの表示に失敗しました: {0}</x:String>
+  <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">全選択処理でエラーが発生しました。</x:String>
+  <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">全解除処理でエラーが発生しました。</x:String>
+  <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">展開エラー</x:String>
+
+  <!-- Shortcut Messages -->
+  <x:String x:Key="Text.Shortcut.Created" xml:space="preserve">デスクトップにショートカットを作成しました。</x:String>
+  <x:String x:Key="Text.Shortcut.Failed" xml:space="preserve">ショートカットの作成に失敗しました。</x:String>
+  <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">ショートカットの作成中にエラーが発生しました。</x:String>
+
+  <!-- Update Messages -->
+  <x:String x:Key="Text.Update.Applying" xml:space="preserve">更新を適用中...再起動します。</x:String>
+  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ 最新バージョンです。</x:String>
+  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ 開発環境では更新チェックできません。</x:String>
+  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ 更新元リポジトリが未設定です。</x:String>
+  <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ 更新チェック中にエラーが発生しました。</x:String>
+  <x:String x:Key="Text.Update.Timeout" xml:space="preserve">更新チェックがタイムアウトしました。</x:String>
+  <x:String x:Key="Text.Update.Downloading" xml:space="preserve">更新をダウンロード中...</x:String>
+  <x:String x:Key="Text.Update.Downloaded" xml:space="preserve">更新をダウンロードしました。適用中...</x:String>
+  <x:String x:Key="Text.Update.Latest" xml:space="preserve">最新バージョンです。</x:String>
+  <x:String x:Key="Text.Update.DownloadTimeout" xml:space="preserve">ダウンロードがタイムアウトしました。</x:String>
+  <x:String x:Key="Text.Update.CheckError" xml:space="preserve">更新チェック中にエラーが発生しました。</x:String>
+  <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">更新元リポジトリが未設定です。</x:String>
+  <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">開発環境では更新チェックできません。</x:String>
+
+  <!-- Error Handler -->
+  <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">アーカイブファイルが見つかりません</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundDetail" xml:space="preserve">指定されたファイルが存在しません: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundAction" xml:space="preserve">ファイルパスを確認し、ファイルが存在することを確認してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDenied" xml:space="preserve">アクセス権限がありません</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedDetail" xml:space="preserve">ファイルまたはディレクトリへのアクセスが拒否されました: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedAction" xml:space="preserve">管理者権限で実行するか、ファイルのアクセス権限を確認してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFull" xml:space="preserve">ディスク容量が不足しています</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullDetail" xml:space="preserve">展開先ディスクの容量が不足しています: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullAction" xml:space="preserve">ディスク容量を確保するか、別のディスクに展開してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">ファイルが使用中です</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">ファイルが他のアプリケーションで使用されています: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">ファイルを使用しているアプリケーションを閉じてから再試行してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">I/Oエラーが発生しました</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">ファイルの状態を確認し、再試行してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">アーカイブファイルが破損しています</x:String>
+  <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">ファイルの再ダウンロードまたは修復を試してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">無効な操作が実行されました</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperationAction" xml:space="preserve">操作を確認し、再試行してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormat" xml:space="preserve">サポートされていないファイル形式です</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatDetail" xml:space="preserve">このファイル形式はサポートされていません: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatAction" xml:space="preserve">サポートされている形式（ZIP、7Z、RAR等）のファイルを使用してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.Unexpected" xml:space="preserve">予期しないエラーが発生しました</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnexpectedAction" xml:space="preserve">エラーの詳細を確認し、必要に応じてサポートに連絡してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.ArchiveFile" xml:space="preserve">アーカイブファイル: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.ErrorMessage" xml:space="preserve">エラーメッセージ: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileSize" xml:space="preserve">ファイルサイズ: {0:N0} バイト</x:String>
+  <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">最終更新日時: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">ファイル情報の取得に失敗しました</x:String>
+
+  <!-- Error Recovery File Info -->
+  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">ファイル名: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">サイズ: {0:N0} バイト</x:String>
+  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">作成日時: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">更新日時: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">属性: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">ディスク情報:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">利用可能容量: {0:N0} バイト</x:String>
+  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">総容量: {0:N0} バイト</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">ファイル情報の取得に失敗: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">例外詳細:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">種類: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">メッセージ: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">内部例外: {0}</x:String>
+
+  <!-- Partial Extraction -->
+  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">展開中: {0}</x:String>
+  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">再展開中: {0}</x:String>
+  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">アーカイブ内に対象ファイルが見つかりません。</x:String>
+  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">ファイル: {0}\nエラー: {1}</x:String>
+  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">再試行またはスキップを選択できます</x:String>
+
+</ResourceDictionary>

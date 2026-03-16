@@ -1,0 +1,205 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://Lhamiel/Resources/Locales/en_US.axaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <!-- Window Titles -->
+  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Інструмент стиснення &amp; розпакування архівів</x:String>
+  <x:String x:Key="Text.Progress.Title" xml:space="preserve">Обробка...</x:String>
+  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Заміна файлу</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Параметри відновлення після помилки</x:String>
+
+  <!-- Drop Zone -->
+  <x:String x:Key="Text.DropZone.Message" xml:space="preserve">Перетягніть файли сюди для стиснення або розпакування</x:String>
+  <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">Перетягніть файли у це вікно для стиснення або розпакування</x:String>
+
+  <!-- Settings Tabs -->
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Загальні</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Розпакування</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Стиснення</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Асоціації файлів</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Версія</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Загальні</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Розпакування</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Стиснення</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Асоціації</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Версія</x:String>
+
+  <!-- General Settings -->
+  <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">Тема</x:String>
+  <x:String x:Key="Text.Settings.Theme.Tooltip" xml:space="preserve">Змінити тему застосунку</x:String>
+  <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">Системна (відповідно до ОС)</x:String>
+  <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Темна</x:String>
+  <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Світла</x:String>
+  <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Формат стиснення за замовчуванням</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Ярлик</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Створити ярлик на робочому столі</x:String>
+  <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Мова</x:String>
+
+  <!-- Output Settings (shared) -->
+  <x:String x:Key="Text.Settings.Output.Header" xml:space="preserve">Каталог виводу</x:String>
+  <x:String x:Key="Text.Settings.Output.SameDirectory" xml:space="preserve">Зберігати в тому ж каталозі, що й вихідний файл</x:String>
+  <x:String x:Key="Text.Settings.Output.SpecifyDirectory" xml:space="preserve">Вказати каталог</x:String>
+  <x:String x:Key="Text.Settings.Output.Browse" xml:space="preserve">Огляд...</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseExtraction" xml:space="preserve">Оберіть папку для розпакування</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseCompression" xml:space="preserve">Оберіть папку для стиснення</x:String>
+
+  <!-- Extraction Settings -->
+  <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Відкрити папку призначення після розпакування</x:String>
+
+  <!-- Compression Settings -->
+  <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Відкрити папку призначення після стиснення</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Об'єднане стиснення</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Стиснути кілька файлів в один архів</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Якщо вимкнено, кожен файл буде стиснутий в окремий архів</x:String>
+  <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Рівень стиснення</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Рівень стиснення ZIP</x:String>
+  <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Рівень стиснення 7z</x:String>
+
+  <!-- Compression Level Names -->
+  <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Без стиснення</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fastest" xml:space="preserve">Найшвидший</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fast" xml:space="preserve">Швидкий</x:String>
+  <x:String x:Key="Text.CompressionLevel.Normal" xml:space="preserve">Звичайний</x:String>
+  <x:String x:Key="Text.CompressionLevel.Maximum" xml:space="preserve">Максимальний</x:String>
+  <x:String x:Key="Text.CompressionLevel.Ultra" xml:space="preserve">Ультра</x:String>
+
+  <!-- Association Settings -->
+  <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">Вибрати все</x:String>
+  <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">Зняти вибір</x:String>
+
+  <!-- Version Tab -->
+  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Description" xml:space="preserve">Інструмент стиснення &amp; розпакування архівів</x:String>
+  <x:String x:Key="Text.Version.Label" xml:space="preserve">Версія</x:String>
+  <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Перевірити оновлення</x:String>
+  <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Авторське право</x:String>
+  <x:String x:Key="Text.Version.License" xml:space="preserve">Ліцензія</x:String>
+
+  <!-- Buttons -->
+  <x:String x:Key="Text.Button.Save" xml:space="preserve">Зберегти</x:String>
+  <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Скасувати</x:String>
+  <x:String x:Key="Text.Button.OK" xml:space="preserve">OK</x:String>
+  <x:String x:Key="Text.Button.Yes" xml:space="preserve">Так</x:String>
+  <x:String x:Key="Text.Button.No" xml:space="preserve">Ні</x:String>
+
+  <!-- Progress Window -->
+  <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Обробка</x:String>
+  <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Скасовано.</x:String>
+
+  <!-- Error Recovery Dialog -->
+  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Інформація про помилку</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">Проблемний файл</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">Параметри відновлення</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">Пропустити цей файл і продовжити</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">Повторити</x:String>
+  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">Зупинити розпакування</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">Пропустити всі наступні помилки</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Запам'ятати цей вибір</x:String>
+
+  <!-- Overwrite Dialog -->
+  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">Папка «{0}» вже існує.\n\nВидалити існуючу папку та перезаписати?</x:String>
+  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">Файл «{0}» вже існує.\n\nЗамінити його?</x:String>
+  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Підтвердження перезапису папки</x:String>
+  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Заміна файлу</x:String>
+  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">Файл вже існує.\n\nЗамінити його?</x:String>
+
+  <!-- Dialog Titles (MessageService) -->
+  <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Помилка</x:String>
+  <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Інформація</x:String>
+  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Попередження</x:String>
+  <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Завершено</x:String>
+  <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Деталі: </x:String>
+
+  <!-- Error Messages -->
+  <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Вказаний файл не знайдено.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Вказаний файл або папку не знайдено.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Непідтримуваний формат файлу.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Непідтримуваний формат стиснення.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Під час розпакування сталася помилка.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Під час стиснення сталася помилка.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Під час обробки сталася помилка.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Вихідний файл «{0}» використовується або доступ заборонено.</x:String>
+  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">Не вдалося зберегти налаштування.</x:String>
+  <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">Не вдалося обробити файли.</x:String>
+  <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">Не вдалося застосувати налаштування асоціацій файлів.</x:String>
+  <x:String x:Key="Text.Error.InitApp" xml:space="preserve">Не вдалося ініціалізувати застосунок.</x:String>
+  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">Не вдалося показати діалог підтвердження перезапису: {0}</x:String>
+  <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">Помилка під час вибору всіх елементів.</x:String>
+  <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">Помилка під час зняття вибору всіх елементів.</x:String>
+  <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Помилка розпакування</x:String>
+
+  <!-- Shortcut Messages -->
+  <x:String x:Key="Text.Shortcut.Created" xml:space="preserve">Ярлик створено на робочому столі.</x:String>
+  <x:String x:Key="Text.Shortcut.Failed" xml:space="preserve">Не вдалося створити ярлик.</x:String>
+  <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">Під час створення ярлика сталася помилка.</x:String>
+
+  <!-- Update Messages -->
+  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Застосування оновлення... Перезапуск.</x:String>
+  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Уже оновлено до останньої версії.</x:String>
+  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ Неможливо перевірити оновлення в середовищі розробки.</x:String>
+  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ Репозиторій оновлень не налаштовано.</x:String>
+  <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ Під час перевірки оновлень сталася помилка.</x:String>
+  <x:String x:Key="Text.Update.Timeout" xml:space="preserve">Час очікування перевірки оновлень вичерпано.</x:String>
+  <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Завантаження оновлення...</x:String>
+  <x:String x:Key="Text.Update.Downloaded" xml:space="preserve">Оновлення завантажено. Застосування...</x:String>
+  <x:String x:Key="Text.Update.Latest" xml:space="preserve">Уже встановлено останню версію.</x:String>
+  <x:String x:Key="Text.Update.DownloadTimeout" xml:space="preserve">Час очікування завантаження вичерпано.</x:String>
+  <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Під час перевірки оновлень сталася помилка.</x:String>
+  <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Репозиторій оновлень не налаштовано.</x:String>
+  <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Неможливо перевірити оновлення в середовищі розробки.</x:String>
+
+  <!-- Error Handler -->
+  <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">Файл архіву не знайдено</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundDetail" xml:space="preserve">Вказаний файл не існує: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundAction" xml:space="preserve">Перевірте шлях до файлу та переконайтеся, що файл існує.</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDenied" xml:space="preserve">Доступ заборонено</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedDetail" xml:space="preserve">Доступ до файлу або каталогу заборонено: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedAction" xml:space="preserve">Запустіть від імені адміністратора або перевірте дозволи файлу.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFull" xml:space="preserve">Недостатньо місця на диску</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullDetail" xml:space="preserve">На цільовому диску недостатньо місця: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullAction" xml:space="preserve">Звільніть місце на диску або розпакуйте на інший диск.</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">Файл використовується</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">Файл використовується іншою програмою: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">Закрийте програму, що використовує файл, і повторіть спробу.</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Сталася помилка введення/виведення</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Перевірте стан файлу та повторіть спробу.</x:String>
+  <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Файл архіву пошкоджено</x:String>
+  <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Спробуйте повторно завантажити або відновити файл.</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">Виконано недопустиму операцію</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperationAction" xml:space="preserve">Перевірте операцію та повторіть спробу.</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormat" xml:space="preserve">Непідтримуваний формат файлу</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatDetail" xml:space="preserve">Цей формат файлу не підтримується: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatAction" xml:space="preserve">Використовуйте підтримуваний формат (ZIP, 7Z, RAR тощо).</x:String>
+  <x:String x:Key="Text.ErrorHandler.Unexpected" xml:space="preserve">Сталася неочікувана помилка</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnexpectedAction" xml:space="preserve">Перегляньте деталі помилки та зверніться до служби підтримки за потреби.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ArchiveFile" xml:space="preserve">Файл архіву: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.ErrorMessage" xml:space="preserve">Повідомлення про помилку: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileSize" xml:space="preserve">Розмір файлу: {0:N0} байт</x:String>
+  <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">Остання зміна: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">Не вдалося отримати інформацію про файл</x:String>
+
+  <!-- Error Recovery File Info -->
+  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">Ім'я файлу: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">Розмір: {0:N0} байт</x:String>
+  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">Створено: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">Змінено: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">Атрибути: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">Інформація про диск:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">Доступне місце: {0:N0} байт</x:String>
+  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">Загальна ємність: {0:N0} байт</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">Не вдалося отримати інформацію про файл: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">Деталі виключення:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">Тип: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">Повідомлення: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">Внутрішнє виключення: {0}</x:String>
+
+  <!-- Partial Extraction -->
+  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Розпакування: {0}</x:String>
+  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Повторне розпакування: {0}</x:String>
+  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">Цільовий файл не знайдено в архіві.</x:String>
+  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Файл: {0}\nПомилка: {1}</x:String>
+  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Ви можете повторити спробу або пропустити.</x:String>
+
+</ResourceDictionary>

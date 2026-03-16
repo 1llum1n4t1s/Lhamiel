@@ -1,0 +1,205 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://Lhamiel/Resources/Locales/en_US.axaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <!-- Window Titles -->
+  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - संग्रहसङ्कोचन-निष्कर्षणसाधनम्</x:String>
+  <x:String x:Key="Text.Progress.Title" xml:space="preserve">संसाधनम्...</x:String>
+  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">सञ्चिकाप्रतिस्थापनम्</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">दोषपुनर्लाभविकल्पाः</x:String>
+
+  <!-- Drop Zone -->
+  <x:String x:Key="Text.DropZone.Message" xml:space="preserve">सङ्कोचनाय निष्कर्षणाय वा सञ्चिकाः अत्र निक्षिपत</x:String>
+  <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">सङ्कोचनाय निष्कर्षणाय वा सञ्चिकाः अस्मिन् गवाक्षे आकर्षय निक्षिपत च</x:String>
+
+  <!-- Settings Tabs -->
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ सामान्यम्</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 निष्कर्षणम्</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 सङ्कोचनम्</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 सञ्चिकासम्बन्धाः</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ संस्करणम्</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ सामान्यम्</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 निष्कर्षणम्</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 सङ्कोचनम्</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 सम्बन्धाः</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ संस्करणम्</x:String>
+
+  <!-- General Settings -->
+  <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">प्रसङ्गः</x:String>
+  <x:String x:Key="Text.Settings.Theme.Tooltip" xml:space="preserve">अनुप्रयोगस्य प्रसङ्गं परिवर्तयतु</x:String>
+  <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">तन्त्रम् (OS अनुसरणम्)</x:String>
+  <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">अन्धकारम्</x:String>
+  <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">प्रकाशम्</x:String>
+  <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">पूर्वनिर्धारितसङ्कोचनप्रारूपम्</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">सङ्क्षिप्तमार्गः</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 कार्यपृष्ठे सङ्क्षिप्तमार्गं रचयतु</x:String>
+  <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">भाषा</x:String>
+
+  <!-- Output Settings -->
+  <x:String x:Key="Text.Settings.Output.Header" xml:space="preserve">निर्गमनिर्देशिका</x:String>
+  <x:String x:Key="Text.Settings.Output.SameDirectory" xml:space="preserve">मूलसञ्चिकायाः सम निर्देशिकायाम्</x:String>
+  <x:String x:Key="Text.Settings.Output.SpecifyDirectory" xml:space="preserve">निर्देशिकां निर्दिशतु</x:String>
+  <x:String x:Key="Text.Settings.Output.Browse" xml:space="preserve">अन्वेषणम्...</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseExtraction" xml:space="preserve">निष्कर्षणनिर्देशिकां चिनुत</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseCompression" xml:space="preserve">सङ्कोचननिर्देशिकां चिनुत</x:String>
+
+  <!-- Extraction Settings -->
+  <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">निष्कर्षणानन्तरं गन्तव्यनिर्देशिकां उद्घाटयतु</x:String>
+
+  <!-- Compression Settings -->
+  <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">सङ्कोचनानन्तरं गन्तव्यनिर्देशिकां उद्घाटयतु</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">संयुक्तसङ्कोचनम्</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">बहुसञ्चिकाः एकस्मिन् संग्रहे सङ्कोचयतु</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">निष्क्रिये सति प्रत्येकसञ्चिका पृथक् सङ्कोचिता भविष्यति</x:String>
+  <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">सङ्कोचनस्तरः</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP सङ्कोचनस्तरः</x:String>
+  <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z सङ्कोचनस्तरः</x:String>
+
+  <!-- Compression Level Names -->
+  <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">सङ्कोचनं नास्ति</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fastest" xml:space="preserve">द्रुततमम्</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fast" xml:space="preserve">द्रुतम्</x:String>
+  <x:String x:Key="Text.CompressionLevel.Normal" xml:space="preserve">सामान्यम्</x:String>
+  <x:String x:Key="Text.CompressionLevel.Maximum" xml:space="preserve">अधिकतमम्</x:String>
+  <x:String x:Key="Text.CompressionLevel.Ultra" xml:space="preserve">परमम्</x:String>
+
+  <!-- Association Settings -->
+  <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">सर्वं चिनुत</x:String>
+  <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">सर्वं त्यजत</x:String>
+
+  <!-- Version Tab -->
+  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Description" xml:space="preserve">संग्रहसङ्कोचन-निष्कर्षणसाधनम्</x:String>
+  <x:String x:Key="Text.Version.Label" xml:space="preserve">संस्करणम्</x:String>
+  <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">नवीकरणं पृच्छतु</x:String>
+  <x:String x:Key="Text.Version.Copyright" xml:space="preserve">प्रतिलिप्यधिकारः</x:String>
+  <x:String x:Key="Text.Version.License" xml:space="preserve">अनुज्ञापत्रम्</x:String>
+
+  <!-- Buttons -->
+  <x:String x:Key="Text.Button.Save" xml:space="preserve">रक्षतु</x:String>
+  <x:String x:Key="Text.Button.Cancel" xml:space="preserve">निरस्यतु</x:String>
+  <x:String x:Key="Text.Button.OK" xml:space="preserve">अस्तु</x:String>
+  <x:String x:Key="Text.Button.Yes" xml:space="preserve">आम्</x:String>
+  <x:String x:Key="Text.Button.No" xml:space="preserve">न</x:String>
+
+  <!-- Progress Window -->
+  <x:String x:Key="Text.Progress.Processing" xml:space="preserve">संसाधनम्</x:String>
+  <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">निरस्तम्।</x:String>
+
+  <!-- Error Recovery Dialog -->
+  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">दोषसूचना</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">समस्याग्रस्तसञ्चिका</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">पुनर्लाभविकल्पाः</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">इमां सञ्चिकां लङ्घयित्वा अग्रे गच्छतु</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">पुनः प्रयततु</x:String>
+  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">निष्कर्षणं स्थगयतु</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">सर्वान् आगामिदोषान् लङ्घयतु</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">इमं विकल्पं स्मरतु</x:String>
+
+  <!-- Overwrite Dialog -->
+  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">निर्देशिका '{0}' पूर्वमेव विद्यते।\n\nवर्तमाननिर्देशिकां विलोप्य प्रतिस्थापयतु?</x:String>
+  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">सञ्चिका '{0}' पूर्वमेव विद्यते।\n\nप्रतिस्थापयतु?</x:String>
+  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">निर्देशिकाप्रतिस्थापनं पुष्टीकुरुत</x:String>
+  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">सञ्चिकां प्रतिस्थापयतु</x:String>
+  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">सञ्चिका पूर्वमेव विद्यते।\n\nप्रतिस्थापयतु?</x:String>
+
+  <!-- Dialog Titles -->
+  <x:String x:Key="Text.Dialog.Error" xml:space="preserve">दोषः</x:String>
+  <x:String x:Key="Text.Dialog.Info" xml:space="preserve">सूचना</x:String>
+  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">चेतावनी</x:String>
+  <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">सम्पूर्णम्</x:String>
+  <x:String x:Key="Text.Dialog.Details" xml:space="preserve">विवरणम्: </x:String>
+
+  <!-- Error Messages -->
+  <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">निर्दिष्टा सञ्चिका न प्राप्ता।\n{0}</x:String>
+  <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">निर्दिष्टा सञ्चिका वा निर्देशिका वा न प्राप्ता।\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">असमर्थितं सञ्चिकाप्रारूपम्।\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">असमर्थितं सङ्कोचनप्रारूपम्।\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">निष्कर्षणे दोषः जातः।\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">सङ्कोचने दोषः जातः।\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">संसाधने दोषः जातः।\n{0}</x:String>
+  <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">निर्गमः '{0}' उपयोगे अस्ति अथवा प्रवेशः निषिद्धः।</x:String>
+  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">विन्यासं रक्षितुं न शक्तम्।</x:String>
+  <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">सञ्चिकाः संसाधयितुं न शक्तम्।</x:String>
+  <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">सम्बन्धविन्यासं प्रयोक्तुं न शक्तम्।</x:String>
+  <x:String x:Key="Text.Error.InitApp" xml:space="preserve">अनुप्रयोगं प्रारम्भयितुं न शक्तम्।</x:String>
+  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">प्रतिस्थापनसंवादं दर्शयितुं न शक्तम्: {0}</x:String>
+  <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">सर्वचयने दोषः जातः।</x:String>
+  <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">सर्वत्यजने दोषः जातः।</x:String>
+  <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">निष्कर्षणदोषः</x:String>
+
+  <!-- Shortcut Messages -->
+  <x:String x:Key="Text.Shortcut.Created" xml:space="preserve">कार्यपृष्ठे सङ्क्षिप्तमार्गः रचितः।</x:String>
+  <x:String x:Key="Text.Shortcut.Failed" xml:space="preserve">सङ्क्षिप्तमार्गं रचयितुं न शक्तम्।</x:String>
+  <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">सङ्क्षिप्तमार्गरचने दोषः जातः।</x:String>
+
+  <!-- Update Messages -->
+  <x:String x:Key="Text.Update.Applying" xml:space="preserve">नवीकरणं प्रयुज्यते... पुनःप्रारम्भः।</x:String>
+  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ नवीनतमं वर्तते।</x:String>
+  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ विकासपरिवेशे नवीकरणं परीक्षितुं न शक्यते।</x:String>
+  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ नवीकरणभाण्डागारं विन्यस्तं नास्ति।</x:String>
+  <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ नवीकरणपरीक्षणे दोषः जातः।</x:String>
+  <x:String x:Key="Text.Update.Timeout" xml:space="preserve">नवीकरणपरीक्षणस्य कालः अतीतः।</x:String>
+  <x:String x:Key="Text.Update.Downloading" xml:space="preserve">नवीकरणम् अवतार्यते...</x:String>
+  <x:String x:Key="Text.Update.Downloaded" xml:space="preserve">नवीकरणम् अवतारितम्। प्रयुज्यते...</x:String>
+  <x:String x:Key="Text.Update.Latest" xml:space="preserve">नवीनतमं संस्करणं वर्तते।</x:String>
+  <x:String x:Key="Text.Update.DownloadTimeout" xml:space="preserve">अवतरणस्य कालः अतीतः।</x:String>
+  <x:String x:Key="Text.Update.CheckError" xml:space="preserve">नवीकरणपरीक्षणे दोषः जातः।</x:String>
+  <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">नवीकरणभाण्डागारं विन्यस्तं नास्ति।</x:String>
+  <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">विकासपरिवेशे नवीकरणं परीक्षितुं न शक्यते।</x:String>
+
+  <!-- Error Handler -->
+  <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">संग्रहसञ्चिका न प्राप्ता</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundDetail" xml:space="preserve">निर्दिष्टा सञ्चिका विद्यते नैव: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundAction" xml:space="preserve">सञ्चिकामार्गं सत्यापयतु, सञ्चिका विद्यते इति सुनिश्चितं कुरुत।</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDenied" xml:space="preserve">प्रवेशः निषिद्धः</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedDetail" xml:space="preserve">सञ्चिकायाः निर्देशिकायाः वा प्रवेशः निषिद्धः: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedAction" xml:space="preserve">प्रशासकरूपेण चालयतु अथवा अनुमतिं परीक्षतु।</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFull" xml:space="preserve">चक्रिकास्थानम् अपर्याप्तम्</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullDetail" xml:space="preserve">गन्तव्यचक्रिकायां स्थानम् अपर्याप्तम्: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullAction" xml:space="preserve">चक्रिकास्थानं मुक्तं कुरुत अथवा अन्यत्र निष्कर्षतु।</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">सञ्चिका उपयोगे वर्तते</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">सञ्चिका अन्येन अनुप्रयोगेन उपयुज्यते: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">सञ्चिकाम् उपयुञ्जानम् अनुप्रयोगं पिदधातु पुनश्च प्रयततु।</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">निवेश-निर्गमदोषः जातः</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">सञ्चिकास्थितिं परीक्ष्य पुनः प्रयततु।</x:String>
+  <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">संग्रहसञ्चिका दूषिता अस्ति</x:String>
+  <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">सञ्चिकां पुनः अवतारयतु अथवा मरम्मतं कुरुत।</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">अमान्या क्रिया सम्पादिता</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperationAction" xml:space="preserve">क्रियां सत्यापयतु पुनश्च प्रयततु।</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormat" xml:space="preserve">असमर्थितं सञ्चिकाप्रारूपम्</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatDetail" xml:space="preserve">इदं सञ्चिकाप्रारूपं न समर्थ्यते: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatAction" xml:space="preserve">समर्थितं प्रारूपं प्रयोजयतु (ZIP, 7Z, RAR, इत्यादि)।</x:String>
+  <x:String x:Key="Text.ErrorHandler.Unexpected" xml:space="preserve">अप्रत्याशितः दोषः जातः</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnexpectedAction" xml:space="preserve">दोषविवरणं निरीक्ष्य आवश्यकतायां सहायतां सम्पर्कयतु।</x:String>
+  <x:String x:Key="Text.ErrorHandler.ArchiveFile" xml:space="preserve">संग्रहसञ्चिका: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.ErrorMessage" xml:space="preserve">दोषसन्देशः: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileSize" xml:space="preserve">सञ्चिकापरिमाणम्: {0:N0} अष्टकाः</x:String>
+  <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">अन्तिमपरिवर्तनम्: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">सञ्चिकासूचनां प्राप्तुं न शक्तम्</x:String>
+
+  <!-- Error Recovery File Info -->
+  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">सञ्चिकानाम: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">परिमाणम्: {0:N0} अष्टकाः</x:String>
+  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">सृष्टम्: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">परिवर्तितम्: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">गुणाः: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">चक्रिकासूचना:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">उपलब्धस्थानम्: {0:N0} अष्टकाः</x:String>
+  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">सम्पूर्णधारिता: {0:N0} अष्टकाः</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">सञ्चिकासूचनां प्राप्तुं न शक्तम्: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">अपवादविवरणम्:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">प्रकारः: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">सन्देशः: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">आन्तरिकापवादः: {0}</x:String>
+
+  <!-- Partial Extraction -->
+  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">निष्कर्षणम्: {0}</x:String>
+  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">पुनर्निष्कर्षणम्: {0}</x:String>
+  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">लक्ष्यसञ्चिका संग्रहे न प्राप्ता।</x:String>
+  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">सञ्चिका: {0}\nदोषः: {1}</x:String>
+  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">पुनः प्रयतितुं लङ्घयितुं वा शक्नुथ।</x:String>
+
+</ResourceDictionary>

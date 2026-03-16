@@ -1,0 +1,205 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://Lhamiel/Resources/Locales/en_US.axaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <!-- Window Titles -->
+  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Инструмент сжатия &amp; распаковки архивов</x:String>
+  <x:String x:Key="Text.Progress.Title" xml:space="preserve">Обработка...</x:String>
+  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Замена файла</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Параметры восстановления после ошибки</x:String>
+
+  <!-- Drop Zone -->
+  <x:String x:Key="Text.DropZone.Message" xml:space="preserve">Перетащите файлы сюда для сжатия или распаковки</x:String>
+  <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">Перетащите файлы в это окно для сжатия или распаковки</x:String>
+
+  <!-- Settings Tabs -->
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Общие</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Распаковка</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Сжатие</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Ассоциации файлов</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Версия</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Общие</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Распаковка</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Сжатие</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Ассоциации</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Версия</x:String>
+
+  <!-- General Settings -->
+  <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">Тема</x:String>
+  <x:String x:Key="Text.Settings.Theme.Tooltip" xml:space="preserve">Переключить тему приложения</x:String>
+  <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">Системная (следовать за ОС)</x:String>
+  <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Тёмная</x:String>
+  <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Светлая</x:String>
+  <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Формат сжатия по умолчанию</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Ярлык</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Создать ярлык на рабочем столе</x:String>
+  <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Язык</x:String>
+
+  <!-- Output Settings (shared) -->
+  <x:String x:Key="Text.Settings.Output.Header" xml:space="preserve">Каталог назначения</x:String>
+  <x:String x:Key="Text.Settings.Output.SameDirectory" xml:space="preserve">Сохранять в тот же каталог, что и исходный файл</x:String>
+  <x:String x:Key="Text.Settings.Output.SpecifyDirectory" xml:space="preserve">Указать каталог</x:String>
+  <x:String x:Key="Text.Settings.Output.Browse" xml:space="preserve">Обзор...</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseExtraction" xml:space="preserve">Выберите папку для распаковки</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseCompression" xml:space="preserve">Выберите папку для сжатия</x:String>
+
+  <!-- Extraction Settings -->
+  <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Открыть папку назначения после распаковки</x:String>
+
+  <!-- Compression Settings -->
+  <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Открыть папку назначения после сжатия</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Объединённое сжатие</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Сжать несколько файлов в один архив</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Если выключено, каждый файл будет сжат в отдельный архив</x:String>
+  <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Уровень сжатия</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Уровень сжатия ZIP</x:String>
+  <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Уровень сжатия 7z</x:String>
+
+  <!-- Compression Level Names -->
+  <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Без сжатия</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fastest" xml:space="preserve">Самый быстрый</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fast" xml:space="preserve">Быстрый</x:String>
+  <x:String x:Key="Text.CompressionLevel.Normal" xml:space="preserve">Обычный</x:String>
+  <x:String x:Key="Text.CompressionLevel.Maximum" xml:space="preserve">Максимальный</x:String>
+  <x:String x:Key="Text.CompressionLevel.Ultra" xml:space="preserve">Ультра</x:String>
+
+  <!-- Association Settings -->
+  <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">Выбрать всё</x:String>
+  <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">Снять выделение</x:String>
+
+  <!-- Version Tab -->
+  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Description" xml:space="preserve">Инструмент сжатия &amp; распаковки архивов</x:String>
+  <x:String x:Key="Text.Version.Label" xml:space="preserve">Версия</x:String>
+  <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Проверить обновления</x:String>
+  <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Авторские права</x:String>
+  <x:String x:Key="Text.Version.License" xml:space="preserve">Лицензия</x:String>
+
+  <!-- Buttons -->
+  <x:String x:Key="Text.Button.Save" xml:space="preserve">Сохранить</x:String>
+  <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Отмена</x:String>
+  <x:String x:Key="Text.Button.OK" xml:space="preserve">ОК</x:String>
+  <x:String x:Key="Text.Button.Yes" xml:space="preserve">Да</x:String>
+  <x:String x:Key="Text.Button.No" xml:space="preserve">Нет</x:String>
+
+  <!-- Progress Window -->
+  <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Обработка</x:String>
+  <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Отменено.</x:String>
+
+  <!-- Error Recovery Dialog -->
+  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Информация об ошибке</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">Проблемный файл</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">Параметры восстановления</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">Пропустить этот файл и продолжить</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">Повторить</x:String>
+  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">Остановить распаковку</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">Пропускать все последующие ошибки</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Запомнить этот выбор</x:String>
+
+  <!-- Overwrite Dialog -->
+  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">Папка «{0}» уже существует.\n\nУдалить существующую папку и перезаписать?</x:String>
+  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">Файл «{0}» уже существует.\n\nЗаменить его?</x:String>
+  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Подтверждение перезаписи папки</x:String>
+  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Замена файла</x:String>
+  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">Файл уже существует.\n\nЗаменить его?</x:String>
+
+  <!-- Dialog Titles (MessageService) -->
+  <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Ошибка</x:String>
+  <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Информация</x:String>
+  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Предупреждение</x:String>
+  <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Завершено</x:String>
+  <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Подробности: </x:String>
+
+  <!-- Error Messages -->
+  <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Указанный файл не найден.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Указанный файл или папка не найдены.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Неподдерживаемый формат файла.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Неподдерживаемый формат сжатия.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Произошла ошибка при распаковке.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Произошла ошибка при сжатии.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Произошла ошибка при обработке.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Файл «{0}» используется или доступ запрещён.</x:String>
+  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">Не удалось сохранить настройки.</x:String>
+  <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">Не удалось обработать файлы.</x:String>
+  <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">Не удалось применить настройки ассоциаций файлов.</x:String>
+  <x:String x:Key="Text.Error.InitApp" xml:space="preserve">Не удалось инициализировать приложение.</x:String>
+  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">Не удалось отобразить диалог подтверждения перезаписи: {0}</x:String>
+  <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">Произошла ошибка при выборе всех элементов.</x:String>
+  <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">Произошла ошибка при снятии выделения.</x:String>
+  <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Ошибка распаковки</x:String>
+
+  <!-- Shortcut Messages -->
+  <x:String x:Key="Text.Shortcut.Created" xml:space="preserve">Ярлык создан на рабочем столе.</x:String>
+  <x:String x:Key="Text.Shortcut.Failed" xml:space="preserve">Не удалось создать ярлык.</x:String>
+  <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">Произошла ошибка при создании ярлыка.</x:String>
+
+  <!-- Update Messages -->
+  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Применение обновления... Перезапуск.</x:String>
+  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Установлена последняя версия.</x:String>
+  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ Невозможно проверить обновления в среде разработки.</x:String>
+  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ Репозиторий обновлений не настроен.</x:String>
+  <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ Произошла ошибка при проверке обновлений.</x:String>
+  <x:String x:Key="Text.Update.Timeout" xml:space="preserve">Время ожидания проверки обновлений истекло.</x:String>
+  <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Загрузка обновления...</x:String>
+  <x:String x:Key="Text.Update.Downloaded" xml:space="preserve">Обновление загружено. Применение...</x:String>
+  <x:String x:Key="Text.Update.Latest" xml:space="preserve">Установлена последняя версия.</x:String>
+  <x:String x:Key="Text.Update.DownloadTimeout" xml:space="preserve">Время ожидания загрузки истекло.</x:String>
+  <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Произошла ошибка при проверке обновлений.</x:String>
+  <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Репозиторий обновлений не настроен.</x:String>
+  <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Невозможно проверить обновления в среде разработки.</x:String>
+
+  <!-- Error Handler -->
+  <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">Файл архива не найден</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundDetail" xml:space="preserve">Указанный файл не существует: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundAction" xml:space="preserve">Проверьте путь к файлу и убедитесь, что файл существует.</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDenied" xml:space="preserve">Доступ запрещён</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedDetail" xml:space="preserve">Доступ к файлу или каталогу запрещён: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedAction" xml:space="preserve">Запустите от имени администратора или проверьте права доступа к файлу.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFull" xml:space="preserve">Недостаточно места на диске</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullDetail" xml:space="preserve">На целевом диске недостаточно места: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullAction" xml:space="preserve">Освободите место на диске или распакуйте на другой диск.</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">Файл используется</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">Файл используется другим приложением: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">Закройте приложение, использующее файл, и повторите попытку.</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Произошла ошибка ввода-вывода</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Проверьте состояние файла и повторите попытку.</x:String>
+  <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Файл архива повреждён</x:String>
+  <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Попробуйте загрузить файл повторно или восстановить его.</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">Выполнена недопустимая операция</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperationAction" xml:space="preserve">Проверьте операцию и повторите попытку.</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormat" xml:space="preserve">Неподдерживаемый формат файла</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatDetail" xml:space="preserve">Этот формат файла не поддерживается: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatAction" xml:space="preserve">Используйте поддерживаемый формат (ZIP, 7Z, RAR и др.).</x:String>
+  <x:String x:Key="Text.ErrorHandler.Unexpected" xml:space="preserve">Произошла непредвиденная ошибка</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnexpectedAction" xml:space="preserve">Изучите подробности ошибки и при необходимости обратитесь в службу поддержки.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ArchiveFile" xml:space="preserve">Файл архива: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.ErrorMessage" xml:space="preserve">Сообщение об ошибке: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileSize" xml:space="preserve">Размер файла: {0:N0} байт</x:String>
+  <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">Последнее изменение: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">Не удалось получить информацию о файле</x:String>
+
+  <!-- Error Recovery File Info -->
+  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">Имя файла: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">Размер: {0:N0} байт</x:String>
+  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">Создан: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">Изменён: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">Атрибуты: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">Информация о диске:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">Доступное место: {0:N0} байт</x:String>
+  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">Общий объём: {0:N0} байт</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">Не удалось получить информацию о файле: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">Подробности исключения:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">Тип: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">Сообщение: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">Внутреннее исключение: {0}</x:String>
+
+  <!-- Partial Extraction -->
+  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Распаковка: {0}</x:String>
+  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Повторная распаковка: {0}</x:String>
+  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">Целевой файл не найден в архиве.</x:String>
+  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Файл: {0}\nОшибка: {1}</x:String>
+  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Вы можете повторить попытку или пропустить.</x:String>
+
+</ResourceDictionary>

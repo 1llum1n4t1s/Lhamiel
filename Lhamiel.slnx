@@ -2,10 +2,10 @@
   <Configurations>
     <Platform Name="x64" />
   </Configurations>
-  <Project Path="Lhamiel.csproj">
+  <Project Path="src/Lhamiel/Lhamiel.csproj">
     <Platform Project="x64" />
   </Project>
-  <Project Path="Lhamiel.Tests.Unit/Lhamiel.Tests.Unit.csproj">
+  <Project Path="src/Lhamiel.Tests.Unit/Lhamiel.Tests.Unit.csproj">
     <Platform Project="x64" />
   </Project>
 </Solution>

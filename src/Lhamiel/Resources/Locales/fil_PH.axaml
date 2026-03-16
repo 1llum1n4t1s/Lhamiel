@@ -1,0 +1,205 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://Lhamiel/Resources/Locales/en_US.axaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <!-- Window Titles -->
+  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Tool sa Pag-compress &amp; Pag-extract ng Archive</x:String>
+  <x:String x:Key="Text.Progress.Title" xml:space="preserve">Pinoproseso...</x:String>
+  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Palitan ang File</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Mga Opsyon sa Pagbawi mula sa Error</x:String>
+
+  <!-- Drop Zone -->
+  <x:String x:Key="Text.DropZone.Message" xml:space="preserve">I-drop dito ang mga file para i-compress o i-extract</x:String>
+  <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">I-drag &amp; drop ang mga file sa window na ito para i-compress o i-extract</x:String>
+
+  <!-- Settings Tabs -->
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Pangkalahatan</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Pag-extract</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Pag-compress</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Mga File Association</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Bersyon</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Pangkalahatan</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Extraction</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Compression</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Associations</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Version</x:String>
+
+  <!-- General Settings -->
+  <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">Tema</x:String>
+  <x:String x:Key="Text.Settings.Theme.Tooltip" xml:space="preserve">Palitan ang tema ng application</x:String>
+  <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">System (Sundin ang OS)</x:String>
+  <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Madilim</x:String>
+  <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Maliwanag</x:String>
+  <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Default na Format ng Compression</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Shortcut</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Gumawa ng Desktop Shortcut</x:String>
+  <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Wika</x:String>
+
+  <!-- Output Settings (shared) -->
+  <x:String x:Key="Text.Settings.Output.Header" xml:space="preserve">Output na Direktoryo</x:String>
+  <x:String x:Key="Text.Settings.Output.SameDirectory" xml:space="preserve">I-output sa parehong direktoryo ng source file</x:String>
+  <x:String x:Key="Text.Settings.Output.SpecifyDirectory" xml:space="preserve">Tumukoy ng direktoryo</x:String>
+  <x:String x:Key="Text.Settings.Output.Browse" xml:space="preserve">Mag-browse...</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseExtraction" xml:space="preserve">Pumili ng folder para sa extraction</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseCompression" xml:space="preserve">Pumili ng folder para sa compression</x:String>
+
+  <!-- Extraction Settings -->
+  <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Buksan ang destinasyon na folder pagkatapos mag-extract</x:String>
+
+  <!-- Compression Settings -->
+  <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Buksan ang destinasyon na folder pagkatapos mag-compress</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Pagsasamang Compression</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">I-compress ang maraming file sa isang archive</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Kapag OFF, bawat file ay i-co-compress sa magkahiwalay na archive</x:String>
+  <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Antas ng Compression</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Antas ng ZIP Compression</x:String>
+  <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Antas ng 7z Compression</x:String>
+
+  <!-- Compression Level Names -->
+  <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Walang Compression</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fastest" xml:space="preserve">Pinakamabilis</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fast" xml:space="preserve">Mabilis</x:String>
+  <x:String x:Key="Text.CompressionLevel.Normal" xml:space="preserve">Normal</x:String>
+  <x:String x:Key="Text.CompressionLevel.Maximum" xml:space="preserve">Pinakamataas</x:String>
+  <x:String x:Key="Text.CompressionLevel.Ultra" xml:space="preserve">Ultra</x:String>
+
+  <!-- Association Settings -->
+  <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">Piliin Lahat</x:String>
+  <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">Alisin Lahat ng Pagpili</x:String>
+
+  <!-- Version Tab -->
+  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Description" xml:space="preserve">Tool sa Pag-compress &amp; Pag-extract ng Archive</x:String>
+  <x:String x:Key="Text.Version.Label" xml:space="preserve">Bersyon</x:String>
+  <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Tingnan ang mga Update</x:String>
+  <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Copyright</x:String>
+  <x:String x:Key="Text.Version.License" xml:space="preserve">Lisensya</x:String>
+
+  <!-- Buttons -->
+  <x:String x:Key="Text.Button.Save" xml:space="preserve">I-save</x:String>
+  <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Kanselahin</x:String>
+  <x:String x:Key="Text.Button.OK" xml:space="preserve">OK</x:String>
+  <x:String x:Key="Text.Button.Yes" xml:space="preserve">Oo</x:String>
+  <x:String x:Key="Text.Button.No" xml:space="preserve">Hindi</x:String>
+
+  <!-- Progress Window -->
+  <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Pinoproseso</x:String>
+  <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Kinansela.</x:String>
+
+  <!-- Error Recovery Dialog -->
+  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Impormasyon ng Error</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">May Problemang File</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">Mga Opsyon sa Pagbawi</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">Laktawan ang file na ito at magpatuloy</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">Subukan muli</x:String>
+  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">Itigil ang pag-extract</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">Laktawan lahat ng susunod na error</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Tandaan ang pagpiling ito</x:String>
+
+  <!-- Overwrite Dialog -->
+  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">Umiiral na ang folder na '{0}'.\n\nBurahin ang kasalukuyang folder at i-overwrite?</x:String>
+  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">Umiiral na ang file na '{0}'.\n\nPalitan ito?</x:String>
+  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Kumpirmahin ang Pag-overwrite ng Folder</x:String>
+  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Palitan ang File</x:String>
+  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">Umiiral na ang file.\n\nPalitan ito?</x:String>
+
+  <!-- Dialog Titles (MessageService) -->
+  <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Error</x:String>
+  <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Impormasyon</x:String>
+  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Babala</x:String>
+  <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Tapos Na</x:String>
+  <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Mga Detalye: </x:String>
+
+  <!-- Error Messages -->
+  <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Hindi natagpuan ang tinukoy na file.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Hindi natagpuan ang tinukoy na file o folder.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Hindi suportadong format ng file.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Hindi suportadong format ng compression.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">May naganap na error habang nag-e-extract.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">May naganap na error habang nagko-compress.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">May naganap na error habang pinoproseso.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Ang output na '{0}' ay ginagamit o tinanggihan ang access.</x:String>
+  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">Nabigong i-save ang mga setting.</x:String>
+  <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">Nabigong iproseso ang mga file.</x:String>
+  <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">Nabigong i-apply ang mga setting ng file association.</x:String>
+  <x:String x:Key="Text.Error.InitApp" xml:space="preserve">Nabigong i-initialize ang application.</x:String>
+  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">Nabigong ipakita ang overwrite confirmation dialog: {0}</x:String>
+  <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">May naganap na error sa piliin lahat.</x:String>
+  <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">May naganap na error sa alisin lahat ng pagpili.</x:String>
+  <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Error sa Pag-extract</x:String>
+
+  <!-- Shortcut Messages -->
+  <x:String x:Key="Text.Shortcut.Created" xml:space="preserve">Nagawa na ang shortcut sa desktop.</x:String>
+  <x:String x:Key="Text.Shortcut.Failed" xml:space="preserve">Nabigong gumawa ng shortcut.</x:String>
+  <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">May naganap na error habang gumagawa ng shortcut.</x:String>
+
+  <!-- Update Messages -->
+  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Ina-apply ang update... Nagre-restart.</x:String>
+  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Na-update na sa pinakabago.</x:String>
+  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ Hindi makapag-check ng mga update sa development environment.</x:String>
+  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ Hindi naka-configure ang update repository.</x:String>
+  <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ May naganap na error habang tinitingnan ang mga update.</x:String>
+  <x:String x:Key="Text.Update.Timeout" xml:space="preserve">Nag-timeout ang pag-check ng update.</x:String>
+  <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Dina-download ang update...</x:String>
+  <x:String x:Key="Text.Update.Downloaded" xml:space="preserve">Na-download na ang update. Ina-apply...</x:String>
+  <x:String x:Key="Text.Update.Latest" xml:space="preserve">Pinakabagong bersyon na.</x:String>
+  <x:String x:Key="Text.Update.DownloadTimeout" xml:space="preserve">Nag-timeout ang pag-download.</x:String>
+  <x:String x:Key="Text.Update.CheckError" xml:space="preserve">May naganap na error habang tinitingnan ang mga update.</x:String>
+  <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Hindi naka-configure ang update repository.</x:String>
+  <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Hindi makapag-check ng mga update sa development environment.</x:String>
+
+  <!-- Error Handler -->
+  <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">Hindi natagpuan ang archive file</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundDetail" xml:space="preserve">Hindi umiiral ang tinukoy na file: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundAction" xml:space="preserve">Pakitingnan ang file path at tiyaking umiiral ang file.</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDenied" xml:space="preserve">Tinanggihan ang access</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedDetail" xml:space="preserve">Tinanggihan ang access sa file o direktoryo: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedAction" xml:space="preserve">Patakbuhin bilang administrator o tingnan ang mga pahintulot ng file.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFull" xml:space="preserve">Kulang ang espasyo sa disk</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullDetail" xml:space="preserve">Kulang ang espasyo sa destinasyon na disk: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullAction" xml:space="preserve">Mag-free ng espasyo sa disk o mag-extract sa ibang disk.</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">Ginagamit ang file</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">Ginagamit ang file ng ibang application: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">Isara ang application na gumagamit ng file at subukan muli.</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">May naganap na I/O error</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Tingnan ang kalagayan ng file at subukan muli.</x:String>
+  <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Sira ang archive file</x:String>
+  <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Subukang i-download muli o ayusin ang file.</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">May isinagawang hindi wastong operasyon</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperationAction" xml:space="preserve">Tiyakin ang operasyon at subukan muli.</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormat" xml:space="preserve">Hindi suportadong format ng file</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatDetail" xml:space="preserve">Hindi suportado ang format ng file na ito: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatAction" xml:space="preserve">Gumamit ng suportadong format (ZIP, 7Z, RAR, atbp.).</x:String>
+  <x:String x:Key="Text.ErrorHandler.Unexpected" xml:space="preserve">May naganap na hindi inaasahang error</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnexpectedAction" xml:space="preserve">Suriin ang mga detalye ng error at makipag-ugnayan sa support kung kinakailangan.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ArchiveFile" xml:space="preserve">Archive file: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.ErrorMessage" xml:space="preserve">Mensahe ng error: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileSize" xml:space="preserve">Laki ng file: {0:N0} bytes</x:String>
+  <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">Huling binago: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">Nabigong kunin ang impormasyon ng file</x:String>
+
+  <!-- Error Recovery File Info -->
+  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">Pangalan ng file: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">Laki: {0:N0} bytes</x:String>
+  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">Ginawa: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">Binago: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">Mga Attribute: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">Impormasyon ng disk:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">Magagamit na espasyo: {0:N0} bytes</x:String>
+  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">Kabuuang kapasidad: {0:N0} bytes</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">Nabigong kunin ang impormasyon ng file: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">Mga detalye ng exception:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">Uri: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">Mensahe: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">Inner exception: {0}</x:String>
+
+  <!-- Partial Extraction -->
+  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Ine-extract: {0}</x:String>
+  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Muling ine-extract: {0}</x:String>
+  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">Hindi natagpuan ang target na file sa archive.</x:String>
+  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">File: {0}\nError: {1}</x:String>
+  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Maaari kang pumiling subukan muli o laktawan.</x:String>
+
+</ResourceDictionary>

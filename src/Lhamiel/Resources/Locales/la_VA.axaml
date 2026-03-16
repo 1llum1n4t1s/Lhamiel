@@ -1,0 +1,205 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://Lhamiel/Resources/Locales/en_US.axaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <!-- Window Titles -->
+  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Instrumentum Compressionis &amp; Extractionis Archivorum</x:String>
+  <x:String x:Key="Text.Progress.Title" xml:space="preserve">Processus...</x:String>
+  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Substitutio Fasciculi</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Optiones Recuperationis Erroris</x:String>
+
+  <!-- Drop Zone -->
+  <x:String x:Key="Text.DropZone.Message" xml:space="preserve">Fasciculos hic depone ad comprimendum vel extrahendum</x:String>
+  <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">Trahe &amp; depone fasciculos in hanc fenestram ad comprimendum vel extrahendum</x:String>
+
+  <!-- Settings Tabs -->
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Generalia</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Extractio</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Compressio</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Consociationes Fasciculorum</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Versio</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Generalia</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Extractio</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Compressio</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Consociationes</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Versio</x:String>
+
+  <!-- General Settings -->
+  <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">Thema</x:String>
+  <x:String x:Key="Text.Settings.Theme.Tooltip" xml:space="preserve">Mutare thema applicationis</x:String>
+  <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">Systema (Sequi OS)</x:String>
+  <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Obscurum</x:String>
+  <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Lucidum</x:String>
+  <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Forma Compressionis Praefinita</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Compendium</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Creare Compendium in Mensa</x:String>
+  <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Lingua</x:String>
+
+  <!-- Output Settings -->
+  <x:String x:Key="Text.Settings.Output.Header" xml:space="preserve">Directorium Exitus</x:String>
+  <x:String x:Key="Text.Settings.Output.SameDirectory" xml:space="preserve">In eodem directorio ac fasciculus fontis</x:String>
+  <x:String x:Key="Text.Settings.Output.SpecifyDirectory" xml:space="preserve">Designare directorium</x:String>
+  <x:String x:Key="Text.Settings.Output.Browse" xml:space="preserve">Perscrutari...</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseExtraction" xml:space="preserve">Eligere directorium extractionis</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseCompression" xml:space="preserve">Eligere directorium compressionis</x:String>
+
+  <!-- Extraction Settings -->
+  <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Aperire directorium post extractionem</x:String>
+
+  <!-- Compression Settings -->
+  <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Aperire directorium post compressionem</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Compressio Coniuncta</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Comprimere plures fasciculos in unum archivum</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Si desactivatum, quisque fasciculus separatim comprimetur</x:String>
+  <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Gradus Compressionis</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Gradus Compressionis ZIP</x:String>
+  <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Gradus Compressionis 7z</x:String>
+
+  <!-- Compression Level Names -->
+  <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Nulla Compressio</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fastest" xml:space="preserve">Celerrimum</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fast" xml:space="preserve">Celere</x:String>
+  <x:String x:Key="Text.CompressionLevel.Normal" xml:space="preserve">Normale</x:String>
+  <x:String x:Key="Text.CompressionLevel.Maximum" xml:space="preserve">Maximum</x:String>
+  <x:String x:Key="Text.CompressionLevel.Ultra" xml:space="preserve">Ultra</x:String>
+
+  <!-- Association Settings -->
+  <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">Omnia Eligere</x:String>
+  <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">Omnia Deligere</x:String>
+
+  <!-- Version Tab -->
+  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Description" xml:space="preserve">Instrumentum Compressionis &amp; Extractionis Archivorum</x:String>
+  <x:String x:Key="Text.Version.Label" xml:space="preserve">Versio</x:String>
+  <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Quaerere Renovationes</x:String>
+  <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Ius Auctoris</x:String>
+  <x:String x:Key="Text.Version.License" xml:space="preserve">Licentia</x:String>
+
+  <!-- Buttons -->
+  <x:String x:Key="Text.Button.Save" xml:space="preserve">Servare</x:String>
+  <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Rescindere</x:String>
+  <x:String x:Key="Text.Button.OK" xml:space="preserve">Bene</x:String>
+  <x:String x:Key="Text.Button.Yes" xml:space="preserve">Ita</x:String>
+  <x:String x:Key="Text.Button.No" xml:space="preserve">Non</x:String>
+
+  <!-- Progress Window -->
+  <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Processus</x:String>
+  <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Abrogatum.</x:String>
+
+  <!-- Error Recovery Dialog -->
+  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informationes Erroris</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">Fasciculus Problematicus</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">Optiones Recuperationis</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">Praeterire hunc fasciculum et continuare</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">Iterare</x:String>
+  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">Sistere extractionem</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">Praeterire omnes errores sequentes</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Meminisse hanc electionem</x:String>
+
+  <!-- Overwrite Dialog -->
+  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">Directorium '{0}' iam existit.\n\nDelere directorium existens et substituere?</x:String>
+  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">Fasciculus '{0}' iam existit.\n\nSubstituere?</x:String>
+  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Confirmare Substitutionem Directorii</x:String>
+  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Substituere Fasciculum</x:String>
+  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">Fasciculus iam existit.\n\nSubstituere?</x:String>
+
+  <!-- Dialog Titles -->
+  <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Error</x:String>
+  <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Informatio</x:String>
+  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Monitum</x:String>
+  <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Perfectum</x:String>
+  <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Singula: </x:String>
+
+  <!-- Error Messages -->
+  <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Fasciculus designatus non inventus est.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Fasciculus vel directorium designatum non inventum est.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Forma fasciculi non sustinetur.\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Forma compressionis non sustinetur.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Error accidit in extractione.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Error accidit in compressione.\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Error accidit in processu.\n{0}</x:String>
+  <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Exitus '{0}' in usu est vel accessus negatur.</x:String>
+  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">Optiones servare non potuit.</x:String>
+  <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">Fasciculos processare non potuit.</x:String>
+  <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">Optiones consociationis applicare non potuit.</x:String>
+  <x:String x:Key="Text.Error.InitApp" xml:space="preserve">Applicationem initiare non potuit.</x:String>
+  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">Dialogum substitutionis ostendere non potuit: {0}</x:String>
+  <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">Error accidit in selectione omnium.</x:String>
+  <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">Error accidit in deselectione omnium.</x:String>
+  <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Error Extractionis</x:String>
+
+  <!-- Shortcut Messages -->
+  <x:String x:Key="Text.Shortcut.Created" xml:space="preserve">Compendium in mensa creatum est.</x:String>
+  <x:String x:Key="Text.Shortcut.Failed" xml:space="preserve">Compendium creare non potuit.</x:String>
+  <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">Error accidit dum compendium creatur.</x:String>
+
+  <!-- Update Messages -->
+  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Renovatio applicatur... Reinitiatio.</x:String>
+  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Iam ad diem.</x:String>
+  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ Renovationes in ambitu progressionis quaeri non possunt.</x:String>
+  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ Repositorium renovationum non configuratum est.</x:String>
+  <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ Error accidit dum renovationes quaeruntur.</x:String>
+  <x:String x:Key="Text.Update.Timeout" xml:space="preserve">Tempus quaerendi renovationes excessum est.</x:String>
+  <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Renovatio deponitur...</x:String>
+  <x:String x:Key="Text.Update.Downloaded" xml:space="preserve">Renovatio deposita. Applicatur...</x:String>
+  <x:String x:Key="Text.Update.Latest" xml:space="preserve">Iam versio novissima.</x:String>
+  <x:String x:Key="Text.Update.DownloadTimeout" xml:space="preserve">Tempus deponendi excessum est.</x:String>
+  <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Error accidit dum renovationes quaeruntur.</x:String>
+  <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Repositorium renovationum non configuratum est.</x:String>
+  <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Renovationes in ambitu progressionis quaeri non possunt.</x:String>
+
+  <!-- Error Handler -->
+  <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">Fasciculus archivi non inventus</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundDetail" xml:space="preserve">Fasciculus designatus non existit: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundAction" xml:space="preserve">Viam fasciculi verifica et fasciculum existere confirma.</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDenied" xml:space="preserve">Accessus negatus</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedDetail" xml:space="preserve">Accessus ad fasciculum vel directorium negatus est: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedAction" xml:space="preserve">Ut administrator exsequere vel permissiones verifica.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFull" xml:space="preserve">Spatium disci insufficiens</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullDetail" xml:space="preserve">Discus destinationis spatium insufficiens habet: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullAction" xml:space="preserve">Spatium disci libera vel in alium discum extrahe.</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">Fasciculus in usu est</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">Fasciculus ab alia applicatione usurpatur: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">Claude applicationem fasciculum usurpantem et iterum tempta.</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Error I/O accidit</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Statum fasciculi verifica et iterum tempta.</x:String>
+  <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Fasciculus archivi corruptus est</x:String>
+  <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Fasciculum iterum depone vel repara.</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">Operatio invalida effecta est</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperationAction" xml:space="preserve">Operationem verifica et iterum tempta.</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormat" xml:space="preserve">Forma fasciculi non sustinetur</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatDetail" xml:space="preserve">Haec forma fasciculi non sustinetur: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatAction" xml:space="preserve">Forma sustenta utere (ZIP, 7Z, RAR, etc.).</x:String>
+  <x:String x:Key="Text.ErrorHandler.Unexpected" xml:space="preserve">Error inopinatus accidit</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnexpectedAction" xml:space="preserve">Singula erroris inspice et si necesse est auxilium pete.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ArchiveFile" xml:space="preserve">Fasciculus archivi: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.ErrorMessage" xml:space="preserve">Nuntius erroris: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileSize" xml:space="preserve">Magnitudo fasciculi: {0:N0} octeti</x:String>
+  <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">Ultima modificatio: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">Informationes fasciculi obtinere non potuit</x:String>
+
+  <!-- Error Recovery File Info -->
+  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">Nomen fasciculi: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">Magnitudo: {0:N0} octeti</x:String>
+  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">Creatum: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">Modificatum: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">Attributa: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">Informationes disci:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">Spatium disponibile: {0:N0} octeti</x:String>
+  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">Capacitas totalis: {0:N0} octeti</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">Informationes fasciculi obtinere non potuit: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">Singula exceptionis:</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">Genus: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">Nuntius: {0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">Exceptio interior: {0}</x:String>
+
+  <!-- Partial Extraction -->
+  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Extrahitur: {0}</x:String>
+  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Iterum extrahitur: {0}</x:String>
+  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">Fasciculus destinatus in archivo non inventus est.</x:String>
+  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Fasciculus: {0}\nError: {1}</x:String>
+  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Iterare vel praeterire potes.</x:String>
+
+</ResourceDictionary>

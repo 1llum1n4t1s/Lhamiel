@@ -1,0 +1,205 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://Lhamiel/Resources/Locales/en_US.axaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <!-- Window Titles -->
+  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - 壓縮檔壓縮與解壓縮工具</x:String>
+  <x:String x:Key="Text.Progress.Title" xml:space="preserve">處理中...</x:String>
+  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">取代檔案</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">錯誤復原選項</x:String>
+
+  <!-- Drop Zone -->
+  <x:String x:Key="Text.DropZone.Message" xml:space="preserve">將檔案拖曳至此以壓縮或解壓縮</x:String>
+  <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">將檔案拖放到此視窗以進行壓縮或解壓縮</x:String>
+
+  <!-- Settings Tabs -->
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ 一般</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 解壓縮</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 壓縮</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 檔案關聯</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ 版本</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ 一般</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 解壓</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 壓縮</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 關聯</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ 版本</x:String>
+
+  <!-- General Settings -->
+  <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">佈景主題</x:String>
+  <x:String x:Key="Text.Settings.Theme.Tooltip" xml:space="preserve">切換應用程式佈景主題</x:String>
+  <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">系統（跟隨作業系統）</x:String>
+  <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">深色</x:String>
+  <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">淺色</x:String>
+  <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">預設壓縮格式</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">捷徑</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 建立桌面捷徑</x:String>
+  <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">語言</x:String>
+
+  <!-- Output Settings (shared) -->
+  <x:String x:Key="Text.Settings.Output.Header" xml:space="preserve">輸出目錄</x:String>
+  <x:String x:Key="Text.Settings.Output.SameDirectory" xml:space="preserve">輸出至與來源檔案相同的目錄</x:String>
+  <x:String x:Key="Text.Settings.Output.SpecifyDirectory" xml:space="preserve">指定目錄</x:String>
+  <x:String x:Key="Text.Settings.Output.Browse" xml:space="preserve">瀏覽...</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseExtraction" xml:space="preserve">選擇解壓縮資料夾</x:String>
+  <x:String x:Key="Text.Settings.Output.BrowseCompression" xml:space="preserve">選擇壓縮資料夾</x:String>
+
+  <!-- Extraction Settings -->
+  <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">解壓縮後開啟目的資料夾</x:String>
+
+  <!-- Compression Settings -->
+  <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">壓縮後開啟目的資料夾</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">合併壓縮</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">將多個檔案壓縮成單一壓縮檔</x:String>
+  <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">關閉時，每個檔案將分別壓縮成獨立的壓縮檔</x:String>
+  <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">壓縮等級</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP 壓縮等級</x:String>
+  <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z 壓縮等級</x:String>
+
+  <!-- Compression Level Names -->
+  <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">不壓縮</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fastest" xml:space="preserve">最快速</x:String>
+  <x:String x:Key="Text.CompressionLevel.Fast" xml:space="preserve">快速</x:String>
+  <x:String x:Key="Text.CompressionLevel.Normal" xml:space="preserve">標準</x:String>
+  <x:String x:Key="Text.CompressionLevel.Maximum" xml:space="preserve">最高</x:String>
+  <x:String x:Key="Text.CompressionLevel.Ultra" xml:space="preserve">極致</x:String>
+
+  <!-- Association Settings -->
+  <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">全選</x:String>
+  <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">取消全選</x:String>
+
+  <!-- Version Tab -->
+  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Description" xml:space="preserve">壓縮檔壓縮與解壓縮工具</x:String>
+  <x:String x:Key="Text.Version.Label" xml:space="preserve">版本</x:String>
+  <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">檢查更新</x:String>
+  <x:String x:Key="Text.Version.Copyright" xml:space="preserve">版權</x:String>
+  <x:String x:Key="Text.Version.License" xml:space="preserve">授權條款</x:String>
+
+  <!-- Buttons -->
+  <x:String x:Key="Text.Button.Save" xml:space="preserve">儲存</x:String>
+  <x:String x:Key="Text.Button.Cancel" xml:space="preserve">取消</x:String>
+  <x:String x:Key="Text.Button.OK" xml:space="preserve">確定</x:String>
+  <x:String x:Key="Text.Button.Yes" xml:space="preserve">是</x:String>
+  <x:String x:Key="Text.Button.No" xml:space="preserve">否</x:String>
+
+  <!-- Progress Window -->
+  <x:String x:Key="Text.Progress.Processing" xml:space="preserve">處理中</x:String>
+  <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">已取消。</x:String>
+
+  <!-- Error Recovery Dialog -->
+  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">錯誤資訊</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">問題檔案</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">復原選項</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">略過此檔案並繼續</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">重試</x:String>
+  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">停止解壓縮</x:String>
+  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">略過所有後續錯誤</x:String>
+  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">記住此選擇</x:String>
+
+  <!-- Overwrite Dialog -->
+  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">資料夾「{0}」已存在。\n\n是否刪除現有資料夾並覆蓋？</x:String>
+  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">檔案「{0}」已存在。\n\n是否取代？</x:String>
+  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">確認覆蓋資料夾</x:String>
+  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">取代檔案</x:String>
+  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">該檔案已存在。\n\n是否取代？</x:String>
+
+  <!-- Dialog Titles (MessageService) -->
+  <x:String x:Key="Text.Dialog.Error" xml:space="preserve">錯誤</x:String>
+  <x:String x:Key="Text.Dialog.Info" xml:space="preserve">資訊</x:String>
+  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">警告</x:String>
+  <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">完成</x:String>
+  <x:String x:Key="Text.Dialog.Details" xml:space="preserve">詳細資訊：</x:String>
+
+  <!-- Error Messages -->
+  <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">找不到指定的檔案。\n{0}</x:String>
+  <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">找不到指定的檔案或資料夾。\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">不支援的檔案格式。\n{0}</x:String>
+  <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">不支援的壓縮格式。\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">解壓縮時發生錯誤。\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">壓縮時發生錯誤。\n{0}</x:String>
+  <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">處理時發生錯誤。\n{0}</x:String>
+  <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">輸出「{0}」正在使用中或存取被拒絕。</x:String>
+  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">儲存設定失敗。</x:String>
+  <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">處理檔案失敗。</x:String>
+  <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">套用檔案關聯設定失敗。</x:String>
+  <x:String x:Key="Text.Error.InitApp" xml:space="preserve">應用程式初始化失敗。</x:String>
+  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">顯示覆蓋確認對話方塊失敗：{0}</x:String>
+  <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">全選時發生錯誤。</x:String>
+  <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">取消全選時發生錯誤。</x:String>
+  <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">解壓縮錯誤</x:String>
+
+  <!-- Shortcut Messages -->
+  <x:String x:Key="Text.Shortcut.Created" xml:space="preserve">已在桌面建立捷徑。</x:String>
+  <x:String x:Key="Text.Shortcut.Failed" xml:space="preserve">建立捷徑失敗。</x:String>
+  <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">建立捷徑時發生錯誤。</x:String>
+
+  <!-- Update Messages -->
+  <x:String x:Key="Text.Update.Applying" xml:space="preserve">正在套用更新... 即將重新啟動。</x:String>
+  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ 已是最新版本。</x:String>
+  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ 無法在開發環境中檢查更新。</x:String>
+  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ 未設定更新儲存庫。</x:String>
+  <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ 檢查更新時發生錯誤。</x:String>
+  <x:String x:Key="Text.Update.Timeout" xml:space="preserve">檢查更新逾時。</x:String>
+  <x:String x:Key="Text.Update.Downloading" xml:space="preserve">正在下載更新...</x:String>
+  <x:String x:Key="Text.Update.Downloaded" xml:space="preserve">更新已下載，正在套用...</x:String>
+  <x:String x:Key="Text.Update.Latest" xml:space="preserve">已是最新版本。</x:String>
+  <x:String x:Key="Text.Update.DownloadTimeout" xml:space="preserve">下載逾時。</x:String>
+  <x:String x:Key="Text.Update.CheckError" xml:space="preserve">檢查更新時發生錯誤。</x:String>
+  <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">未設定更新儲存庫。</x:String>
+  <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">無法在開發環境中檢查更新。</x:String>
+
+  <!-- Error Handler -->
+  <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">找不到壓縮檔</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundDetail" xml:space="preserve">指定的檔案不存在：{0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileNotFoundAction" xml:space="preserve">請確認檔案路徑，並確保檔案存在。</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDenied" xml:space="preserve">存取被拒絕</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedDetail" xml:space="preserve">檔案或目錄的存取被拒絕：{0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.AccessDeniedAction" xml:space="preserve">請以系統管理員身分執行，或檢查檔案權限。</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFull" xml:space="preserve">磁碟空間不足</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullDetail" xml:space="preserve">目的磁碟空間不足：{0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DiskFullAction" xml:space="preserve">請釋放磁碟空間，或解壓縮至其他磁碟。</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">檔案使用中</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">檔案正被其他應用程式使用：{0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">請關閉正在使用該檔案的應用程式後重試。</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">發生 I/O 錯誤</x:String>
+  <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">請檢查檔案狀態後重試。</x:String>
+  <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">壓縮檔已損毀</x:String>
+  <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">請嘗試重新下載或修復檔案。</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">執行了無效的操作</x:String>
+  <x:String x:Key="Text.ErrorHandler.InvalidOperationAction" xml:space="preserve">請確認操作後重試。</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormat" xml:space="preserve">不支援的檔案格式</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatDetail" xml:space="preserve">不支援此檔案格式：{0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnsupportedFormatAction" xml:space="preserve">請使用支援的格式（ZIP、7Z、RAR 等）。</x:String>
+  <x:String x:Key="Text.ErrorHandler.Unexpected" xml:space="preserve">發生未預期的錯誤</x:String>
+  <x:String x:Key="Text.ErrorHandler.UnexpectedAction" xml:space="preserve">請檢閱錯誤詳細資訊，必要時請聯絡支援團隊。</x:String>
+  <x:String x:Key="Text.ErrorHandler.ArchiveFile" xml:space="preserve">壓縮檔：{0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.ErrorMessage" xml:space="preserve">錯誤訊息：{0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileSize" xml:space="preserve">檔案大小：{0:N0} 位元組</x:String>
+  <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">最後修改時間：{0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">無法取得檔案資訊</x:String>
+
+  <!-- Error Recovery File Info -->
+  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">檔案名稱：{0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">大小：{0:N0} 位元組</x:String>
+  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">建立日期：{0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">修改日期：{0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">屬性：{0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">磁碟資訊：</x:String>
+  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">可用空間：{0:N0} 位元組</x:String>
+  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">總容量：{0:N0} 位元組</x:String>
+  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">無法取得檔案資訊：{0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">例外狀況詳細資訊：</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">類型：{0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">訊息：{0}</x:String>
+  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">內部例外狀況：{0}</x:String>
+
+  <!-- Partial Extraction -->
+  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">解壓縮中：{0}</x:String>
+  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">重新解壓縮中：{0}</x:String>
+  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">在壓縮檔中找不到目標檔案。</x:String>
+  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">檔案：{0}\n錯誤：{1}</x:String>
+  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">您可以選擇重試或略過。</x:String>
+
+</ResourceDictionary>
