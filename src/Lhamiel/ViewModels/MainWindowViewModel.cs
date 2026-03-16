@@ -6,6 +6,7 @@ using Lhamiel.Models;
 using Lhamiel.Util;
 using Lhamiel.View;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Reflection;
 namespace Lhamiel.ViewModels;
 
@@ -209,6 +210,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private string _versionText = string.Empty;
+
+    [ObservableProperty]
+    private string _sevenZipVersionText = string.Empty;
 
     [ObservableProperty]
     private string _copyrightText = string.Empty;
@@ -589,27 +593,29 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var rawVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "1.0.0";
             VersionText = rawVersion.Contains('+') ? rawVersion.Split('+')[0] : rawVersion;
             CopyrightText = assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "Copyright © 2025-2026 ゆろち";
-            LicenseText = @"MIT License
 
-Copyright (c) 2024 Lhamiel
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the ""Software""), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED ""AS IS"", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.";
+            // 7z.dll（7-Zip本家）のバージョンを取得
+            var dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "7z.dll");
+            if (File.Exists(dllPath))
+            {
+                var fileVersion = FileVersionInfo.GetVersionInfo(dllPath);
+                SevenZipVersionText = fileVersion.FileVersion ?? "不明";
+            }
+            else
+            {
+                SevenZipVersionText = "不明";
+            }
+            // LICENSEファイルを埋め込みリソースから読み込み
+            using var stream = assembly.GetManifestResourceStream("Lhamiel.LICENSE");
+            if (stream is not null)
+            {
+                using var reader = new StreamReader(stream);
+                LicenseText = reader.ReadToEnd().TrimEnd();
+            }
+            else
+            {
+                LicenseText = "ライセンス情報を読み込めませんでした。";
+            }
             Logger.Log($"バージョン情報を読み込みました: Version {VersionText}");
         }
         catch (Exception ex)

@@ -73,6 +73,7 @@
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">Archiv-Komprimierungs- &amp; Entpackungstool</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">Version</x:String>
+  <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Nach Updates suchen</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Urheberrecht</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Lizenz</x:String>

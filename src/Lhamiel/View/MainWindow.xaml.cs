@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Lhamiel.Util;
 using Lhamiel.ViewModels;
@@ -13,11 +14,34 @@ namespace Lhamiel.View;
 public class MainWindow : Window
 {
     private Border? _dropOverlay;
+    private Border? _accentOverlay;
 
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
         _dropOverlay = this.FindControl<Border>("DropOverlay");
+        _accentOverlay = this.FindControl<Border>("AccentOverlay");
+        ApplyAccentOverlay();
+    }
+
+    /// <summary>
+    /// OSのアクセントカラーを取得してオーバーレイに適用
+    /// </summary>
+    private void ApplyAccentOverlay()
+    {
+        if (_accentOverlay is null) return;
+        try
+        {
+            var colors = Application.Current?.PlatformSettings?.GetColorValues();
+            if (colors is { } c)
+            {
+                _accentOverlay.Background = new SolidColorBrush(c.AccentColor1);
+            }
+        }
+        catch
+        {
+            // アクセントカラー取得に失敗した場合はオーバーレイなし
+        }
     }
 
     /// <summary>

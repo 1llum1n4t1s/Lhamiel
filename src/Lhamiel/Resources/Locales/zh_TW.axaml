@@ -73,6 +73,7 @@
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">壓縮檔壓縮與解壓縮工具</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">版本</x:String>
+  <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">檢查更新</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">版權</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">授權條款</x:String>

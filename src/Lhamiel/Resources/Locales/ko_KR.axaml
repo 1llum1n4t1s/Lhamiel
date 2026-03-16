@@ -73,6 +73,7 @@
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">아카이브 압축 &amp; 해제 도구</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">버전</x:String>
+  <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">업데이트 확인</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">저작권</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">라이선스</x:String>

@@ -73,6 +73,7 @@
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">காப்பக சுருக்கம் &amp; பிரித்தெடுத்தல் கருவி</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">பதிப்பு</x:String>
+  <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">புதுப்பிப்புகளைச் சரிபார்</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">பதிப்புரிமை</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">உரிமம்</x:String>

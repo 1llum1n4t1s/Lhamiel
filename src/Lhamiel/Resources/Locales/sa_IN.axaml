@@ -73,6 +73,7 @@
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">संग्रहसङ्कोचन-निष्कर्षणसाधनम्</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">संस्करणम्</x:String>
+  <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">नवीकरणं पृच्छतु</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">प्रतिलिप्यधिकारः</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">अनुज्ञापत्रम्</x:String>

@@ -30,11 +30,16 @@
             <ExperimentalAcrylicBorder.Material>
                 <ExperimentalAcrylicMaterial
                     BackgroundSource="Digger"
-                    MaterialOpacity="0.8"
+                    MaterialOpacity="0.2"
                     TintColor="{DynamicResource Color.Window}"
-                    TintOpacity="0.92" />
+                    TintOpacity="1.0" />
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
+        <!--  アクセントカラーオーバーレイ（OSのアクセントカラーを超薄く重ねる）  -->
+        <Border
+            x:Name="AccentOverlay"
+            IsHitTestVisible="False"
+            Opacity="0.04" />
         <Grid>
             <!--  ═══ サイドバー + コンテンツ ═══  -->
             <TabControl Margin="16,36,16,16" Classes="sidebar">
@@ -373,6 +378,7 @@
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
 
                                     <TextBlock
@@ -399,6 +405,22 @@
                                         IsEnabled="{Binding !IsCheckingUpdate}" />
                                     <TextBlock
                                         Grid.Row="1"
+                                        Grid.Column="0"
+                                        Margin="0,6,0,0"
+                                        VerticalAlignment="Center"
+                                        FontSize="13"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="{DynamicResource Text.Version.SevenZipLabel}" />
+                                    <TextBlock
+                                        Grid.Row="1"
+                                        Grid.Column="1"
+                                        Grid.ColumnSpan="2"
+                                        Margin="0,6,0,0"
+                                        VerticalAlignment="Center"
+                                        FontSize="13"
+                                        Text="{Binding SevenZipVersionText}" />
+                                    <TextBlock
+                                        Grid.Row="2"
                                         Grid.Column="0"
                                         Grid.ColumnSpan="3"
                                         Margin="0,6,0,0"

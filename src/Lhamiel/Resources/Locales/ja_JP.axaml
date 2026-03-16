@@ -73,6 +73,7 @@
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">アーカイブ圧縮・展開ツール</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">バージョン</x:String>
+  <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">アップデート確認</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">コピーライト</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">ライセンス</x:String>

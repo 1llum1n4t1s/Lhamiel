@@ -73,6 +73,7 @@
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">Alat Kompresi &amp; Ekstraksi Arsip</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">Versi</x:String>
+  <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Periksa Pembaruan</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Hak Cipta</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Lisensi</x:String>

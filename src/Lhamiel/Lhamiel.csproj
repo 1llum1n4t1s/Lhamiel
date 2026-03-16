@@ -84,6 +84,7 @@
     <EmbeddedResource Update="Properties\Resources.resx">
       <Generator></Generator>
     </EmbeddedResource>
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)..\..\LICENSE" LogicalName="Lhamiel.LICENSE" />
   </ItemGroup>
 
 </Project>
