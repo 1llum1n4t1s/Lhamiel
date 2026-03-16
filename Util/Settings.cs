@@ -19,6 +19,11 @@ public class Settings
     private static readonly string SettingsFilePath = Path.Combine(AppDataDirectory, "settings.json");
 
     /// <summary>
+    /// テーマ設定（"System", "Dark", "Light"）
+    /// </summary>
+    public string Theme { get; set; } = "System";
+
+    /// <summary>
     /// 圧縮形式の設定
     /// </summary>
     public string CompressionFormat { get; set; } = "ZIP";
@@ -204,6 +209,7 @@ public class Settings
     /// </summary>
     public void ResetToDefaults()
     {
+        Theme = "System";
         CompressionFormat = "ZIP";
         ExtractionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         CompressionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);

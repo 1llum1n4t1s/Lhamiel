@@ -100,6 +100,35 @@ jobs:
           }
           Write-Host "Successfully built: $exePath"
 
+      - name: README.txt を生成して publish に配置
+        shell: pwsh
+        run: |
+          $publishDir = Join-Path "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
+          $readmeMd = "README.md"
+          $readmeTxt = Join-Path $publishDir "README.txt"
+
+          if (-not (Test-Path $readmeMd)) {
+            Write-Error "README.md not found"
+            exit 1
+          }
+
+          # Markdown → プレーンテキスト変換
+          # 見出し記号、リンク、画像タグ、装飾記号を除去
+          $content = Get-Content -Path $readmeMd -Raw -Encoding utf8
+          $content = $content -replace '!\[.*?\]\(.*?\)\r?\n?', ''          # 画像タグ除去
+          $content = $content -replace '<img[^>]*/?>\r?\n?', ''            # HTML imgタグ除去
+          $content = $content -replace '\[([^\]]+)\]\(([^\)]+)\)', '$1 ($2)' # [text](url) → text (url)
+          $content = $content -replace '^#{1,6}\s+', '' -replace '(?m)^#{1,6}\s+', '' # 見出し記号除去
+          $content = $content -replace '\*\*([^*]+)\*\*', '$1'             # 太字除去
+          $content = $content -replace '`([^`]+)`', '$1'                   # インラインコード除去
+          $content = $content -replace '^\| .+\|$', '' -replace '(?m)^\| .+\|$', '' # テーブル行除去
+          $content = $content -replace '^\|[-: ]+\|$', '' -replace '(?m)^\|[-: ]+\|$', '' # テーブル区切り除去
+          $content = $content -replace '(?m)^>\s*', ''                     # 引用記号除去
+          $content = $content -replace '\r?\n{3,}', "`n`n"                 # 連続空行を2行に
+
+          [System.IO.File]::WriteAllText($readmeTxt, $content.Trim(), [System.Text.Encoding]::UTF8)
+          Write-Host "README.txt generated at: $readmeTxt"
+
       - name: Velopack CLI をインストール
         shell: pwsh
         run: |

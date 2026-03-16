@@ -1,61 +1,131 @@
-<Window x:Class="Lhamiel.View.ErrorRecoveryDialog"
-        xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:primitives="using:Avalonia.Controls.Primitives"
-        xmlns:view="using:Lhamiel.View"
-        x:DataType="view:ErrorRecoveryDialog"
-        Title="エラー回復オプション" Height="500" Width="600"
-        WindowStartupLocation="CenterOwner"
-        CanResize="True">
+﻿<Window
+    x:Class="Lhamiel.View.ErrorRecoveryDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:primitives="using:Avalonia.Controls.Primitives"
+    xmlns:view="using:Lhamiel.View"
+    Title="エラー回復オプション"
+    Width="600"
+    Height="500"
+    x:DataType="view:ErrorRecoveryDialog"
+    Background="{DynamicResource Brush.Window}"
+    CanResize="True"
+    WindowStartupLocation="CenterOwner">
     <Grid Margin="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- エラー情報 -->
-        <primitives:HeaderedContentControl Grid.Row="0" Header="エラー情報" Margin="0,0,0,10">
+        <!--  エラー情報  -->
+        <primitives:HeaderedContentControl
+            Grid.Row="0"
+            Margin="0,0,0,10"
+            Header="エラー情報">
             <StackPanel Margin="10">
-                <TextBlock Text="{Binding ErrorMessage}" FontWeight="Bold" Foreground="Red" TextWrapping="Wrap"/>
-                <TextBlock Text="{Binding ErrorDetails}" Margin="0,5,0,0" TextWrapping="Wrap" FontSize="12"/>
-                <TextBlock Text="{Binding RecommendedAction}" Margin="0,5,0,0" TextWrapping="Wrap" FontSize="12" Foreground="Blue"/>
+                <TextBlock
+                    FontWeight="Bold"
+                    Foreground="Red"
+                    Text="{Binding ErrorMessage}"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Margin="0,5,0,0"
+                    FontSize="12"
+                    Text="{Binding ErrorDetails}"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    Margin="0,5,0,0"
+                    FontSize="12"
+                    Foreground="Blue"
+                    Text="{Binding RecommendedAction}"
+                    TextWrapping="Wrap" />
             </StackPanel>
         </primitives:HeaderedContentControl>
 
-        <!-- ファイル情報 -->
-        <primitives:HeaderedContentControl Grid.Row="1" Header="問題のあるファイル" Margin="0,0,0,10">
+        <!--  ファイル情報  -->
+        <primitives:HeaderedContentControl
+            Grid.Row="1"
+            Margin="0,0,0,10"
+            Header="問題のあるファイル">
             <Grid>
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                
-                <TextBlock Grid.Row="0" Text="{Binding ProblematicFilePath}" FontWeight="Bold" TextWrapping="Wrap" Margin="5"/>
-                
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="5">
-                    <TextBlock Text="{Binding FileDetails}" TextWrapping="Wrap" FontFamily="Consolas" FontSize="11"/>
+
+                <TextBlock
+                    Grid.Row="0"
+                    Margin="5"
+                    FontWeight="Bold"
+                    Text="{Binding ProblematicFilePath}"
+                    TextWrapping="Wrap" />
+
+                <ScrollViewer
+                    Grid.Row="1"
+                    Margin="5"
+                    VerticalScrollBarVisibility="Auto">
+                    <TextBlock
+                        FontFamily="Consolas"
+                        FontSize="11"
+                        Text="{Binding FileDetails}"
+                        TextWrapping="Wrap" />
                 </ScrollViewer>
             </Grid>
         </primitives:HeaderedContentControl>
 
-        <!-- 回復オプション -->
-        <primitives:HeaderedContentControl Grid.Row="2" Header="回復オプション" Margin="0,0,0,10">
+        <!--  回復オプション  -->
+        <primitives:HeaderedContentControl
+            Grid.Row="2"
+            Margin="0,0,0,10"
+            Header="回復オプション">
             <StackPanel Margin="10">
-                <RadioButton x:Name="SkipFileRadio" Content="このファイルをスキップして続行" IsChecked="True" Margin="0,2"/>
-                <RadioButton x:Name="RetryRadio" Content="再試行する" Margin="0,2"/>
-                <RadioButton x:Name="StopRadio" Content="展開を停止する" Margin="0,2"/>
-                <RadioButton x:Name="SkipAllRadio" Content="以降のエラーもすべてスキップ" Margin="0,2"/>
-                
-                <CheckBox x:Name="RememberChoiceCheck" Content="この選択を記憶する" Margin="0,10,0,0" IsChecked="False"/>
+                <RadioButton
+                    x:Name="SkipFileRadio"
+                    Margin="0,2"
+                    Content="このファイルをスキップして続行"
+                    IsChecked="True" />
+                <RadioButton
+                    x:Name="RetryRadio"
+                    Margin="0,2"
+                    Content="再試行する" />
+                <RadioButton
+                    x:Name="StopRadio"
+                    Margin="0,2"
+                    Content="展開を停止する" />
+                <RadioButton
+                    x:Name="SkipAllRadio"
+                    Margin="0,2"
+                    Content="以降のエラーもすべてスキップ" />
+
+                <CheckBox
+                    x:Name="RememberChoiceCheck"
+                    Margin="0,10,0,0"
+                    Content="この選択を記憶する"
+                    IsChecked="False" />
             </StackPanel>
         </primitives:HeaderedContentControl>
 
-        <!-- ボタン -->
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button x:Name="OkButton" Content="OK" Width="80" Height="30" Margin="5,0" Click="OkButton_Click"/>
-            <Button x:Name="CancelButton" Content="キャンセル" Width="80" Height="30" Margin="5,0" Click="CancelButton_Click"/>
+        <!--  ボタン  -->
+        <StackPanel
+            Grid.Row="3"
+            HorizontalAlignment="Right"
+            Orientation="Horizontal">
+            <Button
+                x:Name="OkButton"
+                Width="80"
+                Height="30"
+                Margin="5,0"
+                Click="OkButton_Click"
+                Content="OK" />
+            <Button
+                x:Name="CancelButton"
+                Width="80"
+                Height="30"
+                Margin="5,0"
+                Click="CancelButton_Click"
+                Content="キャンセル" />
         </StackPanel>
     </Grid>
 </Window>

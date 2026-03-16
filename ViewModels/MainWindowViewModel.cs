@@ -26,6 +26,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly Action<ProgressWindow> _showProgressWindow;
 
     [ObservableProperty]
+    private string _selectedTheme = "System";
+
+    [ObservableProperty]
     private string _extractionOutputDirectory = string.Empty;
 
     [ObservableProperty]
@@ -63,6 +66,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private CompressionLevelItem? _selectedSevenZipLevel;
+
+    partial void OnSelectedThemeChanged(string value)
+    {
+        // テーマ変更時にリアルタイムプレビュー
+        App.SetTheme(value);
+    }
 
     partial void OnZipCompressionLevelChanged(int value)
     {
@@ -124,6 +133,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _isCheckingUpdate;
 
     /// <summary>
+    /// テーマの選択肢（キー: 設定値、値: 表示名）
+    /// </summary>
+    public static readonly KeyValuePair<string, string>[] ThemeOptions =
+    [
+        new("System", "システム（追従）"),
+        new("Dark", "ダーク"),
+        new("Light", "ライト")
+    ];
+
+    /// <summary>
     /// 圧縮形式の選択肢（ComboBox ItemsSource）
     /// </summary>
     public ObservableCollection<string> CompressionFormats { get; } = new(Settings.SupportedCompressionFormats);
@@ -157,6 +176,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public void LoadFromSettings()
     {
         var s = _settingsManager.Current;
+        SelectedTheme = ThemeOptions.Any(t => t.Key == s.Theme) ? s.Theme : "System";
         ExtractionOutputDirectory = s.ExtractionOutputDirectory;
         CompressionOutputDirectory = s.CompressionOutputDirectory;
         var format = s.CompressionFormat;
@@ -219,6 +239,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         try
         {
+            _settingsManager.Current.Theme = SelectedTheme;
             _settingsManager.Current.CompressionFormat = SelectedCompressionFormat ?? "ZIP";
             _settingsManager.Current.ExtractionOutputDirectory = ExtractionOutputDirectory;
             _settingsManager.Current.CompressionOutputDirectory = CompressionOutputDirectory;

@@ -77,7 +77,7 @@ public static class Logger
             FileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}.log"),
             ArchiveAboveSize = config.MaxSizeMB * 1024 * 1024,
             ArchiveFileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}_{{##}}.log"),
-            ArchiveNumbering = ArchiveNumberingMode.Rolling,
+            ArchiveSuffixFormat = "_{##}",
             MaxArchiveFiles = config.MaxArchiveFiles,
             Layout = "${longdate} [${uppercase:${level}}] ${message}${onexception:inner=${newline}${exception:format=tostring}}",
             Encoding = System.Text.Encoding.UTF8
