@@ -4,11 +4,14 @@
 
 Lhamiel（ラミエル）は、Windows向けの使いやすいアーカイブ管理ツールです。ファイルやフォルダの圧縮、多数のアーカイブ形式の展開を、直感的なドラッグ＆ドロップ操作で快適に行えます。
 
-<img src="https://github.com/user-attachments/assets/1e0922c8-8c33-40fc-bf2d-172cae49885d" alt="Lhamiel メイン画面" width="800" />
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/fc544ca1-385f-4c26-ac5d-7fefe77f89cc" />
 
-<img src="https://github.com/user-attachments/assets/d35010b7-6fba-4c2a-9f1d-2a8974c807d3" alt="Lhamiel 展開処理" width="800" />
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/860a1c82-f8b5-45d0-987f-3f7b58e42d86" />
 
-<img src="https://github.com/user-attachments/assets/fbc5455a-7b9b-4a9e-964d-5bd1a1937f35" alt="Lhamiel 圧縮処理" width="800" />
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/467f9794-6f12-4cb3-b297-dfb18fa85b24" />
+
+<img width="600" alt="image" src="https://github.com/user-attachments/assets/54eaf1d7-bb1d-47e2-9865-020d0638ee86" />
+
 
 ## 🚀 主な特徴
 
