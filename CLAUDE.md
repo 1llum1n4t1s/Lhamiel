@@ -23,7 +23,7 @@ dotnet test Lhamiel.slnx --filter "FullyQualifiedName~TestMethodName"
 dotnet publish -c Release -r win-x64 --self-contained
 
 # Run the app
-dotnet run --project Lhamiel.csproj
+dotnet run --project src/Lhamiel/Lhamiel.csproj
 ```
 
 The solution file is `Lhamiel.slnx` (VS 2026 format). Platform target is **x64 only**.
