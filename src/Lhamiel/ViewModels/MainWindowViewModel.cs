@@ -283,10 +283,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ExtractionOutputDirectory = s.ExtractionOutputDirectory;
         CompressionOutputDirectory = s.CompressionOutputDirectory;
         var format = s.CompressionFormat;
-        if (!string.IsNullOrEmpty(format) && Settings.SupportedCompressionFormats.Any(f => f.Equals(format, StringComparison.OrdinalIgnoreCase)))
-            SelectedCompressionFormat = Settings.SupportedCompressionFormats.First(f => f.Equals(format, StringComparison.OrdinalIgnoreCase));
-        else
-            SelectedCompressionFormat = "ZIP";
+        SelectedCompressionFormat = (!string.IsNullOrEmpty(format)
+            ? Settings.SupportedCompressionFormats.FirstOrDefault(f => f.Equals(format, StringComparison.OrdinalIgnoreCase))
+            : null) ?? "ZIP";
         ExtractionOutputToSameDirectory = s.ExtractionOutputToSameDirectory;
         ExtractionOutputToDirectory = !s.ExtractionOutputToSameDirectory;
         CompressionOutputToSameDirectory = s.CompressionOutputToSameDirectory;
@@ -391,71 +390,73 @@ public sealed partial class MainWindowViewModel : ObservableObject
         ProgressWindow? progressWindow = null;
         try
         {
-            var filesToExtract = new List<string>();
-            var filesToCompress = new List<string>();
-            foreach (var path in paths)
-            {
-                if (Directory.Exists(path))
-                    filesToCompress.Add(path);
-                else if (File.Exists(path))
-                {
-                    if (ArchiveExtractor.IsSupportedArchiveType(path))
-                        filesToExtract.Add(path);
-                    else
-                        filesToCompress.Add(path);
-                }
-            }
-            if (filesToExtract.Count == 0 && filesToCompress.Count == 0) return;
+            // 有効なパスのみ収集
+            var validPaths = paths.Where(p => Directory.Exists(p) || File.Exists(p)).ToList();
+            if (validPaths.Count == 0) return;
+
             progressWindow = new ProgressWindow(App.Text("Progress.Processing")) { WindowStartupLocation = WindowStartupLocation.CenterOwner };
             _showProgressWindow(progressWindow);
             await Task.Yield();
             var cancellationToken = progressWindow.GetCancellationToken();
             var settings = _settingsManager.Current;
-            var hasCompression = filesToCompress.Count > 0;
-            var hasExtraction = filesToExtract.Count > 0;
-            if (hasCompression)
+
+            if (validPaths.Count == 1)
             {
-                if (settings.CompressMultipleAsOne && filesToCompress.Count > 1)
+                // 単一ファイル/フォルダ: 展開か圧縮かを自動判定
+                var path = validPaths[0];
+                if (File.Exists(path) && ArchiveExtractor.IsSupportedArchiveType(path))
                 {
-                    // 複数ファイル・フォルダを1つのアーカイブにまとめて圧縮
-                    await ArchiveProcessor.CompressMergedAsync(
-                        filesToCompress.ToArray(),
-                        settings.CompressionOutputDirectory,
-                        settings.CompressionOutputToSameDirectory,
-                        settings.CompressionFormat,
+                    var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
+                        [path],
+                        settings.ExtractionOutputDirectory,
+                        settings.ExtractionOutputToSameDirectory,
                         progressWindow,
                         cancellationToken,
-                        closeWindowOnCompletion: !hasExtraction);
+                        closeWindowOnCompletion: true);
+                    if (extractionResults.Count > 0 && settings.OpenExtractionOutputFolder)
+                        OpenExtractedFolders(extractionResults);
                 }
                 else
                 {
-                    // 個別に圧縮
                     await ArchiveProcessor.CompressItemsAsync(
-                        filesToCompress.ToArray(),
+                        [path],
                         settings.CompressionOutputDirectory,
                         settings.CompressionOutputToSameDirectory,
                         settings.CompressionFormat,
                         progressWindow,
                         cancellationToken,
-                        closeWindowOnCompletion: !hasExtraction);
+                        closeWindowOnCompletion: true);
+                    if (settings.OpenCompressionOutputFolder && !settings.CompressionOutputToSameDirectory)
+                        FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
                 }
             }
-            if (cancellationToken.IsCancellationRequested) return;
-            if (hasExtraction)
+            else
             {
-                var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
-                    filesToExtract.ToArray(),
-                    settings.ExtractionOutputDirectory,
-                    settings.ExtractionOutputToSameDirectory,
-                    progressWindow,
-                    cancellationToken,
-                    closeWindowOnCompletion: true);
-                if (extractionResults.Count > 0 && settings.OpenExtractionOutputFolder)
-                    OpenExtractedFolders(extractionResults);
-            }
-            else if (hasCompression && settings.OpenCompressionOutputFolder && !settings.CompressionOutputToSameDirectory)
-            {
-                FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
+                // 複数ファイル/フォルダ: すべて圧縮対象
+                if (settings.CompressMultipleAsOne)
+                {
+                    await ArchiveProcessor.CompressMergedAsync(
+                        validPaths.ToArray(),
+                        settings.CompressionOutputDirectory,
+                        settings.CompressionOutputToSameDirectory,
+                        settings.CompressionFormat,
+                        progressWindow,
+                        cancellationToken,
+                        closeWindowOnCompletion: true);
+                }
+                else
+                {
+                    await ArchiveProcessor.CompressItemsAsync(
+                        validPaths.ToArray(),
+                        settings.CompressionOutputDirectory,
+                        settings.CompressionOutputToSameDirectory,
+                        settings.CompressionFormat,
+                        progressWindow,
+                        cancellationToken,
+                        closeWindowOnCompletion: true);
+                }
+                if (settings.OpenCompressionOutputFolder && !settings.CompressionOutputToSameDirectory)
+                    FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
             }
         }
         catch (OperationCanceledException)
@@ -531,9 +532,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             Logger.Log("関連付け設定の適用を開始");
+            var currentStatus = FileAssociation.GetCurrentAssociationStatus();
             foreach (var item in Associations)
             {
-                var isCurrentlyAssociated = FileAssociation.IsFileTypeAssociated(item.Extension);
+                var isCurrentlyAssociated = currentStatus.GetValueOrDefault(item.Extension, false);
                 if (item.IsAssociated && !isCurrentlyAssociated)
                 {
                     if (FileAssociation.AssociateFileType(item.Extension))

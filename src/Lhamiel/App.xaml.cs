@@ -304,52 +304,34 @@ public class App : Application
             return;
         }
 
-        // 複数ファイルの場合: 展開対象と圧縮対象に分類
-        var filesToExtract = new List<string>();
+        // 複数ファイルの場合: すべて圧縮対象（展開/圧縮の自動判定は単一ファイル時のみ）
         var filesToCompress = new List<string>();
         foreach (var path in filePaths)
         {
-            if (Directory.Exists(path))
+            if (Directory.Exists(path) || File.Exists(path))
                 filesToCompress.Add(path);
-            else if (File.Exists(path))
-            {
-                if (compressionFormat == "default" && ArchiveExtractor.IsSupportedArchiveType(path))
-                    filesToExtract.Add(path);
-                else
-                    filesToCompress.Add(path);
-            }
             else
                 Logger.Log($"指定されたパスが存在しません: {path}");
         }
 
+        if (filesToCompress.Count == 0) return;
+
         var settings = SettingsManager.Instance.Current;
+        var format = compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
 
-        // 展開処理（個別に実行）
-        foreach (var file in filesToExtract)
-            await ProcessCommandLineFile(file, "default", false);
-
-        // 圧縮処理
-        if (filesToCompress.Count > 0)
+        if (settings.CompressMultipleAsOne && filesToCompress.Count > 1)
         {
-            if (settings.CompressMultipleAsOne && filesToCompress.Count > 1)
-            {
-                // まとめ圧縮
-                var format = compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
-                await ProcessMergedCompression(filesToCompress.ToArray(), settings, format, shouldShutdown);
-            }
-            else
-            {
-                // 個別に圧縮
-                for (var i = 0; i < filesToCompress.Count; i++)
-                {
-                    var isLast = i == filesToCompress.Count - 1;
-                    await ProcessCommandLineFile(filesToCompress[i], compressionFormat, isLast && shouldShutdown && filesToExtract.Count == 0);
-                }
-            }
+            // まとめ圧縮
+            await ProcessMergedCompression(filesToCompress.ToArray(), settings, format, shouldShutdown);
         }
-        else if (shouldShutdown && filesToExtract.Count > 0)
+        else
         {
-            ShutdownIfNeeded(shouldShutdown);
+            // 個別に圧縮
+            for (var i = 0; i < filesToCompress.Count; i++)
+            {
+                var isLast = i == filesToCompress.Count - 1;
+                await ProcessCommandLineFile(filesToCompress[i], compressionFormat, isLast && shouldShutdown);
+            }
         }
     }
 

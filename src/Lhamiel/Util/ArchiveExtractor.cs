@@ -465,46 +465,15 @@ public static class ArchiveExtractor
 
                 if (progressCallback != null)
                 {
-                    // 変数: 最後に報告した進捗率と時間（UIスレッドの負荷軽減用）
-                    var lastPercentage = -1;
-                    var lastReportTime = Environment.TickCount64;
-                    const int reportInterval = 100; // 100ms間隔
-                    // 進捗コールバックが複数スレッドから呼ばれる可能性に備えた同期用オブジェクト
-                    var progressLock = new object();
+                    // 進捗スロットリング（UIスレッド負荷軽減用）
+                    var throttler = new ProgressThrottler();
 
-                    // 変数: キャンセル可能な進捗報告オブジェクト
-                    // using を使用してスコープを維持
+                    // キャンセル可能な進捗報告オブジェクト（using でスコープを維持）
                     using var progress = new CancellableProgress<Report>(report =>
                     {
-                        // 進捗率を取得（ライブラリの GetRatio() と Report を信じる）
-                        var ratio = report.GetRatio();
-                        var percentage = (int)(ratio * 100);
-
-                        lock (progressLock)
-                        {
-                            // 単調増加を保証（Ice アプリケーションの実装パターンに準拠）
-                            if (percentage <= lastPercentage && percentage > 0 && percentage < 100)
-                            {
-                                return;
-                            }
-
-                            var currentTime = Environment.TickCount64;
-
-                            // 以下のいずれかの条件を満たす場合のみ報告
-                            // 1. 進捗が 0% または 100% (開始と完了を保証)
-                            // 2. 前回の報告から 100ms 以上経過しており、かつ進捗率が変化している
-                            if (percentage > 0 && percentage < 100)
-                            {
-                                if (percentage == lastPercentage) return;
-                                if (currentTime - lastReportTime < reportInterval) return;
-                            }
-
-                            lastPercentage = percentage;
-                            lastReportTime = currentTime;
-                        }
-
-                        // メソッド呼び出し: 進捗コールバックを実行
-                        progressCallback(new ProgressInfo(percentage, "ファイルを展開中..."));
+                        var percentage = (int)(report.GetRatio() * 100);
+                        if (throttler.ShouldReport(percentage))
+                            progressCallback(new ProgressInfo(percentage, "ファイルを展開中..."));
                     }, cancellationToken);
 
                     // メソッド呼び出し: アーカイブを保存

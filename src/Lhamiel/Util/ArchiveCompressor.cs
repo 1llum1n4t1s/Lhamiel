@@ -154,44 +154,15 @@ public class ArchiveCompressor
                         writer.Add(fullPath, relativePath);
                     }
 
-                    // 変数: 最後に報告した進捗率と時間（UIスレッドの負荷軽減用）
-                    var lastPercentage = -1;
-                    var lastReportTime = Environment.TickCount64;
-                    const int reportInterval = 100; // 100ms間隔
-                    // 進捗コールバックが複数スレッドから呼ばれる可能性に備えた同期用オブジェクト
-                    var progressLock = new object();
+                    // 進捗スロットリング（UIスレッド負荷軽減用）
+                    var throttler = new ProgressThrottler();
 
                     // 進捗報告オブジェクトを生成
                     using var reportProgress = new CancellableProgress<Report>(report =>
                     {
-                        // 進捗率を取得（ライブラリの GetRatio() と Report を信じる）
-                        var ratio = report.GetRatio();
-                        var percentage = (int)(ratio * 100);
-
-                        lock (progressLock)
-                        {
-                            // 単調増加を保証（Ice アプリケーションの実装パターンに準拠）
-                            if (percentage <= lastPercentage && percentage > 0 && percentage < 100)
-                            {
-                                return;
-                            }
-
-                            var currentTime = Environment.TickCount64;
-
-                            // 以下のいずれかの条件を満たす場合のみ報告
-                            // 1. 進捗が 0% または 100% (開始と完了を保証)
-                            // 2. 前回の報告から 100ms 以上経過しており、かつ進捗率が変化している
-                            if (percentage > 0 && percentage < 100)
-                            {
-                                if (percentage == lastPercentage) return;
-                                if (currentTime - lastReportTime < reportInterval) return;
-                            }
-
-                            lastPercentage = percentage;
-                            lastReportTime = currentTime;
-                        }
-
-                        progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
+                        var percentage = (int)(report.GetRatio() * 100);
+                        if (throttler.ShouldReport(percentage))
+                            progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
                     }, cancellationToken);
 
                     // ネイティブメソッドの呼び出し
