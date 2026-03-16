@@ -46,7 +46,7 @@ After build, 7z.dll is automatically moved from `runtimes/` to the output root v
 Drag-and-drop drives the app:
 1. `MainWindow.DropZone_Drop` → `MainWindowViewModel.ProcessDroppedPathsAsync`
 2. ViewModel delegates to `ArchiveProcessor` which orchestrates extraction/compression
-3. `ArchiveExtractor` / `ArchiveCompressor` wrap `Cube.FileSystem.SevenZip` (package: `1llum1n4t1s.Sevenzip`)
+3. `ArchiveExtractor` / `ArchiveCompressor` wrap `1llum1n4t1s.Sevenzip`
 4. `ProgressWindow` shows real-time progress via `IProgress<T>`
 
 ### Key Util Classes

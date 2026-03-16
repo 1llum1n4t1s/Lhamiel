@@ -113,7 +113,7 @@ Windows の「設定」→「アプリ」→「インストールされている
 | **アーキテクチャ** | MVVM（CommunityToolkit.Mvvm） |
 | **ターゲット** | .NET 10.0 / Windows x64 |
 | **ビルド** | ネイティブ AOT 対応 |
-| **7z エンジン** | Cube.FileSystem.SevenZip |
+| **7z エンジン** | 1llum1n4t1s.Sevenzip |
 | **自動更新** | Velopack |
 | **デザイン** | macOS Tahoe / Liquid Glass 風 |
 
