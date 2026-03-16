@@ -15,6 +15,11 @@ namespace Lhamiel.ViewModels;
 public record CompressionLevelItem(int Level, string Name);
 
 /// <summary>
+/// テーマ選択肢の表示用クラス（AOT安全）
+/// </summary>
+public record ThemeItem(string Key, string DisplayName);
+
+/// <summary>
 /// MainWindow の ViewModel（MVVM）
 /// </summary>
 public sealed partial class MainWindowViewModel : ObservableObject
@@ -138,7 +143,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>
     /// テーマの選択肢（キー: 設定値、値: 表示名）
     /// </summary>
-    public static readonly KeyValuePair<string, string>[] ThemeOptions =
+    public static readonly ThemeItem[] ThemeOptions =
     [
         new("System", "システム（追従）"),
         new("Dark", "ダーク"),

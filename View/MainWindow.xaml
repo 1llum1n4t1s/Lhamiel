@@ -45,11 +45,11 @@
                                         Width="200"
                                         ItemsSource="{x:Static vm:MainWindowViewModel.ThemeOptions}"
                                         SelectedValue="{Binding SelectedTheme}"
-                                        SelectedValueBinding="{ReflectionBinding Key}"
+                                        SelectedValueBinding="{Binding Key, DataType=vm:ThemeItem}"
                                         ToolTip.Tip="アプリケーションのテーマを切り替えます">
                                         <ComboBox.ItemTemplate>
-                                            <DataTemplate>
-                                                <TextBlock Text="{ReflectionBinding Value}" />
+                                            <DataTemplate x:DataType="vm:ThemeItem">
+                                                <TextBlock Text="{Binding DisplayName}" />
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                     </ComboBox>
