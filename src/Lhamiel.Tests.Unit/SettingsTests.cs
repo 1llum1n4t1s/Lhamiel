@@ -24,6 +24,35 @@ public class SettingsTests
     }
 
     [Fact]
+    public void Settings_NewDefaultValues_AreCorrect()
+    {
+        // v1.0.102 で追加されたプロパティのデフォルト値を検証
+        var settings = new Settings();
+
+        Assert.Equal("System", settings.Theme);
+        Assert.Equal("", settings.Locale);
+        Assert.False(settings.CompressMultipleAsOne);
+        Assert.Equal(5, settings.ZipCompressionLevel);
+        Assert.Equal(5, settings.SevenZipCompressionLevel);
+        Assert.True(settings.OpenExtractionOutputFolder);
+        Assert.True(settings.OpenCompressionOutputFolder);
+        Assert.Equal(10, settings.LogMaxSizeMB);
+        Assert.Equal(7, settings.LogRetentionDays);
+    }
+
+    [Fact]
+    public void Settings_ExcludedFilePatterns_HasDefaults()
+    {
+        var settings = new Settings();
+
+        Assert.NotNull(settings.ExcludedFilePatterns);
+        Assert.Contains(".DS_Store", settings.ExcludedFilePatterns);
+        Assert.Contains("Thumbs.db", settings.ExcludedFilePatterns);
+        Assert.Contains("__MACOSX", settings.ExcludedFilePatterns);
+        Assert.Contains("desktop.ini", settings.ExcludedFilePatterns);
+    }
+
+    [Fact]
     public void ResetToDefaults_RestoresDefaultValues()
     {
         // Arrange
@@ -49,6 +78,62 @@ public class SettingsTests
         Assert.Equal("1llum1n4t1s", settings.UpdateRepoOwner);
         Assert.Equal("Lhamiel", settings.UpdateRepoName);
         Assert.Equal("release", settings.UpdateChannel);
+    }
+
+    [Fact]
+    public void ResetToDefaults_RestoresNewPropertyValues()
+    {
+        // v1.0.102 で追加されたプロパティのリセットを検証
+        var settings = new Settings
+        {
+            Theme = "Dark",
+            Locale = "ja_JP",
+            CompressMultipleAsOne = true,
+            ZipCompressionLevel = 9,
+            SevenZipCompressionLevel = 0,
+            OpenExtractionOutputFolder = false,
+            OpenCompressionOutputFolder = false,
+            LogMaxSizeMB = 50,
+            LogRetentionDays = 30
+        };
+
+        // Act
+        settings.ResetToDefaults();
+
+        // Assert
+        Assert.Equal("System", settings.Theme);
+        Assert.Equal("", settings.Locale);
+        Assert.False(settings.CompressMultipleAsOne);
+        Assert.Equal(5, settings.ZipCompressionLevel);
+        Assert.Equal(5, settings.SevenZipCompressionLevel);
+        Assert.True(settings.OpenExtractionOutputFolder);
+        Assert.True(settings.OpenCompressionOutputFolder);
+        Assert.Equal(10, settings.LogMaxSizeMB);
+        Assert.Equal(7, settings.LogRetentionDays);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(3)]
+    [InlineData(5)]
+    [InlineData(7)]
+    [InlineData(9)]
+    public void CompressionLevel_AcceptsValidValues(int level)
+    {
+        var settings = new Settings { ZipCompressionLevel = level, SevenZipCompressionLevel = level };
+        Assert.Equal(level, settings.ZipCompressionLevel);
+        Assert.Equal(level, settings.SevenZipCompressionLevel);
+    }
+
+    [Theory]
+    [InlineData("System")]
+    [InlineData("Dark")]
+    [InlineData("Light")]
+    public void Theme_AcceptsValidValues(string theme)
+    {
+        var settings = new Settings { Theme = theme };
+        Assert.Equal(theme, settings.Theme);
     }
 
     [Theory]

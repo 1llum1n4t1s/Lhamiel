@@ -72,7 +72,7 @@ jobs:
       - name: アプリを公開ビルド
         shell: pwsh
         run: |
-          $publishDir = Join-Path "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
+          $publishDir = Join-Path "src" "Lhamiel" "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
           if (Test-Path $publishDir) {
             Remove-Item -Path $publishDir -Recurse -Force
           }
@@ -80,7 +80,7 @@ jobs:
           Write-Host "Building and publishing application..."
           Write-Host "Target Framework: $env:TARGET_FRAMEWORK"
           Write-Host "Publish Dir: $publishDir"
-          dotnet publish "Lhamiel.csproj" `
+          dotnet publish "src/Lhamiel/Lhamiel.csproj" `
             -c Release `
             -r win-x64 `
             -o $publishDir
@@ -103,7 +103,7 @@ jobs:
       - name: README.txt を生成して publish に配置
         shell: pwsh
         run: |
-          $publishDir = Join-Path "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
+          $publishDir = Join-Path "src" "Lhamiel" "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
           $readmeMd = "README.md"
           $readmeTxt = Join-Path $publishDir "README.txt"
 
@@ -141,9 +141,9 @@ jobs:
       - name: Velopack パッケージを作成
         shell: pwsh
         run: |
-          $publishDir = Join-Path "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
+          $publishDir = Join-Path "src" "Lhamiel" "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
           $outputDir = "artifacts"
-          $iconPath = Join-Path "icon" "app.ico"
+          $iconPath = Join-Path "src" "Lhamiel" "icon" "app.ico"
 
           if (-not (Test-Path $publishDir)) {
             Write-Error "Publish directory not found: $publishDir"
