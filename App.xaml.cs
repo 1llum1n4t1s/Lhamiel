@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using Lhamiel.Util;
 using Lhamiel.View;
@@ -37,10 +38,18 @@ public class App : Application
     public App()
     {
         InitializeComponent();
-        RequestedThemeVariant = null;
 
         // SettingsManager を先に初期化（コンストラクタ内で Logger.Initialize も実行される）
         _ = SettingsManager.Instance.Current;
+
+        // テーマ設定を適用
+        var theme = SettingsManager.Instance.Current.Theme;
+        RequestedThemeVariant = theme switch
+        {
+            "Light" => ThemeVariant.Light,
+            "Dark" => ThemeVariant.Dark,
+            _ => ThemeVariant.Default
+        };
 
         // 7z.dll をプロセスに固定して、アンロード時のクラッシュを防止
         NativeLibraryManager.Initialize();
@@ -613,6 +622,23 @@ public class App : Application
         }
 
         Logger.Dispose();
+    }
+
+    /// <summary>
+    /// テーマを切り替える
+    /// </summary>
+    /// <param name="theme">テーマ名（"System", "Dark", "Light"）</param>
+    public static void SetTheme(string theme)
+    {
+        if (Current is not App app)
+            return;
+
+        app.RequestedThemeVariant = theme switch
+        {
+            "Light" => ThemeVariant.Light,
+            "Dark" => ThemeVariant.Dark,
+            _ => ThemeVariant.Default // "System" → OS追従
+        };
     }
 }
 

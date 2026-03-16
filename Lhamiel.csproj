@@ -12,6 +12,7 @@
     <!-- ネイティブAOT: Publish 時に -r win-x64 で指定 -->
     <PublishAot>true</PublishAot>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
@@ -38,21 +39,21 @@
     <AvaloniaResource Include="View\ProgressWindow.xaml" />
     <AvaloniaResource Include="View\ErrorRecoveryDialog.xaml" />
     <AvaloniaResource Include="View\OverwriteConfirmDialog.xaml" />
+    <AvaloniaResource Include="Resources\Themes.axaml" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.3.11" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.3.11" />
-    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="11.3.11" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.11" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.11" />
-    <PackageReference Include="ActiproSoftware.Controls.Avalonia" Version="25.2.2" />
+    <PackageReference Include="Avalonia" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
     <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.42" />
-    <PackageReference Include="7z.Libs" Version="25.1.0" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.44" />
+    <PackageReference Include="7z.Libs" Version="26.0.0" />
     <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
-    <PackageReference Include="NLog" Version="5.4.0" />
+    <PackageReference Include="NLog" Version="6.1.1" />
   </ItemGroup>
 
   <!-- アイコンおよびネイティブ DLL を Publish 出力にコピー -->

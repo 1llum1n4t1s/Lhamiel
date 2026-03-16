@@ -12,12 +12,12 @@ namespace Lhamiel.View;
 /// </summary>
 public class MainWindow : Window
 {
-    private Border? DropZoneBorder;
+    private Border? _dropOverlay;
 
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
-        DropZoneBorder = this.FindControl<Border>("DropZoneBorder");
+        _dropOverlay = this.FindControl<Border>("DropOverlay");
     }
 
     /// <summary>
@@ -57,14 +57,15 @@ public class MainWindow : Window
     }
 
     /// <summary>
-    /// ドロップゾーンのドラッグオーバー時の処理（視覚は XAML の .drop-target-active スタイルで制御）
+    /// ドラッグオーバー時：オーバーレイを表示
     /// </summary>
     private void DropZone_DragOver(object? sender, DragEventArgs e)
     {
         if (e.DataTransfer.Contains(DataFormat.File))
         {
             e.DragEffects = DragDropEffects.Copy;
-            DropZoneBorder?.Classes.Add("drop-target-active");
+            if (_dropOverlay != null)
+                _dropOverlay.IsVisible = true;
         }
         else
         {
@@ -73,19 +74,22 @@ public class MainWindow : Window
     }
 
     /// <summary>
-    /// ドロップゾーンのドラッグリーブ時の処理（視覚は XAML の .drop-target-active スタイルで制御）
+    /// ドラッグリーブ時：オーバーレイを非表示
     /// </summary>
     private void DropZone_DragLeave(object? sender, DragEventArgs e)
     {
-        DropZoneBorder?.Classes.Remove("drop-target-active");
+        if (_dropOverlay != null)
+            _dropOverlay.IsVisible = false;
     }
 
     /// <summary>
-    /// ドロップゾーンのドロップ時の処理（パスを ViewModel に渡す）
+    /// ドロップ時：オーバーレイを非表示にしてパスを ViewModel に渡す
     /// </summary>
     private async void DropZone_Drop(object? sender, DragEventArgs e)
     {
-        DropZoneBorder?.Classes.Remove("drop-target-active");
+        if (_dropOverlay != null)
+            _dropOverlay.IsVisible = false;
+
         if (!e.DataTransfer.Contains(DataFormat.File) || e.DataTransfer.TryGetFiles() is not { } files)
             return;
         var filePaths = new List<string>();

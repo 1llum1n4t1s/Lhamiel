@@ -1,48 +1,72 @@
-<Application xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:actipro="http://schemas.actiprosoftware.com/avaloniaui"
-             x:Class="Lhamiel.App">
+﻿<Application
+    x:Class="Lhamiel.App"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="/Resources/Themes.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+
     <Application.Styles>
-        <!-- Actipro Avalonia UI テーマ -->
-        <actipro:ModernTheme />
+        <FluentTheme />
+
+        <!--  ═══════════════════════════════════════════════════════════  -->
+        <!--  macOS Tahoe 風グローバルスタイル  -->
+        <!--  ═══════════════════════════════════════════════════════════  -->
+
+        <!--  タブ：Tahoe 風の丸みと余白  -->
         <Style Selector="TabItem">
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="14,6" />
         </Style>
+
+        <!--  ボタン：Tahoe の大きな角丸 + 十分なパディング  -->
         <Style Selector="Button">
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
-        <!-- WPF風 GroupBox 見た目（Actipro テーマリソースで枠付きグループ表示） -->
+
+        <!--  ComboBox：Tahoe 風の角丸  -->
+        <Style Selector="ComboBox">
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+
+        <!--  TextBox：Tahoe 風の角丸  -->
+        <Style Selector="TextBox">
+            <Setter Property="CornerRadius" Value="10" />
+        </Style>
+
+        <!--  CheckBox：角丸を強調  -->
+        <Style Selector="CheckBox /template/ Border#NormalRectangle">
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+
+        <!--  HeaderedContentControl：Tahoe 風ガラスパネル  -->
         <Style Selector="HeaderedContentControl">
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Border ZIndex="1"
-                                Background="{actipro:ThemeResource Container2BackgroundBrush}"
-                                Padding="5,0,5,0"
-                                Margin="5,0,0,0">
-                            <TextBlock Text="{TemplateBinding Header}" FontWeight="SemiBold"/>
-                        </Border>
-                        <Border Grid.RowSpan="2"
-                                Grid.ColumnSpan="2"
-                                Padding="0,8,0,0"
-                                CornerRadius="4"
-                                Margin="0,10,0,0"
-                                BorderBrush="{actipro:ThemeResource Container2BorderBrush}"
-                                BorderThickness="1">
-                            <ContentPresenter Name="PART_ContentPresenter"
-                                              Padding="8"
-                                              Content="{TemplateBinding Content}"/>
-                        </Border>
-                    </Grid>
+                    <Border
+                        Margin="0,0,0,12"
+                        Padding="16"
+                        Background="{DynamicResource Brush.Container}"
+                        BorderBrush="{DynamicResource Brush.Border}"
+                        BorderThickness="1"
+                        CornerRadius="14">
+                        <StackPanel>
+                            <TextBlock
+                                Margin="0,0,0,10"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{DynamicResource Brush.FG2}"
+                                Text="{TemplateBinding Header}" />
+                            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" />
+                        </StackPanel>
+                    </Border>
                 </ControlTemplate>
             </Setter>
         </Style>

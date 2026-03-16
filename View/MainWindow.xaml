@@ -2,344 +2,302 @@
     x:Class="Lhamiel.View.MainWindow"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:actipro="http://schemas.actiprosoftware.com/avaloniaui"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:input="using:Avalonia.Input"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:primitives="using:Avalonia.Controls.Primitives"
     xmlns:vm="using:Lhamiel.ViewModels"
     Title="Lhamiel - アーカイブ圧縮・展開ツール"
-    Width="700"
-    Height="500"
+    Width="720"
+    Height="560"
     input:DragDrop.AllowDrop="True"
     input:DragDrop.DragLeave="DropZone_DragLeave"
     input:DragDrop.DragOver="DropZone_DragOver"
     input:DragDrop.Drop="DropZone_Drop"
     x:DataType="vm:MainWindowViewModel"
+    Background="{DynamicResource Brush.Window}"
     CanResize="False"
+    ExtendClientAreaChromeHints="PreferSystemChrome"
+    ExtendClientAreaTitleBarHeightHint="32"
+    ExtendClientAreaToDecorationsHint="True"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
-    <Window.Styles>
-        <!--  ドロップゾーン：ドラッグオーバー時の見た目（デザインは XAML のみ）  -->
-        <Style Selector="Border.drop-target-active">
-            <Setter Property="Background" Value="#E6F3FF" />
-            <Setter Property="BorderBrush" Value="#0078D4" />
-            <Setter Property="BorderThickness" Value="3" />
-        </Style>
-    </Window.Styles>
-    <Grid Margin="15">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" />      
-            <!--  タブコンテンツ  -->
-            <RowDefinition Height="Auto" />  
-            <!--  下部ボタン  -->
-        </Grid.RowDefinitions>
 
-        <!--  タブコンテンツ  -->
-        <TabControl Grid.Row="0" Margin="0,0,0,16">
-            <!--  ファイル操作タブ  -->
-            <TabItem Header="📁ファイル操作">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <Grid Margin="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
+    <Panel>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-                        <!--  ドラッグ&ドロップゾーン（通常時はテーマ、ドラッグ中は .drop-target-active でスタイル適用）  -->
-                        <Border
-                            x:Name="DropZoneBorder"
-                            Grid.Row="0"
-                            Padding="{actipro:ScaledThickness 5}"
-                            Background="{actipro:ThemeResource Container4BackgroundBrush}"
-                            BorderBrush="{actipro:ThemeResource Container4BorderBrush}"
-                            BorderThickness="1"
-                            CornerRadius="{actipro:ScaledCornerRadius 1.5}">
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock
-                                    HorizontalAlignment="Center"
-                                    FontSize="16"
-                                    FontWeight="SemiBold"
-                                    Text="📁 ここにファイルをドラッグ&amp;ドロップ" />
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-                </ScrollViewer>
-            </TabItem>
+            <!--  ═══ タブコンテンツ ═══  -->
+            <TabControl Grid.Row="0" Margin="16,32,16,0">
 
-            <!--  展開用設定タブ  -->
-            <TabItem Header="📂 展開用設定">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="12">
-                        <primitives:HeaderedContentControl Header="展開用出力先設定">
-                            <StackPanel Margin="12">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                <!--  ━━━ 全般設定タブ ━━━  -->
+                <TabItem Header="⚙️ 全般設定">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,12">
 
-                                    <!--  出力先パターン選択  -->
-                                    <StackPanel
-                                        Grid.Row="0"
-                                        Grid.ColumnSpan="2"
-                                        Margin="0,0,0,12">
-                                        <RadioButton
-                                            x:Name="ExtractionOutputToSameDirectoryRadio"
-                                            Margin="0,4"
-                                            Content="元のファイルと同じディレクトリに出力"
-                                            IsChecked="{Binding ExtractionOutputToSameDirectory}" />
-                                        <RadioButton
-                                            x:Name="ExtractionOutputToDirectoryRadio"
-                                            Margin="0,4"
-                                            Content="ディレクトリを指定する"
-                                            IsChecked="{Binding ExtractionOutputToDirectory}" />
-                                    </StackPanel>
-
-                                    <!--  ディレクトリ指定  -->
-                                    <TextBox
-                                        x:Name="ExtractionOutputPathTextBox"
-                                        Grid.Row="1"
-                                        Grid.Column="0"
-                                        Height="32"
-                                        VerticalAlignment="Center"
-                                        VerticalContentAlignment="Center"
-                                        IsReadOnly="True"
-                                        Text="{Binding ExtractionOutputDirectory}" />
-                                    <Button
-                                        x:Name="ExtractionBrowseButton"
-                                        Grid.Row="1"
-                                        Grid.Column="1"
-                                        Height="40"
-                                        Margin="8,0,0,0"
-                                        Command="{Binding BrowseExtractionCommand}"
-                                        Content="参照..."
-                                        ToolTip.Tip="展開先フォルダを選択" />
-                                </Grid>
-
-                                <CheckBox
-                                    x:Name="OpenExtractionOutputFolderCheckBox"
-                                    Margin="0,12,0,4"
-                                    Content="展開後に保存先のフォルダを開く"
-                                    IsChecked="{Binding OpenExtractionOutputFolder}"
-                                    ToolTip.Tip="展開が完了したときに、展開先フォルダを自動的に開きます" />
-                            </StackPanel>
-                        </primitives:HeaderedContentControl>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-
-            <!--  圧縮用設定タブ  -->
-            <TabItem Header="📦 圧縮用設定">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="12">
-                        <primitives:HeaderedContentControl Header="圧縮用出力先設定">
-                            <StackPanel Margin="12">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <!--  出力先パターン選択  -->
-                                    <StackPanel
-                                        Grid.Row="0"
-                                        Grid.ColumnSpan="2"
-                                        Margin="0,0,0,12">
-                                        <RadioButton
-                                            x:Name="CompressionOutputToSameDirectoryRadio"
-                                            Margin="0,4"
-                                            Content="元のファイルと同じディレクトリに出力"
-                                            IsChecked="{Binding CompressionOutputToSameDirectory}" />
-                                        <RadioButton
-                                            x:Name="CompressionOutputToDirectoryRadio"
-                                            Margin="0,4"
-                                            Content="ディレクトリを指定する"
-                                            IsChecked="{Binding CompressionOutputToDirectory}" />
-                                    </StackPanel>
-
-                                    <!--  ディレクトリ指定  -->
-                                    <TextBox
-                                        x:Name="CompressionOutputPathTextBox"
-                                        Grid.Row="1"
-                                        Grid.Column="0"
-                                        Height="32"
-                                        VerticalAlignment="Center"
-                                        VerticalContentAlignment="Center"
-                                        IsReadOnly="True"
-                                        Text="{Binding CompressionOutputDirectory}" />
-                                    <Button
-                                        x:Name="CompressionBrowseButton"
-                                        Grid.Row="1"
-                                        Grid.Column="1"
-                                        Height="40"
-                                        Margin="8,0,0,0"
-                                        Command="{Binding BrowseCompressionCommand}"
-                                        Content="参照..."
-                                        ToolTip.Tip="圧縮先フォルダを選択" />
-                                </Grid>
-
-                                <CheckBox
-                                    x:Name="OpenCompressionOutputFolderCheckBox"
-                                    Margin="0,12,0,4"
-                                    Content="圧縮後に保存先のフォルダを開く"
-                                    IsChecked="{Binding OpenCompressionOutputFolder}"
-                                    ToolTip.Tip="圧縮が完了したときに、圧縮先フォルダを自動的に開きます" />
-                            </StackPanel>
-                        </primitives:HeaderedContentControl>
-
-                        <primitives:HeaderedContentControl Margin="0,12,0,0" Header="圧縮レベル設定">
-                            <Grid Margin="12">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <StackPanel
-                                    Grid.Row="0"
-                                    Grid.Column="0"
-                                    Margin="0,0,8,0">
-                                    <TextBlock Margin="0,0,0,4" Text="ZIP圧縮レベル" />
+                            <!--  テーマ選択  -->
+                            <primitives:HeaderedContentControl Header="テーマ">
+                                <StackPanel Orientation="Horizontal">
                                     <ComboBox
-                                        HorizontalAlignment="Stretch"
-                                        ItemsSource="{Binding CompressionLevels}"
-                                        SelectedItem="{Binding SelectedZipLevel}">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate x:DataType="vm:CompressionLevelItem">
-                                                <TextBlock Text="{Binding Name}" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
+                                        Width="200"
+                                        SelectedIndex="{Binding SelectedTheme, Converter={x:Static vm:ThemeIndexConverter.Instance}}"
+                                        ToolTip.Tip="アプリケーションのテーマを切り替えます">
+                                        <ComboBoxItem Content="システム（追従）" />
+                                        <ComboBoxItem Content="ダーク" />
+                                        <ComboBoxItem Content="ライト" />
                                     </ComboBox>
                                 </StackPanel>
+                            </primitives:HeaderedContentControl>
 
-                                <StackPanel
-                                    Grid.Row="0"
-                                    Grid.Column="1"
-                                    Margin="8,0,0,0">
-                                    <TextBlock Margin="0,0,0,4" Text="7z圧縮レベル" />
-                                    <ComboBox
-                                        HorizontalAlignment="Stretch"
-                                        ItemsSource="{Binding CompressionLevels}"
-                                        SelectedItem="{Binding SelectedSevenZipLevel}">
-                                        <ComboBox.ItemTemplate>
-                                            <DataTemplate x:DataType="vm:CompressionLevelItem">
-                                                <TextBlock Text="{Binding Name}" />
-                                            </DataTemplate>
-                                        </ComboBox.ItemTemplate>
-                                    </ComboBox>
+                            <!--  圧縮形式  -->
+                            <primitives:HeaderedContentControl Header="デフォルトの圧縮形式">
+                                <ComboBox
+                                    x:Name="CompressionFormatComboBox"
+                                    Width="120"
+                                    ItemsSource="{Binding CompressionFormats}"
+                                    SelectedItem="{Binding SelectedCompressionFormat}">
+                                    <ComboBox.SelectionBoxItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding}" />
+                                        </DataTemplate>
+                                    </ComboBox.SelectionBoxItemTemplate>
+                                </ComboBox>
+                            </primitives:HeaderedContentControl>
+
+                            <!--  ショートカット作成  -->
+                            <primitives:HeaderedContentControl Header="ショートカット">
+                                <Button
+                                    x:Name="CreateShortcutButton"
+                                    Command="{Binding CreateShortcutCommand}"
+                                    Content="📌 デスクトップにショートカット作成" />
+                            </primitives:HeaderedContentControl>
+
+                            <!--  説明テキスト  -->
+                            <TextBlock
+                                Margin="4,4,0,0"
+                                FontSize="12"
+                                Foreground="{DynamicResource Brush.FG2}"
+                                Text="ウィンドウにファイルをドラッグ＆ドロップして圧縮・展開できます" />
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!--  ━━━ 展開用設定タブ ━━━  -->
+                <TabItem Header="📂 展開用設定">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,12">
+                            <primitives:HeaderedContentControl Header="出力先設定">
+                                <StackPanel>
+                                    <RadioButton
+                                        x:Name="ExtractionOutputToSameDirectoryRadio"
+                                        Margin="0,4"
+                                        Content="元のファイルと同じディレクトリに出力"
+                                        IsChecked="{Binding ExtractionOutputToSameDirectory}" />
+                                    <RadioButton
+                                        x:Name="ExtractionOutputToDirectoryRadio"
+                                        Margin="0,4"
+                                        Content="ディレクトリを指定する"
+                                        IsChecked="{Binding ExtractionOutputToDirectory}" />
+
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox
+                                            x:Name="ExtractionOutputPathTextBox"
+                                            Grid.Column="0"
+                                            VerticalContentAlignment="Center"
+                                            IsReadOnly="True"
+                                            Text="{Binding ExtractionOutputDirectory}" />
+                                        <Button
+                                            x:Name="ExtractionBrowseButton"
+                                            Grid.Column="1"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding BrowseExtractionCommand}"
+                                            Content="参照..."
+                                            ToolTip.Tip="展開先フォルダを選択" />
+                                    </Grid>
+
+                                    <CheckBox
+                                        x:Name="OpenExtractionOutputFolderCheckBox"
+                                        Margin="0,12,0,0"
+                                        Content="展開後に保存先のフォルダを開く"
+                                        IsChecked="{Binding OpenExtractionOutputFolder}" />
                                 </StackPanel>
-                            </Grid>
-                        </primitives:HeaderedContentControl>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
+                            </primitives:HeaderedContentControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
 
-            <!--  ファイル関連付け設定タブ  -->
-            <TabItem Header="🔗 関連付け設定">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <Grid Margin="12">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
+                <!--  ━━━ 圧縮用設定タブ ━━━  -->
+                <TabItem Header="📦 圧縮用設定">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,12">
+                            <primitives:HeaderedContentControl Header="出力先設定">
+                                <StackPanel>
+                                    <RadioButton
+                                        x:Name="CompressionOutputToSameDirectoryRadio"
+                                        Margin="0,4"
+                                        Content="元のファイルと同じディレクトリに出力"
+                                        IsChecked="{Binding CompressionOutputToSameDirectory}" />
+                                    <RadioButton
+                                        x:Name="CompressionOutputToDirectoryRadio"
+                                        Margin="0,4"
+                                        Content="ディレクトリを指定する"
+                                        IsChecked="{Binding CompressionOutputToDirectory}" />
 
-                        <!--  ボタンエリア  -->
-                        <Grid Grid.Row="0" Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox
+                                            x:Name="CompressionOutputPathTextBox"
+                                            Grid.Column="0"
+                                            VerticalContentAlignment="Center"
+                                            IsReadOnly="True"
+                                            Text="{Binding CompressionOutputDirectory}" />
+                                        <Button
+                                            x:Name="CompressionBrowseButton"
+                                            Grid.Column="1"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding BrowseCompressionCommand}"
+                                            Content="参照..."
+                                            ToolTip.Tip="圧縮先フォルダを選択" />
+                                    </Grid>
 
-                            <!--  全選択・全解除ボタン  -->
-                            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                    <CheckBox
+                                        x:Name="OpenCompressionOutputFolderCheckBox"
+                                        Margin="0,12,0,0"
+                                        Content="圧縮後に保存先のフォルダを開く"
+                                        IsChecked="{Binding OpenCompressionOutputFolder}" />
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
+
+                            <primitives:HeaderedContentControl Header="圧縮レベル設定">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock
+                                            Margin="0,0,0,6"
+                                            FontSize="13"
+                                            Text="ZIP 圧縮レベル" />
+                                        <ComboBox
+                                            HorizontalAlignment="Stretch"
+                                            ItemsSource="{Binding CompressionLevels}"
+                                            SelectedItem="{Binding SelectedZipLevel}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:CompressionLevelItem">
+                                                    <TextBlock Text="{Binding Name}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                        <TextBlock
+                                            Margin="0,0,0,6"
+                                            FontSize="13"
+                                            Text="7z 圧縮レベル" />
+                                        <ComboBox
+                                            HorizontalAlignment="Stretch"
+                                            ItemsSource="{Binding CompressionLevels}"
+                                            SelectedItem="{Binding SelectedSevenZipLevel}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:CompressionLevelItem">
+                                                    <TextBlock Text="{Binding Name}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+                            </primitives:HeaderedContentControl>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!--  ━━━ 関連付け設定タブ ━━━  -->
+                <TabItem Header="🔗 関連付け設定">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <Grid Margin="8,12">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel
+                                Grid.Row="0"
+                                Margin="0,0,0,12"
+                                Orientation="Horizontal"
+                                Spacing="8">
                                 <Button
                                     x:Name="SelectAllButton"
-                                    Width="70"
-                                    Height="40"
-                                    Margin="0,0,4,0"
                                     Command="{Binding SelectAllAssociationsCommand}"
-                                    Content="全選択"
-                                    ToolTip.Tip="すべての形式を選択" />
+                                    Content="全選択" />
                                 <Button
                                     x:Name="DeselectAllButton"
-                                    Width="70"
-                                    Height="40"
                                     Command="{Binding DeselectAllAssociationsCommand}"
-                                    Content="全解除"
-                                    ToolTip.Tip="すべての選択を解除" />
+                                    Content="全解除" />
                             </StackPanel>
+
+                            <ItemsControl
+                                Grid.Row="1"
+                                Margin="4,0"
+                                ItemsSource="{Binding Associations}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="4" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox
+                                            Margin="0,4"
+                                            Content="{Binding Description}"
+                                            IsChecked="{Binding IsAssociated}" />
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </Grid>
+                    </ScrollViewer>
+                </TabItem>
 
-                        <!--  チェックボックス一覧（Associations にバインドして動的生成）  -->
-                        <ItemsControl
-                            Grid.Row="1"
-                            Margin="12,8"
-                            ItemsSource="{Binding Associations}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <UniformGrid Columns="4" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <CheckBox
-                                        Margin="0,4"
-                                        Content="{Binding Description}"
-                                        IsChecked="{Binding IsAssociated}" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </Grid>
-                </ScrollViewer>
-            </TabItem>
+                <!--  ━━━ バージョン情報タブ ━━━  -->
+                <TabItem Header="ℹ️ バージョン">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,16,8,12">
+                            <TextBlock
+                                Margin="4,0,0,4"
+                                FontSize="28"
+                                FontWeight="Bold"
+                                Text="Lhamiel" />
+                            <TextBlock
+                                Margin="4,0,0,20"
+                                FontSize="14"
+                                Foreground="{DynamicResource Brush.FG2}"
+                                Text="アーカイブ圧縮・展開ツール" />
 
-            <!--  バージョン情報タブ  -->
-            <TabItem Header="ℹ️ バージョン">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <StackPanel Margin="24">
-                        <!--  アプリケーション情報  -->
-                        <TextBlock
-                            Margin="0,0,0,8"
-                            FontSize="32"
-                            FontWeight="Bold"
-                            Text="Lhamiel" />
-                        <TextBlock
-                            Margin="0,0,0,24"
-                            FontSize="16"
-                            Foreground="Gray"
-                            Text="圧縮・展開ソフトウェア" />
-
-                        <!--  バージョン情報  -->
-                        <Border
-                            Margin="0,0,0,16"
-                            Padding="16"
-                            Background="{actipro:ThemeResource Container2BackgroundBrush}"
-                            BorderThickness="1"
-                            CornerRadius="{actipro:ScaledCornerRadius 1.5}">
-                            <StackPanel>
-                                <TextBlock
-                                    Margin="0,0,0,12"
-                                    FontSize="18"
-                                    FontWeight="SemiBold"
-                                    Text="バージョン情報" />
+                            <!--  バージョン情報パネル  -->
+                            <Border
+                                Margin="0,0,0,12"
+                                Padding="16"
+                                Background="{DynamicResource Brush.Container}"
+                                BorderBrush="{DynamicResource Brush.Border}"
+                                BorderThickness="1"
+                                CornerRadius="14">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="120" />
-                                        <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -349,149 +307,147 @@
                                     <TextBlock
                                         Grid.Row="0"
                                         Grid.Column="0"
-                                        Margin="0,4"
+                                        Margin="0,0,12,0"
                                         VerticalAlignment="Center"
-                                        FontWeight="SemiBold"
-                                        Text="バージョン:" />
+                                        FontSize="13"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="バージョン" />
                                     <TextBlock
                                         x:Name="VersionTextBlock"
                                         Grid.Row="0"
                                         Grid.Column="1"
-                                        Margin="0,4,12,4"
                                         VerticalAlignment="Center"
+                                        FontSize="13"
                                         Text="{Binding VersionText}" />
                                     <Button
                                         Grid.Row="0"
                                         Grid.Column="2"
-                                        Padding="12,4"
                                         Command="{Binding CheckForUpdateCommand}"
-                                        Content="最新バージョン確認"
+                                        Content="アップデート確認"
                                         FontSize="12"
                                         IsEnabled="{Binding !IsCheckingUpdate}" />
                                     <TextBlock
                                         Grid.Row="1"
-                                        Grid.Column="1"
+                                        Grid.Column="0"
                                         Grid.ColumnSpan="3"
-                                        Margin="0,4,0,0"
+                                        Margin="0,6,0,0"
                                         FontSize="12"
+                                        Foreground="{DynamicResource Brush.FG2}"
                                         IsVisible="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                         Text="{Binding UpdateStatusText}"
                                         TextWrapping="Wrap" />
                                 </Grid>
-                            </StackPanel>
-                        </Border>
+                            </Border>
 
-                        <!--  コピーライト  -->
-                        <Border
-                            Margin="0,0,0,16"
-                            Padding="16"
-                            Background="{actipro:ThemeResource Container2BackgroundBrush}"
-                            BorderThickness="1"
-                            CornerRadius="{actipro:ScaledCornerRadius 1.5}">
-                            <StackPanel>
-                                <TextBlock
-                                    Margin="0,0,0,8"
-                                    FontSize="18"
-                                    FontWeight="SemiBold"
-                                    Text="コピーライト" />
-                                <TextBlock
-                                    x:Name="CopyrightTextBlock"
-                                    Margin="0,4"
-                                    Text="{Binding CopyrightText}"
-                                    TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
+                            <!--  コピーライト  -->
+                            <Border
+                                Margin="0,0,0,12"
+                                Padding="16"
+                                Background="{DynamicResource Brush.Container}"
+                                BorderBrush="{DynamicResource Brush.Border}"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                                <StackPanel>
+                                    <TextBlock
+                                        Margin="0,0,0,6"
+                                        FontSize="13"
+                                        FontWeight="SemiBold"
+                                        Text="コピーライト" />
+                                    <TextBlock
+                                        x:Name="CopyrightTextBlock"
+                                        FontSize="13"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="{Binding CopyrightText}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
 
-                        <!--  ライセンス  -->
-                        <Border
-                            Padding="16"
-                            Background="{actipro:ThemeResource Container2BackgroundBrush}"
-                            BorderThickness="1"
-                            CornerRadius="{actipro:ScaledCornerRadius 1.5}">
-                            <StackPanel>
-                                <TextBlock
-                                    Margin="0,0,0,8"
-                                    FontSize="18"
-                                    FontWeight="SemiBold"
-                                    Text="ライセンス" />
-                                <TextBlock
-                                    Margin="0,4,0,8"
-                                    FontWeight="SemiBold"
-                                    Text="MIT License" />
-                                <TextBlock
-                                    x:Name="LicenseTextBlock"
-                                    Margin="0,4"
-                                    FontFamily="Consolas"
-                                    FontSize="11"
-                                    LineHeight="16"
-                                    Text="{Binding LicenseText}"
-                                    TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-        </TabControl>
+                            <!--  ライセンス  -->
+                            <Border
+                                Padding="16"
+                                Background="{DynamicResource Brush.Container}"
+                                BorderBrush="{DynamicResource Brush.Border}"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                                <StackPanel>
+                                    <TextBlock
+                                        Margin="0,0,0,6"
+                                        FontSize="13"
+                                        FontWeight="SemiBold"
+                                        Text="ライセンス" />
+                                    <TextBlock
+                                        Margin="0,0,0,4"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="MIT License" />
+                                    <TextBlock
+                                        x:Name="LicenseTextBlock"
+                                        FontFamily="Consolas"
+                                        FontSize="11"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        LineHeight="16"
+                                        Text="{Binding LicenseText}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
 
-        <!--  下部コントロールエリア  -->
-        <Grid Grid.Row="1" Margin="0,8,0,0">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <!--  圧縮形式選択  -->
-            <StackPanel Grid.Column="0" Orientation="Horizontal">
-                <TextBlock
-                    Margin="0,0,8,0"
-                    VerticalAlignment="Center"
-                    FontSize="13"
-                    Text="デフォルトの圧縮形式:" />
-                <ComboBox
-                    x:Name="CompressionFormatComboBox"
-                    Width="85"
-                    Height="40"
-                    ItemsSource="{Binding CompressionFormats}"
-                    SelectedItem="{Binding SelectedCompressionFormat}"
-                    ToolTip.Tip="圧縮時に使用する形式を選択">
-                    <ComboBox.SelectionBoxItemTemplate>
-                        <DataTemplate>
-                            <TextBlock
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Text="{Binding}"
-                                TextAlignment="Center" />
-                        </DataTemplate>
-                    </ComboBox.SelectionBoxItemTemplate>
-                </ComboBox>
-            </StackPanel>
-
-            <!--  アクションボタン  -->
-            <StackPanel Grid.Column="2" Orientation="Horizontal">
-                <Button
-                    x:Name="CreateShortcutButton"
-                    Height="40"
-                    Margin="0,0,16,0"
-                    Command="{Binding CreateShortcutCommand}"
-                    Content="📌 デスクトップにショートカット作成"
-                    ToolTip.Tip="デスクトップにアプリケーションのショートカットを作成" />
-                <Button
-                    x:Name="SaveButton"
-                    Height="40"
-                    MinWidth="100"
-                    Margin="0,0,8,0"
-                    Command="{Binding SaveCommand}"
-                    Content="設定を保存"
-                    ToolTip.Tip="現在の設定を保存して閉じる" />
-                <Button
-                    x:Name="CancelButton"
-                    Height="40"
-                    MinWidth="100"
-                    Command="{Binding CancelCommand}"
-                    Content="キャンセル"
-                    ToolTip.Tip="設定を保存せずに閉じる" />
-            </StackPanel>
+            <!--  ═══ 下部バー（保存・キャンセルのみ） ═══  -->
+            <Border
+                Grid.Row="1"
+                Margin="16,0,16,16"
+                Padding="12,10"
+                Background="{DynamicResource Brush.Container}"
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="1"
+                CornerRadius="14">
+                <StackPanel
+                    HorizontalAlignment="Right"
+                    Orientation="Horizontal"
+                    Spacing="8">
+                    <Button
+                        x:Name="SaveButton"
+                        MinWidth="100"
+                        Command="{Binding SaveCommand}"
+                        Content="保存" />
+                    <Button
+                        x:Name="CancelButton"
+                        MinWidth="100"
+                        Command="{Binding CancelCommand}"
+                        Content="キャンセル" />
+                </StackPanel>
+            </Border>
         </Grid>
-    </Grid>
+
+        <!--  ═══ ドラッグオーバーレイ（ドラッグ中のみ表示） ═══  -->
+        <Border
+            x:Name="DropOverlay"
+            Background="#CC1C1C1E"
+            CornerRadius="8"
+            IsHitTestVisible="False"
+            IsVisible="False">
+            <Border
+                Margin="24"
+                BorderBrush="#60FFFFFF"
+                BorderThickness="1.5"
+                CornerRadius="18">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <TextBlock
+                        HorizontalAlignment="Center"
+                        FontSize="40"
+                        Text="📁" />
+                    <TextBlock
+                        Margin="0,12,0,0"
+                        HorizontalAlignment="Center"
+                        FontSize="16"
+                        FontWeight="SemiBold"
+                        Foreground="#CCFFFFFF"
+                        Text="ここにドロップして圧縮・展開" />
+                </StackPanel>
+            </Border>
+        </Border>
+    </Panel>
 </Window>
