@@ -819,9 +819,25 @@ public class App : Application
     /// <returns>ローカライズ済み文字列</returns>
     public static string Text(string key, params object[] args)
     {
-        var fmt = Current?.FindResource($"Text.{key}") as string;
+        var fullKey = $"Text.{key}";
+        string? fmt = null;
+
+        // アクティブロケールから直接検索（MergedDictionaries経由のFindResourceより確実）
+        if (Current is App app && app._activeLocale != null)
+        {
+            app._activeLocale.TryGetResource(fullKey, null, out var value);
+            fmt = value as string;
+        }
+
+        // フォールバック: Application全体のリソースから検索
+        if (string.IsNullOrWhiteSpace(fmt) && Current?.TryFindResource(fullKey, out var fallback) == true)
+            fmt = fallback as string;
+
         if (string.IsNullOrWhiteSpace(fmt))
-            return $"Text.{key}";
+            return fullKey;
+
+        // リテラルの \n を実際の改行に変換
+        fmt = fmt.Replace("\\n", "\n");
 
         if (args == null || args.Length == 0)
             return fmt;

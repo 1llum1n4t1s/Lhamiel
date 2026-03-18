@@ -21,11 +21,20 @@ public class OverwriteConfirmDialog : Window
     /// <param name="message">メッセージ本文</param>
     public OverwriteConfirmDialog(string title, string message)
     {
-        Title = title;
         InitializeComponent();
+        // XAML の DynamicResource より後に設定して確実に上書きする
+        Title = title;
         var messageText = this.FindControl<TextBlock>("MessageTextBlock");
         if (messageText != null)
             messageText.Text = message;
+
+        // ボタンテキストを確実に設定（DynamicResource のフォールバック）
+        var yesBtn = this.FindControl<Button>("YesButton");
+        var noBtn = this.FindControl<Button>("NoButton");
+        if (yesBtn != null && (yesBtn.Content == null || yesBtn.Content is string s1 && string.IsNullOrEmpty(s1)))
+            yesBtn.Content = App.Text("Button.Yes");
+        if (noBtn != null && (noBtn.Content == null || noBtn.Content is string s2 && string.IsNullOrEmpty(s2)))
+            noBtn.Content = App.Text("Button.No");
     }
 
     private void InitializeComponent()

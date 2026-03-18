@@ -3,7 +3,7 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:view="using:Lhamiel.View"
-    Title="{DynamicResource Text.Overwrite.Title}"
+    Title="Overwrite"
     Width="450"
     Height="180"
     x:DataType="view:OverwriteConfirmDialog"
