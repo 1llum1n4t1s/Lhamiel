@@ -28,7 +28,7 @@ public class App : Application
     /// <summary>
     /// 現在アクティブなロケール辞書
     /// </summary>
-    private ResourceDictionary? _activeLocale;
+    private IResourceProvider? _activeLocale;
 
     /// <summary>
     /// サポートされているロケール一覧
@@ -800,7 +800,7 @@ public class App : Application
     public static void SetLocale(string localeKey)
     {
         if (Current is not App app ||
-            app.Resources[localeKey] is not ResourceDictionary targetLocale ||
+            app.Resources[localeKey] is not IResourceProvider targetLocale ||
             targetLocale == app._activeLocale)
             return;
 
