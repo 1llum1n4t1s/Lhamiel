@@ -85,9 +85,9 @@ public class App : Application
         // テーマ設定を適用
         RequestedThemeVariant = GetThemeVariant(settings.Theme);
 
-        // ロケール設定を適用
+        // ロケール設定を適用（コンストラクタ内では Application.Current が未設定のため this を直接使用）
         var locale = string.IsNullOrEmpty(settings.Locale) ? DetectDefaultLocale() : settings.Locale;
-        SetLocale(locale);
+        ApplyLocale(locale);
 
         // 7z.dll をプロセスに固定して、アンロード時のクラッシュを防止
         NativeLibraryManager.Initialize();
@@ -794,21 +794,30 @@ public class App : Application
     }
 
     /// <summary>
-    /// ロケールを切り替える
+    /// ロケールを切り替える（静的メソッド。Application.Current 経由でアクセス）
     /// </summary>
     /// <param name="localeKey">ロケールキー（"ja_JP", "en_US" など）</param>
     public static void SetLocale(string localeKey)
     {
-        if (Current is not App app ||
-            app.Resources[localeKey] is not IResourceProvider targetLocale ||
-            targetLocale == app._activeLocale)
+        if (Current is App app)
+            app.ApplyLocale(localeKey);
+    }
+
+    /// <summary>
+    /// ロケールを実際に適用する（インスタンスメソッド。コンストラクタからも安全に呼べる）
+    /// </summary>
+    /// <param name="localeKey">ロケールキー（"ja_JP", "en_US" など）</param>
+    private void ApplyLocale(string localeKey)
+    {
+        if (Resources[localeKey] is not IResourceProvider targetLocale ||
+            targetLocale == _activeLocale)
             return;
 
-        if (app._activeLocale != null)
-            app.Resources.MergedDictionaries.Remove(app._activeLocale);
+        if (_activeLocale != null)
+            Resources.MergedDictionaries.Remove(_activeLocale);
 
-        app.Resources.MergedDictionaries.Add(targetLocale);
-        app._activeLocale = targetLocale;
+        Resources.MergedDictionaries.Add(targetLocale);
+        _activeLocale = targetLocale;
     }
 
     /// <summary>
