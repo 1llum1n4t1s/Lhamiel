@@ -6,6 +6,7 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: Windows x64
@@ -49,15 +50,8 @@ jobs:
           $size = [math]::Round((Get-Item $dllPath).Length / 1MB, 2)
           Write-Host "7z.dll ($rid) を配置完了: $dllPath (${size} MB)"
 
-      - name: 依存関係を復元
-        run: dotnet restore Lhamiel.slnx
-
-      - name: ビルド
-        run: dotnet build src/Lhamiel/Lhamiel.csproj -c Release -p:RuntimeIdentifier=${{ matrix.runtime }} -p:PlatformTarget=${{ matrix.platform_target }} --no-restore
-
       - name: 公開
-        run: |
-          dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r ${{ matrix.runtime }} -p:PlatformTarget=${{ matrix.platform_target }} -o publish
+        run: dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r ${{ matrix.runtime }} -p:PlatformTarget=${{ matrix.platform_target }} -o publish
 
       - name: 成果物を確認
         shell: pwsh
