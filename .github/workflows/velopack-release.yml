@@ -8,9 +8,20 @@ permissions:
 
 jobs:
   build-release:
-    name: Velopack リリース作成
+    name: Velopack リリース (${{ matrix.rid }})
     runs-on: windows-latest
     if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    strategy:
+      matrix:
+        include:
+          - rid: win-x64
+            channel: win
+            sevenzip_suffix: x64
+            platform_target: x64
+          - rid: win-arm64
+            channel: win-arm64
+            sevenzip_suffix: arm64
+            platform_target: ARM64
     steps:
       - name: リポジトリをチェックアウト
         uses: actions/checkout@v4
@@ -69,20 +80,52 @@ jobs:
           Write-Host "TargetFramework found: $targetFramework"
           Add-Content -LiteralPath $env:GITHUB_ENV -Value "TARGET_FRAMEWORK=$targetFramework" -Encoding utf8
 
+      - name: 7z.dll をダウンロード
+        shell: pwsh
+        run: |
+          $sevenZipVersion = "2600"
+          $rid = "${{ matrix.rid }}"
+          $suffix = "${{ matrix.sevenzip_suffix }}"
+          $url = "https://www.7-zip.org/a/7z${sevenZipVersion}-${suffix}.exe"
+          $tempDir = Join-Path $env:RUNNER_TEMP "7z-extract"
+          $installerPath = Join-Path $env:RUNNER_TEMP "7z-installer.exe"
+          $targetDir = Join-Path "lib" "native" $rid
+
+          Write-Host "7-Zip $rid をダウンロード: $url"
+          Invoke-WebRequest -Uri $url -OutFile $installerPath -UseBasicParsing
+
+          Write-Host "7z.dll を展開..."
+          & "C:\Program Files\7-Zip\7z.exe" x $installerPath -o"$tempDir" -y | Out-Null
+
+          New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+          Copy-Item -Path (Join-Path $tempDir "7z.dll") -Destination (Join-Path $targetDir "7z.dll") -Force
+
+          $dllPath = Join-Path $targetDir "7z.dll"
+          if (Test-Path $dllPath) {
+            $size = [math]::Round((Get-Item $dllPath).Length / 1MB, 2)
+            Write-Host "7z.dll ($rid) を配置完了: $dllPath (${size} MB)"
+          } else {
+            Write-Error "7z.dll の配置に失敗しました"
+            exit 1
+          }
+
       - name: アプリを公開ビルド
         shell: pwsh
         run: |
-          $publishDir = Join-Path "src" "Lhamiel" "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
+          $rid = "${{ matrix.rid }}"
+          $publishDir = Join-Path "src" "Lhamiel" "bin" "Release" "$env:TARGET_FRAMEWORK" "$rid" "publish"
           if (Test-Path $publishDir) {
             Remove-Item -Path $publishDir -Recurse -Force
           }
 
           Write-Host "Building and publishing application..."
           Write-Host "Target Framework: $env:TARGET_FRAMEWORK"
+          Write-Host "Runtime Identifier: $rid"
           Write-Host "Publish Dir: $publishDir"
           dotnet publish "src/Lhamiel/Lhamiel.csproj" `
             -c Release `
-            -r win-x64 `
+            -r $rid `
+            -p:PlatformTarget=${{ matrix.platform_target }} `
             -o $publishDir
 
           if ($LASTEXITCODE -ne 0) {
@@ -100,10 +143,19 @@ jobs:
           }
           Write-Host "Successfully built: $exePath"
 
+          # 7z.dll が publish に含まれているか確認
+          $dllPath = Join-Path $publishDir "7z.dll"
+          if (-not (Test-Path $dllPath)) {
+            Write-Error "7z.dll not found in publish directory: $dllPath"
+            exit 1
+          }
+          Write-Host "7z.dll confirmed in publish directory"
+
       - name: README.txt を生成して publish に配置
         shell: pwsh
         run: |
-          $publishDir = Join-Path "src" "Lhamiel" "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
+          $rid = "${{ matrix.rid }}"
+          $publishDir = Join-Path "src" "Lhamiel" "bin" "Release" "$env:TARGET_FRAMEWORK" "$rid" "publish"
           $readmeMd = "README.md"
           $readmeTxt = Join-Path $publishDir "README.txt"
 
@@ -113,18 +165,17 @@ jobs:
           }
 
           # Markdown → プレーンテキスト変換
-          # 見出し記号、リンク、画像タグ、装飾記号を除去
           $content = Get-Content -Path $readmeMd -Raw -Encoding utf8
-          $content = $content -replace '!\[.*?\]\(.*?\)\r?\n?', ''          # 画像タグ除去
-          $content = $content -replace '<img[^>]*/?>\r?\n?', ''            # HTML imgタグ除去
-          $content = $content -replace '\[([^\]]+)\]\(([^\)]+)\)', '$1 ($2)' # [text](url) → text (url)
-          $content = $content -replace '^#{1,6}\s+', '' -replace '(?m)^#{1,6}\s+', '' # 見出し記号除去
-          $content = $content -replace '\*\*([^*]+)\*\*', '$1'             # 太字除去
-          $content = $content -replace '`([^`]+)`', '$1'                   # インラインコード除去
-          $content = $content -replace '^\| .+\|$', '' -replace '(?m)^\| .+\|$', '' # テーブル行除去
-          $content = $content -replace '^\|[-: ]+\|$', '' -replace '(?m)^\|[-: ]+\|$', '' # テーブル区切り除去
-          $content = $content -replace '(?m)^>\s*', ''                     # 引用記号除去
-          $content = $content -replace '\r?\n{3,}', "`n`n"                 # 連続空行を2行に
+          $content = $content -replace '!\[.*?\]\(.*?\)\r?\n?', ''
+          $content = $content -replace '<img[^>]*/?>\r?\n?', ''
+          $content = $content -replace '\[([^\]]+)\]\(([^\)]+)\)', '$1 ($2)'
+          $content = $content -replace '^#{1,6}\s+', '' -replace '(?m)^#{1,6}\s+', ''
+          $content = $content -replace '\*\*([^*]+)\*\*', '$1'
+          $content = $content -replace '`([^`]+)`', '$1'
+          $content = $content -replace '^\| .+\|$', '' -replace '(?m)^\| .+\|$', ''
+          $content = $content -replace '^\|[-: ]+\|$', '' -replace '(?m)^\|[-: ]+\|$', ''
+          $content = $content -replace '(?m)^>\s*', ''
+          $content = $content -replace '\r?\n{3,}', "`n`n"
 
           [System.IO.File]::WriteAllText($readmeTxt, $content.Trim(), [System.Text.Encoding]::UTF8)
           Write-Host "README.txt generated at: $readmeTxt"
@@ -141,7 +192,8 @@ jobs:
       - name: Velopack パッケージを作成
         shell: pwsh
         run: |
-          $publishDir = Join-Path "src" "Lhamiel" "bin" "Release" "$env:TARGET_FRAMEWORK" "win-x64" "publish"
+          $rid = "${{ matrix.rid }}"
+          $publishDir = Join-Path "src" "Lhamiel" "bin" "Release" "$env:TARGET_FRAMEWORK" "$rid" "publish"
           $outputDir = "artifacts"
           $iconPath = Join-Path "src" "Lhamiel" "icon" "app.ico"
 
@@ -159,6 +211,7 @@ jobs:
           Write-Host "  Pack ID: Lhamiel"
           Write-Host "  Version: $env:RELEASE_VERSION"
           Write-Host "  Title: Lhamiel"
+          Write-Host "  Channel: ${{ matrix.channel }}"
           Write-Host "  Main EXE: Lhamiel.exe"
           Write-Host "  Publish Dir: $publishDir"
           Write-Host "  Output Dir: $outputDir"
@@ -173,7 +226,8 @@ jobs:
             --icon $iconPath `
             --packDir $publishDir `
             --outputDir $outputDir `
-            --shortcuts "StartMenu,Desktop"
+            --shortcuts "StartMenu,Desktop" `
+            --channel ${{ matrix.channel }}
 
           if ($LASTEXITCODE -ne 0) {
             Write-Error "vpk pack failed with exit code $LASTEXITCODE"
@@ -238,6 +292,7 @@ jobs:
           Write-Host "GitHub Releases へのアップロードを開始..."
           Write-Host "Repository: ${{ github.repository }}"
           Write-Host "Version: $env:RELEASE_VERSION"
+          Write-Host "Channel: ${{ matrix.channel }}"
           Write-Host "Artifacts directory contents:"
           if (Get-ChildItem -Path $outputDir -Recurse -ErrorAction SilentlyContinue) {
             Get-ChildItem -Path $outputDir -Recurse | ForEach-Object { Write-Host "  $($_.FullName)" }
@@ -259,7 +314,7 @@ jobs:
             --repoUrl $repoUrl `
             --token "${{ secrets.GITHUB_TOKEN }}" `
             --outputDir $outputDir `
-            --channel win `
+            --channel ${{ matrix.channel }} `
             --publish `
             --releaseName $releaseName
 

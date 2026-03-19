@@ -9,9 +9,15 @@ Lhamiel is a Windows archive compression/decompression desktop app built with **
 ## Build & Development Commands
 
 ```bash
-# Build
+# 7z.dll をダウンロード（初回 or 更新時のみ）
+pwsh scripts/download-7z.ps1
+
+# Build (x64, デフォルト)
 dotnet build Lhamiel.slnx -c Debug
 dotnet build Lhamiel.slnx -c Release
+
+# Build (ARM64)
+dotnet build src/Lhamiel/Lhamiel.csproj -c Debug -p:RuntimeIdentifier=win-arm64 -p:PlatformTarget=ARM64
 
 # Run tests (xUnit)
 dotnet test Lhamiel.slnx -c Release
@@ -19,16 +25,28 @@ dotnet test Lhamiel.slnx -c Release
 # Run a single test
 dotnet test Lhamiel.slnx --filter "FullyQualifiedName~TestMethodName"
 
-# Publish native AOT executable
-dotnet publish -c Release -r win-x64 --self-contained
+# Publish native AOT executable (x64)
+dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r win-x64
+
+# Publish native AOT executable (ARM64)
+dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r win-arm64 -p:PlatformTarget=ARM64
 
 # Run the app
 dotnet run --project src/Lhamiel/Lhamiel.csproj
 ```
 
-The solution file is `Lhamiel.slnx` (VS 2026 format). Platform target is **x64 only**.
+The solution file is `Lhamiel.slnx` (VS 2026 format). Supports **x64** (default) and **ARM64** builds.
 
-After build, 7z.dll is automatically moved from `runtimes/` to the output root via MSBuild targets in `Directory.Build.targets`.
+### 7z.dll ネイティブライブラリ
+
+7z.dll は 7-Zip 公式サイトからダウンロードして `lib/native/{rid}/` に配置する（`.gitignore` で除外済み）。
+
+- `lib/native/win-x64/7z.dll` — x64 ビルド用
+- `lib/native/win-arm64/7z.dll` — ARM64 ビルド用
+
+初回セットアップ: `pwsh scripts/download-7z.ps1`（7zr.exe を自動ダウンロードして展開）
+
+`Directory.Build.targets` が `$(RuntimeIdentifier)` に基づいて適切な 7z.dll をビルド出力にコピーする。
 
 ## Architecture
 

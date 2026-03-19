@@ -1,7 +1,8 @@
 <Project>
-  <!-- 7z.dll を全プロジェクトでルートに配置 -->
+  <!-- 7z.dll を全プロジェクトでルートに配置（アーキテクチャ別） -->
   <ItemGroup>
-    <Content Include="$(NuGetPackageRoot)7z.libs\**\runtimes\win-x64\native\7z.dll">
+    <Content Include="$(MSBuildThisFileDirectory)lib\native\$(RuntimeIdentifier)\7z.dll"
+             Condition="Exists('$(MSBuildThisFileDirectory)lib\native\$(RuntimeIdentifier)\7z.dll')">
       <Link>7z.dll</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

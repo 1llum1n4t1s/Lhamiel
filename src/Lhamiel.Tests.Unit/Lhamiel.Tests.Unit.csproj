@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="7z.Libs" Version="26.0.0" />
+    <!-- 7z.dll は lib/native/{rid}/ から取得（Directory.Build.targets で解決） -->
     <PackageReference Include="coverlet.collector" Version="8.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -24,12 +24,10 @@
     <ProjectReference Include="..\Lhamiel\Lhamiel.csproj" />
   </ItemGroup>
 
-  <!-- ビルド後にx64フォルダを削除し、7z.dllをルートに移動 -->
-  <Target Name="Move7zDllToRoot" AfterTargets="Build">
-    <Move SourceFiles="$(OutputPath)x64\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)x64\7z.dll')" />
-    <RemoveDir Directories="$(OutputPath)x64" Condition="Exists('$(OutputPath)x64')" />
-    <RemoveDir Directories="$(OutputPath)x86" Condition="Exists('$(OutputPath)x86')" />
-    <RemoveDir Directories="$(OutputPath)runtimes" Condition="Exists('$(OutputPath)runtimes')" />
+  <!-- ビルド後に7z.dllがルートにあるか確認 -->
+  <Target Name="Verify7zDll" AfterTargets="Build">
+    <Message Text="7z.dll is at: $(OutputPath)7z.dll" Importance="high" Condition="Exists('$(OutputPath)7z.dll')" />
+    <Warning Text="7z.dll NOT FOUND at $(OutputPath)7z.dll — scripts/download-7z.ps1 を実行してください" Condition="!Exists('$(OutputPath)7z.dll')" />
   </Target>
 
 </Project>

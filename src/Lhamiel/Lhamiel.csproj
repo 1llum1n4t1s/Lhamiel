@@ -9,10 +9,11 @@
     <Optimize>true</Optimize>
     <DebugType>portable</DebugType>
     <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
-    <!-- ネイティブAOT: Publish 時に -r win-x64 で指定 -->
+    <!-- ネイティブAOT -->
     <PublishAot>true</PublishAot>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- CLIから -p:RuntimeIdentifier=win-arm64 で切り替え可能 -->
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
@@ -51,7 +52,7 @@
     <PackageReference Include="MessageBox.Avalonia" Version="3.3.1.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.44" />
-    <PackageReference Include="7z.Libs" Version="26.0.0" />
+    <!-- 7z.dll は lib/native/{rid}/ から取得（7z.Libs NuGet は ARM64 未対応のため削除） -->
     <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
     <PackageReference Include="NLog" Version="6.1.1" />
   </ItemGroup>
@@ -63,20 +64,10 @@
     <Copy SourceFiles="$(OutputPath)7z.dll" DestinationFolder="$(PublishDir)" Condition="Exists('$(OutputPath)7z.dll')" />
   </Target>
 
-  <!-- ビルド後に7z.dllをルートに配置 -->
-  <Target Name="MoveNativeDllsToRoot" AfterTargets="Build">
-    <!-- 7z.dllを複数の場所から確認して移動 -->
-    <Move SourceFiles="$(OutputPath)x64\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)x64\7z.dll')" ContinueOnError="true" />
-    <Move SourceFiles="$(OutputPath)runtimes\win-x64\native\7z.dll" DestinationFiles="$(OutputPath)7z.dll" Condition="Exists('$(OutputPath)runtimes\win-x64\native\7z.dll')" ContinueOnError="true" />
-
-    <!-- クリーンアップ -->
-    <RemoveDir Directories="$(OutputPath)x64" Condition="Exists('$(OutputPath)x64')" ContinueOnError="true" />
-    <RemoveDir Directories="$(OutputPath)x86" Condition="Exists('$(OutputPath)x86')" ContinueOnError="true" />
-    <RemoveDir Directories="$(OutputPath)runtimes" Condition="Exists('$(OutputPath)runtimes')" ContinueOnError="true" />
-    
-    <!-- 成功したかログ出力 -->
+  <!-- ビルド後に7z.dllがルートにあるか確認 -->
+  <Target Name="Verify7zDll" AfterTargets="Build">
     <Message Text="7z.dll is at: $(OutputPath)7z.dll" Importance="high" Condition="Exists('$(OutputPath)7z.dll')" />
-    <Warning Text="7z.dll NOT FOUND at $(OutputPath)7z.dll" Condition="!Exists('$(OutputPath)7z.dll')" />
+    <Warning Text="7z.dll NOT FOUND at $(OutputPath)7z.dll — scripts/download-7z.ps1 を実行してください" Condition="!Exists('$(OutputPath)7z.dll')" />
   </Target>
 
 
