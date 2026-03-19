@@ -243,38 +243,45 @@ jobs:
             exit 1
           }
 
+      - name: リリースタグを決定
+        shell: pwsh
+        run: |
+          # x64 は従来通りバージョンのみ、ARM64 はサフィックス付き
+          $channel = "${{ matrix.channel }}"
+          if ($channel -eq "win") {
+            $releaseTag = $env:RELEASE_VERSION
+            $releaseName = "Lhamiel $env:RELEASE_VERSION"
+          } else {
+            $releaseTag = "$env:RELEASE_VERSION-$channel"
+            $releaseName = "Lhamiel $env:RELEASE_VERSION ($channel)"
+          }
+          Write-Host "Release Tag: $releaseTag"
+          Write-Host "Release Name: $releaseName"
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "RELEASE_TAG=$releaseTag" -Encoding utf8
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value "RELEASE_NAME=$releaseName" -Encoding utf8
+
       - name: 既存リリースを削除
         shell: pwsh
         run: |
-          $versionWithoutPrefix = $env:RELEASE_VERSION
-          Write-Host "Checking for existing release with version: $versionWithoutPrefix"
+          $releaseTag = $env:RELEASE_TAG
+          Write-Host "Checking for existing release with tag: $releaseTag"
 
           try {
             $releases = @(gh release list --repo "${{ github.repository }}" --json tagName,name --limit 100 | ConvertFrom-Json)
-            Write-Host "Total releases found: $($releases.Count)"
 
-            foreach ($release in $releases) {
-              Write-Host "  - Tag: $($release.tagName), Name: $($release.name)"
-            }
-
-            $existingRelease = $releases | Where-Object { $_.tagName -eq $versionWithoutPrefix } | Select-Object -First 1
+            $existingRelease = $releases | Where-Object { $_.tagName -eq $releaseTag } | Select-Object -First 1
 
             if ($existingRelease) {
               Write-Host "Found existing release: $($existingRelease.name) (tag: $($existingRelease.tagName))"
-              Write-Host "Deleting release: $versionWithoutPrefix"
-              gh release delete $versionWithoutPrefix --repo "${{ github.repository }}" --yes
+              Write-Host "Deleting release: $releaseTag"
+              gh release delete $releaseTag --repo "${{ github.repository }}" --yes
               Write-Host "Release deleted successfully"
             } else {
-              Write-Host "No existing release found for tag: $versionWithoutPrefix"
-              Write-Host "Existing tags:"
-              foreach ($release in $releases) {
-                Write-Host "  - $($release.tagName)"
-              }
+              Write-Host "No existing release found for tag: $releaseTag"
             }
           } catch {
             Write-Host "Error checking releases: $_"
-            Write-Host "Attempting to delete release anyway..."
-            gh release delete $versionWithoutPrefix --repo "${{ github.repository }}" --yes --if-exists 2>$null || Write-Host "No release to delete or deletion failed (this may be expected)"
+            gh release delete $releaseTag --repo "${{ github.repository }}" --yes --if-exists 2>$null || Write-Host "No release to delete (expected for new releases)"
           }
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -291,7 +298,8 @@ jobs:
 
           Write-Host "GitHub Releases へのアップロードを開始..."
           Write-Host "Repository: ${{ github.repository }}"
-          Write-Host "Version: $env:RELEASE_VERSION"
+          Write-Host "Release Tag: $env:RELEASE_TAG"
+          Write-Host "Release Name: $env:RELEASE_NAME"
           Write-Host "Channel: ${{ matrix.channel }}"
           Write-Host "Artifacts directory contents:"
           if (Get-ChildItem -Path $outputDir -Recurse -ErrorAction SilentlyContinue) {
@@ -301,14 +309,6 @@ jobs:
           }
 
           $repoUrl = "https://github.com/${{ github.repository }}"
-          $releaseName = "Lhamiel $env:RELEASE_VERSION"
-
-          Write-Host ""
-          Write-Host "Uploading to GitHub Releases:"
-          Write-Host "  Repository URL: $repoUrl"
-          Write-Host "  Release Name: $releaseName"
-          Write-Host "  Output Dir: $outputDir"
-          Write-Host ""
 
           vpk upload github `
             --repoUrl $repoUrl `
@@ -316,7 +316,8 @@ jobs:
             --outputDir $outputDir `
             --channel ${{ matrix.channel }} `
             --publish `
-            --releaseName $releaseName
+            --releaseName $env:RELEASE_NAME `
+            --tag $env:RELEASE_TAG
 
           if ($LASTEXITCODE -ne 0) {
             Write-Error "vpk upload failed with exit code $LASTEXITCODE"
