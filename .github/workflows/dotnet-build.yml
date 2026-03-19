@@ -5,9 +5,14 @@ on:
 
 jobs:
   build:
-    name: .NET ビルド
-    runs-on: windows-latest
+    name: Build
+    uses: ./.github/workflows/build.yml
     if: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+
+  test:
+    name: テスト実行
+    needs: [build]
+    runs-on: windows-latest
     steps:
       - name: リポジトリをチェックアウト
         uses: actions/checkout@v4
@@ -17,7 +22,13 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: 7z.dll をダウンロード (x64)
+      - name: x64 ビルド成果物をダウンロード
+        uses: actions/download-artifact@v4
+        with:
+          name: lhamiel.win-x64
+          path: publish
+
+      - name: 7z.dll をテストプロジェクト用に配置
         shell: pwsh
         run: |
           $sevenZipVersion = "2600"
@@ -26,24 +37,13 @@ jobs:
           $installerPath = Join-Path $env:RUNNER_TEMP "7z-installer.exe"
           $targetDir = Join-Path "lib" "native" "win-x64"
 
-          Write-Host "7-Zip x64 をダウンロード: $url"
           Invoke-WebRequest -Uri $url -OutFile $installerPath -UseBasicParsing
-
-          Write-Host "7z.dll を展開..."
           & "C:\Program Files\7-Zip\7z.exe" x $installerPath -o"$tempDir" -y | Out-Null
-
           New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
           Copy-Item -Path (Join-Path $tempDir "7z.dll") -Destination (Join-Path $targetDir "7z.dll") -Force
-          Write-Host "7z.dll を配置完了: $targetDir"
-
-      - name: 依存関係を復元
-        run: dotnet restore Lhamiel.slnx
-
-      - name: ビルド
-        run: dotnet build Lhamiel.slnx --configuration Release --no-restore
 
       - name: テスト実行
-        run: dotnet test Lhamiel.slnx --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test Lhamiel.slnx --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
         continue-on-error: true
 
       - name: テスト結果をアップロード
@@ -52,14 +52,4 @@ jobs:
         with:
           name: test-results-Release
           path: '**/TestResults/*.trx'
-          retention-days: 1
-
-      - name: ビルド成果物をアップロード
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-artifacts-release
-          path: |
-            bin/**/Release/**/*.exe
-            bin/**/Release/**/*.dll
-            !bin/**/Release/**/ref/**
           retention-days: 1

@@ -1,0 +1,75 @@
+name: Build
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - name: Windows x64
+            runtime: win-x64
+            platform_target: x64
+          - name: Windows ARM64
+            runtime: win-arm64
+            platform_target: ARM64
+    name: Build ${{ matrix.name }}
+    runs-on: windows-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: .NET SDK をセットアップ
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: 7z.dll をダウンロード
+        shell: pwsh
+        run: |
+          $sevenZipVersion = "2600"
+          $rid = "${{ matrix.runtime }}"
+          $suffix = if ($rid -eq "win-x64") { "x64" } else { "arm64" }
+          $url = "https://www.7-zip.org/a/7z${sevenZipVersion}-${suffix}.exe"
+          $tempDir = Join-Path $env:RUNNER_TEMP "7z-extract"
+          $installerPath = Join-Path $env:RUNNER_TEMP "7z-installer.exe"
+          $targetDir = Join-Path "lib" "native" $rid
+
+          Write-Host "7-Zip $rid をダウンロード: $url"
+          Invoke-WebRequest -Uri $url -OutFile $installerPath -UseBasicParsing
+
+          Write-Host "7z.dll を展開..."
+          & "C:\Program Files\7-Zip\7z.exe" x $installerPath -o"$tempDir" -y | Out-Null
+
+          New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+          Copy-Item -Path (Join-Path $tempDir "7z.dll") -Destination (Join-Path $targetDir "7z.dll") -Force
+
+          $dllPath = Join-Path $targetDir "7z.dll"
+          $size = [math]::Round((Get-Item $dllPath).Length / 1MB, 2)
+          Write-Host "7z.dll ($rid) を配置完了: $dllPath (${size} MB)"
+
+      - name: 依存関係を復元
+        run: dotnet restore Lhamiel.slnx
+
+      - name: ビルド
+        run: dotnet build src/Lhamiel/Lhamiel.csproj -c Release -p:RuntimeIdentifier=${{ matrix.runtime }} -p:PlatformTarget=${{ matrix.platform_target }} --no-restore
+
+      - name: 公開
+        run: |
+          dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r ${{ matrix.runtime }} -p:PlatformTarget=${{ matrix.platform_target }} -o publish
+
+      - name: 成果物を確認
+        shell: pwsh
+        run: |
+          $exePath = Join-Path "publish" "Lhamiel.exe"
+          $dllPath = Join-Path "publish" "7z.dll"
+          if (-not (Test-Path $exePath)) { Write-Error "Lhamiel.exe not found"; exit 1 }
+          if (-not (Test-Path $dllPath)) { Write-Error "7z.dll not found"; exit 1 }
+          Write-Host "Lhamiel.exe と 7z.dll を確認完了"
+
+      - name: 成果物をアップロード
+        uses: actions/upload-artifact@v4
+        with:
+          name: lhamiel.${{ matrix.runtime }}
+          path: publish/*
