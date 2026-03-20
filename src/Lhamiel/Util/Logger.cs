@@ -43,6 +43,7 @@ public static class Logger
 {
     private static NLog.Logger? _logger;
     private static bool _isConfigured;
+    private static readonly object _initLock = new();
     private static string _appName = "App";
 
     /// <summary>
@@ -63,40 +64,46 @@ public static class Logger
     {
         if (_isConfigured) return;
 
-        _appName = config.FilePrefix;
-
-        if (!Directory.Exists(config.LogDirectory))
+        lock (_initLock)
         {
-            Directory.CreateDirectory(config.LogDirectory);
+            // ダブルチェックロッキング: 別スレッドが先に初期化を完了した場合を防止
+            if (_isConfigured) return;
+
+            _appName = config.FilePrefix;
+
+            if (!Directory.Exists(config.LogDirectory))
+            {
+                Directory.CreateDirectory(config.LogDirectory);
+            }
+
+            var nlogConfig = new LoggingConfiguration();
+
+            var fileTarget = new FileTarget("file")
+            {
+                FileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}.log"),
+                ArchiveAboveSize = config.MaxSizeMB * 1024 * 1024,
+                ArchiveFileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}_{{##}}.log"),
+                ArchiveSuffixFormat = "_{##}",
+                MaxArchiveFiles = config.MaxArchiveFiles,
+                Layout = "${longdate} [${uppercase:${level}}] ${message}${onexception:inner=${newline}${exception:format=tostring}}",
+                Encoding = System.Text.Encoding.UTF8
+            };
+
+            var consoleTarget = new ConsoleTarget("console")
+            {
+                Layout = "${longdate} [${uppercase:${level}}] ${message}${onexception:inner=${newline}${exception:format=tostring}}"
+            };
+
+            nlogConfig.AddTarget(fileTarget);
+            nlogConfig.AddTarget(consoleTarget);
+
+            nlogConfig.AddRule(NLog.LogLevel.Trace, NLog.LogLevel.Fatal, fileTarget);
+            nlogConfig.AddRule(NLog.LogLevel.Trace, NLog.LogLevel.Fatal, consoleTarget);
+
+            LogManager.Configuration = nlogConfig;
+            _logger = LogManager.GetLogger(config.FilePrefix);
+            _isConfigured = true;
         }
-
-        var nlogConfig = new LoggingConfiguration();
-
-        var fileTarget = new FileTarget("file")
-        {
-            FileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}.log"),
-            ArchiveAboveSize = config.MaxSizeMB * 1024 * 1024,
-            ArchiveFileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}_{{##}}.log"),
-            ArchiveSuffixFormat = "_{##}",
-            MaxArchiveFiles = config.MaxArchiveFiles,
-            Layout = "${longdate} [${uppercase:${level}}] ${message}${onexception:inner=${newline}${exception:format=tostring}}",
-            Encoding = System.Text.Encoding.UTF8
-        };
-
-        var consoleTarget = new ConsoleTarget("console")
-        {
-            Layout = "${longdate} [${uppercase:${level}}] ${message}${onexception:inner=${newline}${exception:format=tostring}}"
-        };
-
-        nlogConfig.AddTarget(fileTarget);
-        nlogConfig.AddTarget(consoleTarget);
-
-        nlogConfig.AddRule(NLog.LogLevel.Trace, NLog.LogLevel.Fatal, fileTarget);
-        nlogConfig.AddRule(NLog.LogLevel.Trace, NLog.LogLevel.Fatal, consoleTarget);
-
-        LogManager.Configuration = nlogConfig;
-        _logger = LogManager.GetLogger(config.FilePrefix);
-        _isConfigured = true;
 
         Log("Logger initialized with NLog (RollingFile)", LogLevel.Debug);
 

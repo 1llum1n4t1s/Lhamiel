@@ -39,67 +39,45 @@ public static class MessageService
     }
 
     /// <summary>
-    /// エラーメッセージを表示
+    /// メッセージボックスを表示する共通処理
     /// </summary>
-    /// <param name="message">メッセージ本文</param>
-    /// <param name="title">タイトル（省略可）</param>
-    public static async Task ShowError(string message, string? title = null)
+    private static async Task ShowMessageAsync(string message, string title, Icon icon, LogLevel logLevel = LogLevel.Info)
     {
-        title ??= App.Text("Dialog.Error");
-        Logger.Log($"エラーメッセージ表示: {title} - {message}", LogLevel.Error);
+        Logger.Log($"{icon}メッセージ表示: {title} - {message}", logLevel);
         var window = await GetActiveWindowAsync();
-        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Error);
+        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, icon);
         if (window != null)
             await box.ShowWindowDialogAsync(window);
         else
             await box.ShowAsync();
     }
+
+    /// <summary>
+    /// エラーメッセージを表示
+    /// </summary>
+    public static Task ShowError(string message, string? title = null)
+        => ShowMessageAsync(message, title ?? App.Text("Dialog.Error"), Icon.Error, LogLevel.Error);
 
     /// <summary>
     /// 情報メッセージを表示
     /// </summary>
-    /// <param name="message">メッセージ本文</param>
-    /// <param name="title">タイトル（省略可）</param>
-    public static async Task ShowInfo(string message, string? title = null)
-    {
-        title ??= App.Text("Dialog.Info");
-        Logger.Log($"情報メッセージ表示: {title} - {message}");
-        var window = await GetActiveWindowAsync();
-        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Info);
-        if (window != null)
-            await box.ShowWindowDialogAsync(window);
-        else
-            await box.ShowAsync();
-    }
+    public static Task ShowInfo(string message, string? title = null)
+        => ShowMessageAsync(message, title ?? App.Text("Dialog.Info"), Icon.Info);
 
     /// <summary>
     /// 警告メッセージを表示
     /// </summary>
-    /// <param name="message">メッセージ本文</param>
-    /// <param name="title">タイトル（省略可）</param>
-    public static async Task ShowWarning(string message, string? title = null)
-    {
-        title ??= App.Text("Dialog.Warning");
-        Logger.Log($"警告メッセージ表示: {title} - {message}", LogLevel.Warning);
-        var window = await GetActiveWindowAsync();
-        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Warning);
-        if (window != null)
-            await box.ShowWindowDialogAsync(window);
-        else
-            await box.ShowAsync();
-    }
+    public static Task ShowWarning(string message, string? title = null)
+        => ShowMessageAsync(message, title ?? App.Text("Dialog.Warning"), Icon.Warning, LogLevel.Warning);
 
     /// <summary>
-    /// 例外に基づいてエラーメッセージを表示
+    /// 例外に基づいてエラーメッセージを表示（LogException で詳細ログを出力済みのため ShowMessageAsync のログは省略）
     /// </summary>
-    /// <param name="context">エラーの文脈</param>
-    /// <param name="ex">例外オブジェクト</param>
-    /// <param name="title">タイトル（省略可）</param>
     public static async Task ShowException(string context, Exception ex, string? title = null)
     {
-        title ??= App.Text("Dialog.Error");
         Logger.LogException(context, ex);
         var message = $"{context}\n\n{App.Text("Dialog.Details")}{ex.Message}";
+        title ??= App.Text("Dialog.Error");
         var window = await GetActiveWindowAsync();
         var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Error);
         if (window != null)
@@ -111,19 +89,8 @@ public static class MessageService
     /// <summary>
     /// 成功メッセージを表示
     /// </summary>
-    /// <param name="message">メッセージ本文</param>
-    /// <param name="title">タイトル（省略可）</param>
-    public static async Task ShowSuccess(string message, string? title = null)
-    {
-        title ??= App.Text("Dialog.Completed");
-        Logger.Log($"成功メッセージ表示: {title} - {message}");
-        var window = await GetActiveWindowAsync();
-        var box = MessageBoxManager.GetMessageBoxStandard(title, message, ButtonEnum.Ok, Icon.Success);
-        if (window != null)
-            await box.ShowWindowDialogAsync(window);
-        else
-            await box.ShowAsync();
-    }
+    public static Task ShowSuccess(string message, string? title = null)
+        => ShowMessageAsync(message, title ?? App.Text("Dialog.Completed"), Icon.Success);
 
     /// <summary>
     /// はい/いいえの確認ダイアログを表示する

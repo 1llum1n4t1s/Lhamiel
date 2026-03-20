@@ -27,14 +27,12 @@ internal sealed class ProgressThrottler
     {
         lock (_lock)
         {
-            // 単調増加を保証（0% と 100% 以外）
-            if (percentage <= _lastPercentage && percentage > 0 && percentage < 100)
-                return false;
+            var isBoundary = percentage <= 0 || percentage >= 100;
 
-            // 0% と 100% は常に報告
-            if (percentage > 0 && percentage < 100)
+            // 中間値は単調増加を保証し、スロットリングを適用
+            if (!isBoundary)
             {
-                if (percentage == _lastPercentage) return false;
+                if (percentage <= _lastPercentage) return false;
                 var currentTime = Environment.TickCount64;
                 if (currentTime - _lastReportTime < _reportIntervalMs) return false;
                 _lastReportTime = currentTime;

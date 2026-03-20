@@ -230,13 +230,21 @@ public static class ArchiveErrorHandler
 
             try
             {
-                // 各ファイルの整合性をチェック
+                // 展開されたファイル/ディレクトリを一括走査し、HashSetで O(1) 照合する
+                var extractedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var file in Directory.EnumerateFiles(tempPath, "*", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
+                    extractedFiles.Add(Path.GetRelativePath(tempPath, file));
+                var extractedDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var dir in Directory.EnumerateDirectories(tempPath, "*", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
+                    extractedDirs.Add(Path.GetRelativePath(tempPath, dir));
+
                 foreach (var item in reader.Items)
                 {
                     try
                     {
-                        var itemPath = Path.Combine(tempPath, item.FullName);
-                        var exists = item.IsDirectory ? Directory.Exists(itemPath) : File.Exists(itemPath);
+                        var exists = item.IsDirectory
+                            ? extractedDirs.Contains(item.FullName)
+                            : extractedFiles.Contains(item.FullName);
 
                         if (exists)
                         {
@@ -296,26 +304,26 @@ public static class ArchiveErrorHandler
         return analysis;
     }
 
+    // Windows HResult定数（OSロケール非依存で正確に判定するため）
+    private const int HR_ERROR_DISK_FULL = unchecked((int)0x80070070);       // ERROR_DISK_FULL
+    private const int HR_ERROR_HANDLE_DISK_FULL = unchecked((int)0x80070027); // ERROR_HANDLE_DISK_FULL
+    private const int HR_ERROR_SHARING_VIOLATION = unchecked((int)0x80070020); // ERROR_SHARING_VIOLATION
+    private const int HR_ERROR_LOCK_VIOLATION = unchecked((int)0x80070021);   // ERROR_LOCK_VIOLATION
+
     /// <summary>
-    /// ディスク容量エラーかどうかを判定
+    /// ディスク容量エラーかどうかを判定（HResultベースでOSロケール非依存）
     /// </summary>
     private static bool IsDiskSpaceError(IOException ex)
     {
-        var message = ex.Message.ToLowerInvariant();
-        return (message.Contains("disk") && message.Contains("space")) ||
-               message.Contains("not enough space") ||
-               message.Contains("insufficient space");
+        return ex.HResult is HR_ERROR_DISK_FULL or HR_ERROR_HANDLE_DISK_FULL;
     }
 
     /// <summary>
-    /// ファイル使用中エラーかどうかを判定
+    /// ファイル使用中エラーかどうかを判定（HResultベースでOSロケール非依存）
     /// </summary>
     private static bool IsFileInUseError(IOException ex)
     {
-        var message = ex.Message.ToLowerInvariant();
-        return message.Contains("being used by another process") ||
-               message.Contains("file in use") ||
-               message.Contains("access denied");
+        return ex.HResult is HR_ERROR_SHARING_VIOLATION or HR_ERROR_LOCK_VIOLATION;
     }
 
     /// <summary>
@@ -346,8 +354,9 @@ public static class ArchiveErrorHandler
             details.AppendLine(App.Text("ErrorHandler.FileSize", fileInfo.Length));
             details.AppendLine(App.Text("ErrorHandler.LastModified", fileInfo.LastWriteTime));
         }
-        catch
+        catch (Exception fileEx) when (fileEx is IOException or UnauthorizedAccessException)
         {
+            Logger.Log($"ファイル情報の取得に失敗: {archivePath} - {fileEx.Message}", LogLevel.Warning);
             details.AppendLine(App.Text("ErrorHandler.FileInfoFailed"));
         }
 

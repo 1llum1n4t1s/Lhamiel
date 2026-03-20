@@ -743,22 +743,22 @@ public static class ArchiveExtractor
     /// <returns>退避を行った場合はtrue、対象が存在しなかった場合はfalse</returns>
     private static bool MoveExistingToBackup(string path, List<string> backupPaths)
     {
-        if (Directory.Exists(path))
+        var isDirectory = Directory.Exists(path);
+        if (!isDirectory && !File.Exists(path))
+            return false;
+
+        var backupPath = path + ".Lhamiel_backup_" + Guid.NewGuid().ToString("N");
+        if (isDirectory)
         {
-            var backupPath = path + ".Lhamiel_backup_" + Guid.NewGuid().ToString("N");
             RemoveReadOnlyAttributes(path);
             Directory.Move(path, backupPath);
-            backupPaths.Add(backupPath);
-            return true;
         }
-        if (File.Exists(path))
+        else
         {
-            var backupPath = path + ".Lhamiel_backup_" + Guid.NewGuid().ToString("N");
             File.Move(path, backupPath);
-            backupPaths.Add(backupPath);
-            return true;
         }
-        return false;
+        backupPaths.Add(backupPath);
+        return true;
     }
 
     /// <summary>
@@ -767,50 +767,23 @@ public static class ArchiveExtractor
     /// <param name="path">対象のファイルまたはディレクトリパス</param>
     internal static void RemoveReadOnlyAttributes(string path)
     {
-        void TryExecute(Action action, string logMessage)
+        try
         {
-            try
-            {
-                // メソッド呼び出し: 指定された処理を実行
-                action();
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-            {
-                // 変数: ログメッセージの組み立て
-                var fullLogMessage = $"{logMessage}: {ex.Message}";
-                // メソッド呼び出し: ログの記録を実行
-                Logger.Log(fullLogMessage);
-            }
-        }
-
-        // ローカル関数呼び出し: 全体の属性削除処理を試行
-        TryExecute(() =>
-        {
-            // メソッド内: ファイルかディレクトリかを判定
-            // メソッド呼び出し: ファイルの存在確認
             if (File.Exists(path))
             {
-                // ローカル関数呼び出し: ファイル属性の変更を試行
-                TryExecute(() =>
-                {
-                    // 変数: ファイル情報の取得
-                    var fileInfo = new FileInfo(path);
-                    // プロパティ: ファイルの属性を取得して判定
-                    if ((fileInfo.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                    {
-                        // プロパティ: ファイルの属性から読み取り専用を解除
-                        fileInfo.Attributes &= ~FileAttributes.ReadOnly;
-                    }
-                }, $"ファイル属性の変更に失敗しました: {path}");
+                var fileInfo = new FileInfo(path);
+                if (fileInfo.Attributes.HasFlag(FileAttributes.ReadOnly))
+                    fileInfo.Attributes &= ~FileAttributes.ReadOnly;
             }
-            // メソッド呼び出し: ディレクトリの存在確認
             else if (Directory.Exists(path))
             {
-                // 反復的なヘルパーメソッドを使用して属性を解除
-                // メソッド呼び出し: DirectoryInfoの作成と、反復処理の呼び出し
                 RemoveReadOnlyAttributesIterative(new DirectoryInfo(path));
             }
-        }, $"読み取り専用属性の削除処理でエラーが発生しました: {path}");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+        {
+            Logger.Log($"読み取り専用属性の削除処理でエラーが発生しました: {path}: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -819,84 +792,55 @@ public static class ArchiveExtractor
     /// <param name="dirInfo">対象ディレクトリの DirectoryInfo インスタンス</param>
     private static void RemoveReadOnlyAttributesIterative(DirectoryInfo dirInfo)
     {
-        // メソッド内: 対象ディレクトリの存在確認
-        if (!dirInfo.Exists)
-        {
-            return;
-        }
+        if (!dirInfo.Exists) return;
 
-        // 変数: 処理対象のディレクトリを管理するスタック
-        // スタックを使用して反復的に処理（スタックオーバーフロー防止）
+        // スタックベースの反復処理（深い階層でのスタックオーバーフロー防止）
         var stack = new Stack<DirectoryInfo>();
-
-        // メソッド呼び出し: 初期のディレクトリをスタックに追加
         stack.Push(dirInfo);
 
-        void TryExecute(Action action, string logMessage, LogLevel logLevel = LogLevel.Error)
+        while (stack.Count > 0)
         {
+            var currentDir = stack.Pop();
+
             try
             {
-                // メソッド呼び出し: 指定された処理を実行
-                action();
+                if (currentDir.Attributes.HasFlag(FileAttributes.ReadOnly))
+                    currentDir.Attributes &= ~FileAttributes.ReadOnly;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
-                // 変数: ログメッセージの組み立て
-                var fullLogMessage = $"{logMessage}: {ex.Message}";
-                // メソッド呼び出し: ログの記録を実行
-                Logger.Log(fullLogMessage, logLevel);
+                Logger.Log($"ディレクトリ属性変更失敗: {currentDir.FullName}: {ex.Message}");
             }
-        }
 
-        // メソッド内: スタックが空になるまで反復処理を継続
-        while (stack.Count > 0)
-        {
-            // 変数: スタックから取り出した現在のディレクトリ
-            var currentDir = stack.Pop();
-
-            // ディレクトリ自体の属性解除
-            // ローカル関数呼び出し: 現在のディレクトリの属性変更を試行
-            TryExecute(() =>
+            try
             {
-                // プロパティ: ディレクトリの属性を取得して判定
-                if ((currentDir.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                {
-                    // プロパティ: ディレクトリの属性から読み取り専用を解除
-                    currentDir.Attributes &= ~FileAttributes.ReadOnly;
-                }
-            }, $"ディレクトリ属性変更失敗: {currentDir.FullName}");
-
-            // ファイルの属性解除
-            // ローカル関数呼び出し: ディレクトリ内のファイルに対する属性解除を試行
-            TryExecute(() =>
-            {
-                // メソッド呼び出し: 現在のディレクトリ内の全ファイルを取得
                 foreach (var file in currentDir.GetFiles())
                 {
-                    // ローカル関数呼び出し: 個々のファイルに対する属性変更を試行
-                    TryExecute(() =>
+                    try
                     {
-                        // プロパティ: ファイルの属性を取得して判定
-                        if ((file.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                        {
-                            // プロパティ: ファイルの属性から読み取り専用を解除
+                        if (file.Attributes.HasFlag(FileAttributes.ReadOnly))
                             file.Attributes &= ~FileAttributes.ReadOnly;
-                        }
-                    }, $"個別のファイル属性変更エラー（無視）: {file.FullName}", LogLevel.Warning);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+                    {
+                        Logger.Log($"ファイル属性変更エラー（無視）: {file.FullName}: {ex.Message}", LogLevel.Warning);
+                    }
                 }
-            }, $"ディレクトリアクセスエラー（ファイル属性変更中）: {currentDir.FullName}", LogLevel.Warning);
-
-            // サブディレクトリをスタックに追加
-            // ローカル関数呼び出し: サブディレクトリの取得とスタックへの追加を試行
-            TryExecute(() =>
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
-                // メソッド呼び出し: 現在のディレクトリ内の全サブディレクトリを取得
+                Logger.Log($"ディレクトリアクセスエラー（ファイル属性変更中）: {currentDir.FullName}: {ex.Message}", LogLevel.Warning);
+            }
+
+            try
+            {
                 foreach (var subDir in currentDir.GetDirectories())
-                {
-                    // メソッド呼び出し: サブディレクトリをスタックに追加
                     stack.Push(subDir);
-                }
-            }, $"サブディレクトリアクセスエラー: {currentDir.FullName}", LogLevel.Warning);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                Logger.Log($"サブディレクトリアクセスエラー: {currentDir.FullName}: {ex.Message}", LogLevel.Warning);
+            }
         }
     }
 }

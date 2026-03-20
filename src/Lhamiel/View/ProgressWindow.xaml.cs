@@ -112,7 +112,10 @@ public class ProgressWindow : Window
                     if (_progressBar != null) _progressBar.Value = 100;
                     if (_progressTextBlock != null) _progressTextBlock.Text = "100%";
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    Logger.Log($"完了表示更新時のエラー: {ex.Message}");
+                }
             });
         }
         catch (Exception ex)

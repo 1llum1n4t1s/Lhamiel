@@ -13,6 +13,36 @@ public static class ArchiveProcessor
     };
 
     /// <summary>
+    /// 並列処理時の進捗マッピングを作成する。
+    /// 完了済み件数をベースラインとし、処理中の個別進捗を加算して全体進捗を計算する。
+    /// </summary>
+    /// <param name="totalCount">処理対象の総数</param>
+    /// <param name="lockObject">完了数の読み取りに使うロックオブジェクト</param>
+    /// <param name="getCompletedCount">完了数（成功＋失敗）を返すデリゲート</param>
+    /// <param name="progressWindow">進捗表示ウィンドウ</param>
+    /// <returns>マッピング済みの IProgress</returns>
+    private static IProgress<ProgressInfo> CreateMappedProgress(
+        int totalCount, object lockObject, Func<int> getCompletedCount, ProgressWindow? progressWindow)
+    {
+        if (totalCount == 1)
+        {
+            return new Progress<ProgressInfo>(info =>
+                Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage)));
+        }
+
+        return new Progress<ProgressInfo>(info =>
+        {
+            int baseline;
+            lock (lockObject)
+            {
+                baseline = getCompletedCount();
+            }
+            var overallProgress = (int)((baseline + info.Percentage / 100.0) / totalCount * 100);
+            Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(overallProgress));
+        });
+    }
+
+    /// <summary>
     /// アーカイブファイルの展開処理を実行
     /// </summary>
     /// <param name="filePath">展開するファイルのパス</param>
@@ -203,15 +233,8 @@ public static class ArchiveProcessor
                     await semaphore.WaitAsync(cancellationToken);
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // 個別進捗を全体進捗にマッピングする Progress
-                    var mappedProgress = new Progress<ProgressInfo>(info =>
-                    {
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            var overallProgress = (int)((double)index / totalCount * 100 + (double)info.Percentage / totalCount);
-                            progressWindow?.UpdateProgress(overallProgress);
-                        });
-                    });
+                    var mappedProgress = CreateMappedProgress(
+                        totalCount, lockObject, () => successCount + failedFiles.Count, progressWindow);
 
                     var extractResult = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false);
                     var finalOutputPath = extractResult.outputPath;
@@ -219,7 +242,6 @@ public static class ArchiveProcessor
 
                     // lock 内で状態のみ更新し、Dispatcher への通知は lock 外で実行
                     var progressToReport = 0;
-                    var shouldReportProgress = false;
 
                     lock (lockObject)
                     {
@@ -233,17 +255,12 @@ public static class ArchiveProcessor
                             failedFiles.Add(Path.GetFileName(filePath));
                         }
 
-                        // 件数ベースの進捗を計算
+                        // 完了数ベースの進捗を計算（並列時も単調増加が保証される）
                         progressToReport = (int)((double)(successCount + failedFiles.Count) / totalCount * 100);
-                        shouldReportProgress = true;
                     }
 
-                    // lock の外で、一度だけ BeginInvoke を実行してDispatcherキューの競合を削減
-                    if (shouldReportProgress)
-                    {
-                        Dispatcher.UIThread.Post(() =>
-                            progressWindow?.UpdateProgress(progressToReport));
-                    }
+                    Dispatcher.UIThread.Post(() =>
+                        progressWindow?.UpdateProgress(progressToReport));
                 }
                 catch (OperationCanceledException)
                 {
@@ -266,11 +283,8 @@ public static class ArchiveProcessor
 
             await Task.WhenAll(tasks);
 
-            // Ice と同様: キャンセル時はここで一度だけスロー（複数タスクがそれぞれスローしない）
-            if (cancellationToken.IsCancellationRequested)
-            {
-                throw new OperationCanceledException(cancellationToken);
-            }
+            // 並列タスク内ではスローせず、WhenAll 後にここで一度だけスローする
+            cancellationToken.ThrowIfCancellationRequested();
 
             // 完了処理
             if (closeWindowOnCompletion)
@@ -380,9 +394,10 @@ public static class ArchiveProcessor
                 }
 
                 // 圧縮処理を実行
-                Logger.Log($"ArchiveCompressor.CompressAsyncを呼び出し: sourcePath={sourcePath}, outputPath={outputPath}, format={format}");
+                Logger.Log($"ArchiveCompressor.CompressFilesAsyncを呼び出し: sourcePath={sourcePath}, outputPath={outputPath}, format={format}");
 
-                var progress = new Progress<ProgressInfo>(info =>
+                var parsedFormat = ArchiveCompressor.ParseFormat(format);
+                Action<ProgressInfo>? progressCallback = info =>
                 {
                     if (progressReporter == null)
                     {
@@ -390,9 +405,9 @@ public static class ArchiveProcessor
                     }
 
                     progressReporter?.Report(info);
-                });
+                };
 
-                await ArchiveCompressor.CompressAsync(sourcePath, outputPath, format, progress, actualCancellationToken);
+                await ArchiveCompressor.CompressFilesAsync([sourcePath], outputPath, parsedFormat, progressCallback, actualCancellationToken);
 
                 Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
 
@@ -457,37 +472,14 @@ public static class ArchiveProcessor
                     await semaphore.WaitAsync(actualCancellationToken);
                     actualCancellationToken.ThrowIfCancellationRequested();
 
-                    // 単一対象の場合は詳細な進捗を表示するためのReporterを作成
-                    IProgress<ProgressInfo>? innerProgress = null;
-                    if (totalCount == 1)
-                    {
-                        innerProgress = new Progress<ProgressInfo>(info =>
-                        {
-                            Dispatcher.UIThread.Post(() =>
-                            {
-                                progressWindow?.UpdateProgress(info.Percentage);
-                            });
-                        });
-                    }
-                    else
-                    {
-                        // 複数対象圧縮時は、個別進捗を全体進捗にマッピングして表示
-                        innerProgress = new Progress<ProgressInfo>(info =>
-                        {
-                            Dispatcher.UIThread.Post(() =>
-                            {
-                                var overallProgress = (int)((double)index / totalCount * 100 + (double)info.Percentage / totalCount);
-                                progressWindow?.UpdateProgress(overallProgress);
-                            });
-                        });
-                    }
+                    var innerProgress = CreateMappedProgress(
+                        totalCount, lockObject, () => successCount + failedPaths.Count, progressWindow);
 
                     // 共通化された圧縮処理を実行
                     var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false);
 
                     // lock 内で状態のみ更新し、Dispatcher への通知は lock 外で実行
                     var completedProgress = 0;
-                    var shouldReportProgress = false;
 
                     lock (lockObject)
                     {
@@ -500,17 +492,12 @@ public static class ArchiveProcessor
                             failedPaths.Add(Path.GetFileName(sourcePath));
                         }
 
-                        // 各対象完了時に確実に進捗を更新（完了数ベースで計算。indexだと並列時に不正確になる）
+                        // 完了数ベースの進捗を計算（並列時も単調増加が保証される）
                         completedProgress = (int)((double)(successCount + failedPaths.Count) / totalCount * 100);
-                        shouldReportProgress = true;
                     }
 
-                    // lock の外で、一度だけ BeginInvoke を実行してDispatcherキューの競合を削減
-                    if (shouldReportProgress)
-                    {
-                        Dispatcher.UIThread.Post(() =>
-                            progressWindow?.UpdateProgress(completedProgress));
-                    }
+                    Dispatcher.UIThread.Post(() =>
+                        progressWindow?.UpdateProgress(completedProgress));
                 }
                 catch (OperationCanceledException)
                 {
@@ -533,12 +520,8 @@ public static class ArchiveProcessor
 
             await Task.WhenAll(tasks);
 
-            // Ice と同様: キャンセル時はここで一度だけスロー（複数タスクがそれぞれスローしない）
-            if (actualCancellationToken.IsCancellationRequested)
-            {
-                Logger.Log("複数対象圧縮処理が全体でキャンセルされました");
-                throw new OperationCanceledException(actualCancellationToken);
-            }
+            // 並列タスク内ではスローせず、WhenAll 後にここで一度だけスローする
+            actualCancellationToken.ThrowIfCancellationRequested();
 
             // 完了メッセージを表示
             if (successCount == totalCount)
@@ -644,7 +627,8 @@ public static class ArchiveProcessor
                 });
 
                 // 全パスをまとめて圧縮
-                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, p => progress.Report(p), actualCancellationToken);
+                var parsedFormat = ArchiveCompressor.ParseFormat(format);
+                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, parsedFormat, p => progress.Report(p), actualCancellationToken);
 
                 Logger.Log($"まとめ圧縮完了: {outputPath}（{sourcePaths.Length}個の対象）");
 

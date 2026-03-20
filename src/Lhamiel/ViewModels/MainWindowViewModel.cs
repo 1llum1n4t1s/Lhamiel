@@ -36,6 +36,8 @@ public record LocaleItem(string Key, string DisplayName);
 /// </summary>
 public sealed partial class MainWindowViewModel : ObservableObject
 {
+    private const int DefaultCompressionLevel = 5;
+
     private readonly SettingsManager _settingsManager;
     private readonly Func<Task<string?>> _pickExtractionFolder;
     private readonly Func<Task<string?>> _pickCompressionFolder;
@@ -150,13 +152,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnZipCompressionLevelChanged(int value)
     {
-        SelectedZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == value) ?? CompressionLevels.FirstOrDefault(l => l.Level == 5);
+        SelectedZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == value) ?? CompressionLevels.FirstOrDefault(l => l.Level == DefaultCompressionLevel);
         AutoSave();
     }
 
     partial void OnSevenZipCompressionLevelChanged(int value)
     {
-        SelectedSevenZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == value) ?? CompressionLevels.FirstOrDefault(l => l.Level == 5);
+        SelectedSevenZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == value) ?? CompressionLevels.FirstOrDefault(l => l.Level == DefaultCompressionLevel);
         AutoSave();
     }
 
@@ -591,6 +593,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             var assembly = typeof(MainWindowViewModel).Assembly;
             var rawVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "1.0.0";
+            // ビルドメタデータ（'+' 以降）を除去して表示用バージョンを取得
             VersionText = rawVersion.Contains('+') ? rawVersion.Split('+')[0] : rawVersion;
             CopyrightText = assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "Copyright © 2025-2026 ゆろち";
 

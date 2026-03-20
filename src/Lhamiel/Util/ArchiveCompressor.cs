@@ -22,7 +22,7 @@ public class ArchiveCompressor
             ? Path.GetDirectoryName(sourcePath) ?? ""
             : outputDirectory;
 
-        var trimmedPath = sourcePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var trimmedPath = Path.TrimEndingDirectorySeparator(sourcePath);
         var name = Path.GetFileName(trimmedPath);
         // ドットで始まるフォルダ名（.cursor など）は GetFileNameWithoutExtension が空を返すため、
         // ファイル（拡張子あり）の場合のみ拡張子を除去する
@@ -34,28 +34,30 @@ public class ArchiveCompressor
     }
 
     /// <summary>
-    /// ファイルを圧縮する（非同期版）
+    /// 設定文字列の圧縮形式を Format enum に直接変換する
     /// </summary>
-    /// <param name="sourcePath">圧縮するファイル・フォルダのパス</param>
-    /// <param name="outputPath">出力アーカイブのパス</param>
-    /// <param name="format">圧縮形式</param>
-    /// <param name="progress">進捗コールバック</param>
-    /// <param name="cancellationToken">キャンセルトークン</param>
-    /// <returns>圧縮処理の完了を表すTask</returns>
-    public static async Task CompressAsync(string sourcePath, string outputPath, string format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default)
+    /// <param name="format">圧縮形式の文字列（"ZIP", "7z", "TAR" など）</param>
+    /// <returns>対応する Format enum 値</returns>
+    public static Format ParseFormat(string format) => format.ToUpperInvariant() switch
     {
-        var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
-        await CompressFilesAsync([sourcePath], outputPath, progressCallback, cancellationToken);
-    }
+        "ZIP" => Format.Zip,
+        "7Z" => Format.SevenZip,
+        "TAR" => Format.Tar,
+        "GZ" => Format.GZip,
+        "BZ2" => Format.BZip2,
+        "XZ" => Format.XZ,
+        _ => Format.Zip
+    };
 
     /// <summary>
     /// ファイルを圧縮する
     /// </summary>
     /// <param name="sourcePaths">圧縮するファイル・フォルダのパス</param>
     /// <param name="outputPath">出力アーカイブのパス</param>
+    /// <param name="format">圧縮形式</param>
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
+    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         var sourceList = sourcePaths.ToList();
         if (sourceList.Count == 0)
@@ -70,12 +72,11 @@ public class ArchiveCompressor
             Directory.CreateDirectory(outputDir);
         }
 
-        // 圧縮形式を決定
-        var format = GetFormatFromExtension(outputPath);
-
-        // 設定から除外パターンを取得（SettingsManager経由でシングルトンを使用）
+        // 設定から除外パターンを取得し、HashSet化してO(1)照合を実現
         var settings = SettingsManager.Instance.Current;
-        var excludedPatterns = settings.ExcludedFilePatterns ?? [];
+        var excludedPatternSet = new HashSet<string>(
+            settings.ExcludedFilePatterns ?? [],
+            StringComparer.OrdinalIgnoreCase);
 
         var outputCreated = false;
         try
@@ -92,7 +93,7 @@ public class ArchiveCompressor
                 if (File.Exists(sourcePath))
                 {
                     // ファイルが除外対象でない場合のみ追加
-                    if (!ShouldExcludeFile(sourcePath, excludedPatterns))
+                    if (!ShouldExcludeFile(sourcePath, excludedPatternSet))
                     {
                         // ファイル単体の場合はアーカイブのルートに配置
                         filesToCompress.Add((sourcePath, Path.GetFileName(sourcePath)));
@@ -104,7 +105,7 @@ public class ArchiveCompressor
                     Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
 
                     // ファイルスキャンを非同期で処理（全件を即座にリスト化せず、遅延評価を活用）
-                    var files = GetFilesRecursively(sourcePath, excludedPatterns);
+                    var files = GetFilesRecursively(sourcePath, excludedPatternSet);
                     var parentDir = Path.GetDirectoryName(sourcePath) ?? "";
 
                     var fileCount = 0;
@@ -251,27 +252,6 @@ public class ArchiveCompressor
     }
 
     /// <summary>
-    /// ファイル拡張子から圧縮形式を取得する
-    /// </summary>
-    /// <param name="outputPath">出力ファイルパス</param>
-    /// <returns>圧縮形式</returns>
-    private static Format GetFormatFromExtension(string outputPath)
-    {
-        var extension = Path.GetExtension(outputPath).ToLowerInvariant();
-        return extension switch
-        {
-            ".zip" => Format.Zip,
-            ".7z" => Format.SevenZip,
-            ".tar" => Format.Tar,
-            ".gz" => Format.GZip,
-            ".tgz" => Format.GZip,
-            ".bz2" => Format.BZip2,
-            ".xz" => Format.XZ,
-            _ => Format.Zip // デフォルトはZIP
-        };
-    }
-
-    /// <summary>
     /// 同名フォルダが存在するかチェックする
     /// </summary>
     /// <param name="archivePath">アーカイブパス</param>
@@ -302,30 +282,23 @@ public class ArchiveCompressor
 
     /// <summary>
     /// ファイルが除外パターンに一致するかチェックする
+    /// HashSet による O(1) 照合でパスセグメント数に対して O(n) で完了する
     /// </summary>
     /// <param name="path">チェックするパス</param>
-    /// <param name="excludedPatterns">除外パターンのリスト</param>
+    /// <param name="excludedPatternSet">除外パターンの HashSet（大文字小文字無視）</param>
     /// <returns>除外すべき場合はtrue</returns>
-    private static bool ShouldExcludeFile(string path, List<string> excludedPatterns)
+    private static bool ShouldExcludeFile(string path, HashSet<string> excludedPatternSet)
     {
-        if (excludedPatterns == null || !excludedPatterns.Any())
+        if (excludedPatternSet.Count == 0)
         {
             return false;
         }
 
-        var fileName = Path.GetFileName(path);
-        var pathSegments = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
-        foreach (var pattern in excludedPatterns)
+        // パスセグメントを走査し、いずれかが除外パターンに一致すればtrue
+        // ファイル名もパスセグメントの一部なので、個別チェック不要
+        foreach (var segment in path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
         {
-            // ファイル名が完全一致する場合
-            if (string.Equals(fileName, pattern, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            // パス内に除外パターンが含まれる場合（__MACOSXフォルダなど）
-            if (pathSegments.Any(segment => string.Equals(segment, pattern, StringComparison.OrdinalIgnoreCase)))
+            if (excludedPatternSet.Contains(segment))
             {
                 return true;
             }
@@ -338,14 +311,14 @@ public class ArchiveCompressor
     /// ディレクトリ内のファイルを再帰的に取得する（除外フィルタ適用）
     /// </summary>
     /// <param name="directoryPath">ディレクトリパス</param>
-    /// <param name="excludedPatterns">除外パターンのリスト</param>
+    /// <param name="excludedPatternSet">除外パターンの HashSet</param>
     /// <returns>ファイルパスのリスト</returns>
-    private static IEnumerable<string> GetFilesRecursively(string directoryPath, List<string> excludedPatterns)
+    private static IEnumerable<string> GetFilesRecursively(string directoryPath, HashSet<string> excludedPatternSet)
     {
         try
         {
             // ディレクトリ自体が除外対象かチェック
-            if (ShouldExcludeFile(directoryPath, excludedPatterns))
+            if (ShouldExcludeFile(directoryPath, excludedPatternSet))
             {
                 return [];
             }
@@ -358,7 +331,7 @@ public class ArchiveCompressor
             };
 
             return Directory.EnumerateFiles(directoryPath, "*", enumerationOptions)
-                .Where(file => !ShouldExcludeFile(file, excludedPatterns));
+                .Where(file => !ShouldExcludeFile(file, excludedPatternSet));
         }
         catch (UnauthorizedAccessException ex)
         {
