@@ -9,6 +9,14 @@ namespace Lhamiel.Util;
 public class ArchiveCompressor
 {
     /// <summary>
+    /// ライブラリがサポートする圧縮可能な全形式（内部バリデーション用）
+    /// </summary>
+    internal static readonly HashSet<string> SupportedCompressionFormats = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "zip", "7z", "tar", "gz", "bz2", "xz"
+    };
+
+    /// <summary>
     /// 圧縮ファイル名を取得する
     /// </summary>
     /// <param name="sourcePath">圧縮対象のパス</param>
@@ -287,7 +295,7 @@ public class ArchiveCompressor
     /// <param name="path">チェックするパス</param>
     /// <param name="excludedPatternSet">除外パターンの HashSet（大文字小文字無視）</param>
     /// <returns>除外すべき場合はtrue</returns>
-    private static bool ShouldExcludeFile(string path, HashSet<string> excludedPatternSet)
+    internal static bool ShouldExcludeFile(string path, HashSet<string> excludedPatternSet)
     {
         if (excludedPatternSet.Count == 0)
         {

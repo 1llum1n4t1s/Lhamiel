@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.Versioning;
 namespace Lhamiel.Util;
 
@@ -25,7 +24,7 @@ public static class ShortcutCreator
                 return false;
             }
 
-            var exePath = GetExecutablePath();
+            var exePath = AppPathResolver.ExecutablePath;
             if (string.IsNullOrEmpty(exePath))
             {
                 Logger.Log("実行ファイルパスの取得に失敗しました");
@@ -80,56 +79,4 @@ public static class ShortcutCreator
         }
     }
 
-    /// <summary>
-    /// 現在の実行ファイルのパスを取得する
-    /// </summary>
-    /// <returns>実行ファイルのパス</returns>
-    private static string GetExecutablePath()
-    {
-        try
-        {
-            using var process = Process.GetCurrentProcess();
-            var processPath = process.MainModule?.FileName;
-            if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
-            {
-                Logger.Log($"Process.GetCurrentProcess().MainModule.FileName: {processPath}");
-                return processPath;
-            }
-
-            var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            Logger.Log($"AppDomain.CurrentDomain.BaseDirectory: {baseDirectory}");
-
-            var exeFiles = Directory.GetFiles(baseDirectory, "*.exe");
-            if (exeFiles.Length > 0)
-            {
-                var mainExe = exeFiles.FirstOrDefault(f => Path.GetFileName(f).Equals("Lhamiel.exe", StringComparison.OrdinalIgnoreCase));
-                if (mainExe != null)
-                {
-                    Logger.Log($"メイン実行ファイルを発見: {mainExe}");
-                    return mainExe;
-                }
-                Logger.Log($"実行ファイルを発見: {exeFiles[0]}");
-                return exeFiles[0];
-            }
-
-            var assemblyPath = AppContext.BaseDirectory;
-            if (!string.IsNullOrEmpty(assemblyPath))
-            {
-                var exePath = Path.Combine(assemblyPath.TrimEnd(Path.DirectorySeparatorChar), "Lhamiel.exe");
-                if (File.Exists(exePath))
-                {
-                    Logger.Log($"ベースディレクトリから実行ファイル: {exePath}");
-                    return exePath;
-                }
-            }
-
-            Logger.Log($"最終的なパス: {assemblyPath}");
-            return assemblyPath ?? "";
-        }
-        catch (Exception ex)
-        {
-            Logger.LogException("実行ファイルパスの取得に失敗しました", ex);
-            return "";
-        }
-    }
 }

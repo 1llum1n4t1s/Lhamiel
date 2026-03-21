@@ -7,11 +7,6 @@ namespace Lhamiel.Util;
 /// </summary>
 public static class ArchiveProcessor
 {
-    private static readonly HashSet<string> SupportedCompressionFormats = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "zip", "7z", "tar", "gz", "bz2", "xz"
-    };
-
     /// <summary>
     /// 並列処理時の進捗マッピングを作成する。
     /// 完了済み件数をベースラインとし、処理中の個別進捗を加算して全体進捗を計算する。
@@ -333,7 +328,7 @@ public static class ArchiveProcessor
         }
 
         // 圧縮形式の確認
-        if (!SupportedCompressionFormats.Contains(format))
+        if (!ArchiveCompressor.SupportedCompressionFormats.Contains(format))
         {
             Logger.Log($"サポートされていない圧縮形式です: {format}");
             _ = MessageService.ShowError(App.Text("Error.UnsupportedCompression", format));
@@ -359,12 +354,7 @@ public static class ArchiveProcessor
                 {
                     Logger.Log($"出力先が既に存在します: {outputPath}");
 
-                    // progressWindow がない場合はUI非対応環境（ユニットテスト等）のため自動上書き
-                    var canOverwrite = progressWindow != null
-                        ? await Dispatcher.UIThread.InvokeAsync(() =>
-                            FileOverwriteDialog.CanOverwriteFile(sourcePath, outputPath, progressWindow))
-                        : true;
-
+                    var canOverwrite = await FileOverwriteDialog.CanOverwriteFromBackgroundAsync(sourcePath, outputPath, progressWindow);
                     Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
 
                     if (!canOverwrite)
@@ -576,7 +566,7 @@ public static class ArchiveProcessor
         Logger.Log($"まとめ圧縮開始: {sourcePaths.Length}個の対象を1つのアーカイブに圧縮、形式={format}");
 
         // 圧縮形式の確認
-        if (!SupportedCompressionFormats.Contains(format))
+        if (!ArchiveCompressor.SupportedCompressionFormats.Contains(format))
         {
             Logger.Log($"サポートされていない圧縮形式です: {format}");
             _ = MessageService.ShowError(App.Text("Error.UnsupportedCompression", format));
@@ -607,11 +597,7 @@ public static class ArchiveProcessor
                 // 出力先が既に存在する場合は上書き確認
                 if (File.Exists(outputPath))
                 {
-                    var canOverwrite = progressWindow != null
-                        ? await Dispatcher.UIThread.InvokeAsync(() =>
-                            FileOverwriteDialog.CanOverwriteFile(sourcePaths[0], outputPath, progressWindow))
-                        : true;
-
+                    var canOverwrite = await FileOverwriteDialog.CanOverwriteFromBackgroundAsync(sourcePaths[0], outputPath, progressWindow);
                     if (!canOverwrite)
                     {
                         Logger.Log("ユーザーがまとめ圧縮をキャンセルしました");

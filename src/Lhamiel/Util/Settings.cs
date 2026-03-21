@@ -86,19 +86,14 @@ public class Settings
     /// <summary>
     /// 複数ファイル・フォルダを1つのアーカイブにまとめて圧縮するかどうか
     /// </summary>
-    public bool CompressMultipleAsOne { get; set; }
+    public bool CompressMultipleAsOne { get; set; } = true;
 
     /// <summary>
-    /// 圧縮時に除外するファイル・フォルダのパターン
+    /// 圧縮時に除外するファイル・フォルダのパターン。
+    /// デフォルト値は ArchiveExtractor の無視リストから生成。
     /// </summary>
     public List<string> ExcludedFilePatterns { get; set; } =
-    [
-        ".DS_Store",
-        "Thumbs.db",
-
-        "__MACOSX",
-        "desktop.ini"
-    ];
+        [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
 
     /// <summary>
     /// サポートされている圧縮形式の一覧
@@ -233,7 +228,7 @@ public class Settings
         UpdateChannel = "release";
         LogMaxSizeMB = 10;
         LogRetentionDays = 7;
-        CompressMultipleAsOne = false;
+        CompressMultipleAsOne = true;
         Locale = "";
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;

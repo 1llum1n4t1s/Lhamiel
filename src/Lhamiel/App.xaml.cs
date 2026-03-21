@@ -304,50 +304,56 @@ public class App : Application
             return;
         }
 
-        // 複数ファイルの場合: すべて圧縮対象（展開/圧縮の自動判定は単一ファイル時のみ）
-        var filesToCompress = new List<string>();
+        // 有効なパスのみ収集
+        var validPaths = new List<string>();
         foreach (var path in filePaths)
         {
             if (Directory.Exists(path) || File.Exists(path))
-                filesToCompress.Add(path);
+                validPaths.Add(path);
             else
                 Logger.Log($"指定されたパスが存在しません: {path}");
         }
 
-        if (filesToCompress.Count == 0) return;
+        if (validPaths.Count == 0) return;
 
         var settings = SettingsManager.Instance.Current;
-        var format = compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
 
-        if (settings.CompressMultipleAsOne && filesToCompress.Count > 1)
+        // すべてアーカイブで圧縮形式未指定なら個別展開
+        if (compressionFormat == "default" && ArchiveExtractor.AreAllSupportedArchives(validPaths))
         {
-            // まとめ圧縮
-            await ProcessMergedCompression(filesToCompress.ToArray(), settings, format, shouldShutdown);
+            await ProcessMultipleExtractions(validPaths.ToArray(), settings, shouldShutdown);
         }
         else
         {
-            // 個別に圧縮
-            for (var i = 0; i < filesToCompress.Count; i++)
+            // アーカイブ以外が混在 or 通常ファイルのみ → 圧縮
+            var format = ResolveCompressionFormat(compressionFormat, settings);
+
+            if (settings.CompressMultipleAsOne && validPaths.Count > 1)
             {
-                var isLast = i == filesToCompress.Count - 1;
-                await ProcessCommandLineFile(filesToCompress[i], compressionFormat, isLast && shouldShutdown);
+                await ProcessMergedCompression(validPaths.ToArray(), settings, format, shouldShutdown);
+            }
+            else
+            {
+                for (var i = 0; i < validPaths.Count; i++)
+                {
+                    var isLast = i == validPaths.Count - 1;
+                    await ProcessCommandLineFile(validPaths[i], compressionFormat, isLast && shouldShutdown);
+                }
             }
         }
     }
 
     /// <summary>
-    /// 複数ファイルをまとめて1つのアーカイブに圧縮
+    /// コマンドライン処理の共通テンプレート。ProgressWindow のセットアップ・クリーンアップ・
+    /// エラーハンドリング・シャットダウン制御を一元管理する。
     /// </summary>
-    private async Task ProcessMergedCompression(string[] sourcePaths, Settings settings, string format, bool shouldShutdown = true)
+    private async Task RunWithProgressWindowAsync(
+        Func<ProgressWindow, CancellationToken, Task> operation,
+        string operationName, string errorResourceKey, bool shouldShutdown)
     {
         ProgressWindow? progressWindow = null;
         try
         {
-            Logger.Log($"コマンドラインからまとめ圧縮を開始: {sourcePaths.Length}個の対象、形式={format}");
-
-            var outputDir = settings.CompressionOutputDirectory;
-            var outputToSameDirectory = settings.CompressionOutputToSameDirectory;
-
             (progressWindow, var cancellationTokenSource, var cancelHandler) = SetupProgressWindow(App.Text("Progress.Processing"));
 
             using (cancellationTokenSource)
@@ -359,25 +365,7 @@ public class App : Application
                     progressWindow.Activate();
                     await Task.Yield();
 
-                    var success = await ArchiveProcessor.CompressMergedAsync(
-                        sourcePaths, outputDir, outputToSameDirectory, format,
-                        progressWindow, cancellationTokenSource.Token);
-
-                    if (success)
-                    {
-                        Logger.Log("まとめ圧縮処理が完了しました");
-                        if (settings.OpenCompressionOutputFolder)
-                        {
-                            var baseDir = outputToSameDirectory
-                                ? Path.GetDirectoryName(sourcePaths[0]) ?? ""
-                                : outputDir;
-                            FolderOpener.OpenFolder(baseDir);
-                        }
-                    }
-                    else
-                    {
-                        Logger.Log("まとめ圧縮処理が失敗しました");
-                    }
+                    await operation(progressWindow, cancellationTokenSource.Token);
                 }
                 finally
                 {
@@ -389,16 +377,74 @@ public class App : Application
         }
         catch (OperationCanceledException)
         {
-            Logger.Log("まとめ圧縮処理がキャンセルされました");
+            Logger.Log($"{operationName}がキャンセルされました");
             progressWindow?.CloseSafe();
             ShutdownIfNeeded(shouldShutdown);
         }
         catch (Exception ex)
         {
-            Logger.LogException("まとめ圧縮処理でエラーが発生", ex);
-            _ = MessageService.ShowError(App.Text("Error.DuringCompression", ex.Message));
+            Logger.LogException($"{operationName}でエラーが発生", ex);
+            _ = MessageService.ShowError(App.Text(errorResourceKey, ex.Message));
             ShutdownIfNeeded(shouldShutdown);
         }
+    }
+
+    /// <summary>
+    /// 複数のアーカイブファイルを個別に展開する
+    /// </summary>
+    private Task ProcessMultipleExtractions(string[] filePaths, Settings settings, bool shouldShutdown = true)
+    {
+        Logger.Log($"コマンドラインから複数ファイル展開を開始: {filePaths.Length}個のファイル");
+        return RunWithProgressWindowAsync(async (progressWindow, ct) =>
+        {
+            var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
+                filePaths, settings.ExtractionOutputDirectory, settings.ExtractionOutputToSameDirectory,
+                progressWindow, ct);
+
+            if (extractionResults.Count > 0)
+            {
+                Logger.Log($"複数ファイル展開が完了しました: {extractionResults.Count}/{filePaths.Length}個成功");
+                if (settings.OpenExtractionOutputFolder)
+                {
+                    foreach (var (_, outputPath, structureInfo) in extractionResults)
+                        FolderOpener.OpenExtractionResult(outputPath, structureInfo);
+                }
+            }
+            else
+            {
+                Logger.Log("複数ファイル展開処理がすべて失敗しました");
+            }
+        }, "複数ファイル展開処理", "Error.DuringExtraction", shouldShutdown);
+    }
+
+    /// <summary>
+    /// 複数ファイルをまとめて1つのアーカイブに圧縮
+    /// </summary>
+    private Task ProcessMergedCompression(string[] sourcePaths, Settings settings, string format, bool shouldShutdown = true)
+    {
+        Logger.Log($"コマンドラインからまとめ圧縮を開始: {sourcePaths.Length}個の対象、形式={format}");
+        return RunWithProgressWindowAsync(async (progressWindow, ct) =>
+        {
+            var success = await ArchiveProcessor.CompressMergedAsync(
+                sourcePaths, settings.CompressionOutputDirectory, settings.CompressionOutputToSameDirectory,
+                format, progressWindow, ct);
+
+            if (success)
+            {
+                Logger.Log("まとめ圧縮処理が完了しました");
+                if (settings.OpenCompressionOutputFolder)
+                {
+                    var baseDir = settings.CompressionOutputToSameDirectory
+                        ? Path.GetDirectoryName(sourcePaths[0]) ?? ""
+                        : settings.CompressionOutputDirectory;
+                    FolderOpener.OpenFolder(baseDir);
+                }
+            }
+            else
+            {
+                Logger.Log("まとめ圧縮処理が失敗しました");
+            }
+        }, "まとめ圧縮処理", "Error.DuringCompression", shouldShutdown);
     }
 
     /// <summary>
@@ -468,6 +514,14 @@ public class App : Application
     }
 
     /// <summary>
+    /// 圧縮形式を解決する。"default" の場合は設定値を使用する。
+    /// </summary>
+    private static string ResolveCompressionFormat(string compressionFormat, Settings settings)
+    {
+        return compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
+    }
+
+    /// <summary>
     /// ProgressWindow を初期化し、キャンセル処理をセットアップする
     /// </summary>
     /// <param name="operationType">操作タイプ（"展開"、"圧縮"など）</param>
@@ -498,149 +552,56 @@ public class App : Application
     /// <summary>
     /// ファイルの展開処理を実行
     /// </summary>
-    /// <param name="filePath">展開するファイルのパス</param>
-    /// <param name="settings">アプリケーション設定</param>
-    /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
-    private async Task ProcessFileExtraction(string filePath, Settings settings, bool shouldShutdown = true)
+    private Task ProcessFileExtraction(string filePath, Settings settings, bool shouldShutdown = true)
     {
-        ProgressWindow? progressWindow = null;
-        try
+        return RunWithProgressWindowAsync(async (progressWindow, ct) =>
         {
-            var outputDir = settings.ExtractionOutputDirectory;
-            var outputToSameDirectory = settings.ExtractionOutputToSameDirectory;
+            var (finalOutputPath, structureInfo) = await ArchiveProcessor.ExtractArchiveAsync(
+                filePath, settings.ExtractionOutputDirectory, settings.ExtractionOutputToSameDirectory,
+                progressWindow, ct);
 
-            (progressWindow, var cancellationTokenSource, var cancelHandler) = SetupProgressWindow(App.Text("Progress.Processing"));
-
-            using (cancellationTokenSource)
+            if (finalOutputPath != null)
             {
-                try
-                {
-                    progressWindow.CancelRequested += cancelHandler;
-                    progressWindow.Show();
-                    progressWindow.Activate();
-                    await Task.Yield();
-
-                    var (finalOutputPath, structureInfo) = await ArchiveProcessor.ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationTokenSource.Token);
-
-                    if (finalOutputPath != null)
-                    {
-                        Logger.Log("ファイル展開処理が完了しました");
-
-                        // 展開後にフォルダを開く設定を確認
-                        if (settings.OpenExtractionOutputFolder)
-                        {
-                            var pathToOpen = finalOutputPath;
-                            // 単一ルート要素の場合、そのフォルダを直接開く
-                            if (structureInfo != null && structureInfo.HasSingleRootItem && !string.IsNullOrEmpty(structureInfo.SingleRootItemName))
-                            {
-                                var possibleDir = Path.Combine(finalOutputPath, structureInfo.SingleRootItemName);
-                                if (Directory.Exists(possibleDir))
-                                {
-                                    pathToOpen = possibleDir;
-                                }
-                            }
-
-                            if (Directory.Exists(pathToOpen))
-                            {
-                                FolderOpener.OpenFolder(pathToOpen);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Logger.Log("ファイル展開処理が失敗しました");
-                    }
-                }
-                finally
-                {
-                    progressWindow.CancelRequested -= cancelHandler;
-                }
+                Logger.Log("ファイル展開処理が完了しました");
+                if (settings.OpenExtractionOutputFolder)
+                    FolderOpener.OpenExtractionResult(finalOutputPath, structureInfo);
             }
-
-            ShutdownIfNeeded(shouldShutdown);
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.Log("ファイル展開処理がキャンセルされました");
-            progressWindow?.CloseSafe();
-            ShutdownIfNeeded(shouldShutdown);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogException("ファイル展開処理でエラーが発生", ex);
-            _ = MessageService.ShowError(App.Text("Error.DuringExtraction", ex.Message));
-            ShutdownIfNeeded(shouldShutdown);
-        }
+            else
+            {
+                Logger.Log("ファイル展開処理が失敗しました");
+            }
+        }, "ファイル展開処理", "Error.DuringExtraction", shouldShutdown);
     }
 
     /// <summary>
     /// ファイルまたはフォルダの圧縮処理を実行
     /// </summary>
-    /// <param name="sourcePath">圧縮するファイルまたはフォルダのパス</param>
-    /// <param name="settings">アプリケーション設定</param>
-    /// <param name="compressionFormat">圧縮形式（"default"の場合は設定から取得）</param>
-    /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
-    private async Task ProcessCompression(string sourcePath, Settings settings, string compressionFormat = "default", bool shouldShutdown = true)
+    private Task ProcessCompression(string sourcePath, Settings settings, string compressionFormat = "default", bool shouldShutdown = true)
     {
-        ProgressWindow? progressWindow = null;
-        try
+        var format = ResolveCompressionFormat(compressionFormat, settings);
+        return RunWithProgressWindowAsync(async (progressWindow, ct) =>
         {
-            var outputDir = settings.CompressionOutputDirectory;
-            var outputToSameDirectory = settings.CompressionOutputToSameDirectory;
-            var format = compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
+            var success = await ArchiveProcessor.CompressItemAsync(
+                sourcePath, settings.CompressionOutputDirectory, settings.CompressionOutputToSameDirectory,
+                format, progressWindow, null, ct);
 
-            (progressWindow, var cancellationTokenSource, var cancelHandler) = SetupProgressWindow(App.Text("Progress.Processing"));
-
-            using (cancellationTokenSource)
+            if (success)
             {
-                try
+                Logger.Log("圧縮処理が完了しました");
+                if (settings.OpenCompressionOutputFolder)
                 {
-                    progressWindow.CancelRequested += cancelHandler;
-                    progressWindow.Show();
-                    progressWindow.Activate();
-                    await Task.Yield();
-
-                    var success = await ArchiveProcessor.CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, null, cancellationTokenSource.Token);
-
-                    if (success)
-                    {
-                        Logger.Log("圧縮処理が完了しました");
-
-                        if (settings.OpenCompressionOutputFolder)
-                        {
-                            var finalOutputPath = ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
-                            var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
-                            if (directoryToOpen != null)
-                            {
-                                FolderOpener.OpenFolder(directoryToOpen);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        Logger.Log("圧縮処理が失敗しました");
-                    }
-                }
-                finally
-                {
-                    progressWindow.CancelRequested -= cancelHandler;
+                    var finalOutputPath = ArchiveCompressor.GetCompressedFileName(
+                        sourcePath, format, settings.CompressionOutputDirectory, settings.CompressionOutputToSameDirectory);
+                    var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
+                    if (directoryToOpen != null)
+                        FolderOpener.OpenFolder(directoryToOpen);
                 }
             }
-
-            ShutdownIfNeeded(shouldShutdown);
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.Log("圧縮処理がキャンセルされました");
-            progressWindow?.CloseSafe();
-            ShutdownIfNeeded(shouldShutdown);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogException("圧縮処理でエラーが発生", ex);
-            _ = MessageService.ShowError(App.Text("Error.DuringCompression", ex.Message));
-            ShutdownIfNeeded(shouldShutdown);
-        }
+            else
+            {
+                Logger.Log("圧縮処理が失敗しました");
+            }
+        }, "圧縮処理", "Error.DuringCompression", shouldShutdown);
     }
 
     /// <summary>

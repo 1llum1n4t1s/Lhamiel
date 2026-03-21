@@ -31,7 +31,7 @@ public class SettingsTests
 
         Assert.Equal("System", settings.Theme);
         Assert.Equal("", settings.Locale);
-        Assert.False(settings.CompressMultipleAsOne);
+        Assert.True(settings.CompressMultipleAsOne);
         Assert.Equal(5, settings.ZipCompressionLevel);
         Assert.Equal(5, settings.SevenZipCompressionLevel);
         Assert.True(settings.OpenExtractionOutputFolder);
@@ -103,7 +103,7 @@ public class SettingsTests
         // Assert
         Assert.Equal("System", settings.Theme);
         Assert.Equal("", settings.Locale);
-        Assert.False(settings.CompressMultipleAsOne);
+        Assert.True(settings.CompressMultipleAsOne);
         Assert.Equal(5, settings.ZipCompressionLevel);
         Assert.Equal(5, settings.SevenZipCompressionLevel);
         Assert.True(settings.OpenExtractionOutputFolder);

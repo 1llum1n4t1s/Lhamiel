@@ -19,14 +19,14 @@ public static class ArchiveExtractor
     };
 
     /// <summary>
-    /// 定数: スマート解凍判定用：無視するシステムディレクトリ名
+    /// 無視するシステムディレクトリ名（展開時の構造解析・圧縮時の除外で共用）
     /// </summary>
-    private static readonly HashSet<string> IgnoredSystemDirectories = new(StringComparer.OrdinalIgnoreCase) { "__MACOSX" };
+    internal static readonly HashSet<string> IgnoredSystemDirectories = new(StringComparer.OrdinalIgnoreCase) { "__MACOSX" };
 
     /// <summary>
-    /// 定数: スマート解凍判定用：無視するシステムファイル名
+    /// 無視するシステムファイル名（展開時の構造解析・圧縮時の除外で共用）
     /// </summary>
-    private static readonly HashSet<string> IgnoredSystemFiles = new(StringComparer.OrdinalIgnoreCase) { "desktop.ini", "Thumbs.db", ".DS_Store" };
+    internal static readonly HashSet<string> IgnoredSystemFiles = new(StringComparer.OrdinalIgnoreCase) { "desktop.ini", "Thumbs.db", ".DS_Store" };
 
     /// <summary>
     /// 指定されたファイルがサポートされているアーカイブ形式かどうかを確認する
@@ -35,12 +35,17 @@ public static class ArchiveExtractor
     /// <returns>サポートされている形式の場合はtrue、そうでなければfalse</returns>
     public static bool IsSupportedArchiveType(string filePath)
     {
-        // 変数: ファイルの拡張子を取得（小文字化）
-        // メソッド呼び出し: Path.GetExtensionとToLowerInvariantを呼び出し
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
-
-        // メソッド呼び出し: サポートされている拡張子リストに含まれているか確認
         return SupportedExtensions.Contains(extension);
+    }
+
+    /// <summary>
+    /// 指定されたパス一覧がすべてサポート対象のアーカイブファイルかどうかを判定する。
+    /// フォルダや非アーカイブファイルが1つでも含まれていればfalseを返す。
+    /// </summary>
+    public static bool AreAllSupportedArchives(IEnumerable<string> paths)
+    {
+        return paths.All(p => File.Exists(p) && IsSupportedArchiveType(p));
     }
 
     /// <summary>
@@ -319,8 +324,7 @@ public static class ArchiveExtractor
             // メソッド呼び出し: UIスレッドのディスパッチャーを介してダイアログを表示
             // overwriteCheckPaths がある場合は実際に上書きされるパスをダイアログに表示する
             var dialogDestination = overwriteCheckPaths is { Count: > 0 } ? overwriteCheckPaths[0] : outputPath;
-            var canOverwrite = await Dispatcher.UIThread.InvokeAsync(async () =>
-                await FileOverwriteDialog.CanOverwriteFile(archivePath, dialogDestination, parentWindow));
+            var canOverwrite = await FileOverwriteDialog.CanOverwriteFromBackgroundAsync(archivePath, dialogDestination, parentWindow);
 
             // メソッド呼び出し: ログの記録
             Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
@@ -399,28 +403,11 @@ public static class ArchiveExtractor
         {
             if (!overwriteConfirmed)
             {
-                // parentWindow がない場合はUI非対応環境（ユニットテスト等）のため自動上書き
-                if (parentWindow != null)
-                {
-                    // メソッド呼び出し: ログの記録
-                    Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {outputPath}");
-
-                    // メソッド呼び出し: UIスレッドで上書き確認ダイアログを表示
-                    // overwriteCheckPaths がある場合は実際に上書きされるパスをダイアログに表示する
-                    var dialogDest = overwriteCheckPaths is { Count: > 0 } ? overwriteCheckPaths[0] : outputPath;
-                    var canOverwrite = await Dispatcher.UIThread.InvokeAsync(() =>
-                        FileOverwriteDialog.CanOverwriteFile(archivePath, dialogDest, parentWindow));
-
-                    if (!canOverwrite)
-                    {
-                        // 例外の投下
-                        throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
-                    }
-                }
-                else
-                {
-                    Logger.Log($"上書き確認ダイアログをスキップ（parentWindowなし・UI非対応環境）: {outputPath}");
-                }
+                Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {outputPath}");
+                var dialogDest = overwriteCheckPaths is { Count: > 0 } ? overwriteCheckPaths[0] : outputPath;
+                var canOverwrite = await FileOverwriteDialog.CanOverwriteFromBackgroundAsync(archivePath, dialogDest, parentWindow);
+                if (!canOverwrite)
+                    throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
             }
 
             // 保護されたディレクトリ（デスクトップ自体など）の場合は上書き確認（削除）をさせない

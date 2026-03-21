@@ -1,5 +1,4 @@
 using Microsoft.Win32;
-using System.Diagnostics;
 using System.Runtime.Versioning;
 namespace Lhamiel.Util;
 
@@ -10,61 +9,7 @@ namespace Lhamiel.Util;
 [SupportedOSPlatform("windows")]
 public class FileAssociation
 {
-    /// <summary>
-    /// アプリケーションの実行ファイルパス
-    /// 現在実行中のアプリケーションのパスを取得
-    /// </summary>
-    private static readonly Lazy<string> _appPath = new(ResolveAppPath);
-
-    private static string AppPath => _appPath.Value;
-
-    private static string ResolveAppPath()
-    {
-        try
-        {
-            // 一般的な方法：Environment.ProcessPathを使用（単一ファイル公開対応）
-            var processPath = Environment.ProcessPath;
-            if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
-            {
-                return processPath;
-            }
-
-            // フォールバック：Process.GetCurrentProcess().MainModule.FileName
-            using var process = Process.GetCurrentProcess();
-            processPath = process.MainModule?.FileName;
-            if (!string.IsNullOrEmpty(processPath) && File.Exists(processPath))
-            {
-                return processPath;
-            }
-
-            // .NET 9の新しい実行モデルに対応
-            // アプリケーションのベースディレクトリからexeファイルを探す
-            var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
-
-            // ベースディレクトリ内のexeファイルを探す
-            var exeFiles = Directory.GetFiles(baseDirectory, "*.exe");
-            if (exeFiles.Length > 0)
-            {
-                // メインのアプリケーションexeファイルを特定
-                // Lhamiel.exeを優先し、見つからない場合は最初のexeファイルを使用
-                var mainExe = exeFiles.FirstOrDefault(f => Path.GetFileName(f).Equals("Lhamiel.exe", StringComparison.OrdinalIgnoreCase));
-                if (mainExe != null)
-                {
-                    return mainExe;
-                }
-
-                // Lhamiel.exeが見つからない場合は、最初のexeファイルを使用
-                return exeFiles[0];
-            }
-
-            return string.Empty;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogException("実行ファイルパスの取得に失敗しました", ex);
-            return string.Empty;
-        }
-    }
+    private static string AppPath => AppPathResolver.ExecutablePath;
 
     /// <summary>
     /// アプリケーションのアイコンファイルパス

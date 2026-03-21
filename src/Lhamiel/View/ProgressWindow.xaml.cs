@@ -153,40 +153,39 @@ public class ProgressWindow : Window
         }
     }
 
-    private void CancelButton_Click(object? sender, RoutedEventArgs e)
+    /// <summary>
+    /// CancellationTokenSource を安全にキャンセルする。既に破棄済みの場合は無視する。
+    /// </summary>
+    /// <returns>キャンセルが実行された場合は true</returns>
+    private bool TryCancel()
     {
-        if (_cancelButton != null) _cancelButton.IsEnabled = false;
         try
         {
             if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
             {
                 _cancellationTokenSource.Cancel();
+                return true;
             }
         }
         catch (ObjectDisposedException) { }
+        return false;
+    }
 
+    private void CancelButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_cancelButton != null) _cancelButton.IsEnabled = false;
+        TryCancel();
         CancelRequested?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>
     /// ウィンドウが閉じられる時の処理
     /// </summary>
-    /// <param name="e">イベント引数</param>
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         // まだキャンセルされていない場合は、ウィンドウを閉じることをキャンセル指示とみなす
-        try
-        {
-            if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
-            {
-                _cancellationTokenSource.Cancel();
-                CancelRequested?.Invoke(this, EventArgs.Empty);
-            }
-        }
-        catch (ObjectDisposedException ex)
-        {
-            Logger.Log($"OnClosing内のCTS例外: {ex.Message}");
-        }
+        if (TryCancel())
+            CancelRequested?.Invoke(this, EventArgs.Empty);
 
         base.OnClosing(e);
     }

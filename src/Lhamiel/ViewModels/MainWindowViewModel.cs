@@ -437,9 +437,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
                 }
             }
+            else if (ArchiveExtractor.AreAllSupportedArchives(validPaths))
+            {
+                // 複数ファイル: すべてアーカイブなら個別展開
+                var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
+                    validPaths.ToArray(),
+                    settings.ExtractionOutputDirectory,
+                    settings.ExtractionOutputToSameDirectory,
+                    progressWindow,
+                    cancellationToken,
+                    closeWindowOnCompletion: true);
+                if (extractionResults.Count > 0 && settings.OpenExtractionOutputFolder)
+                    OpenExtractedFolders(extractionResults);
+            }
             else
             {
-                // 複数ファイル/フォルダ: すべて圧縮対象
+                // 複数ファイル: アーカイブ以外が混在 or 通常ファイルのみ → 圧縮
                 if (settings.CompressMultipleAsOne)
                 {
                     await ArchiveProcessor.CompressMergedAsync(
@@ -681,31 +694,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private void OpenExtractedFolders(IEnumerable<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)> extractionResults)
+    private static void OpenExtractedFolders(IEnumerable<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)> extractionResults)
     {
-        var openedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var result in extractionResults)
-        {
-            var targetPath = result.OutputPath;
-            try
-            {
-                // アーカイブの構造情報を再利用して、開くべきフォルダを決定
-                var structureInfo = result.StructureInfo;
-                if (structureInfo.HasSingleRootItem && !string.IsNullOrEmpty(structureInfo.SingleRootItemName))
-                {
-                    // 単一ルート要素の場合は、そのフォルダを開く
-                    var possibleDir = Path.Combine(targetPath, structureInfo.SingleRootItemName);
-                    if (Directory.Exists(possibleDir))
-                        targetPath = possibleDir;
-                }
-
-                if (Directory.Exists(targetPath) && openedPaths.Add(targetPath))
-                    FolderOpener.OpenFolder(targetPath);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogException($"展開先フォルダを開く処理でエラー: {result.SourcePath}", ex);
-            }
-        }
+        foreach (var (_, outputPath, structureInfo) in extractionResults)
+            FolderOpener.OpenExtractionResult(outputPath, structureInfo);
     }
 }

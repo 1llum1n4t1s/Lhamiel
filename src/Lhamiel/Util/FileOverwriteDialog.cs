@@ -76,6 +76,17 @@ public static class FileOverwriteDialog
         return canOverwrite;
     }
 
+    /// <summary>
+    /// バックグラウンドスレッドから安全に上書き確認を行う。
+    /// parentWindow が null の場合（テスト環境等）は自動で上書きを許可する。
+    /// </summary>
+    public static async Task<bool> CanOverwriteFromBackgroundAsync(string sourcePath, string destinationPath, Window? parentWindow)
+    {
+        if (parentWindow == null) return true;
+        return await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            CanOverwriteFile(sourcePath, destinationPath, parentWindow));
+    }
+
 }
 
 /// <summary>
