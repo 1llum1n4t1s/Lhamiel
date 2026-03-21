@@ -67,3 +67,4 @@ jobs:
         with:
           name: lhamiel.${{ matrix.runtime }}
           path: publish/*
+          retention-days: 1

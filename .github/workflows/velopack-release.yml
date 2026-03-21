@@ -107,6 +107,7 @@ jobs:
         with:
           name: velopack.${{ matrix.label }}
           path: artifacts/*
+          retention-days: 1
 
   release:
     needs: [velopack, version]
