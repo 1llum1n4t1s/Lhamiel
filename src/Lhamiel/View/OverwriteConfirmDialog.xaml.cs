@@ -29,17 +29,23 @@ public class OverwriteConfirmDialog : Window
             messageText.Text = message;
 
         // ボタンテキストを確実に設定（DynamicResource のフォールバック）
-        var yesBtn = this.FindControl<Button>("YesButton");
-        var noBtn = this.FindControl<Button>("NoButton");
-        if (yesBtn != null && (yesBtn.Content == null || yesBtn.Content is string s1 && string.IsNullOrEmpty(s1)))
-            yesBtn.Content = App.Text("Button.Yes");
-        if (noBtn != null && (noBtn.Content == null || noBtn.Content is string s2 && string.IsNullOrEmpty(s2)))
-            noBtn.Content = App.Text("Button.No");
+        EnsureButtonText("YesButton", App.Text("Button.Yes"));
+        EnsureButtonText("NoButton", App.Text("Button.No"));
     }
 
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
+    }
+
+    /// <summary>
+    /// ボタンテキストが空の場合にフォールバックテキストを設定する
+    /// </summary>
+    private void EnsureButtonText(string controlName, string fallbackText)
+    {
+        var btn = this.FindControl<Button>(controlName);
+        if (btn != null && btn.Content is null or (string { Length: 0 }))
+            btn.Content = fallbackText;
     }
 
     private void YesButton_Click(object? sender, RoutedEventArgs e)

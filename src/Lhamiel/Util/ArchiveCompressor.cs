@@ -304,9 +304,13 @@ public class ArchiveCompressor
 
         // パスセグメントを走査し、いずれかが除外パターンに一致すればtrue
         // ファイル名もパスセグメントの一部なので、個別チェック不要
-        foreach (var segment in path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+        // MemoryExtensions.Split + stackalloc で配列アロケーションを回避
+        ReadOnlySpan<char> separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
+        Span<Range> ranges = stackalloc Range[64]; // パスセグメント数の上限（通常十分）
+        var count = path.AsSpan().SplitAny(ranges, separators, StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < count; i++)
         {
-            if (excludedPatternSet.Contains(segment))
+            if (excludedPatternSet.Contains(path[ranges[i]]))
             {
                 return true;
             }

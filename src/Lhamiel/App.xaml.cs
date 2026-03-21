@@ -694,22 +694,10 @@ public class App : Application
     {
         Logger.Log("アプリケーション終了");
 
-        try
-        {
-            _ipcCts?.Cancel();
-        }
-        catch (ObjectDisposedException)
-        {
-        }
+        // CTS の安全な破棄（ObjectDisposedException を無視）
+        TryCancelAndDispose(_ipcCts);
 
-        try
-        {
-            _ipcCts?.Dispose();
-        }
-        catch (ObjectDisposedException)
-        {
-        }
-
+        // Mutex の安全な解放と破棄
         try
         {
             _instanceMutex?.ReleaseMutex();
@@ -729,6 +717,16 @@ public class App : Application
         }
 
         Logger.Dispose();
+    }
+
+    /// <summary>
+    /// CancellationTokenSource を安全にキャンセルして破棄する（ObjectDisposedException を無視）
+    /// </summary>
+    private static void TryCancelAndDispose(CancellationTokenSource? cts)
+    {
+        if (cts == null) return;
+        try { cts.Cancel(); } catch (ObjectDisposedException) { }
+        try { cts.Dispose(); } catch (ObjectDisposedException) { }
     }
 
     /// <summary>
