@@ -428,9 +428,8 @@ public static class ArchiveExtractor
     /// </summary>
     private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, string? duplicateFolderName, View.ProgressWindow? progressWindow)
     {
-        // 一時フォルダを作成（同一ドライブ上でFile.Moveが高速になるよう、出力先と同じドライブに作る）
-        var outputDrive = Path.GetPathRoot(outputPath) ?? Path.GetTempPath();
-        var tempDir = CreateTempDirectory("Temp", outputDrive);
+        // 一時フォルダを出力先ディレクトリ直下に作成（同一ドライブでFile.Moveが高速、かつ書き込み権限が確実）
+        var tempDir = CreateTempDirectory("Temp", outputPath);
         Logger.Log($"一時フォルダ方式: tempDir={tempDir}");
 
         try
@@ -466,20 +465,23 @@ public static class ArchiveExtractor
                 if (result == Models.FileConflictResult.Cancel)
                 {
                     Logger.Log("ユーザーが展開をキャンセル");
-                    return; // 一時フォルダは finally で削除
+                    throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
                 }
 
                 // ④ 選択結果に基づいて移動
-                var selectedPaths = new HashSet<string>(
-                    selectedFiles.Select(f => f.relativePath),
+                // 左ペイン（一時フォルダ側=アーカイブから展開済み）が選択されたファイルのみ上書き移動する
+                // fullPath が tempDir 内にあるものが左ペイン（アーカイブ側）の選択
+                var archiveSideSelected = new HashSet<string>(
+                    selectedFiles
+                        .Where(f => f.fullPath.StartsWith(tempDir, StringComparison.OrdinalIgnoreCase))
+                        .Select(f => f.relativePath),
                     StringComparer.OrdinalIgnoreCase);
 
-                // 衝突ファイルのうちアーカイブ側（左ペイン）が選択されたもの = 上書き移動
-                // 選択されなかったもの = スキップ（移動しない）
+                // 衝突ファイルのうちアーカイブ側が選択されなかったもの = スキップ（既存を保持）
                 var skipPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var conflict in conflicts)
                 {
-                    if (!selectedPaths.Contains(conflict.ConflictingName))
+                    if (!archiveSideSelected.Contains(conflict.ConflictingName))
                         skipPaths.Add(conflict.ConflictingName);
                 }
 
