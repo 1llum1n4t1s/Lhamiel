@@ -417,7 +417,41 @@ public static class ArchiveProcessor
                     progressReporter?.Report(info);
                 };
 
-                await ArchiveCompressor.CompressFilesAsync([sourcePath], outputPath, parsedFormat, progressCallback, actualCancellationToken);
+                // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示
+                var settings = SettingsManager.Instance.Current;
+                List<(string fullPath, string relativePath)>? resolvedFiles = null;
+                if (settings.DirectoryStructureMode == DirectoryStructureMode.Flat && Directory.Exists(sourcePath))
+                {
+                    var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
+                        [sourcePath],
+                        new HashSet<string>(settings.ExcludedFilePatterns ?? [], StringComparer.OrdinalIgnoreCase),
+                        actualCancellationToken);
+
+                    var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);
+                    if (conflicts.Count > 0)
+                    {
+                        var (result, selectedFiles) = await View.FileConflictDialog.ShowFromBackgroundAsync(conflicts, progressWindow, isTwoPane: false);
+                        if (result == Models.FileConflictResult.Cancel)
+                            return false;
+
+                        // 競合ファイルを除外し、選択されたファイルを追加
+                        var conflictingPaths = new HashSet<string>(
+                            conflicts.SelectMany(g => g.Entries.Select(e => e.FullPath)),
+                            StringComparer.OrdinalIgnoreCase);
+                        resolvedFiles = scannedFiles
+                            .Where(f => !conflictingPaths.Contains(f.fullPath))
+                            .Concat(selectedFiles)
+                            .ToList();
+                        if (resolvedFiles.Count == 0)
+                            return false;
+                    }
+                    else
+                    {
+                        resolvedFiles = scannedFiles;
+                    }
+                }
+
+                await ArchiveCompressor.CompressFilesAsync([sourcePath], outputPath, parsedFormat, progressCallback, actualCancellationToken, resolvedFiles);
 
                 Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
 
