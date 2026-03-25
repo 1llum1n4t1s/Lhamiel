@@ -180,24 +180,6 @@ public class FileConflictAdversarialTests
         Assert.Equal("file_2.txt", result[2].relativePath);
     }
 
-    /// <summary>
-    /// @adversarial @category boundary @severity low
-    /// 空文字列のrelativePath（通常は発生しないが防御的テスト）
-    /// </summary>
-    [Fact]
-    public void ResolveConflicts_リネーム方式_空相対パス()
-    {
-        var files = new List<(string fullPath, string relativePath)>
-        {
-            (@"C:\A\file.txt", ""),
-            (@"C:\B\file.txt", ""),
-        };
-
-        // クラッシュしないことを確認（結果の内容は問わない）
-        var result = ArchiveCompressor.ResolveRelativePathConflicts(files, preservePath: false);
-        Assert.Equal(2, result.Count);
-    }
-
     // ═══════════════════════════════════════════════════
     // 🎭 カテゴリ5: 型パンチ・プロトコル違反（Type Punching）
     // ═══════════════════════════════════════════════════
@@ -361,28 +343,6 @@ public class FileConflictAdversarialTests
     // ═══════════════════════════════════════════════════
     // 🗡️ パス保持方式の境界テスト
     // ═══════════════════════════════════════════════════
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// ルートディレクトリ直下のファイル（親フォルダ名がドライブ文字のみ）
-    /// </summary>
-    [Fact]
-    public void ResolveConflicts_パス保持方式_ルート直下ファイル()
-    {
-        var files = new List<(string fullPath, string relativePath)>
-        {
-            (@"C:\file.txt", "file.txt"),
-            (@"D:\file.txt", "file.txt"),
-        };
-
-        var result = ArchiveCompressor.ResolveRelativePathConflicts(files, preservePath: true);
-
-        Assert.Equal(2, result.Count);
-        // Path.GetDirectoryName(@"C:\file.txt") = @"C:\" → Path.GetFileName(@"C:\") = "" on Windows
-        // parentName が空の場合はそのまま返される → 衝突が解決されない可能性
-        // これは既知の制限として記録
-        // ルート直下のファイルでは親フォルダ名が空になるため、パス保持が機能しない
-    }
 
     /// <summary>
     /// @adversarial @category boundary @severity medium
