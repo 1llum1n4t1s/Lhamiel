@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Fasciculus: {0}\nError: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Iterare vel praeterire potes.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Locus praesens {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Destinatio {0}</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} conflictus fasciculorum</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Elige quos fasciculos in archivum includere vis. Si plures electi sunt, numeri nominibus addentur.</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Omittere {0} fasciculos eiusdem diei et magnitudinis</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Perge</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Cancella</x:String>
 </ResourceDictionary>

@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Файл: {0}\nОшибка: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Вы можете повторить попытку или пропустить.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Текущее расположение {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Место назначения {0}</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} конфликтов файлов</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Выберите файлы для включения в архив. При выборе нескольких к именам будут добавлены номера.</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Пропустить {0} файлов с одинаковой датой и размером</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Продолжить</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Отмена</x:String>
 </ResourceDictionary>

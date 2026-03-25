@@ -30,9 +30,9 @@
             <ExperimentalAcrylicBorder.Material>
                 <ExperimentalAcrylicMaterial
                     BackgroundSource="Digger"
-                    MaterialOpacity="0.2"
+                    MaterialOpacity="0.65"
                     TintColor="{DynamicResource Color.Window}"
-                    TintOpacity="1.0" />
+                    TintOpacity="0.8" />
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
         <!--  アクセントカラーオーバーレイ（OSのアクセントカラーを超薄く重ねる）  -->

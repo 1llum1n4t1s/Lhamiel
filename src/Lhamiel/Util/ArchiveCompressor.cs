@@ -65,7 +65,8 @@ public class ArchiveCompressor
     /// <param name="format">圧縮形式</param>
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
+    /// <param name="resolvedFiles">衝突解決済みのファイルリスト（指定時はsourcePathsのスキャンをスキップ）</param>
+    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null)
     {
         var sourceList = sourcePaths.ToList();
         if (sourceList.Count == 0)
@@ -91,55 +92,8 @@ public class ArchiveCompressor
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // ファイルリストを先に準備
-            var filesToCompress = new List<(string fullPath, string relativePath)>();
-
-            foreach (var sourcePath in sourceList)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (File.Exists(sourcePath))
-                {
-                    // ファイルが除外対象でない場合のみ追加
-                    if (!ShouldExcludeFile(sourcePath, excludedPatternSet))
-                    {
-                        // ファイル単体の場合はアーカイブのルートに配置
-                        filesToCompress.Add((sourcePath, Path.GetFileName(sourcePath)));
-                    }
-                }
-                else if (Directory.Exists(sourcePath))
-                {
-                    // ディレクトリの場合、再帰的にファイルを取得して個別に追加
-                    Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
-
-                    // ファイルスキャンを非同期で処理（全件を即座にリスト化せず、遅延評価を活用）
-                    var files = GetFilesRecursively(sourcePath, excludedPatternSet);
-                    var parentDir = Path.GetDirectoryName(sourcePath) ?? "";
-
-                    var fileCount = 0;
-                    foreach (var file in files)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-
-                        // アーカイブ内のパスを計算（元のディレクトリ構造を保持）
-                        var relativePath = Path.GetRelativePath(parentDir, file);
-                        filesToCompress.Add((file, relativePath));
-
-                        fileCount++;
-                        // 定期的に他のタスクに実行権を譲る
-                        if (fileCount % 100 == 0)
-                        {
-                            await Task.Yield();
-                        }
-                    }
-
-                    Logger.Log($"スキャン完了: {fileCount}個のファイルが見つかりました");
-                }
-                else
-                {
-                    throw new FileNotFoundException($"指定されたパスが見つかりません: {sourcePath}");
-                }
-            }
+            // 解決済みリストが渡された場合はそのまま使用、なければスキャン
+            var filesToCompress = resolvedFiles ?? await ScanSourceFiles(sourceList, excludedPatternSet, cancellationToken);
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
@@ -217,6 +171,86 @@ public class ArchiveCompressor
             Logger.Log($"圧縮でエラーが発生しました: {ex.Message}");
             throw;
         }
+    }
+
+    /// <summary>
+    /// ソースパスからファイルリストを構築する（まとめ圧縮の前段階）。
+    /// 戻り値は (fullPath, relativePath) のリスト。衝突解決はまだ行われない。
+    /// </summary>
+    public static async Task<List<(string fullPath, string relativePath)>> ScanSourceFiles(
+        List<string> sourceList, HashSet<string> excludedPatternSet, CancellationToken cancellationToken = default)
+    {
+        var filesToCompress = new List<(string fullPath, string relativePath)>();
+
+        foreach (var sourcePath in sourceList)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (File.Exists(sourcePath))
+            {
+                if (!ShouldExcludeFile(sourcePath, excludedPatternSet))
+                {
+                    filesToCompress.Add((sourcePath, Path.GetFileName(sourcePath)));
+                }
+            }
+            else if (Directory.Exists(sourcePath))
+            {
+                Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
+
+                var files = GetFilesRecursively(sourcePath, excludedPatternSet);
+                var parentDir = Path.GetDirectoryName(sourcePath) ?? "";
+
+                var fileCount = 0;
+                foreach (var file in files)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    var relativePath = Path.GetRelativePath(parentDir, file);
+                    filesToCompress.Add((file, relativePath));
+
+                    fileCount++;
+                    if (fileCount % 100 == 0)
+                    {
+                        await Task.Yield();
+                    }
+                }
+
+                Logger.Log($"スキャン完了: {fileCount}個のファイルが見つかりました");
+            }
+            else
+            {
+                throw new FileNotFoundException($"指定されたパスが見つかりません: {sourcePath}");
+            }
+        }
+
+        return filesToCompress;
+    }
+
+    /// <summary>
+    /// ファイルリストから衝突グループを検出する。
+    /// 衝突がない場合は空リストを返す。
+    /// </summary>
+    public static List<Models.FileConflictGroup> DetectConflicts(List<(string fullPath, string relativePath)> files)
+    {
+        var groups = files
+            .GroupBy(f => f.relativePath, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => new Models.FileConflictGroup
+            {
+                ConflictingName = g.Key,
+                Entries = g.Select(f =>
+                {
+                    var info = new FileInfo(f.fullPath);
+                    return new Models.FileConflictEntry(
+                        f.fullPath,
+                        f.relativePath,
+                        info.Exists ? info.Length : 0,
+                        info.Exists ? info.LastWriteTime : DateTime.MinValue);
+                }).ToList()
+            })
+            .ToList();
+
+        return groups;
     }
 
     /// <summary>
@@ -317,6 +351,161 @@ public class ArchiveCompressor
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// アーカイブ内の相対パスが衝突するファイルを解決する
+    /// </summary>
+    /// <param name="files">ファイルリスト（fullPath, relativePath）</param>
+    /// <param name="preservePath">true: 親フォルダ名をプレフィックスとして付与、false: 連番サフィックスで自動リネーム</param>
+    /// <returns>衝突が解決されたファイルリスト</returns>
+    internal static List<(string fullPath, string relativePath)> ResolveRelativePathConflicts(
+        List<(string fullPath, string relativePath)> files, bool preservePath)
+    {
+        // 衝突があるか高速チェック（大半のケースはここで終了）
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var hasConflict = false;
+        foreach (var (_, relativePath) in files)
+        {
+            if (!seen.Add(relativePath))
+            {
+                hasConflict = true;
+                break;
+            }
+        }
+
+        if (!hasConflict)
+            return files;
+
+        Logger.Log($"アーカイブ内の相対パスに衝突を検出。解決方式: {(preservePath ? "パス保持" : "リネーム")}");
+
+        if (preservePath)
+            return ResolveByPreservingPath(files);
+
+        return ResolveByRenaming(files);
+    }
+
+    /// <summary>
+    /// パス保持方式: 親フォルダ名をプレフィックスとして付与して衝突を解決
+    /// </summary>
+    private static List<(string fullPath, string relativePath)> ResolveByPreservingPath(
+        List<(string fullPath, string relativePath)> files)
+    {
+        var result = new List<(string fullPath, string relativePath)>(files.Count);
+        foreach (var (fullPath, relativePath) in files)
+        {
+            // 既にサブフォルダ付き（ディレクトリスキャン由来）ならそのまま
+            if (relativePath.Contains(Path.DirectorySeparatorChar) || relativePath.Contains(Path.AltDirectorySeparatorChar))
+            {
+                result.Add((fullPath, relativePath));
+                continue;
+            }
+
+            // ファイル単体: 親フォルダ名をプレフィックスとして付与
+            var parentDir = Path.GetDirectoryName(fullPath);
+            var parentName = parentDir != null ? Path.GetFileName(parentDir) : "";
+            var newRelativePath = string.IsNullOrEmpty(parentName)
+                ? relativePath
+                : Path.Combine(parentName, relativePath);
+
+            result.Add((fullPath, newRelativePath));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 複合拡張子（.tar.gz 等）を考慮してファイル名をステムと拡張子に分割する。
+    /// 例: "archive.tar.gz" → ("archive", ".tar.gz")
+    ///      "photo.jpg"      → ("photo", ".jpg")
+    ///      "Makefile"       → ("Makefile", "")
+    ///      ".gitignore"     → ("", ".gitignore")
+    /// </summary>
+    internal static (string stem, string extension) SplitStemAndExtension(string fileName)
+    {
+        // 既知の複合拡張子パターン
+        ReadOnlySpan<string> compoundExtensions = [".tar.gz", ".tar.bz2", ".tar.xz", ".tar.lz", ".tar.zst"];
+
+        foreach (var compoundExt in compoundExtensions)
+        {
+            if (fileName.EndsWith(compoundExt, StringComparison.OrdinalIgnoreCase) && fileName.Length > compoundExt.Length)
+            {
+                return (fileName[..^compoundExt.Length], fileName[^compoundExt.Length..]);
+            }
+        }
+
+        // 通常の拡張子分割
+        var ext = Path.GetExtension(fileName);
+        var stem = ext.Length > 0 ? fileName[..^ext.Length] : fileName;
+        return (stem, ext);
+    }
+
+    /// <summary>
+    /// リネーム方式: 衝突するファイル名に連番サフィックスを付与して解決
+    /// </summary>
+    private static List<(string fullPath, string relativePath)> ResolveByRenaming(
+        List<(string fullPath, string relativePath)> files)
+    {
+        var result = new List<(string fullPath, string relativePath)>(files.Count);
+        var usedPaths = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (fullPath, relativePath) in files)
+        {
+            var key = relativePath;
+            if (!usedPaths.TryGetValue(key, out var count))
+            {
+                // 初出: そのまま使用
+                usedPaths[key] = 1;
+                result.Add((fullPath, relativePath));
+            }
+            else
+            {
+                // 衝突: 連番サフィックスを付与（001_1.jpg, 001_2.jpg, ...）
+                var dir = Path.GetDirectoryName(relativePath) ?? "";
+                var nameOnly = Path.GetFileName(relativePath);
+                var (name, ext) = SplitStemAndExtension(nameOnly);
+                string newPath;
+                do
+                {
+                    newPath = string.IsNullOrEmpty(dir)
+                        ? $"{name}_{count}{ext}"
+                        : Path.Combine(dir, $"{name}_{count}{ext}");
+                    count++;
+                } while (usedPaths.ContainsKey(newPath));
+
+                usedPaths[key] = count;
+                usedPaths[newPath] = 1;
+                result.Add((fullPath, newPath));
+                Logger.Log($"同名ファイルをリネーム: {relativePath} → {newPath}");
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// 出力ファイルパスの衝突を連番サフィックスで回避する
+    /// </summary>
+    /// <param name="outputPath">希望する出力パス</param>
+    /// <returns>衝突しないユニークなパス</returns>
+    public static string GetUniqueOutputPath(string outputPath)
+    {
+        if (!File.Exists(outputPath) && !Directory.Exists(outputPath))
+            return outputPath;
+
+        var dir = Path.GetDirectoryName(outputPath) ?? "";
+        var nameOnly = Path.GetFileName(outputPath);
+        var (name, ext) = SplitStemAndExtension(nameOnly);
+
+        for (var i = 1; i < 10000; i++)
+        {
+            var candidate = Path.Combine(dir, $"{name}_{i}{ext}");
+            if (!File.Exists(candidate) && !Directory.Exists(candidate))
+                return candidate;
+        }
+
+        // 通常到達しない
+        return outputPath;
     }
 
     /// <summary>

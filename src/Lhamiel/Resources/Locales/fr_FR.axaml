@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Fichier : {0}\nErreur : {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Vous pouvez choisir de réessayer ou d'ignorer.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Emplacement actuel {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Destination {0}</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} conflits de fichiers</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Sélectionnez les fichiers à inclure dans l'archive. En cas de sélection multiple, des numéros seront ajoutés aux noms.</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Ignorer {0} fichiers ayant la même date et taille</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Continuer</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Annuler</x:String>
 </ResourceDictionary>

@@ -314,8 +314,9 @@ public static class ArchiveProcessor
     /// <param name="progressReporter">外部からの進捗報告用（並列処理時などに使用）</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
+    /// <param name="overrideOutputPath">出力パスを明示的に指定する場合（衝突回避で事前計算済みのパス）</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true, string? overrideOutputPath = null)
     {
         Logger.Log($"ArchiveProcessor.CompressItemAsync開始: sourcePath={sourcePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}");
 
@@ -345,8 +346,8 @@ public static class ArchiveProcessor
             {
                 Logger.Log($"圧縮処理を開始: {sourcePath}");
 
-                // 出力ファイル名の取得
-                var outputPath = ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
+                // 出力ファイル名の取得（overrideOutputPath が指定されている場合はそちらを使用）
+                var outputPath = overrideOutputPath ?? ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
 
                 // 出力先が既に存在する場合は上書き確認
                 var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
@@ -354,7 +355,7 @@ public static class ArchiveProcessor
                 {
                     Logger.Log($"出力先が既に存在します: {outputPath}");
 
-                    var canOverwrite = await FileOverwriteDialog.CanOverwriteFromBackgroundAsync(sourcePath, outputPath, progressWindow);
+                    var canOverwrite = await View.FileConflictDialog.CanOverwriteFromBackgroundAsync(sourcePath, outputPath, progressWindow);
                     Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
 
                     if (!canOverwrite)
@@ -428,6 +429,95 @@ public static class ArchiveProcessor
     }
 
     /// <summary>
+    /// 個別圧縮時の出力パス衝突を検出し、衝突があればダイアログで確認する。
+    /// ユーザーが非選択にしたソースは除外され、複数選択は自動リネームされる。
+    /// </summary>
+    /// <returns>解決後の (sourcePaths, outputPaths) ペア。キャンセル時は空配列</returns>
+    private static async Task<(string[] sourcePaths, string[] outputPaths)> ResolveOutputPathConflictsWithDialog(
+        string[] sourcePaths, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow)
+    {
+        // 出力パスを計算してグループ化
+        var entries = sourcePaths.Select(sp => new
+        {
+            SourcePath = sp,
+            OutputPath = ArchiveCompressor.GetCompressedFileName(sp, format, outputDir, outputToSameDirectory)
+        }).ToList();
+
+        var conflictGroups = entries
+            .GroupBy(e => e.OutputPath, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .ToList();
+
+        if (conflictGroups.Count == 0)
+        {
+            // 衝突なし: そのまま返す
+            return (sourcePaths, entries.Select(e => e.OutputPath).ToArray());
+        }
+
+        // 衝突グループを FileConflictGroup に変換
+        var dialogGroups = conflictGroups.Select(g =>
+        {
+            var outputName = Path.GetFileName(g.Key);
+            return new Models.FileConflictGroup
+            {
+                ConflictingName = outputName,
+                Entries = g.Select(e =>
+                {
+                    var info = File.Exists(e.SourcePath) ? new FileInfo(e.SourcePath) : null;
+                    var dirInfo = Directory.Exists(e.SourcePath) ? new DirectoryInfo(e.SourcePath) : null;
+                    return new Models.FileConflictEntry(
+                        e.SourcePath,
+                        outputName,
+                        info?.Length ?? 0,
+                        info?.LastWriteTime ?? dirInfo?.LastWriteTime ?? DateTime.MinValue);
+                }).ToList()
+            };
+        }).ToList();
+
+        Logger.Log($"個別圧縮の出力パス衝突を検出: {conflictGroups.Count}グループ");
+
+        // ダイアログ表示（圧縮時は縦1列モード）
+        var (result, selectedFiles) = await View.FileConflictDialog.ShowFromBackgroundAsync(dialogGroups, progressWindow, isTwoPane: false);
+        if (result == Models.FileConflictResult.Cancel)
+            return ([], []);
+
+        // ダイアログで選択されたソースパスのセット（リネーム後のrelativePathとペア）
+        var selectedSourcePaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (fullPath, relativePath) in selectedFiles)
+        {
+            selectedSourcePaths[fullPath] = relativePath;
+        }
+
+        // 衝突していないエントリ + ダイアログで選択されたエントリをマージ
+        var conflictingSourcePaths = new HashSet<string>(
+            conflictGroups.SelectMany(g => g.Select(e => e.SourcePath)),
+            StringComparer.OrdinalIgnoreCase);
+
+        var resolvedSources = new List<string>();
+        var resolvedOutputs = new List<string>();
+
+        foreach (var entry in entries)
+        {
+            if (!conflictingSourcePaths.Contains(entry.SourcePath))
+            {
+                // 衝突なし: そのまま
+                resolvedSources.Add(entry.SourcePath);
+                resolvedOutputs.Add(entry.OutputPath);
+            }
+            else if (selectedSourcePaths.TryGetValue(entry.SourcePath, out var renamedName))
+            {
+                // ダイアログで選択された: リネーム後の名前で出力
+                var outputDir2 = Path.GetDirectoryName(entry.OutputPath) ?? "";
+                resolvedSources.Add(entry.SourcePath);
+                resolvedOutputs.Add(Path.Combine(outputDir2, renamedName));
+            }
+            // else: ダイアログで非選択 → スキップ
+        }
+
+        return (resolvedSources.ToArray(), resolvedOutputs.ToArray());
+    }
+
+    /// <summary>
     /// 複数のファイルまたはフォルダの圧縮処理を実行（並列処理対応）
     /// </summary>
     /// <param name="sourcePaths">圧縮する対象（ファイルまたはフォルダ）のパスの配列</param>
@@ -455,7 +545,21 @@ public static class ArchiveProcessor
 
             Logger.Log($"複数対象圧縮開始: {totalCount}個の対象、並列制限={maxDegreeOfParallelism}、形式={format}");
 
-            var tasks = sourcePaths.Select(async (sourcePath, index) =>
+            // 出力パスを事前計算し、衝突を検出
+            var (resolvedSourcePaths, resolvedOutputPaths) = await ResolveOutputPathConflictsWithDialog(
+                sourcePaths, outputDir, outputToSameDirectory, format, progressWindow);
+
+            if (resolvedSourcePaths.Length == 0)
+            {
+                Logger.Log("出力パス衝突の解決がキャンセルされたか、全てスキップされました");
+                if (closeWindowOnCompletion) progressWindow?.CloseSafe();
+                return false;
+            }
+
+            // 衝突解決後のカウントで進捗管理
+            totalCount = resolvedSourcePaths.Length;
+
+            var tasks = resolvedSourcePaths.Select(async (sourcePath, index) =>
             {
                 try
                 {
@@ -465,8 +569,8 @@ public static class ArchiveProcessor
                     var innerProgress = CreateMappedProgress(
                         totalCount, lockObject, () => successCount + failedPaths.Count, progressWindow);
 
-                    // 共通化された圧縮処理を実行
-                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false);
+                    // 事前計算された出力パスを使用して圧縮処理を実行
+                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false, overrideOutputPath: resolvedOutputPaths[index]);
 
                     // lock 内で状態のみ更新し、Dispatcher への通知は lock 外で実行
                     var completedProgress = 0;
@@ -597,7 +701,7 @@ public static class ArchiveProcessor
                 // 出力先が既に存在する場合は上書き確認
                 if (File.Exists(outputPath))
                 {
-                    var canOverwrite = await FileOverwriteDialog.CanOverwriteFromBackgroundAsync(sourcePaths[0], outputPath, progressWindow);
+                    var canOverwrite = await View.FileConflictDialog.CanOverwriteFromBackgroundAsync(sourcePaths[0], outputPath, progressWindow);
                     if (!canOverwrite)
                     {
                         Logger.Log("ユーザーがまとめ圧縮をキャンセルしました");
@@ -607,16 +711,54 @@ public static class ArchiveProcessor
                     File.Delete(outputPath);
                 }
 
+                // ファイルリストをスキャン
+                var settings = SettingsManager.Instance.Current;
+                var excludedPatternSet = new HashSet<string>(
+                    settings.ExcludedFilePatterns ?? [],
+                    StringComparer.OrdinalIgnoreCase);
+                var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
+                    sourcePaths.ToList(), excludedPatternSet, actualCancellationToken);
+
+                // 衝突検出
+                var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);
+                List<(string fullPath, string relativePath)> resolvedFiles;
+
+                if (conflicts.Count > 0)
+                {
+                    Logger.Log($"ファイル名の衝突を検出: {conflicts.Count}グループ");
+
+                    // 競合ダイアログを表示
+                    var (result, selectedFiles) = await View.FileConflictDialog.ShowFromBackgroundAsync(conflicts, progressWindow, isTwoPane: false);
+                    if (result == Models.FileConflictResult.Cancel)
+                    {
+                        Logger.Log("ユーザーが競合解決をキャンセルしました");
+                        return false;
+                    }
+
+                    // 衝突しなかったファイル + ダイアログで選択されたファイルをマージ
+                    var conflictingPaths = new HashSet<string>(
+                        conflicts.SelectMany(g => g.Entries.Select(e => e.FullPath)),
+                        StringComparer.OrdinalIgnoreCase);
+                    resolvedFiles = scannedFiles
+                        .Where(f => !conflictingPaths.Contains(f.fullPath))
+                        .Concat(selectedFiles)
+                        .ToList();
+                }
+                else
+                {
+                    resolvedFiles = scannedFiles;
+                }
+
                 IProgress<ProgressInfo> progress = new Progress<ProgressInfo>(info =>
                 {
                     Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage));
                 });
 
-                // 全パスをまとめて圧縮
+                // 解決済みリストで圧縮
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
-                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, parsedFormat, p => progress.Report(p), actualCancellationToken);
+                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, parsedFormat, p => progress.Report(p), actualCancellationToken, resolvedFiles);
 
-                Logger.Log($"まとめ圧縮完了: {outputPath}（{sourcePaths.Length}個の対象）");
+                Logger.Log($"まとめ圧縮完了: {outputPath}（{resolvedFiles.Count}個のファイル）");
 
                 return true;
             }

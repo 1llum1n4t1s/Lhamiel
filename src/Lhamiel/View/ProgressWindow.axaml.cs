@@ -8,7 +8,7 @@ namespace Lhamiel.View;
 /// <summary>
 /// ProgressWindow.xaml の相互作用ロジック
 /// </summary>
-public class ProgressWindow : Window
+public partial class ProgressWindow : Window
 {
     private ProgressBar? _progressBar;
     private TextBlock? _progressTextBlock;

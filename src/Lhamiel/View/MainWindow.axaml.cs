@@ -11,7 +11,7 @@ namespace Lhamiel.View;
 /// <summary>
 /// MainWindow.xaml の相互作用ロジック（View のみ。ビジネスロジックは MainWindowViewModel）
 /// </summary>
-public class MainWindow : Window
+public partial class MainWindow : Window
 {
     private Border? _dropOverlay;
     private Border? _accentOverlay;

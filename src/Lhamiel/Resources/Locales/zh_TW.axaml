@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">檔案：{0}\n錯誤：{1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">您可以選擇重試或略過。</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">目前位置 {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">目標位置 {0}</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} 個檔案衝突</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">選擇要包含在壓縮檔中的檔案。如果選擇多個，將在檔名中加入編號。</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">跳過 {0} 個日期和大小相同的檔案</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">繼續</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">取消</x:String>
 </ResourceDictionary>

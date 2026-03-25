@@ -38,14 +38,7 @@
     <Compile Remove="Lhamiel.Tests.Unit\**" />
   </ItemGroup>
 
-  <ItemGroup>
-    <AvaloniaResource Include="App.xaml" />
-    <AvaloniaResource Include="View\MainWindow.xaml" />
-    <AvaloniaResource Include="View\ProgressWindow.xaml" />
-    <AvaloniaResource Include="View\ErrorRecoveryDialog.xaml" />
-    <AvaloniaResource Include="View\OverwriteConfirmDialog.xaml" />
-    <AvaloniaResource Include="Resources\Themes.axaml" />
-  </ItemGroup>
+  <!-- .axaml は Avalonia SDK が自動インクルードするため明示不要 -->
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.12" />

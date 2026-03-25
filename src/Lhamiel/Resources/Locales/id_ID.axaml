@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Berkas: {0}\nKesalahan: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Anda dapat memilih untuk mencoba lagi atau melewati.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Lokasi saat ini {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Tujuan {0}</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} konflik file</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Pilih file mana yang akan disertakan dalam arsip. Jika beberapa dipilih, nomor akan ditambahkan ke nama file.</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Lewati {0} file dengan tanggal dan ukuran yang sama</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Lanjutkan</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Batal</x:String>
 </ResourceDictionary>

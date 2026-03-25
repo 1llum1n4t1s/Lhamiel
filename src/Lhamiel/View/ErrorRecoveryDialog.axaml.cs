@@ -8,7 +8,7 @@ namespace Lhamiel.View;
 /// <summary>
 /// エラー回復オプション選択ダイアログ
 /// </summary>
-public class ErrorRecoveryDialog : Window
+public partial class ErrorRecoveryDialog : Window
 {
     private RadioButton? _skipFileRadio;
     private RadioButton? _retryRadio;

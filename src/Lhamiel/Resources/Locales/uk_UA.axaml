@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Файл: {0}\nПомилка: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Ви можете повторити спробу або пропустити.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Поточне розташування {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Місце призначення {0}</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} конфліктів файлів</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Виберіть файли для включення в архів. При виборі кількох до імен будуть додані номери.</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Пропустити {0} файлів з однаковою датою та розміром</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Продовжити</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Скасувати</x:String>
 </ResourceDictionary>

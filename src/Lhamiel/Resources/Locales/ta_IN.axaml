@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">கோப்பு: {0}\nபிழை: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">மீண்டும் முயற்சிக்கவும் அல்லது தவிர்க்கவும் தேர்வுசெய்யலாம்.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">தற்போதைய இடம் {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">இலக்கு {0}</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} கோப்பு மோதல்கள்</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">காப்பகத்தில் சேர்க்க வேண்டிய கோப்புகளைத் தேர்ந்தெடுக்கவும். பல தேர்ந்தெடுத்தால், எண்கள் சேர்க்கப்படும்.</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">ஒரே தேதி மற்றும் அளவு கொண்ட {0} கோப்புகளை தவிர்</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">தொடரவும்</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">ரத்துசெய்</x:String>
 </ResourceDictionary>

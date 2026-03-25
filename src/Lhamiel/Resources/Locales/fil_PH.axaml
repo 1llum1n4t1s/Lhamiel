@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">File: {0}\nError: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Maaari kang pumiling subukan muli o laktawan.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Kasalukuyang lokasyon {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Destinasyon {0}</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} na file conflict</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Piliin kung aling mga file ang isasama sa archive. Kung marami ang pinili, magdadagdag ng numero sa mga pangalan.</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Laktawan ang {0} file na may parehong petsa at laki</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Magpatuloy</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Kanselahin</x:String>
 </ResourceDictionary>

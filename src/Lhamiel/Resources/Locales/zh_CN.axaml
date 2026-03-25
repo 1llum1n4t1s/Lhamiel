@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">文件：{0}\n错误：{1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">您可以选择重试或跳过。</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">当前位置 {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">目标位置 {0}</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} 个文件冲突</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">选择要包含在压缩包中的文件。如果选择多个，将在文件名中添加编号。</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">跳过 {0} 个日期和大小相同的文件</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">继续</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">取消</x:String>
 </ResourceDictionary>

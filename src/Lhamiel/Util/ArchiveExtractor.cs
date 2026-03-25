@@ -274,6 +274,67 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
+    /// アーカイブ内のファイルと展開先の既存ファイルを突き合わせて衝突を検出する。
+    /// </summary>
+    /// <param name="archivePath">アーカイブファイルのパス</param>
+    /// <param name="outputPath">展開先ディレクトリのパス</param>
+    /// <param name="duplicateFolderName">二重フォルダ構造の内側フォルダ名（スマート解凍用）</param>
+    /// <returns>衝突するファイルの競合グループリスト。衝突がなければ空リスト</returns>
+    public static List<Models.FileConflictGroup> DetectExtractionConflicts(string archivePath, string outputPath, string? duplicateFolderName = null)
+    {
+        var conflicts = new List<Models.FileConflictGroup>();
+
+        try
+        {
+            using var reader = new ArchiveReader(archivePath);
+
+            foreach (var item in reader.Items)
+            {
+                if (item.IsDirectory) continue;
+
+                var relativePath = item.FullName.Replace('\\', '/');
+
+                // 二重フォルダ構造のスキップ
+                if (!string.IsNullOrEmpty(duplicateFolderName))
+                {
+                    var prefix = duplicateFolderName + "/";
+                    if (relativePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                        relativePath = relativePath[prefix.Length..];
+                }
+
+                // システムファイルの除外
+                var fileName = Path.GetFileName(relativePath);
+                if (IgnoredSystemFiles.Contains(fileName)) continue;
+                var dirPart = Path.GetDirectoryName(relativePath)?.Replace('\\', '/') ?? "";
+                if (dirPart.Split('/').Any(seg => IgnoredSystemDirectories.Contains(seg))) continue;
+
+                // 展開先に同名ファイルが存在するかチェック
+                var destFilePath = Path.Combine(outputPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(destFilePath)) continue;
+
+                // 衝突発見: 左=アーカイブ内ファイル（ソース）、右=既存ファイル（宛先）
+                var destInfo = new FileInfo(destFilePath);
+                var archiveEntry = new Models.FileConflictEntry(
+                    archivePath, relativePath, item.Length, item.LastWriteTime);
+                var existingEntry = new Models.FileConflictEntry(
+                    destFilePath, relativePath, destInfo.Length, destInfo.LastWriteTime);
+
+                conflicts.Add(new Models.FileConflictGroup
+                {
+                    ConflictingName = relativePath,
+                    Entries = [archiveEntry, existingEntry]
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"展開衝突検出でエラー: {ex.Message}");
+        }
+
+        return conflicts;
+    }
+
+    /// <summary>
     /// 上書き確認ダイアログを表示すべきかどうかを判定する（親フォルダ直下展開時は実際に上書きされるパスのみで判定）
     /// </summary>
     /// <param name="outputPath">展開先ディレクトリのパス</param>
@@ -305,61 +366,52 @@ public static class ArchiveExtractor
         // メソッド呼び出し: キャンセルの確認
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 変数: 上書き確認が必要かどうかのフラグ
-        // メソッド呼び出し: 実際に上書きされるパスのみ存在する場合にダイアログ表示（overwriteCheckPaths未指定時はoutputPathで判定）
-        var targetExists = ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths);
-
-        // メソッド呼び出し: ログの記録
-        Logger.Log($"展開先存在チェック: outputPath={outputPath}, exists={targetExists}");
-
-        // 変数: 上書きが確定したかどうかのフラグ
+        // ファイル単位の衝突検出 → ダイアログ表示
         var overwriteConfirmed = false;
+        HashSet<string>? skipRelativePaths = null;
+        var conflicts = DetectExtractionConflicts(archivePath, outputPath, duplicateFolderName);
 
-        if (targetExists && parentWindow != null)
+        if (conflicts.Count > 0 && parentWindow != null)
         {
-            // メソッド呼び出し: ログの記録
-            Logger.Log($"上書き確認ダイアログを表示します: {outputPath}");
+            Logger.Log($"展開先にファイル衝突を検出: {conflicts.Count}件");
 
-            // UIスレッドで上書き確認を実行
-            // メソッド呼び出し: UIスレッドのディスパッチャーを介してダイアログを表示
-            // overwriteCheckPaths がある場合は実際に上書きされるパスをダイアログに表示する
-            var dialogDestination = overwriteCheckPaths is { Count: > 0 } ? overwriteCheckPaths[0] : outputPath;
-            var canOverwrite = await FileOverwriteDialog.CanOverwriteFromBackgroundAsync(archivePath, dialogDestination, parentWindow);
-
-            // メソッド呼び出し: ログの記録
-            Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
-
-            if (!canOverwrite)
-            {
-                // 例外の投下
+            var (result, selectedFiles) = await View.FileConflictDialog.ShowFromBackgroundAsync(conflicts, parentWindow);
+            if (result == Models.FileConflictResult.Cancel)
                 throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
+
+            // ダイアログで選択されたファイル（上書きする）の相対パスセット
+            var selectedPaths = new HashSet<string>(
+                selectedFiles.Select(f => f.relativePath),
+                StringComparer.OrdinalIgnoreCase);
+
+            // 衝突ファイルのうち選択されなかったもの = スキップ対象
+            skipRelativePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var conflict in conflicts)
+            {
+                if (!selectedPaths.Contains(conflict.ConflictingName))
+                    skipRelativePaths.Add(conflict.ConflictingName);
             }
 
-            // 変数: 上書き確定フラグをtrueに
+            if (skipRelativePaths.Count > 0)
+                Logger.Log($"ユーザーが {skipRelativePaths.Count} 件のファイルをスキップ指定");
+
             overwriteConfirmed = true;
         }
-        else if (targetExists)
+        else if (conflicts.Count > 0)
         {
-            // parentWindow がない場合は自動的に上書き（または既存仕様に合わせる）
-            // メソッド呼び出し: ログの記録
-            Logger.Log($"上書き確認ダイアログをスキップ（parentWindowなし）: {outputPath}");
-
-            // 変数: 上書き確定フラグをtrueに
+            Logger.Log($"展開先にファイル衝突を検出（parentWindowなし、自動上書き）: {conflicts.Count}件");
             overwriteConfirmed = true;
         }
 
         // 非同期タスクで展開処理を実行
-        // メソッド呼び出し: 新しいタスクを開始
+        var capturedSkipPaths = skipRelativePaths;
         await Task.Run(async () =>
         {
-            // 変数: 進捗コールバック関数の作成
-            // ラムダ式を使用してIProgressをActionに変換
             var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
 
             try
             {
-                // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-                await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, overwriteConfirmed, cancellationToken, duplicateFolderName, overwriteCheckPaths);
+                await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, overwriteConfirmed, cancellationToken, duplicateFolderName, overwriteCheckPaths, capturedSkipPaths);
             }
             finally
             {
@@ -380,7 +432,7 @@ public static class ArchiveExtractor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="duplicateFolderName">二重フォルダ構造が検出された場合の内側のフォルダ名（スマート解凍用）</param>
     /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
-    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, string? duplicateFolderName = null, IReadOnlyList<string>? overwriteCheckPaths = null)
+    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, string? duplicateFolderName = null, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null)
     {
         // メソッド呼び出し: ログの記録
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}, duplicateFolderName={duplicateFolderName}");
@@ -395,19 +447,21 @@ public static class ArchiveExtractor
         // メソッド呼び出し: キャンセルの確認
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 変数: 実際に上書きされるパスが存在するか（overwriteCheckPaths未指定時はoutputPathで判定）
+        // ファイル単位の衝突検出（上位で未確認の場合）
         var outputOrOverwriteExists = ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths);
 
-        // 展開先の確認と削除処理
         if (outputOrOverwriteExists)
         {
             if (!overwriteConfirmed)
             {
-                Logger.Log($"ExtractArchive内で上書き確認ダイアログを表示します: {outputPath}");
-                var dialogDest = overwriteCheckPaths is { Count: > 0 } ? overwriteCheckPaths[0] : outputPath;
-                var canOverwrite = await FileOverwriteDialog.CanOverwriteFromBackgroundAsync(archivePath, dialogDest, parentWindow);
-                if (!canOverwrite)
-                    throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
+                var conflicts = DetectExtractionConflicts(archivePath, outputPath, duplicateFolderName);
+                if (conflicts.Count > 0)
+                {
+                    Logger.Log($"ExtractArchive内でファイル衝突を検出: {conflicts.Count}件");
+                    var (result, _) = await View.FileConflictDialog.ShowFromBackgroundAsync(conflicts, parentWindow);
+                    if (result == Models.FileConflictResult.Cancel)
+                        throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
+                }
             }
 
             // 保護されたディレクトリ（デスクトップ自体など）の場合は上書き確認（削除）をさせない
@@ -483,6 +537,28 @@ public static class ArchiveExtractor
 
                 // reader自体の生存も保証
                 NativeInteropHelper.KeepAliveCallbacks(reader);
+            }
+
+            // スキップ対象ファイルを一時ディレクトリから削除（移動前に除外）
+            if (skipRelativePaths is { Count: > 0 })
+            {
+                Logger.Log($"スキップ対象の {skipRelativePaths.Count} ファイルを一時ディレクトリから除外");
+                foreach (var relativePath in skipRelativePaths)
+                {
+                    var tempFilePath = Path.Combine(tempOutputPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                    if (File.Exists(tempFilePath))
+                    {
+                        try
+                        {
+                            File.Delete(tempFilePath);
+                            Logger.Log($"スキップ: {relativePath}");
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Log($"スキップファイルの削除に失敗: {relativePath}, {ex.Message}");
+                        }
+                    }
+                }
             }
 
             // メソッド呼び出し: キャンセルの確認

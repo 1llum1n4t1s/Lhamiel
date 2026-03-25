@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">ファイル: {0}\nエラー: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">再試行またはスキップを選択できます</x:String>
 
+  <!-- ファイル競合ダイアログ -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} 件のファイルの競合</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">アーカイブに含めるファイルを選択してください。複数選択した場合、ファイル名に番号が追加されます。</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">日付とサイズが同じ {0} ファイルをスキップする</x:String>
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">現在の場所 {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">宛先の場所 {0}</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">続行</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">キャンセル</x:String>
+
 </ResourceDictionary>

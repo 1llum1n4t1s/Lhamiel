@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">파일: {0}\n오류: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">다시 시도하거나 건너뛸 수 있습니다.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">현재 위치 {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">대상 위치 {0}</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0}개 파일 충돌</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">아카이브에 포함할 파일을 선택하세요. 여러 개를 선택하면 파일 이름에 번호가 추가됩니다.</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">날짜와 크기가 같은 {0}개 파일 건너뛰기</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">계속</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">취소</x:String>
 </ResourceDictionary>

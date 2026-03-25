@@ -203,4 +203,13 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">सञ्चिका: {0}\nदोषः: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">पुनः प्रयतितुं लङ्घयितुं वा शक्नुथ।</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">वर्तमानस्थानम् {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">गन्तव्यस्थानम् {0}</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} सञ्चिकाविरोधाः</x:String>
+  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">संग्रहे योजयितुं सञ्चिकाः चिनुत। बहुषु चितेषु नामसु अङ्काः योजयिष्यन्ते।</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">समानदिनाङ्कपरिमाणयुक्ताः {0} सञ्चिकाः त्यजतु</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">अनुवर्तताम्</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">निवर्तताम्</x:String>
 </ResourceDictionary>
