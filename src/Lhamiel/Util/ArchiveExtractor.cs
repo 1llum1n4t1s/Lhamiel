@@ -602,9 +602,19 @@ public static class ArchiveExtractor
     {
         return Task.Run(() =>
         {
-            // 宛先がファイルの場合（パス型衝突）はファイルを削除してディレクトリを作成
+            // 宛先がファイルの場合（パス型衝突）
             if (File.Exists(destDir))
+            {
+                // ユーザーが既存ファイルの保持を選択した場合はスキップ（移動しない）
+                var destFileName = Path.GetFileName(destDir);
+                if (skipPaths != null && skipPaths.Contains(destFileName))
+                {
+                    Logger.Log($"宛先ファイルを保持（ユーザー選択）: {destDir}");
+                    return;
+                }
+
                 File.Delete(destDir);
+            }
             Directory.CreateDirectory(destDir);
 
             // 空ディレクトリも保持するため、先にディレクトリ構造を作成
