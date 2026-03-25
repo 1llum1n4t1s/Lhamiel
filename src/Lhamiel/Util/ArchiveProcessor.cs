@@ -787,6 +787,13 @@ public static class ArchiveProcessor
                         throw new OperationCanceledException("ディスク容量不足でキャンセルされました。");
                 }
 
+                // 解決済みリストが空の場合はスキップ（全ファイルが未選択）
+                if (resolvedFiles.Count == 0)
+                {
+                    Logger.Log("まとめ圧縮: 解決済みファイルが0件のためスキップ");
+                    return false;
+                }
+
                 // 解決済みリストで圧縮
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
                 await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, parsedFormat, p => progress.Report(p), actualCancellationToken, resolvedFiles);

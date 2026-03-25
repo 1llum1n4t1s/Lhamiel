@@ -578,11 +578,26 @@ public static class ArchiveExtractor
                 if (!string.IsNullOrEmpty(destFileDir))
                     Directory.CreateDirectory(destFileDir);
 
-                // 既存ファイルがあれば削除してから移動
-                if (File.Exists(destFile))
-                    File.Delete(destFile);
+                // 既存ファイルがある場合はバックアップしてから移動（失敗時にリストア）
+                var backupFile = File.Exists(destFile) ? destFile + ".bak" : null;
+                try
+                {
+                    if (backupFile != null)
+                        File.Move(destFile, backupFile, overwrite: true);
 
-                File.Move(sourceFile, destFile);
+                    File.Move(sourceFile, destFile);
+
+                    // 移動成功 → バックアップ削除
+                    if (backupFile != null && File.Exists(backupFile))
+                        File.Delete(backupFile);
+                }
+                catch
+                {
+                    // 移動失敗 → バックアップからリストア
+                    if (backupFile != null && File.Exists(backupFile) && !File.Exists(destFile))
+                        File.Move(backupFile, destFile);
+                    throw;
+                }
             }
         }, cancellationToken);
     }
