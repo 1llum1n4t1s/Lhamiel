@@ -523,7 +523,28 @@ public static class ArchiveExtractor
     {
         var conflicts = new List<Models.FileConflictGroup>();
 
-        if (!Directory.Exists(sourceDir) || !Directory.Exists(destDir))
+        if (!Directory.Exists(sourceDir))
+            return conflicts;
+
+        // 宛先がファイルの場合（アーカイブ名フォルダと同名のファイルが存在）は
+        // そのファイル自体を衝突として報告し、内部ファイルの個別チェックはスキップ
+        if (File.Exists(destDir))
+        {
+            var fileInfo = new FileInfo(destDir);
+            var destName = Path.GetFileName(destDir);
+            conflicts.Add(new Models.FileConflictGroup
+            {
+                ConflictingName = destName,
+                Entries =
+                [
+                    new Models.FileConflictEntry(sourceDir, destName, 0, Directory.GetLastWriteTime(sourceDir)),
+                    new Models.FileConflictEntry(destDir, destName, fileInfo.Length, fileInfo.LastWriteTime)
+                ]
+            });
+            return conflicts;
+        }
+
+        if (!Directory.Exists(destDir))
             return conflicts;
 
         foreach (var sourceFile in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories))
@@ -581,6 +602,11 @@ public static class ArchiveExtractor
     {
         return Task.Run(() =>
         {
+            // 宛先がファイルの場合（パス型衝突）はファイルを削除してディレクトリを作成
+            if (File.Exists(destDir))
+                File.Delete(destDir);
+            Directory.CreateDirectory(destDir);
+
             // 空ディレクトリも保持するため、先にディレクトリ構造を作成
             foreach (var sourceSubDir in Directory.EnumerateDirectories(sourceDir, "*", SearchOption.AllDirectories))
             {
