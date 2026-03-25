@@ -429,7 +429,9 @@ public static class ArchiveExtractor
     private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, string? duplicateFolderName, View.ProgressWindow? progressWindow)
     {
         // 一時フォルダを出力先ディレクトリ直下に作成（同一ドライブでFile.Moveが高速、かつ書き込み権限が確実）
-        var tempDir = CreateTempDirectory("Temp", outputPath);
+        // outputPathがファイルの場合は親ディレクトリを使用
+        var tempBaseDir = File.Exists(outputPath) ? (Path.GetDirectoryName(outputPath) ?? Path.GetTempPath()) : outputPath;
+        var tempDir = CreateTempDirectory("Temp", tempBaseDir);
         Logger.Log($"一時フォルダ方式: tempDir={tempDir}");
 
         try
@@ -579,7 +581,7 @@ public static class ArchiveExtractor
                     Directory.CreateDirectory(destFileDir);
 
                 // 既存ファイルがある場合はバックアップしてから移動（失敗時にリストア）
-                var backupFile = File.Exists(destFile) ? destFile + ".bak" : null;
+                var backupFile = File.Exists(destFile) ? $"{destFile}.{Guid.NewGuid():N}.bak" : null;
                 try
                 {
                     if (backupFile != null)

@@ -351,7 +351,11 @@ public partial class FileConflictDialog : Window
         {
             var dialog = new FileConflictDialog([group], isTwoPane: true);
             var result = await dialog.ShowDialog<FileConflictResult?>(parentWindow) ?? FileConflictResult.Cancel;
-            return result == FileConflictResult.Continue;
+            if (result != FileConflictResult.Continue) return false;
+
+            // ユーザーがソース側（左ペイン）を選択した場合のみ上書き許可
+            var selectedFiles = dialog.GetSelectedFiles();
+            return selectedFiles.Any(f => f.fullPath == sourcePath);
         });
     }
 
