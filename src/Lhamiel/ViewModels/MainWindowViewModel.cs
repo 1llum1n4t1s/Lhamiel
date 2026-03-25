@@ -72,10 +72,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _openExtractionOutputFolder = true;
 
     [ObservableProperty]
+    private bool _createArchiveNameFolder = true;
+
+    [ObservableProperty]
     private bool _openCompressionOutputFolder = true;
 
     [ObservableProperty]
     private bool _compressMultipleAsOne;
+
+    [ObservableProperty]
+    private int _selectedDirectoryStructureMode;
 
     [ObservableProperty]
     private string _selectedLocale = "";
@@ -109,8 +115,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectory;
             s.CompressionOutputToSameDirectory = CompressionOutputToSameDirectory;
             s.OpenExtractionOutputFolder = OpenExtractionOutputFolder;
+            s.CreateArchiveNameFolder = CreateArchiveNameFolder;
             s.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
             s.CompressMultipleAsOne = CompressMultipleAsOne;
+            s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
             s.ZipCompressionLevel = ZipCompressionLevel;
             s.SevenZipCompressionLevel = SevenZipCompressionLevel;
             _settingsManager.Save();
@@ -146,9 +154,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnOpenExtractionOutputFolderChanged(bool value) => AutoSave();
 
+    partial void OnCreateArchiveNameFolderChanged(bool value) => AutoSave();
+
     partial void OnOpenCompressionOutputFolderChanged(bool value) => AutoSave();
 
     partial void OnCompressMultipleAsOneChanged(bool value) => AutoSave();
+
+    partial void OnSelectedDirectoryStructureModeChanged(int value) => AutoSave();
 
     partial void OnZipCompressionLevelChanged(int value)
     {
@@ -237,12 +249,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>
     /// テーマの選択肢（キー: 設定値、値: 表示名）
     /// </summary>
-    public ThemeItem[] ThemeOptions =>
+    private static readonly ThemeItem[] _themeOptions =
     [
         new("System", "Settings.Theme.System"),
         new("Dark", "Settings.Theme.Dark"),
         new("Light", "Settings.Theme.Light")
     ];
+    public ThemeItem[] ThemeOptions => _themeOptions;
 
     /// <summary>
     /// ロケールの選択肢（キー: ロケールコード、表示名: ネイティブ言語名）
@@ -298,8 +311,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CompressionOutputToSameDirectory = s.CompressionOutputToSameDirectory;
         CompressionOutputToDirectory = !s.CompressionOutputToSameDirectory;
         OpenExtractionOutputFolder = s.OpenExtractionOutputFolder;
+        CreateArchiveNameFolder = s.CreateArchiveNameFolder;
         OpenCompressionOutputFolder = s.OpenCompressionOutputFolder;
         CompressMultipleAsOne = s.CompressMultipleAsOne;
+        SelectedDirectoryStructureMode = (int)s.DirectoryStructureMode;
         SelectedLocale = string.IsNullOrEmpty(s.Locale) ? App.DetectDefaultLocale() : s.Locale;
         ZipCompressionLevel = s.ZipCompressionLevel;
         SevenZipCompressionLevel = s.SevenZipCompressionLevel;

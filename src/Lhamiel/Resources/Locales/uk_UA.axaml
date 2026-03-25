@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Відкрити папку призначення після розпакування</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">Параметри розпакування</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">Створювати теку з назвою архіву</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Відкрити папку призначення після стиснення</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Об'єднане стиснення</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Параметри стиснення</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Стиснути кілька файлів в один архів</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Якщо вимкнено, кожен файл буде стиснутий в окремий архів</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">Включати кореневу теку при стисненні</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">Не включати кореневу теку при стисненні</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">Не включати теки при стисненні</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Рівень стиснення</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Рівень стиснення ZIP</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Рівень стиснення 7z</x:String>
@@ -203,4 +209,28 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Файл: {0}\nПомилка: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Ви можете повторити спробу або пропустити.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Поточне розташування {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Місце призначення {0}</x:String>
+
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">Недостатньо місця на диску</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">Потрібно:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">Доступно:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">Бракує:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">Диск: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">Недостатньо місця на диску. Видаліть непотрібні файли та натисніть Повторити.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">Повторити</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">Скасувати</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">Якщо є дублікати файлів, після розпакування з'явиться діалог підтвердження</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} конфліктів файлів</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">Виберіть файли для включення в архів. При виборі кількох до імен будуть додані номери.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">Які файли ви хочете зберегти?</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Пропустити {0} файлів з однаковою датою та розміром</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Продовжити</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Скасувати</x:String>
 </ResourceDictionary>

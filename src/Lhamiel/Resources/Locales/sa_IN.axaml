@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">निष्कर्षणानन्तरं गन्तव्यनिर्देशिकां उद्घाटयतु</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">निष्कासनविकल्पाः</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">सङ्ग्रहनाम्ना कोषं रचयतु</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">सङ्कोचनानन्तरं गन्तव्यनिर्देशिकां उद्घाटयतु</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">संयुक्तसङ्कोचनम्</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">सङ्कोचनविकल्पाः</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">बहुसञ्चिकाः एकस्मिन् संग्रहे सङ्कोचयतु</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">निष्क्रिये सति प्रत्येकसञ्चिका पृथक् सङ्कोचिता भविष्यति</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">सङ्कोचनसमये मूलनिर्देशिका सम्मिलयतु</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">सङ्कोचनसमये मूलनिर्देशिकां न सम्मिलयतु</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">सङ्कोचनसमये निर्देशिकाः न सम्मिलयतु</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">सङ्कोचनस्तरः</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP सङ्कोचनस्तरः</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z सङ्कोचनस्तरः</x:String>
@@ -203,4 +209,28 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">सञ्चिका: {0}\nदोषः: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">पुनः प्रयतितुं लङ्घयितुं वा शक्नुथ।</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">वर्तमानस्थानम् {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">गन्तव्यस्थानम् {0}</x:String>
+
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">अपर्याप्तं चक्रस्थानम्</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">आवश्यकं स्थानम्:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">उपलब्धं स्थानम्:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">न्यूनता:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">चक्रम्: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">चक्रस्थानं अपर्याप्तम्। अनावश्यकसञ्चिकाः विलोप्य पुनः नुदतु।</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">पुनः</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">निरस्तम्</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">यदि प्रतिलिपिसञ्चिकाः सन्ति, निष्कासनानन्तरं पुष्टिसंवादः प्रदर्श्यते</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} सञ्चिकाविरोधाः</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">संग्रहे योजयितुं सञ्चिकाः चिनुत। बहुषु चितेषु नामसु अङ्काः योजयिष्यन्ते।</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">कानि सञ्चिकानि रक्षितुम् इच्छसि?</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">समानदिनाङ्कपरिमाणयुक्ताः {0} सञ्चिकाः त्यजतु</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">अनुवर्तताम्</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">निवर्तताम्</x:String>
 </ResourceDictionary>

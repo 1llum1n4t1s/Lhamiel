@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">展開後に保存先のフォルダを開く</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">展開オプション</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">アーカイブ名でフォルダを作成する</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">圧縮後に保存先のフォルダを開く</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">まとめ圧縮</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">圧縮オプション</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">複数ファイルを1つにまとめて圧縮</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">OFFの場合、ファイルごとに個別のアーカイブが作成されます</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">圧縮時にルートディレクトリを含める</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">圧縮時にルートディレクトリを含めない</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">圧縮時にディレクトリを含めない</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">圧縮レベル設定</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP 圧縮レベル</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z 圧縮レベル</x:String>
@@ -202,5 +208,28 @@
   <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">アーカイブ内に対象ファイルが見つかりません。</x:String>
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">ファイル: {0}\nエラー: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">再試行またはスキップを選択できます</x:String>
+
+  <!-- ディスク容量不足ダイアログ -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">ディスク容量不足</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">必要な容量:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">空き容量:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">不足分:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">ドライブ: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">ディスクの空き容量が不足しています。不要なファイルを削除してから「再開」を押してください。</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">再開</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">キャンセル</x:String>
+
+  <!-- 進捗ダイアログ注意書き -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">重複するファイルがある場合、この後に確認ダイアログが表示されます</x:String>
+
+  <!-- ファイル競合ダイアログ -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} 件のファイルの競合</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">アーカイブに含めるファイルを選択してください。複数選択した場合、ファイル名に番号が追加されます。</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">どのファイルを保存しますか？</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">日付とサイズが同じ {0} ファイルをスキップする</x:String>
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">現在の場所 {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">宛先の場所 {0}</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">続行</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">キャンセル</x:String>
 
 </ResourceDictionary>

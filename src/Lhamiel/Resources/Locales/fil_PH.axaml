@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Buksan ang destinasyon na folder pagkatapos mag-extract</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">Mga Opsyon sa Extraction</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">Gumawa ng folder gamit ang pangalan ng archive</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Buksan ang destinasyon na folder pagkatapos mag-compress</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Pagsasamang Compression</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Mga Opsyon sa Compression</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">I-compress ang maraming file sa isang archive</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Kapag OFF, bawat file ay i-co-compress sa magkahiwalay na archive</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">Isama ang root directory kapag nagko-compress</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">Huwag isama ang root directory kapag nagko-compress</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">Huwag isama ang mga directory kapag nagko-compress</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Antas ng Compression</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Antas ng ZIP Compression</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Antas ng 7z Compression</x:String>
@@ -203,4 +209,28 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">File: {0}\nError: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Maaari kang pumiling subukan muli o laktawan.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Kasalukuyang lokasyon {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Destinasyon {0}</x:String>
+
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">Hindi sapat ang espasyo sa disk</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">Kailangan:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">Magagamit:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">Kulang:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">Drive: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">Hindi sapat ang espasyo sa disk. Mag-delete ng hindi kailangang mga file at pindutin ang Subukan muli.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">Subukan muli</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">Kanselahin</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">Kung may mga duplicate na file, isang confirmation dialog ang lalabas pagkatapos ng extraction</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} na file conflict</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">Piliin kung aling mga file ang isasama sa archive. Kung marami ang pinili, magdadagdag ng numero sa mga pangalan.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">Aling mga file ang gusto mong panatilihin?</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Laktawan ang {0} file na may parehong petsa at laki</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Magpatuloy</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Kanselahin</x:String>
 </ResourceDictionary>

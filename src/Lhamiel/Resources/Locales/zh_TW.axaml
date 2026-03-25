@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">解壓縮後開啟目的資料夾</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">解壓選項</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">以壓縮檔名稱建立資料夾</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">壓縮後開啟目的資料夾</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">合併壓縮</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">壓縮選項</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">將多個檔案壓縮成單一壓縮檔</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">關閉時，每個檔案將分別壓縮成獨立的壓縮檔</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">壓縮時包含根目錄</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">壓縮時不包含根目錄</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">壓縮時不包含目錄</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">壓縮等級</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP 壓縮等級</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z 壓縮等級</x:String>
@@ -203,4 +209,28 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">檔案：{0}\n錯誤：{1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">您可以選擇重試或略過。</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">目前位置 {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">目標位置 {0}</x:String>
+
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">磁碟空間不足</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">所需空間：</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">可用空間：</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">不足：</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">磁碟機：{0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">磁碟空間不足。請刪除不需要的檔案，然後按下重試。</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">重試</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">取消</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">如果存在重複檔案，解壓後將顯示確認對話方塊</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} 個檔案衝突</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">選擇要包含在壓縮檔中的檔案。如果選擇多個，將在檔名中加入編號。</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">您想保留哪些檔案？</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">跳過 {0} 個日期和大小相同的檔案</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">繼續</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">取消</x:String>
 </ResourceDictionary>

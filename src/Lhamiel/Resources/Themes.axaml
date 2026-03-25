@@ -17,6 +17,8 @@
             <Color x:Key="Color.Accent">#FF007AFF</Color>
             <Color x:Key="Color.DropZone">#33007AFF</Color>
             <Color x:Key="Color.DropZoneBorder">#FF007AFF</Color>
+            <Color x:Key="Color.SidebarHover">#12000000</Color>
+            <Color x:Key="Color.SidebarSelected">#20000000</Color>
 
             <!-- Fluent テーマ上書き -->
             <Color x:Key="SystemAccentColor">#FF007AFF</Color>
@@ -42,6 +44,8 @@
             <Color x:Key="Color.Accent">#FF0A84FF</Color>
             <Color x:Key="Color.DropZone">#330A84FF</Color>
             <Color x:Key="Color.DropZoneBorder">#FF0A84FF</Color>
+            <Color x:Key="Color.SidebarHover">#12FFFFFF</Color>
+            <Color x:Key="Color.SidebarSelected">#20FFFFFF</Color>
 
             <!-- Fluent テーマ上書き -->
 
@@ -113,6 +117,8 @@
     <SolidColorBrush x:Key="Brush.FG1" Color="{DynamicResource Color.FG1}" />
     <SolidColorBrush x:Key="Brush.FG2" Color="{DynamicResource Color.FG2}" />
     <SolidColorBrush x:Key="Brush.Border" Color="{DynamicResource Color.Border}" />
+    <SolidColorBrush x:Key="Brush.SidebarHover" Color="{DynamicResource Color.SidebarHover}" />
+    <SolidColorBrush x:Key="Brush.SidebarSelected" Color="{DynamicResource Color.SidebarSelected}" />
     <SolidColorBrush x:Key="Brush.Accent" Color="{DynamicResource Color.Accent}" />
     <SolidColorBrush x:Key="Brush.DropZone" Color="{DynamicResource Color.DropZone}" />
     <SolidColorBrush x:Key="Brush.DropZoneBorder" Color="{DynamicResource Color.DropZoneBorder}" />

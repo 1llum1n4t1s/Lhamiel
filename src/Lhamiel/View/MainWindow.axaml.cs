@@ -11,7 +11,7 @@ namespace Lhamiel.View;
 /// <summary>
 /// MainWindow.xaml の相互作用ロジック（View のみ。ビジネスロジックは MainWindowViewModel）
 /// </summary>
-public class MainWindow : Window
+public partial class MainWindow : Window
 {
     private Border? _dropOverlay;
     private Border? _accentOverlay;
@@ -59,7 +59,9 @@ public class MainWindow : Window
                 w.Show();
                 w.Activate();
             }
-            DataContext = new MainWindowViewModel(pickExtractionFolder, pickCompressionFolder, ShowProgressWindow);
+            var viewModel = new MainWindowViewModel(pickExtractionFolder, pickCompressionFolder, ShowProgressWindow);
+            DataContext = viewModel;
+            InitDirModeRadioButtons(viewModel.SelectedDirectoryStructureMode);
         }
         catch (Exception ex)
         {
@@ -124,5 +126,32 @@ public class MainWindow : Window
         }
         if (filePaths.Count > 0 && DataContext is MainWindowViewModel vm)
             await vm.ProcessDroppedPathsAsync(filePaths);
+    }
+
+    /// <summary>
+    /// ディレクトリ構造モードのラジオボタンの初期状態をセット
+    /// </summary>
+    private void InitDirModeRadioButtons(int mode)
+    {
+        var radio = mode switch
+        {
+            0 => this.FindControl<RadioButton>("DirModeIncludeRoot"),
+            1 => this.FindControl<RadioButton>("DirModeExcludeRoot"),
+            2 => this.FindControl<RadioButton>("DirModeFlat"),
+            _ => this.FindControl<RadioButton>("DirModeIncludeRoot")
+        };
+        if (radio != null) radio.IsChecked = true;
+    }
+
+    /// <summary>
+    /// ディレクトリ構造モードのラジオボタン変更時
+    /// </summary>
+    private void DirModeRadio_Changed(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is RadioButton { IsChecked: true, Tag: string tag } && DataContext is MainWindowViewModel vm)
+        {
+            if (int.TryParse(tag, out var mode))
+                vm.SelectedDirectoryStructureMode = mode;
+        }
     }
 }

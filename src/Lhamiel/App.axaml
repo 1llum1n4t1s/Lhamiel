@@ -59,7 +59,13 @@
                             BorderThickness="1"
                             BoxShadow="0 8 24 0 #18000000, 0 2 6 0 #10000000, inset 0 1 0 0 #30FFFFFF"
                             CornerRadius="14">
-                            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+                            <ItemsPresenter Name="PART_ItemsPresenter">
+                                <ItemsPresenter.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel HorizontalAlignment="Stretch" />
+                                    </ItemsPanelTemplate>
+                                </ItemsPresenter.ItemsPanel>
+                            </ItemsPresenter>
                         </Border>
                         <!--  コンテンツエリア  -->
                         <ContentPresenter
@@ -82,6 +88,7 @@
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0,1" />
             <Setter Property="MinHeight" Value="28" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}" />
             <Setter Property="Background" Value="Transparent" />
         </Style>
@@ -97,26 +104,27 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="10,6" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
         </Style>
         <!--  FluentTheme の選択インジケータパイプを非表示  -->
         <Style Selector="TabControl.sidebar &gt; TabItem /template/ Border#PART_SelectedPipe">
             <Setter Property="IsVisible" Value="False" />
         </Style>
 
-        <!--  サイドバー タブ項目：ホバー（macOS Tahoe: エフェクトなし）  -->
+        <!--  サイドバー タブ項目：ホバー — 薄いハイライト  -->
         <Style Selector="TabControl.sidebar &gt; TabItem:pointerover /template/ Border#PART_LayoutRoot">
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource Brush.SidebarHover}" />
         </Style>
 
-        <!--  サイドバー タブ項目：選択中 — Tahoe: テキスト色をアクセントカラーに  -->
+        <!--  サイドバー タブ項目：選択中 — 背景ハイライト  -->
         <Style Selector="TabControl.sidebar &gt; TabItem:selected">
-            <Setter Property="Foreground" Value="{DynamicResource Brush.Accent}" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0,1" />
             <Setter Property="MinHeight" Value="28" />
         </Style>
         <Style Selector="TabControl.sidebar &gt; TabItem:selected /template/ Border#PART_LayoutRoot">
-            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Background" Value="{DynamicResource Brush.SidebarSelected}" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Padding" Value="10,6" />
             <Setter Property="CornerRadius" Value="6" />

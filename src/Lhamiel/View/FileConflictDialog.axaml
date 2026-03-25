@@ -1,0 +1,254 @@
+<Window
+    x:Class="Lhamiel.View.FileConflictDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:view="using:Lhamiel.View"
+    x:Name="DialogWindow"
+    Title="FileConflict"
+    Width="640"
+    Height="500"
+    MinWidth="500"
+    MinHeight="350"
+    d:DesignHeight="500"
+    d:DesignWidth="640"
+    x:DataType="view:FileConflictDialog"
+    mc:Ignorable="d"
+    Background="Transparent"
+    CanResize="True"
+    ExtendClientAreaChromeHints="PreferSystemChrome"
+    ExtendClientAreaTitleBarHeightHint="32"
+    ExtendClientAreaToDecorationsHint="True"
+    TransparencyLevelHint="AcrylicBlur"
+    WindowStartupLocation="CenterOwner">
+    <Panel>
+        <!-- アクリルブラー背景 -->
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial
+                    BackgroundSource="Digger"
+                    MaterialOpacity="0.65"
+                    TintColor="{DynamicResource Color.Window}"
+                    TintOpacity="0.8" />
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+    <Grid Margin="28,40,28,20" RowDefinitions="Auto,Auto,*,Auto">
+
+        <!-- ヘッダー -->
+        <TextBlock
+            x:Name="HeaderText"
+            Grid.Row="0"
+            Margin="0,0,0,6"
+            FontSize="17"
+            FontWeight="SemiBold"
+            Foreground="{DynamicResource Brush.FG1}"
+            Text="{DynamicResource Text.Conflict.Header}" />
+
+        <!-- サブヘッダー -->
+        <TextBlock
+            x:Name="DescriptionText"
+            Grid.Row="1"
+            Margin="0,0,0,14"
+            FontSize="12"
+            Foreground="{DynamicResource Brush.FG2}"
+            TextWrapping="Wrap" />
+
+        <!-- 列ヘッダー + ファイルリスト（パネル囲み） -->
+        <Border
+            Grid.Row="2"
+            Background="{DynamicResource Brush.Container}"
+            BorderBrush="{DynamicResource Brush.Border}"
+            BorderThickness="1"
+            CornerRadius="8"
+            ClipToBounds="True">
+            <Grid RowDefinitions="Auto,*">
+                <!-- 列ヘッダー（一括チェック） -->
+                <Grid
+                    x:Name="ColumnHeaders"
+                    Grid.Row="0"
+                    Margin="10,8,10,4"
+                    ColumnDefinitions="*,*" />
+
+                <!-- ファイルリスト -->
+                <ScrollViewer
+                    Grid.Row="1"
+                    VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl x:Name="ConflictList" Padding="0,0,14,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="view:ConflictRowViewModel">
+                            <StackPanel IsVisible="{Binding IsVisible}">
+                                <!-- ファイル名ヘッダー（空の場合は非表示） -->
+                                <Border
+                                    Padding="10,6"
+                                    Background="{DynamicResource Brush.Container}"
+                                    BorderBrush="{DynamicResource Brush.Border}"
+                                    BorderThickness="0,0,0,1"
+                                    IsVisible="{Binding HasFileName}">
+                                    <Panel>
+                                        <!-- グループ一括チェック（圧縮時） -->
+                                        <CheckBox
+                                            IsChecked="{Binding IsGroupSelected}"
+                                            IsVisible="{Binding ShowGroupCheckBox}"
+                                            Content="{Binding FileName}"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            MinHeight="0"
+                                            Padding="4,0" />
+                                        <!-- テキストラベル（展開時） -->
+                                        <TextBlock
+                                            IsVisible="{Binding ShowGroupLabel}"
+                                            Margin="4,1"
+                                            FontSize="13"
+                                            FontWeight="SemiBold"
+                                            Foreground="{DynamicResource Brush.FG1}"
+                                            Text="{Binding FileName}" />
+                                    </Panel>
+                                </Border>
+
+                                <!-- 左右2ペイン -->
+                                <Grid ColumnDefinitions="*,Auto,*">
+
+                                    <!-- 左ペイン -->
+                                    <Border
+                                        Grid.Column="0"
+                                        Padding="10,6"
+                                        IsVisible="{Binding HasLeft}">
+                                        <Grid ColumnDefinitions="Auto,Auto,*">
+                                            <CheckBox
+                                                Grid.Column="0"
+                                                Margin="0,0,8,0"
+                                                MinHeight="0"
+                                                VerticalAlignment="Center"
+                                                IsChecked="{Binding Left.IsSelected}" />
+                                            <Image
+                                                Grid.Column="1"
+                                                Width="32"
+                                                Height="32"
+                                                Margin="0,0,8,0"
+                                                VerticalAlignment="Center"
+                                                Source="{Binding Left.Icon}" />
+                                            <StackPanel
+                                                Grid.Column="2"
+                                                VerticalAlignment="Center"
+                                                Spacing="2">
+                                                <!-- 圧縮時: パス名表示 -->
+                                                <TextBlock
+                                                    FontSize="12"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{DynamicResource Brush.FG1}"
+                                                    IsVisible="{Binding ShowPath}"
+                                                    Text="{Binding Left.ParentFolderName}"
+                                                    TextTrimming="CharacterEllipsis"
+                                                    ToolTip.Tip="{Binding Left.FullPathDisplay}" />
+                                                <!-- 日付 -->
+                                                <TextBlock
+                                                    FontSize="12"
+                                                    Foreground="{DynamicResource Brush.FG2}"
+                                                    Text="{Binding Left.LastModifiedDisplay}" />
+                                                <!-- サイズ -->
+                                                <TextBlock
+                                                    FontSize="12"
+                                                    Foreground="{DynamicResource Brush.FG2}"
+                                                    Text="{Binding Left.FileSizeDisplay}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- 中央セパレータ -->
+                                    <Border
+                                        Grid.Column="1"
+                                        Width="1"
+                                        Background="{DynamicResource Brush.Border}" />
+
+                                    <!-- 右ペイン -->
+                                    <Border
+                                        Grid.Column="2"
+                                        Padding="10,6"
+                                        IsVisible="{Binding HasRight}">
+                                        <Grid ColumnDefinitions="Auto,Auto,*">
+                                            <CheckBox
+                                                Grid.Column="0"
+                                                Margin="0,0,8,0"
+                                                MinHeight="0"
+                                                VerticalAlignment="Center"
+                                                IsChecked="{Binding Right.IsSelected}" />
+                                            <Image
+                                                Grid.Column="1"
+                                                Width="32"
+                                                Height="32"
+                                                Margin="0,0,8,0"
+                                                VerticalAlignment="Center"
+                                                Source="{Binding Right.Icon}" />
+                                            <StackPanel
+                                                Grid.Column="2"
+                                                VerticalAlignment="Center"
+                                                Spacing="2">
+                                                <!-- 圧縮時: パス名表示 -->
+                                                <TextBlock
+                                                    FontSize="12"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{DynamicResource Brush.FG1}"
+                                                    IsVisible="{Binding ShowPath}"
+                                                    Text="{Binding Right.ParentFolderName}"
+                                                    TextTrimming="CharacterEllipsis"
+                                                    ToolTip.Tip="{Binding Right.FullPathDisplay}" />
+                                                <!-- 日付 -->
+                                                <TextBlock
+                                                    FontSize="12"
+                                                    Foreground="{DynamicResource Brush.FG2}"
+                                                    Text="{Binding Right.LastModifiedDisplay}" />
+                                                <!-- サイズ -->
+                                                <TextBlock
+                                                    FontSize="12"
+                                                    Foreground="{DynamicResource Brush.FG2}"
+                                                    Text="{Binding Right.FileSizeDisplay}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+
+                                <!-- 行間セパレータ -->
+                                <Border
+                                    Height="1"
+                                    Background="{DynamicResource Brush.Border}" />
+
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- フッター: スキップCB + ボタン -->
+        <Grid
+            Grid.Row="3"
+            Margin="0,14,0,0"
+            ColumnDefinitions="*,Auto,Auto">
+            <CheckBox
+                x:Name="SkipIdenticalCheckBox"
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Content="{DynamicResource Text.Conflict.SkipIdentical}"
+                FontSize="12" />
+            <Button
+                x:Name="ContinueButton"
+                Grid.Column="1"
+                MinWidth="110"
+                Margin="0,0,10,0"
+                Padding="16,8"
+                Click="ContinueButton_Click"
+                Content="{DynamicResource Text.Conflict.Continue}" />
+            <Button
+                x:Name="CancelButton"
+                Grid.Column="2"
+                MinWidth="110"
+                Padding="16,8"
+                Click="CancelButton_Click"
+                Content="{DynamicResource Text.Conflict.Cancel}" />
+        </Grid>
+    </Grid>
+    </Panel>
+</Window>

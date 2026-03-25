@@ -8,10 +8,24 @@
     Width="600"
     Height="500"
     x:DataType="view:ErrorRecoveryDialog"
-    Background="{DynamicResource Brush.Window}"
+    Background="Transparent"
     CanResize="True"
+    ExtendClientAreaChromeHints="PreferSystemChrome"
+    ExtendClientAreaTitleBarHeightHint="32"
+    ExtendClientAreaToDecorationsHint="True"
+    TransparencyLevelHint="AcrylicBlur"
     WindowStartupLocation="CenterOwner">
-    <Grid Margin="20">
+    <Panel>
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial
+                    BackgroundSource="Digger"
+                    MaterialOpacity="0.65"
+                    TintColor="{DynamicResource Color.Window}"
+                    TintOpacity="0.8" />
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+    <Grid Margin="20,40,20,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -128,4 +142,5 @@
                 Content="{DynamicResource Text.Button.Cancel}" />
         </StackPanel>
     </Grid>
+    </Panel>
 </Window>

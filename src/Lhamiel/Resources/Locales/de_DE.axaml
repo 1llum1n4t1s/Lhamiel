@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Zielordner nach dem Entpacken öffnen</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">Entpackoptionen</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">Ordner mit Archivnamen erstellen</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Zielordner nach dem Komprimieren öffnen</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Zusammengeführte Komprimierung</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Komprimierungsoptionen</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Mehrere Dateien in ein einzelnes Archiv komprimieren</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Wenn AUS, wird jede Datei in ein separates Archiv komprimiert</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">Stammverzeichnis beim Komprimieren einschließen</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">Stammverzeichnis beim Komprimieren ausschließen</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">Alle Verzeichnisse beim Komprimieren ausschließen</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Komprimierungsstufe</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP-Komprimierungsstufe</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z-Komprimierungsstufe</x:String>
@@ -203,4 +209,28 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Datei: {0}\nFehler: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Sie können erneut versuchen oder überspringen.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Aktueller Speicherort {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Zielort {0}</x:String>
+
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">Unzureichender Speicherplatz</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">Erforderlich:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">Verfügbar:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">Fehlend:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">Laufwerk: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">Nicht genügend Speicherplatz. Bitte löschen Sie unnötige Dateien und klicken Sie auf Wiederholen.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">Wiederholen</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">Abbrechen</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">Bei doppelten Dateien wird nach der Extraktion ein Bestätigungsdialog angezeigt</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} Dateikonflikte</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">Wählen Sie die Dateien aus, die ins Archiv aufgenommen werden sollen. Bei Mehrfachauswahl werden Nummern an die Dateinamen angehängt.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">Welche Dateien möchten Sie behalten?</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">{0} Dateien mit gleichem Datum und Größe überspringen</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Fortfahren</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Abbrechen</x:String>
 </ResourceDictionary>

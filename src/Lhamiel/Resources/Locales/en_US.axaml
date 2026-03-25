@@ -44,12 +44,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Open destination folder after extraction</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">Extraction Options</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">Create folder with archive name</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Open destination folder after compression</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Merge Compression</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Compression Options</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Compress multiple files into a single archive</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">When OFF, each file will be compressed into a separate archive</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">Include root directory when compressing</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">Exclude root directory when compressing</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">Exclude all directories when compressing</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Compression Level</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP Compression Level</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z Compression Level</x:String>
@@ -200,4 +206,28 @@
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">File: {0}\nError: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">You can choose to retry or skip.</x:String>
 
+  <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Current location {0}</x:String>
+  <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Destination {0}</x:String>
+
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">Insufficient Disk Space</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">Required space:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">Available space:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">Shortage:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">Drive: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">There is not enough disk space. Please delete unnecessary files and press Retry.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">Retry</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">Cancel</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">If there are duplicate files, a confirmation dialog will appear after extraction</x:String>
+
+  <!-- File Conflict Dialog -->
+  <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} file conflicts</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">Select which files to include in the archive. If multiple are selected, numbers will be added to file names.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">Which files do you want to keep?</x:String>
+  <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Skip {0} files with same date and size</x:String>
+  <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Continue</x:String>
+  <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Cancel</x:String>
 </ResourceDictionary>

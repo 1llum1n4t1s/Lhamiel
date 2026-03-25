@@ -403,6 +403,10 @@ public class PartialExtractionHandler
             var recoverableFiles = previousResult.FailedFiles.Where(f => f.IsRecoverable).ToList();
             var (tempPath, extractionException) = ExtractArchiveToTemporaryPath(reader);
 
+            // O(1) 引きのため辞書化（O(n×m) → O(n+m) に改善）
+            var itemLookup = reader.Items.ToDictionary(
+                x => x.FullName, x => x, StringComparer.OrdinalIgnoreCase);
+
             try
             {
                 for (var i = 0; i < recoverableFiles.Count; i++)
@@ -413,7 +417,7 @@ public class PartialExtractionHandler
 
                     try
                     {
-                        var item = reader.Items.FirstOrDefault(x => x.FullName == failedFile.FilePath);
+                        itemLookup.TryGetValue(failedFile.FilePath, out var item);
                         if (item != null)
                         {
                             await Task.Run(() => FileOperations.CopyExtractedItem(tempPath, outputPath, item.FullName, item.IsDirectory));

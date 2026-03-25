@@ -33,7 +33,14 @@ dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r win-arm64 -p:PlatformTar
 
 # Run the app
 dotnet run --project src/Lhamiel/Lhamiel.csproj
+
+# ローカルインストーラー作成（Native AOT 不使用、テスト確認用）
+dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r win-x64 -p:PublishAot=false --self-contained -o local-publish
+vpk pack --packId Lhamiel --packVersion <VERSION> --packTitle "Lhamiel" --packAuthors "Lhamiel" --mainExe Lhamiel.exe --icon src/Lhamiel/icon/app.ico --packDir local-publish --outputDir local-installer --channel win --shortcuts "StartMenu,Desktop"
+# → local-installer/Lhamiel-win-Setup.exe が生成される
 ```
+
+> **Note**: Native AOT ビルド（`dotnet publish -r win-x64`）は VS の C++ ツールチェーン（`vswhere.exe`）が必要。ローカルテストでは `-p:PublishAot=false --self-contained` を使う。
 
 The solution file is `Lhamiel.slnx` (VS 2026 format). Supports **x64** (default) and **ARM64** builds.
 
@@ -54,7 +61,7 @@ The solution file is `Lhamiel.slnx` (VS 2026 format). Supports **x64** (default)
 
 ### Layers
 
-- **View/** — Avalonia XAML + code-behind (MainWindow, ProgressWindow, OverwriteConfirmDialog, ErrorRecoveryDialog)
+- **View/** — Avalonia XAML + code-behind (MainWindow, ProgressWindow, FileConflictDialog, ErrorRecoveryDialog)
 - **ViewModels/** — MainWindowViewModel with `[ObservableProperty]` source generators
 - **Util/** — All business logic (archive operations, settings, logging, file association, updates)
 - **Models/** — Data models
@@ -79,6 +86,18 @@ Drag-and-drop drives the app:
 | `Settings` / `SettingsManager` | JSON config at `%LocalAppData%\Lhamiel\settings.json` |
 | `NativeLibraryManager` | 7z.dll lifecycle management |
 | `UpdateChecker` | Velopack auto-update integration |
+| `FileIconHelper` | Windows Shell API (SHGetFileInfo) でファイルアイコン取得（P/Invoke） |
+
+### File Conflict Resolution System
+
+ファイル衝突解決は `FileConflictDialog` に統合されている（旧 `OverwriteConfirmDialog` は削除済み）。
+
+- **展開時**: アーカイブ内ファイルと既存ファイルを個別比較。2ペイン構成（現在の場所 vs 宛先の場所）
+- **圧縮時**: 同名ファイルが複数フォルダから来た場合、縦1列リストでグループ表示。グループヘッダーのチェックで一括選択
+- **スキップ機能**: 「日付とサイズが同じファイルをスキップ」チェックボックスで同一ファイルをフィルタリング
+
+モデル: `FileConflictEntry` / `FileConflictGroup` / `FileConflictResult`（`Models/FileConflictInfo.cs`）
+ビューモデル: `ConflictRowViewModel` / `ConflictCellViewModel`（`FileConflictDialog.xaml.cs` 内に定義）
 
 ### Static Singletons
 
@@ -124,7 +143,8 @@ var msg = App.Text("Error.DuringExtraction", ex.Message);  // looks up "Text.Err
 - **Native AOT** enabled (`PublishAot=true`) — avoid reflection-heavy patterns; `TrimmerRoots.xml` preserves the main assembly
 - **7z.dll dependency** — native library requires special build handling (see MSBuild targets in `Directory.Build.targets`)
 - **Velopack** for auto-updates (`Program.cs` bootstrap)
-- **AllowUnsafeBlocks** enabled for P/Invoke (COM interop in `ShortcutCreator`)
+- **AllowUnsafeBlocks** enabled for P/Invoke (COM interop in `ShortcutCreator`, `FileIconHelper`)
+- **Acrylic blur** — 全ダイアログで `ExperimentalAcrylicBorder` + `ExtendClientAreaToDecorationsHint` を使用。タイトルバー境界線を見えなくする
 - Async/await + CancellationToken throughout all I/O operations
 - Version is managed in `Directory.Build.props` (`<Version>` tag), shared across all projects
 
@@ -136,6 +156,9 @@ var msg = App.Text("Error.DuringExtraction", ex.Message);  // looks up "Text.Err
 ## Testing
 
 Tests are in `Lhamiel.Tests.Unit/` using xUnit 3 + Moq. The test project references the main project directly.
+
+- 通常テスト: `*Tests.cs`
+- 嫌がらせテスト (adversarial): `*AdversarialTests.cs` — 境界値、異常入力、状態遷移の矛盾などを検証
 
 ## Documentation
 

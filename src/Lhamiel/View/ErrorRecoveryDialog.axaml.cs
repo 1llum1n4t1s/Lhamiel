@@ -8,7 +8,7 @@ namespace Lhamiel.View;
 /// <summary>
 /// エラー回復オプション選択ダイアログ
 /// </summary>
-public class ErrorRecoveryDialog : Window
+public partial class ErrorRecoveryDialog : Window
 {
     private RadioButton? _skipFileRadio;
     private RadioButton? _retryRadio;
@@ -140,21 +140,28 @@ public class ErrorRecoveryDialog : Window
         if (_skipFileRadio?.IsChecked == true)
         {
             SelectedOption = PartialExtractionHandler.ErrorHandlingOption.SkipOnError;
+            RememberChoice = _rememberChoiceCheck?.IsChecked == true;
         }
         else if (_retryRadio?.IsChecked == true)
         {
             SelectedOption = PartialExtractionHandler.ErrorHandlingOption.AutoRetry;
+            RememberChoice = _rememberChoiceCheck?.IsChecked == true;
         }
         else if (_stopRadio?.IsChecked == true)
         {
             SelectedOption = PartialExtractionHandler.ErrorHandlingOption.StopOnError;
+            RememberChoice = _rememberChoiceCheck?.IsChecked == true;
         }
         else if (_skipAllRadio?.IsChecked == true)
         {
+            // 「以降すべてスキップ」= スキップ + 記憶を強制ON
             SelectedOption = PartialExtractionHandler.ErrorHandlingOption.SkipOnError;
+            RememberChoice = true;
         }
-
-        RememberChoice = _rememberChoiceCheck?.IsChecked == true;
+        else
+        {
+            RememberChoice = _rememberChoiceCheck?.IsChecked == true;
+        }
 
         Close(SelectedOption);
     }

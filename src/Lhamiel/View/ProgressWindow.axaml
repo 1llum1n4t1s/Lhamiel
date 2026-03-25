@@ -9,10 +9,24 @@
     Width="400"
     Height="200"
     x:DataType="view:ProgressWindow"
-    Background="{DynamicResource Brush.Window}"
+    Background="Transparent"
+    ExtendClientAreaChromeHints="PreferSystemChrome"
+    ExtendClientAreaTitleBarHeightHint="32"
+    ExtendClientAreaToDecorationsHint="True"
+    TransparencyLevelHint="AcrylicBlur"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
-    <Grid Margin="20">
+    <Panel>
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial
+                    BackgroundSource="Digger"
+                    MaterialOpacity="0.65"
+                    TintColor="{DynamicResource Color.Window}"
+                    TintOpacity="0.8" />
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+    <Grid Margin="20,40,20,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -31,9 +45,21 @@
         <TextBlock
             x:Name="ProgressTextBlock"
             Grid.Row="1"
-            Margin="0,0,0,15"
+            Margin="0,0,0,5"
             HorizontalAlignment="Center"
             Text="0%" />
+
+        <!--  注意書き（展開時の上書き確認予告など）  -->
+        <TextBlock
+            x:Name="NoticeTextBlock"
+            Grid.Row="2"
+            Margin="0,0,0,10"
+            HorizontalAlignment="Center"
+            FontSize="11"
+            Foreground="{DynamicResource Brush.FG2}"
+            IsVisible="False"
+            TextAlignment="Center"
+            TextWrapping="Wrap" />
 
         <!--  キャンセルボタン  -->
         <Button
@@ -44,4 +70,5 @@
             Click="CancelButton_Click"
             Content="{DynamicResource Text.Button.Cancel}" />
     </Grid>
+    </Panel>
 </Window>

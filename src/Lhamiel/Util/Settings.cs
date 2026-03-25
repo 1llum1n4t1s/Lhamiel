@@ -4,6 +4,19 @@ using System.Text.Json.Serialization;
 namespace Lhamiel.Util;
 
 /// <summary>
+/// 圧縮時のディレクトリ構造モード
+/// </summary>
+public enum DirectoryStructureMode
+{
+    /// <summary>ルートディレクトリを含める（デフォルト）</summary>
+    IncludeRoot,
+    /// <summary>ルートディレクトリを含めない</summary>
+    ExcludeRoot,
+    /// <summary>ディレクトリ構造を含めない（全フラット）</summary>
+    Flat
+}
+
+/// <summary>
 /// アプリケーション設定を管理するクラス
 /// </summary>
 public class Settings
@@ -79,6 +92,11 @@ public class Settings
     public bool OpenExtractionOutputFolder { get; set; } = true;
 
     /// <summary>
+    /// アーカイブ名でフォルダを作成するかどうか（二重フォルダ防止含む）
+    /// </summary>
+    public bool CreateArchiveNameFolder { get; set; } = true;
+
+    /// <summary>
     /// 圧縮完了後に圧縮先フォルダを開くかどうか
     /// </summary>
     public bool OpenCompressionOutputFolder { get; set; } = true;
@@ -87,6 +105,12 @@ public class Settings
     /// 複数ファイル・フォルダを1つのアーカイブにまとめて圧縮するかどうか
     /// </summary>
     public bool CompressMultipleAsOne { get; set; } = true;
+
+    /// <summary>
+    /// 圧縮時のディレクトリ構造モード
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter<DirectoryStructureMode>))]
+    public DirectoryStructureMode DirectoryStructureMode { get; set; } = DirectoryStructureMode.IncludeRoot;
 
     /// <summary>
     /// 圧縮時に除外するファイル・フォルダのパターン。

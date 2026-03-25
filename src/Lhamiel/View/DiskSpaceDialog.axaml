@@ -1,0 +1,126 @@
+<Window
+    x:Class="Lhamiel.View.DiskSpaceDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="{DynamicResource Text.DiskSpace.Title}"
+    Width="440"
+    Height="280"
+    d:DesignHeight="280"
+    d:DesignWidth="440"
+    Background="Transparent"
+    CanResize="False"
+    ExtendClientAreaChromeHints="PreferSystemChrome"
+    ExtendClientAreaTitleBarHeightHint="32"
+    ExtendClientAreaToDecorationsHint="True"
+    TransparencyLevelHint="AcrylicBlur"
+    WindowStartupLocation="CenterOwner"
+    mc:Ignorable="d">
+    <Panel>
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial
+                    BackgroundSource="Digger"
+                    MaterialOpacity="0.65"
+                    TintColor="{DynamicResource Color.Window}"
+                    TintOpacity="0.8" />
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+        <Grid Margin="28,44,28,20" RowDefinitions="Auto,Auto,*,Auto">
+
+            <!-- 警告アイコン + タイトル -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
+                <TextBlock
+                    FontSize="22"
+                    Foreground="#FFCC00"
+                    Text="&#x26A0;"
+                    VerticalAlignment="Center"
+                    Margin="0,0,10,0" />
+                <TextBlock
+                    x:Name="TitleText"
+                    FontSize="16"
+                    FontWeight="SemiBold"
+                    Foreground="{DynamicResource Brush.FG1}"
+                    VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- 容量詳細 -->
+            <StackPanel Grid.Row="1" Spacing="6" Margin="0,0,0,12">
+                <Grid ColumnDefinitions="140,*">
+                    <TextBlock
+                        Grid.Column="0"
+                        FontSize="13"
+                        Foreground="{DynamicResource Brush.FG2}"
+                        Text="{DynamicResource Text.DiskSpace.Required}" />
+                    <TextBlock
+                        x:Name="RequiredText"
+                        Grid.Column="1"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource Brush.FG1}" />
+                </Grid>
+                <Grid ColumnDefinitions="140,*">
+                    <TextBlock
+                        Grid.Column="0"
+                        FontSize="13"
+                        Foreground="{DynamicResource Brush.FG2}"
+                        Text="{DynamicResource Text.DiskSpace.Available}" />
+                    <TextBlock
+                        x:Name="AvailableText"
+                        Grid.Column="1"
+                        FontSize="13"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource Brush.FG1}" />
+                </Grid>
+                <Grid ColumnDefinitions="140,*">
+                    <TextBlock
+                        Grid.Column="0"
+                        FontSize="13"
+                        Foreground="{DynamicResource Brush.FG2}"
+                        Text="{DynamicResource Text.DiskSpace.Shortage}" />
+                    <TextBlock
+                        x:Name="ShortageText"
+                        Grid.Column="1"
+                        FontSize="13"
+                        FontWeight="Bold"
+                        Foreground="#FF6B6B" />
+                </Grid>
+                <TextBlock
+                    x:Name="DriveText"
+                    FontSize="12"
+                    Foreground="{DynamicResource Brush.FG2}"
+                    Margin="0,4,0,0" />
+            </StackPanel>
+
+            <!-- 説明 -->
+            <TextBlock
+                Grid.Row="2"
+                FontSize="12"
+                Foreground="{DynamicResource Brush.FG2}"
+                Text="{DynamicResource Text.DiskSpace.Description}"
+                TextWrapping="Wrap"
+                VerticalAlignment="Top" />
+
+            <!-- ボタン -->
+            <StackPanel
+                Grid.Row="3"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal"
+                Spacing="10">
+                <Button
+                    x:Name="RetryButton"
+                    MinWidth="100"
+                    Padding="16,8"
+                    Click="RetryButton_Click"
+                    Content="{DynamicResource Text.DiskSpace.Retry}" />
+                <Button
+                    x:Name="CancelButton"
+                    MinWidth="100"
+                    Padding="16,8"
+                    Click="CancelButton_Click"
+                    Content="{DynamicResource Text.DiskSpace.Cancel}" />
+            </StackPanel>
+        </Grid>
+    </Panel>
+</Window>
