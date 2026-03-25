@@ -95,6 +95,7 @@ public class ArchiveCompressor
             // 解決済みリストが渡された場合はそのまま使用、なければスキャン
             var filesToCompress = resolvedFiles ?? await ScanSourceFiles(sourceList, excludedPatternSet, cancellationToken);
 
+
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
@@ -178,9 +179,11 @@ public class ArchiveCompressor
     /// 戻り値は (fullPath, relativePath) のリスト。衝突解決はまだ行われない。
     /// </summary>
     public static async Task<List<(string fullPath, string relativePath)>> ScanSourceFiles(
-        List<string> sourceList, HashSet<string> excludedPatternSet, CancellationToken cancellationToken = default)
+        List<string> sourceList, HashSet<string> excludedPatternSet, CancellationToken cancellationToken = default,
+        DirectoryStructureMode? dirModeOverride = null)
     {
         var filesToCompress = new List<(string fullPath, string relativePath)>();
+        var dirMode = dirModeOverride ?? SettingsManager.Instance.Current.DirectoryStructureMode;
 
         foreach (var sourcePath in sourceList)
         {
@@ -198,14 +201,18 @@ public class ArchiveCompressor
                 Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
 
                 var files = GetFilesRecursively(sourcePath, excludedPatternSet);
-                var parentDir = Path.GetDirectoryName(sourcePath) ?? "";
+                var parentDir = dirMode == DirectoryStructureMode.IncludeRoot
+                    ? (Path.GetDirectoryName(sourcePath) ?? "")
+                    : sourcePath;
 
                 var fileCount = 0;
                 foreach (var file in files)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var relativePath = Path.GetRelativePath(parentDir, file);
+                    var relativePath = dirMode == DirectoryStructureMode.Flat
+                        ? Path.GetFileName(file)
+                        : Path.GetRelativePath(parentDir, file);
                     filesToCompress.Add((file, relativePath));
 
                     fileCount++;
@@ -504,8 +511,7 @@ public class ArchiveCompressor
                 return candidate;
         }
 
-        // 通常到達しない
-        return outputPath;
+        throw new InvalidOperationException($"ユニークなファイル名を生成できません（10000件の衝突）: {outputPath}");
     }
 
     /// <summary>
@@ -537,12 +543,12 @@ public class ArchiveCompressor
         catch (UnauthorizedAccessException ex)
         {
             Logger.Log($"アクセス権限がありません: {directoryPath}, {ex.Message}");
+            return [];
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            Logger.Log($"ファイル取得中にエラーが発生しました: {directoryPath}, {ex.Message}");
+            Logger.Log($"ファイル取得中にI/Oエラー: {directoryPath}, {ex.Message}");
+            return [];
         }
-
-        return [];
     }
 }

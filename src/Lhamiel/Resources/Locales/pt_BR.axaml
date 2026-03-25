@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Abrir pasta de destino após a extração</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">Opcoes de extracao</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">Criar pasta com nome do arquivo</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Abrir pasta de destino após a compressão</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Compressão Combinada</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Opções de compressão</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Compactar múltiplos arquivos em um único arquivo</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Quando DESATIVADO, cada arquivo será compactado em um arquivo separado</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">Incluir diretório raiz ao comprimir</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">Excluir diretório raiz ao comprimir</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">Excluir todos os diretórios ao comprimir</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Nível de Compressão</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Nível de Compressão ZIP</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Nível de Compressão 7z</x:String>
@@ -206,9 +212,24 @@
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Local atual {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Destino {0}</x:String>
 
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">Espaço em disco insuficiente</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">Espaço necessário:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">Espaço disponível:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">Faltando:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">Unidade: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">Espaço em disco insuficiente. Exclua arquivos desnecessários e pressione Tentar novamente.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">Tentar novamente</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">Cancelar</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">Se houver arquivos duplicados, um diálogo de confirmação será exibido após a extração</x:String>
+
   <!-- File Conflict Dialog -->
   <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} conflitos de arquivos</x:String>
-  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Selecione quais arquivos incluir no arquivo compactado. Se vários forem selecionados, números serão adicionados aos nomes.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">Selecione quais arquivos incluir no arquivo compactado. Se vários forem selecionados, números serão adicionados aos nomes.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">Quais arquivos você deseja manter?</x:String>
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Pular {0} arquivos com mesma data e tamanho</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Continuar</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Cancelar</x:String>

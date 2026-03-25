@@ -12,6 +12,7 @@ public partial class ProgressWindow : Window
 {
     private ProgressBar? _progressBar;
     private TextBlock? _progressTextBlock;
+    private TextBlock? _noticeTextBlock;
     private Button? _cancelButton;
 
     /// <summary>
@@ -29,6 +30,7 @@ public partial class ProgressWindow : Window
         AvaloniaXamlLoader.Load(this);
         _progressBar = this.FindControl<ProgressBar>("ProgressBar");
         _progressTextBlock = this.FindControl<TextBlock>("ProgressTextBlock");
+        _noticeTextBlock = this.FindControl<TextBlock>("NoticeTextBlock");
         _cancelButton = this.FindControl<Button>("CancelButton");
     }
 
@@ -54,6 +56,28 @@ public partial class ProgressWindow : Window
     }
 
     /// <summary>
+    /// 注意書きテキストを表示する
+    /// </summary>
+    public void SetNotice(string text)
+    {
+        if (!IsInitialized) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!IsInitialized || _noticeTextBlock is null) return;
+            _noticeTextBlock.Text = text;
+            _noticeTextBlock.IsVisible = !string.IsNullOrEmpty(text);
+        });
+    }
+
+    /// <summary>
+    /// 注意書きを非表示にする
+    /// </summary>
+    public void ClearNotice()
+    {
+        SetNotice("");
+    }
+
+    /// <summary>
     /// キャンセルトークンを取得する
     /// </summary>
     /// <returns>キャンセルトークン</returns>
@@ -68,29 +92,20 @@ public partial class ProgressWindow : Window
     /// <param name="percentage">進捗率（0-100）</param>
     public void UpdateProgress(int percentage)
     {
-        try
+        if (!IsInitialized) return;
+        Dispatcher.UIThread.Post(() =>
         {
-            if (!IsInitialized)
-                return;
-
-            Dispatcher.UIThread.Post(() =>
+            try
             {
-                try
-                {
-                    if (!IsInitialized) return;
-                    if (_progressBar != null) _progressBar.Value = percentage;
-                    if (_progressTextBlock != null) _progressTextBlock.Text = $"{percentage}%";
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"進捗更新時のエラー: {ex.Message}");
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"進捗更新処理のエラー: {ex.Message}");
-        }
+                if (!IsInitialized) return;
+                if (_progressBar != null) _progressBar.Value = percentage;
+                if (_progressTextBlock != null) _progressTextBlock.Text = $"{percentage}%";
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"進捗更新時のエラー: {ex.Message}");
+            }
+        });
     }
 
     /// <summary>
@@ -99,29 +114,20 @@ public partial class ProgressWindow : Window
     /// <param name="message">完了メッセージ</param>
     public void SetCompleted(string message)
     {
-        try
+        if (!IsInitialized) return;
+        Dispatcher.UIThread.Post(() =>
         {
-            if (!IsInitialized)
-                return;
-
-            Dispatcher.UIThread.Post(() =>
+            try
             {
-                try
-                {
-                    if (!IsInitialized) return;
-                    if (_progressBar != null) _progressBar.Value = 100;
-                    if (_progressTextBlock != null) _progressTextBlock.Text = "100%";
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"完了表示更新時のエラー: {ex.Message}");
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"完了状態設定時のエラー: {ex.Message}");
-        }
+                if (!IsInitialized) return;
+                if (_progressBar != null) _progressBar.Value = 100;
+                if (_progressTextBlock != null) _progressTextBlock.Text = string.IsNullOrEmpty(message) ? "100%" : message;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"完了表示更新時のエラー: {ex.Message}");
+            }
+        });
     }
 
     /// <summary>
@@ -130,27 +136,17 @@ public partial class ProgressWindow : Window
     /// </summary>
     public void CloseSafe()
     {
-        try
+        Dispatcher.UIThread.Post(() =>
         {
-            Dispatcher.UIThread.Post(() =>
+            try
             {
-                try
-                {
-                    if (IsInitialized)
-                    {
-                        Close();
-                    }
-                }
-                catch (InvalidOperationException ex)
-                {
-                    Logger.Log($"ウィンドウクローズ時のエラー: {ex.Message}");
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"ウィンドウクローズ処理のエラー: {ex.Message}");
-        }
+                if (IsInitialized) Close();
+            }
+            catch (InvalidOperationException ex)
+            {
+                Logger.Log($"ウィンドウクローズ時のエラー: {ex.Message}");
+            }
+        });
     }
 
     /// <summary>

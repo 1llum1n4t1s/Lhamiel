@@ -171,6 +171,12 @@
                                         IsChecked="{Binding OpenExtractionOutputFolder}" />
                                 </StackPanel>
                             </primitives:HeaderedContentControl>
+
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Extraction.OptionHeader}">
+                                <CheckBox
+                                    Content="{DynamicResource Text.Settings.Extraction.CreateFolder}"
+                                    IsChecked="{Binding CreateArchiveNameFolder}" />
+                            </primitives:HeaderedContentControl>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>
@@ -225,15 +231,36 @@
                                 </StackPanel>
                             </primitives:HeaderedContentControl>
 
-                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Compression.MergeHeader}">
-                                <StackPanel>
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Compression.OptionHeader}">
+                                <StackPanel Spacing="8">
                                     <CheckBox Content="{DynamicResource Text.Settings.Compression.MergeOption}" IsChecked="{Binding CompressMultipleAsOne}" />
                                     <TextBlock
-                                        Margin="28,4,0,0"
+                                        Margin="28,-4,0,0"
                                         FontSize="12"
                                         Foreground="{DynamicResource Brush.FG2}"
                                         Text="{DynamicResource Text.Settings.Compression.MergeDescription}"
                                         TextWrapping="Wrap" />
+
+                                    <Separator Margin="0,4" />
+
+                                    <RadioButton
+                                        x:Name="DirModeIncludeRoot"
+                                        Content="{DynamicResource Text.Settings.Compression.DirMode.IncludeRoot}"
+                                        GroupName="DirStructureMode"
+                                        IsCheckedChanged="DirModeRadio_Changed"
+                                        Tag="0" />
+                                    <RadioButton
+                                        x:Name="DirModeExcludeRoot"
+                                        Content="{DynamicResource Text.Settings.Compression.DirMode.ExcludeRoot}"
+                                        GroupName="DirStructureMode"
+                                        IsCheckedChanged="DirModeRadio_Changed"
+                                        Tag="1" />
+                                    <RadioButton
+                                        x:Name="DirModeFlat"
+                                        Content="{DynamicResource Text.Settings.Compression.DirMode.Flat}"
+                                        GroupName="DirStructureMode"
+                                        IsCheckedChanged="DirModeRadio_Changed"
+                                        Tag="2" />
                                 </StackPanel>
                             </primitives:HeaderedContentControl>
 

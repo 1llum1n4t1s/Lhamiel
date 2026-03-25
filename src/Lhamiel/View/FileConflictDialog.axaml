@@ -33,7 +33,7 @@
                     TintOpacity="0.8" />
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
-    <Grid Margin="28,40,28,20" RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <Grid Margin="28,40,28,20" RowDefinitions="Auto,Auto,*,Auto">
 
         <!-- ヘッダー -->
         <TextBlock
@@ -47,25 +47,34 @@
 
         <!-- サブヘッダー -->
         <TextBlock
+            x:Name="DescriptionText"
             Grid.Row="1"
             Margin="0,0,0,14"
             FontSize="12"
             Foreground="{DynamicResource Brush.FG2}"
-            Text="{DynamicResource Text.Conflict.Description}"
             TextWrapping="Wrap" />
 
-        <!-- 列ヘッダー（一括チェック） -->
-        <Grid
-            x:Name="ColumnHeaders"
+        <!-- 列ヘッダー + ファイルリスト（パネル囲み） -->
+        <Border
             Grid.Row="2"
-            Margin="0,0,0,0"
-            ColumnDefinitions="*,*" />
+            Background="{DynamicResource Brush.Container}"
+            BorderBrush="{DynamicResource Brush.Border}"
+            BorderThickness="1"
+            CornerRadius="8"
+            ClipToBounds="True">
+            <Grid RowDefinitions="Auto,*">
+                <!-- 列ヘッダー（一括チェック） -->
+                <Grid
+                    x:Name="ColumnHeaders"
+                    Grid.Row="0"
+                    Margin="10,8,10,4"
+                    ColumnDefinitions="*,*" />
 
-        <!-- ファイルリスト -->
-        <ScrollViewer
-            Grid.Row="3"
-            VerticalScrollBarVisibility="Auto"
-            HorizontalScrollBarVisibility="Disabled">
+                <!-- ファイルリスト -->
+                <ScrollViewer
+                    Grid.Row="1"
+                    VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled">
             <ItemsControl x:Name="ConflictList" Padding="0,0,14,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="view:ConflictRowViewModel">
@@ -209,11 +218,13 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-        </ScrollViewer>
+                </ScrollViewer>
+            </Grid>
+        </Border>
 
         <!-- フッター: スキップCB + ボタン -->
         <Grid
-            Grid.Row="4"
+            Grid.Row="3"
             Margin="0,14,0,0"
             ColumnDefinitions="*,Auto,Auto">
             <CheckBox

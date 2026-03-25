@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Ouvrir le dossier de destination après l'extraction</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">Options d extraction</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">Creer un dossier avec le nom de l archive</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Ouvrir le dossier de destination après la compression</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Compression fusionnée</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Options de compression</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Compresser plusieurs fichiers en une seule archive</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Lorsque désactivé, chaque fichier sera compressé dans une archive séparée</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">Inclure le répertoire racine lors de la compression</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">Exclure le répertoire racine lors de la compression</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">Exclure tous les répertoires lors de la compression</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Niveau de compression</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Niveau de compression ZIP</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Niveau de compression 7z</x:String>
@@ -206,9 +212,24 @@
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Emplacement actuel {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Destination {0}</x:String>
 
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">Espace disque insuffisant</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">Espace requis :</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">Espace disponible :</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">Manquant :</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">Lecteur : {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">Espace disque insuffisant. Supprimez les fichiers inutiles puis cliquez sur Réessayer.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">Réessayer</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">Annuler</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">En cas de fichiers en double, un dialogue de confirmation apparaîtra après l'extraction</x:String>
+
   <!-- File Conflict Dialog -->
   <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} conflits de fichiers</x:String>
-  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Sélectionnez les fichiers à inclure dans l'archive. En cas de sélection multiple, des numéros seront ajoutés aux noms.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">Sélectionnez les fichiers à inclure dans l'archive. En cas de sélection multiple, des numéros seront ajoutés aux noms.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">Quels fichiers souhaitez-vous conserver ?</x:String>
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Ignorer {0} fichiers ayant la même date et taille</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Continuer</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Annuler</x:String>

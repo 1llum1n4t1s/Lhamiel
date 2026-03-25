@@ -99,7 +99,16 @@ public static class ArchiveProcessor
                 var hasSingleRootItem = structureInfo.HasSingleRootItem;
 
                 // 出力先を決定
-                if (rootItemName != null)
+                var createFolder = SettingsManager.Instance.Current.CreateArchiveNameFolder;
+
+                if (!createFolder)
+                {
+                    // フォルダ作成OFF: 常にbaseDirectoryに直接展開（リフトアップもしない）
+                    outputPath = baseDirectory;
+                    rootItemName = null;
+                    Logger.Log($"フォルダ作成OFF: baseDirectoryに直接展開 -> {outputPath}");
+                }
+                else if (rootItemName != null)
                 {
                     // 二重フォルダが検出された場合：baseDirectoryに直接展開してリフトアップ
                     outputPath = baseDirectory;
@@ -160,14 +169,14 @@ public static class ArchiveProcessor
                         overwriteCheckPaths = [Path.Combine(outputPath, topLevelName)];
                     }
 
-                    // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-                    await ArchiveExtractor.ExtractArchive(filePath, outputPath,
-                        p => progress?.Report(p),
+                    // 一時フォルダ方式（上書き確認あり）or 直接展開
+                    await ArchiveExtractor.ExtractArchiveAsync(filePath, outputPath,
+                        progress,
                         progressWindow,
-                        false,
                         cancellationToken,
                         rootItemName,
-                        overwriteCheckPaths);
+                        overwriteCheckPaths,
+                        progressWindow);
 
                     if (closeWindowOnCompletion)
                     {
@@ -382,6 +391,16 @@ public static class ArchiveProcessor
                         Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
                         throw new InvalidOperationException(App.Text("Error.FileLocked", Path.GetFileName(outputPath)), ex);
                     }
+                }
+
+                // 圧縮前のディスク容量チェック
+                var estimatedSize = DiskSpaceChecker.GetTotalFileSize([sourcePath]);
+                if (estimatedSize > 0)
+                {
+                    var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(
+                        outputPath, estimatedSize, progressWindow, actualCancellationToken);
+                    if (!hasSpace)
+                        throw new OperationCanceledException("ディスク容量不足でキャンセルされました。");
                 }
 
                 // 圧縮処理を実行
@@ -753,6 +772,20 @@ public static class ArchiveProcessor
                 {
                     Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage));
                 });
+
+                // 圧縮前のディスク容量チェック
+                var estimatedMergeSize = resolvedFiles.Sum(f =>
+                {
+                    try { return File.Exists(f.fullPath) ? new FileInfo(f.fullPath).Length : 0L; }
+                    catch { return 0L; }
+                });
+                if (estimatedMergeSize > 0)
+                {
+                    var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(
+                        outputPath, estimatedMergeSize, progressWindow, actualCancellationToken);
+                    if (!hasSpace)
+                        throw new OperationCanceledException("ディスク容量不足でキャンセルされました。");
+                }
 
                 // 解決済みリストで圧縮
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);

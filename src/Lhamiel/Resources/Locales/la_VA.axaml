@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Aperire directorium post extractionem</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">Optiones Extractionis</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">Directorium cum nomine archivi creare</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Aperire directorium post compressionem</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Compressio Coniuncta</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Optiones Compressionis</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Comprimere plures fasciculos in unum archivum</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Si desactivatum, quisque fasciculus separatim comprimetur</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">Directorium radicis includere in compressione</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">Directorium radicis excludere in compressione</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">Directoria omnia excludere in compressione</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Gradus Compressionis</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Gradus Compressionis ZIP</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Gradus Compressionis 7z</x:String>
@@ -206,9 +212,24 @@
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Locus praesens {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Destinatio {0}</x:String>
 
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">Spatium disci insufficiens</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">Spatium necessarium:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">Spatium praesto:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">Defectus:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">Discus: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">Spatium disci insufficiens est. Documenta superflua dele et Iterum preme.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">Iterum</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">Cancellare</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">Si duplicata documenta sunt, post extractionem dialogus confirmationis apparebit</x:String>
+
   <!-- File Conflict Dialog -->
   <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} conflictus fasciculorum</x:String>
-  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Elige quos fasciculos in archivum includere vis. Si plures electi sunt, numeri nominibus addentur.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">Elige quos fasciculos in archivum includere vis. Si plures electi sunt, numeri nominibus addentur.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">Quae documenta servare vis?</x:String>
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Omittere {0} fasciculos eiusdem diei et magnitudinis</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Perge</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Cancella</x:String>

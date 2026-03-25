@@ -94,6 +94,13 @@ public partial class FileConflictDialog : Window
         if (headerText != null)
             headerText.Text = headerStr;
 
+        // 説明文（展開時と圧縮時で異なる）
+        var descriptionText = this.FindControl<TextBlock>("DescriptionText");
+        if (descriptionText != null)
+            descriptionText.Text = isTwoPane
+                ? App.Text("Conflict.Description.Extract")
+                : App.Text("Conflict.Description.Compress");
+
         // 列ヘッダー（2ペインモードのみ表示）
         var columnHeaders = this.FindControl<Grid>("ColumnHeaders");
         if (columnHeaders != null && isTwoPane)
@@ -164,10 +171,9 @@ public partial class FileConflictDialog : Window
                 FolderOpener.OpenFolder(path);
         };
 
-        var panel = new StackPanel
+        // フォルダ名が長い場合に改行するよう WrapPanel を使用
+        var panel = new Avalonia.Controls.WrapPanel
         {
-            Orientation = Avalonia.Layout.Orientation.Horizontal,
-            Spacing = 0,
             Children = { prefixBlock, linkBlock }
         };
 
@@ -478,11 +484,11 @@ public class ConflictCellViewModel : ObservableObject
     public ConflictCellViewModel(FileConflictEntry entry)
     {
         Entry = entry;
-        // FullPath がアーカイブ自体(.zip等)でなく実在する通常ファイルならフルパスで取得、
-        // そうでなければファイル名のみで拡張子ベースのアイコンを取得
+        // 実在する画像・動画ファイルはサムネイル優先、それ以外はアイコン
         var isRealFile = (File.Exists(entry.FullPath) || Directory.Exists(entry.FullPath))
             && !ArchiveExtractor.IsSupportedArchiveType(entry.FullPath);
-        Icon = FileIconHelper.GetFileIcon(
-            isRealFile ? entry.FullPath : Path.GetFileName(entry.RelativePath));
+        Icon = isRealFile
+            ? FileIconHelper.GetThumbnailOrIcon(entry.FullPath)
+            : FileIconHelper.GetFileIcon(Path.GetFileName(entry.RelativePath));
     }
 }

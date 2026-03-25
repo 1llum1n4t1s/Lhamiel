@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Apri la cartella di destinazione dopo l'estrazione</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">Opzioni di estrazione</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">Crea cartella con il nome dell archivio</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Apri la cartella di destinazione dopo la compressione</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Compressione unificata</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Opzioni di compressione</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Comprimi più file in un unico archivio</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Se disattivato, ogni file verrà compresso in un archivio separato</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">Includi directory radice durante la compressione</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">Escludi directory radice durante la compressione</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">Escludi tutte le directory durante la compressione</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Livello di compressione</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Livello di compressione ZIP</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Livello di compressione 7z</x:String>
@@ -206,9 +212,24 @@
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Posizione attuale {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Destinazione {0}</x:String>
 
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">Spazio su disco insufficiente</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">Spazio richiesto:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">Spazio disponibile:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">Mancante:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">Unità: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">Spazio su disco insufficiente. Eliminare i file non necessari e premere Riprova.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">Riprova</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">Annulla</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">Se ci sono file duplicati, verrà mostrata una finestra di conferma dopo l'estrazione</x:String>
+
   <!-- File Conflict Dialog -->
   <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} conflitti di file</x:String>
-  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Seleziona i file da includere nell'archivio. Se ne vengono selezionati più di uno, verranno aggiunti numeri ai nomi.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">Seleziona i file da includere nell'archivio. Se ne vengono selezionati più di uno, verranno aggiunti numeri ai nomi.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">Quali file si desidera conservare?</x:String>
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Salta {0} file con stessa data e dimensione</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Continua</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Annulla</x:String>

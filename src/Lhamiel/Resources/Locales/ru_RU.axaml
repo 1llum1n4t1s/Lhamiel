@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Открыть папку назначения после распаковки</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">Параметры извлечения</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">Создавать папку с именем архива</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Открыть папку назначения после сжатия</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Объединённое сжатие</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Параметры сжатия</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Сжать несколько файлов в один архив</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Если выключено, каждый файл будет сжат в отдельный архив</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">Включать корневую папку при сжатии</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">Не включать корневую папку при сжатии</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">Не включать папки при сжатии</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Уровень сжатия</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Уровень сжатия ZIP</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Уровень сжатия 7z</x:String>
@@ -206,9 +212,24 @@
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Текущее расположение {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Место назначения {0}</x:String>
 
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">Недостаточно места на диске</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">Требуется:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">Доступно:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">Не хватает:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">Диск: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">Недостаточно места на диске. Удалите ненужные файлы и нажмите Повторить.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">Повторить</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">Отмена</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">При наличии дублирующихся файлов после извлечения появится диалог подтверждения</x:String>
+
   <!-- File Conflict Dialog -->
   <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} конфликтов файлов</x:String>
-  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Выберите файлы для включения в архив. При выборе нескольких к именам будут добавлены номера.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">Выберите файлы для включения в архив. При выборе нескольких к именам будут добавлены номера.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">Какие файлы вы хотите сохранить?</x:String>
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Пропустить {0} файлов с одинаковой датой и размером</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Продолжить</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Отмена</x:String>

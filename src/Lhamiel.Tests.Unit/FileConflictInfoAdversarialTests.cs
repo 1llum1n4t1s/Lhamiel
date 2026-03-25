@@ -104,7 +104,7 @@ public class FileConflictInfoAdversarialTests
     public void FileSizeDisplay_ゼロバイト()
     {
         var entry = new FileConflictEntry("test.txt", "test.txt", 0, DateTime.Now);
-        Assert.Equal("0 B", entry.FileSizeDisplay);
+        Assert.Equal("0.0 KB", entry.FileSizeDisplay);
     }
 
     /// <summary>
@@ -117,7 +117,7 @@ public class FileConflictInfoAdversarialTests
         var entry1023 = new FileConflictEntry("a", "a", 1023, DateTime.Now);
         var entry1024 = new FileConflictEntry("a", "a", 1024, DateTime.Now);
 
-        Assert.Equal("1023 B", entry1023.FileSizeDisplay);
+        Assert.Equal("1.0 KB", entry1023.FileSizeDisplay);
         Assert.Equal("1.0 KB", entry1024.FileSizeDisplay);
     }
 

@@ -10,6 +10,11 @@ public record FileConflictEntry(
     DateTime LastModified)
 {
     /// <summary>
+    /// サムネイル取得用に一時展開されたファイルのパス（存在しない場合は null）
+    /// </summary>
+    public string? TempThumbnailPath { get; init; }
+
+    /// <summary>
     /// 親フォルダ名（表示用）。
     /// ルートパス（C:\）やUNCルート（\\server\share\）の場合は
     /// Path.GetFileName が空を返すため、ディレクトリパスそのものをフォールバックとして使う。
@@ -45,13 +50,7 @@ public record FileConflictEntry(
     /// <summary>
     /// ファイルサイズの表示用文字列
     /// </summary>
-    public string FileSizeDisplay => FileSize switch
-    {
-        < 1024 => $"{FileSize} B",
-        < 1024 * 1024 => $"{FileSize / 1024.0:F1} KB",
-        < 1024 * 1024 * 1024 => $"{FileSize / (1024.0 * 1024):F1} MB",
-        _ => $"{FileSize / (1024.0 * 1024 * 1024):F2} GB"
-    };
+    public string FileSizeDisplay => Util.DiskSpaceChecker.FormatSize(FileSize);
 }
 
 /// <summary>

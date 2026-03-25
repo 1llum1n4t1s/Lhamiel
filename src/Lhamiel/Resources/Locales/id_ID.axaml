@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">Buka folder tujuan setelah ekstraksi</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">Opsi Ekstraksi</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">Buat folder dengan nama arsip</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Buka folder tujuan setelah kompresi</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Kompresi Gabungan</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Opsi Kompresi</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Kompres beberapa berkas menjadi satu arsip</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Jika MATI, setiap berkas akan dikompres menjadi arsip terpisah</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">Sertakan direktori root saat kompresi</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">Kecualikan direktori root saat kompresi</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">Kecualikan semua direktori saat kompresi</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Tingkat Kompresi</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Tingkat Kompresi ZIP</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Tingkat Kompresi 7z</x:String>
@@ -206,9 +212,24 @@
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Lokasi saat ini {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Tujuan {0}</x:String>
 
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">Ruang disk tidak mencukupi</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">Ruang diperlukan:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">Ruang tersedia:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">Kekurangan:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">Drive: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">Ruang disk tidak mencukupi. Hapus file yang tidak diperlukan lalu tekan Coba lagi.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">Coba lagi</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">Batal</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">Jika ada file duplikat, dialog konfirmasi akan muncul setelah ekstraksi</x:String>
+
   <!-- File Conflict Dialog -->
   <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} konflik file</x:String>
-  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">Pilih file mana yang akan disertakan dalam arsip. Jika beberapa dipilih, nomor akan ditambahkan ke nama file.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">Pilih file mana yang akan disertakan dalam arsip. Jika beberapa dipilih, nomor akan ditambahkan ke nama file.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">File mana yang ingin Anda simpan?</x:String>
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Lewati {0} file dengan tanggal dan ukuran yang sama</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Lanjutkan</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Batal</x:String>

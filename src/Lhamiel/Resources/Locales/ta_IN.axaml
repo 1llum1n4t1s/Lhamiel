@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">பிரித்தெடுத்த பின் இலக்கு கோப்புறையைத் திற</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">பிரித்தெடுக்கும் விருப்பங்கள்</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">காப்பக பெயருடன் கோப்புறையை உருவாக்கவும்</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">சுருக்கிய பின் இலக்கு கோப்புறையைத் திற</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">ஒருங்கிணைந்த சுருக்கம்</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">சுருக்க விருப்பங்கள்</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">பல கோப்புகளை ஒரே காப்பகமாக சுருக்கு</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">முடக்கப்பட்டால், ஒவ்வொரு கோப்பும் தனித்தனி காப்பகமாக சுருக்கப்படும்</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">சுருக்கும்போது ரூட் கோப்பகத்தை சேர்க்கவும்</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">சுருக்கும்போது ரூட் கோப்பகத்தை நீக்கவும்</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">சுருக்கும்போது கோப்பகங்களை நீக்கவும்</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">சுருக்க நிலை</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP சுருக்க நிலை</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z சுருக்க நிலை</x:String>
@@ -206,9 +212,24 @@
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">தற்போதைய இடம் {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">இலக்கு {0}</x:String>
 
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">போதுமான வட்டு இடம் இல்லை</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">தேவையான இடம்:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">கிடைக்கும் இடம்:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">பற்றாக்குறை:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">இயக்கி: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">வட்டு இடம் போதவில்லை. தேவையற்ற கோப்புகளை நீக்கிவிட்டு மீண்டும் முயற்சி அழுத்தவும்.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">மீண்டும் முயற்சி</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">ரத்துசெய்</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">நகல் கோப்புகள் இருந்தால், பிரித்தெடுத்த பின் உறுதிப்படுத்தல் உரையாடல் தோன்றும்</x:String>
+
   <!-- File Conflict Dialog -->
   <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0} கோப்பு மோதல்கள்</x:String>
-  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">காப்பகத்தில் சேர்க்க வேண்டிய கோப்புகளைத் தேர்ந்தெடுக்கவும். பல தேர்ந்தெடுத்தால், எண்கள் சேர்க்கப்படும்.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">காப்பகத்தில் சேர்க்க வேண்டிய கோப்புகளைத் தேர்ந்தெடுக்கவும். பல தேர்ந்தெடுத்தால், எண்கள் சேர்க்கப்படும்.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">எந்த கோப்புகளை வைத்திருக்க விரும்புகிறீர்கள்?</x:String>
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">ஒரே தேதி மற்றும் அளவு கொண்ட {0} கோப்புகளை தவிர்</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">தொடரவும்</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">ரத்துசெய்</x:String>

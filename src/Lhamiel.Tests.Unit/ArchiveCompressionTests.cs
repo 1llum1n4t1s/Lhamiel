@@ -10,6 +10,12 @@ namespace Lhamiel.Tests.Unit;
 [Collection("Sequential")]
 public class ArchiveCompressionTests
 {
+    public ArchiveCompressionTests()
+    {
+        // テスト環境ではユーザー設定に依存しないよう、デフォルト値に明示的にリセット
+        SettingsManager.Instance.Current.DirectoryStructureMode = DirectoryStructureMode.IncludeRoot;
+    }
+
     /// <summary>
     /// テスト用の一時ディレクトリを作成する
     /// </summary>

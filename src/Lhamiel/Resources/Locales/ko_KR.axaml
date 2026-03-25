@@ -47,12 +47,18 @@
 
   <!-- Extraction Settings -->
   <x:String x:Key="Text.Settings.Extraction.OpenFolder" xml:space="preserve">해제 후 대상 폴더 열기</x:String>
+  <x:String x:Key="Text.Settings.Extraction.OptionHeader" xml:space="preserve">압축 해제 옵션</x:String>
+  <x:String x:Key="Text.Settings.Extraction.CreateFolder" xml:space="preserve">아카이브 이름으로 폴더 생성</x:String>
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">압축 후 대상 폴더 열기</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">통합 압축</x:String>
+  <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">압축 옵션</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">여러 파일을 하나의 아카이브로 압축</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">끄면 각 파일이 별도의 아카이브로 압축됩니다</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.IncludeRoot" xml:space="preserve">압축 시 루트 디렉터리 포함</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.ExcludeRoot" xml:space="preserve">압축 시 루트 디렉터리 제외</x:String>
+  <x:String x:Key="Text.Settings.Compression.DirMode.Flat" xml:space="preserve">압축 시 디렉터리 제외</x:String>
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">압축 수준</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP 압축 수준</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z 압축 수준</x:String>
@@ -206,9 +212,24 @@
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">현재 위치 {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">대상 위치 {0}</x:String>
 
+
+  <!-- Disk Space Dialog -->
+  <x:String x:Key="Text.DiskSpace.Title" xml:space="preserve">디스크 공간 부족</x:String>
+  <x:String x:Key="Text.DiskSpace.Required" xml:space="preserve">필요한 공간:</x:String>
+  <x:String x:Key="Text.DiskSpace.Available" xml:space="preserve">사용 가능한 공간:</x:String>
+  <x:String x:Key="Text.DiskSpace.Shortage" xml:space="preserve">부족분:</x:String>
+  <x:String x:Key="Text.DiskSpace.Drive" xml:space="preserve">드라이브: {0}</x:String>
+  <x:String x:Key="Text.DiskSpace.Description" xml:space="preserve">디스크 공간이 부족합니다. 불필요한 파일을 삭제한 후 재시도를 눌러주세요.</x:String>
+  <x:String x:Key="Text.DiskSpace.Retry" xml:space="preserve">재시도</x:String>
+  <x:String x:Key="Text.DiskSpace.Cancel" xml:space="preserve">취소</x:String>
+
+  <!-- Progress Notice -->
+  <x:String x:Key="Text.Progress.ConflictNotice" xml:space="preserve">중복 파일이 있는 경우 압축 해제 후 확인 대화 상자가 표시됩니다</x:String>
+
   <!-- File Conflict Dialog -->
   <x:String x:Key="Text.Conflict.Header" xml:space="preserve">{0}개 파일 충돌</x:String>
-  <x:String x:Key="Text.Conflict.Description" xml:space="preserve">아카이브에 포함할 파일을 선택하세요. 여러 개를 선택하면 파일 이름에 번호가 추가됩니다.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Compress" xml:space="preserve">아카이브에 포함할 파일을 선택하세요. 여러 개를 선택하면 파일 이름에 번호가 추가됩니다.</x:String>
+  <x:String x:Key="Text.Conflict.Description.Extract" xml:space="preserve">어떤 파일을 보관하시겠습니까?</x:String>
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">날짜와 크기가 같은 {0}개 파일 건너뛰기</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">계속</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">취소</x:String>

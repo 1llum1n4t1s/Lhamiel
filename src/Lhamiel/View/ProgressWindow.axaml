@@ -45,9 +45,21 @@
         <TextBlock
             x:Name="ProgressTextBlock"
             Grid.Row="1"
-            Margin="0,0,0,15"
+            Margin="0,0,0,5"
             HorizontalAlignment="Center"
             Text="0%" />
+
+        <!--  注意書き（展開時の上書き確認予告など）  -->
+        <TextBlock
+            x:Name="NoticeTextBlock"
+            Grid.Row="2"
+            Margin="0,0,0,10"
+            HorizontalAlignment="Center"
+            FontSize="11"
+            Foreground="{DynamicResource Brush.FG2}"
+            IsVisible="False"
+            TextAlignment="Center"
+            TextWrapping="Wrap" />
 
         <!--  キャンセルボタン  -->
         <Button
