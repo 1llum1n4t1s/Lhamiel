@@ -531,7 +531,8 @@ public static class ArchiveExtractor
             var relativePath = Path.GetRelativePath(sourceDir, sourceFile).Replace('\\', '/');
             var destFile = Path.Combine(destDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
 
-            if (!File.Exists(destFile)) continue;
+            // ファイル同士の衝突、またはファイル↔ディレクトリのパス型衝突を検出
+            if (!File.Exists(destFile) && !Directory.Exists(destFile)) continue;
 
             // システムファイル・ディレクトリをスキップ
             var fileName = Path.GetFileName(relativePath);
@@ -539,13 +540,28 @@ public static class ArchiveExtractor
             if (ContainsIgnoredDirectory(relativePath)) continue;
 
             var sourceInfo = new FileInfo(sourceFile);
-            var destInfo = new FileInfo(destFile);
 
-            // 左=アーカイブから展開されたファイル、右=既存ファイル
+            // 宛先がファイルかディレクトリかでサイズ・日時を取り分ける
+            long destSize;
+            DateTime destLastWrite;
+            if (File.Exists(destFile))
+            {
+                var destInfo = new FileInfo(destFile);
+                destSize = destInfo.Length;
+                destLastWrite = destInfo.LastWriteTime;
+            }
+            else
+            {
+                var destDirInfo = new DirectoryInfo(destFile);
+                destSize = 0;
+                destLastWrite = destDirInfo.LastWriteTime;
+            }
+
+            // 左=アーカイブから展開されたファイル、右=既存ファイル/ディレクトリ
             var archiveEntry = new Models.FileConflictEntry(
                 sourceFile, relativePath, sourceInfo.Length, sourceInfo.LastWriteTime);
             var existingEntry = new Models.FileConflictEntry(
-                destFile, relativePath, destInfo.Length, destInfo.LastWriteTime);
+                destFile, relativePath, destSize, destLastWrite);
 
             conflicts.Add(new Models.FileConflictGroup
             {
@@ -565,6 +581,15 @@ public static class ArchiveExtractor
     {
         return Task.Run(() =>
         {
+            // 空ディレクトリも保持するため、先にディレクトリ構造を作成
+            foreach (var sourceSubDir in Directory.EnumerateDirectories(sourceDir, "*", SearchOption.AllDirectories))
+            {
+                var relDir = Path.GetRelativePath(sourceDir, sourceSubDir);
+                var destSubDir = Path.Combine(destDir, relDir);
+                if (!Directory.Exists(destSubDir))
+                    Directory.CreateDirectory(destSubDir);
+            }
+
             foreach (var sourceFile in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -579,6 +604,10 @@ public static class ArchiveExtractor
                 var destFileDir = Path.GetDirectoryName(destFile);
                 if (!string.IsNullOrEmpty(destFileDir))
                     Directory.CreateDirectory(destFileDir);
+
+                // パス型衝突: 宛先にディレクトリがあるがソースはファイルの場合は削除
+                if (Directory.Exists(destFile))
+                    Directory.Delete(destFile, recursive: true);
 
                 // 既存ファイルがある場合はバックアップしてから移動（失敗時にリストア）
                 var backupFile = File.Exists(destFile) ? $"{destFile}.{Guid.NewGuid():N}.bak" : null;
