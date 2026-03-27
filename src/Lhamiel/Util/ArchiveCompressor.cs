@@ -88,6 +88,7 @@ public class ArchiveCompressor
             StringComparer.OrdinalIgnoreCase);
 
         var outputCreated = false;
+        var tempDir = string.Empty;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -95,8 +96,10 @@ public class ArchiveCompressor
             // 解決済みリストが渡された場合はそのまま使用、なければスキャン
             var filesToCompress = resolvedFiles ?? await ScanSourceFiles(sourceList, excludedPatternSet, cancellationToken);
 
-
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
+
+            // 全ファイルを一時ディレクトリにコピー（ロック中ファイルも読み取り可能にする）
+            (filesToCompress, tempDir) = await CopyFilesToTempAsync(filesToCompress, cancellationToken);
 
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
             outputCreated = true;
@@ -171,6 +174,21 @@ public class ArchiveCompressor
         {
             Logger.Log($"圧縮でエラーが発生しました: {ex.Message}");
             throw;
+        }
+        finally
+        {
+            // ロック中ファイルの一時コピーを削除
+            if (!string.IsNullOrEmpty(tempDir) && Directory.Exists(tempDir))
+            {
+                try
+                {
+                    Directory.Delete(tempDir, recursive: true);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"一時ディレクトリの削除に失敗しました: {tempDir}, {ex.Message}");
+                }
+            }
         }
     }
 
@@ -574,6 +592,67 @@ public class ArchiveCompressor
         }
 
         return emptyDirs;
+    }
+
+    /// <summary>
+    /// 全ファイルを一時ディレクトリにコピーし、コピー先パスに差し替えたリストを返す。
+    /// FileShare.ReadWrite | FileShare.Delete で開くため、プロセスにロックされたファイルも読み取れる。
+    /// ファイルが0件またはディレクトリエントリのみの場合は一時ディレクトリを作成しない。
+    /// </summary>
+    private static async Task<(List<(string fullPath, string relativePath)> files, string tempDir)> CopyFilesToTempAsync(
+        List<(string fullPath, string relativePath)> files, CancellationToken cancellationToken)
+    {
+        var tempDir = string.Empty;
+        var result = new List<(string fullPath, string relativePath)>(files.Count);
+
+        try
+        {
+            foreach (var (fullPath, relativePath) in files)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // ディレクトリエントリ（末尾 /）はコピー不要
+                if (relativePath.EndsWith('/'))
+                {
+                    result.Add((fullPath, relativePath));
+                    continue;
+                }
+
+                // 一時ディレクトリを初回のみ作成
+                if (string.IsNullOrEmpty(tempDir))
+                {
+                    tempDir = Path.Combine(Path.GetTempPath(), $"Lhamiel_compress_{Guid.NewGuid():N}");
+                    Directory.CreateDirectory(tempDir);
+                }
+
+                // relative パスのサブディレクトリ構造を保持してコピー
+                var destPath = Path.Combine(tempDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                var destDir = Path.GetDirectoryName(destPath);
+                if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir))
+                    Directory.CreateDirectory(destDir);
+
+                // FileShare.ReadWrite | FileShare.Delete で開くため、ロック中ファイルも読み取り可能
+                await using var src = new FileStream(fullPath, FileMode.Open, FileAccess.Read,
+                    FileShare.ReadWrite | FileShare.Delete, bufferSize: 81920, useAsync: true);
+                await using var dst = new FileStream(destPath, FileMode.Create, FileAccess.Write,
+                    FileShare.None, bufferSize: 81920, useAsync: true);
+                await src.CopyToAsync(dst, cancellationToken);
+                result.Add((destPath, relativePath));
+            }
+        }
+        catch
+        {
+            // キャンセル等で途中終了した場合、作成済みの一時ディレクトリをクリーンアップする
+            // （呼び出し元の tempDir 変数には返値が渡らないため、ここで削除しないと残留する）
+            if (!string.IsNullOrEmpty(tempDir) && Directory.Exists(tempDir))
+            {
+                try { Directory.Delete(tempDir, recursive: true); }
+                catch (Exception ex) { Logger.Log($"一時ディレクトリの緊急削除に失敗: {tempDir}, {ex.Message}"); }
+            }
+            throw;
+        }
+
+        return (result, tempDir);
     }
 
     /// <summary>

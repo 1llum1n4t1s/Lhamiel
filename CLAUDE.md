@@ -74,13 +74,15 @@ Drag-and-drop drives the app:
 3. `ArchiveExtractor` / `ArchiveCompressor` wrap `1llum1n4t1s.Sevenzip`
 4. `ProgressWindow` shows real-time progress via `IProgress<T>`
 
+**圧縮時の一時コピー**: `ArchiveCompressor` は圧縮前に全ファイルを `%TEMP%\Lhamiel_compress_*` にコピーしてから 7z.dll に渡す。これにより (1) プロセスがロック中のファイルも `FileShare.ReadWrite` で読み取れる (2) 圧縮中に元ファイルが書き換わってもスナップショットの一貫性が保たれる。一時ディレクトリは `finally` ブロックで確実に削除される。
+
 ### Key Util Classes
 
 | Class | Responsibility |
 |-------|---------------|
 | `ArchiveProcessor` | Orchestrator — decides extract vs compress, manages workflow |
 | `ArchiveExtractor` | Extraction logic with smart double-folder prevention |
-| `ArchiveCompressor` | Compression with parallel processing support |
+| `ArchiveCompressor` | Compression with temp-copy snapshot (handles locked files) |
 | `ArchiveErrorHandler` | Error classification and recovery strategy |
 | `PartialExtractionHandler` | Selective extraction (skip corrupted files) |
 | `Settings` / `SettingsManager` | JSON config at `%LocalAppData%\Lhamiel\settings.json` |
