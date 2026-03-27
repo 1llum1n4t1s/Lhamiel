@@ -76,7 +76,8 @@ public static class ArchiveExtractor
 
         if (string.IsNullOrWhiteSpace(baseDirectory))
         {
-            baseDirectory = directory;
+            // outputToSameDirectory=true でもディレクトリ部が空なら defaultOutputDir にフォールバック
+            baseDirectory = string.IsNullOrWhiteSpace(defaultOutputDir) ? directory : defaultOutputDir;
         }
         return baseDirectory;
     }
