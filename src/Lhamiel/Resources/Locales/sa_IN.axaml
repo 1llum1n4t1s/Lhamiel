@@ -233,4 +233,5 @@
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">समानदिनाङ्कपरिमाणयुक्ताः {0} सञ्चिकाः त्यजतु</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">अनुवर्तताम्</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">निवर्तताम्</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">सर्वं पुनर्लिखतु</x:String>
 </ResourceDictionary>

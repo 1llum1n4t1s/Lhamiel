@@ -233,4 +233,5 @@
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">ஒரே தேதி மற்றும் அளவு கொண்ட {0} கோப்புகளை தவிர்</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">தொடரவும்</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">ரத்துசெய்</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">அனைத்தையும் மேலெழுது</x:String>
 </ResourceDictionary>

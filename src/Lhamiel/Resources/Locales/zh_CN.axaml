@@ -233,4 +233,5 @@
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">跳过 {0} 个日期和大小相同的文件</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">继续</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">取消</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">全部覆盖</x:String>
 </ResourceDictionary>

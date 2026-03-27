@@ -233,4 +233,5 @@
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">날짜와 크기가 같은 {0}개 파일 건너뛰기</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">계속</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">취소</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">모두 덮어쓰기</x:String>
 </ResourceDictionary>

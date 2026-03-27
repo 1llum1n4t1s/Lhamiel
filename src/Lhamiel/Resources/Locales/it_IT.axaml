@@ -233,4 +233,5 @@
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Salta {0} file con stessa data e dimensione</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Continua</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Annulla</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Sovrascrivi tutto</x:String>
 </ResourceDictionary>

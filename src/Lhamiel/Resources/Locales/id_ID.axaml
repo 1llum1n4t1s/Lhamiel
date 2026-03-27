@@ -233,4 +233,5 @@
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Lewati {0} file dengan tanggal dan ukuran yang sama</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Lanjutkan</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Batal</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Timpa semua</x:String>
 </ResourceDictionary>

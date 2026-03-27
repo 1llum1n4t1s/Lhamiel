@@ -517,6 +517,16 @@
 
         </Grid>
 
+        <!--  ═══ デバッグ用トリプルクリックエリア（右下隅、DEBUG ビルドのみ有効） ═══  -->
+        <Border
+            x:Name="DebugTapArea"
+            Width="48"
+            Height="48"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            Background="Transparent"
+            IsVisible="False" />
+
         <!--  ═══ ドラッグオーバーレイ（ドラッグ中のみ表示） ═══  -->
         <Border
             x:Name="DropOverlay"

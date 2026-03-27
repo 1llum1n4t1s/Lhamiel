@@ -231,5 +231,6 @@
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">宛先の場所 {0}</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">続行</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">キャンセル</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">すべて上書き</x:String>
 
 </ResourceDictionary>

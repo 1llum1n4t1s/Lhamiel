@@ -121,6 +121,11 @@ public partial class FileConflictDialog : Window
         if (conflictList != null)
             conflictList.ItemsSource = _rows;
 
+        // 「全て上書き」ボタン（展開時の2ペインモードのみ表示）
+        var overwriteAllButton = this.FindControl<Button>("OverwriteAllButton");
+        if (overwriteAllButton != null)
+            overwriteAllButton.IsVisible = isTwoPane;
+
         // 同一ファイルスキップ（常に表示）
         var skipCheckBox = this.FindControl<CheckBox>("SkipIdenticalCheckBox");
         if (skipCheckBox != null)
@@ -198,6 +203,23 @@ public partial class FileConflictDialog : Window
 
     private void ContinueButton_Click(object? sender, RoutedEventArgs e) => Close(FileConflictResult.Continue);
     private void CancelButton_Click(object? sender, RoutedEventArgs e) => Close(FileConflictResult.Cancel);
+
+    /// <summary>
+    /// 全て上書き: チェックボックスやスキップの状態に関係なく、
+    /// 全行の左ペイン（アーカイブ側）を選択して即確定する。
+    /// </summary>
+    private void OverwriteAllButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (!_isTwoPane) return;
+
+        foreach (var row in _rows)
+        {
+            row.IsVisible = true;
+            if (row.Left != null) row.Left.IsSelected = true;
+            if (row.Right != null) row.Right.IsSelected = false;
+        }
+        Close(FileConflictResult.Continue);
+    }
 
     /// <summary>
     /// ユーザーが選択したファイルのリストを返す。

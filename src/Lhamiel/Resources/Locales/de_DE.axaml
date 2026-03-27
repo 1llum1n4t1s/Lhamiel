@@ -233,4 +233,5 @@
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">{0} Dateien mit gleichem Datum und Größe überspringen</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Fortfahren</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Abbrechen</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Alle überschreiben</x:String>
 </ResourceDictionary>

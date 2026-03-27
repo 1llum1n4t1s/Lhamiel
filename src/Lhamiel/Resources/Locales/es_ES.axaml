@@ -233,4 +233,5 @@
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Omitir {0} archivos con la misma fecha y tamaño</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Continuar</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Cancelar</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Sobrescribir todo</x:String>
 </ResourceDictionary>

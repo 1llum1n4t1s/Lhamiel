@@ -22,6 +22,7 @@ public partial class MainWindow : Window
         _dropOverlay = this.FindControl<Border>("DropOverlay");
         _accentOverlay = this.FindControl<Border>("AccentOverlay");
         ApplyAccentOverlay();
+        InitDebugTapArea();
     }
 
     /// <summary>
@@ -153,5 +154,38 @@ public partial class MainWindow : Window
             if (int.TryParse(tag, out var mode))
                 vm.SelectedDirectoryStructureMode = mode;
         }
+    }
+
+    /// <summary>
+    /// デバッグ用: 右下隅のトリプルクリックで CRDebugger を起動するエリアを初期化する。
+    /// DEBUG ビルドでのみ有効。
+    /// </summary>
+    private void InitDebugTapArea()
+    {
+#if DEBUG
+        var tapArea = this.FindControl<Border>("DebugTapArea");
+        if (tapArea == null) return;
+        tapArea.IsVisible = true;
+
+        var clickCount = 0;
+        var lastClickTime = DateTime.MinValue;
+        const int tripleClickThresholdMs = 500;
+
+        tapArea.PointerPressed += (_, e) =>
+        {
+            var now = DateTime.Now;
+            if ((now - lastClickTime).TotalMilliseconds > tripleClickThresholdMs)
+                clickCount = 0;
+
+            clickCount++;
+            lastClickTime = now;
+
+            if (clickCount >= 3)
+            {
+                clickCount = 0;
+                Util.DebugHelper.Toggle();
+            }
+        };
+#endif
     }
 }

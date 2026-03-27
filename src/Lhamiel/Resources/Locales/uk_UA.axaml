@@ -233,4 +233,5 @@
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Пропустити {0} файлів з однаковою датою та розміром</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Продовжити</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Скасувати</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Замінити все</x:String>
 </ResourceDictionary>

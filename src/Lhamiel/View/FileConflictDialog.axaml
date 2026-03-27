@@ -33,7 +33,7 @@
                     TintOpacity="0.8" />
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
-    <Grid Margin="28,40,28,20" RowDefinitions="Auto,Auto,*,Auto">
+    <Grid Margin="28,40,28,20" RowDefinitions="Auto,Auto,Auto,*,Auto">
 
         <!-- ヘッダー -->
         <TextBlock
@@ -49,14 +49,22 @@
         <TextBlock
             x:Name="DescriptionText"
             Grid.Row="1"
-            Margin="0,0,0,14"
+            Margin="0,0,0,6"
             FontSize="12"
             Foreground="{DynamicResource Brush.FG2}"
             TextWrapping="Wrap" />
 
+        <!-- 同一ファイルスキップ -->
+        <CheckBox
+            x:Name="SkipIdenticalCheckBox"
+            Grid.Row="2"
+            Margin="0,0,0,8"
+            Content="{DynamicResource Text.Conflict.SkipIdentical}"
+            FontSize="12" />
+
         <!-- 列ヘッダー + ファイルリスト（パネル囲み） -->
         <Border
-            Grid.Row="2"
+            Grid.Row="3"
             Background="{DynamicResource Brush.Container}"
             BorderBrush="{DynamicResource Brush.Border}"
             BorderThickness="1"
@@ -222,20 +230,22 @@
             </Grid>
         </Border>
 
-        <!-- フッター: スキップCB + ボタン -->
+        <!-- フッター: 全て上書き + ボタン -->
         <Grid
-            Grid.Row="3"
+            Grid.Row="4"
             Margin="0,14,0,0"
-            ColumnDefinitions="*,Auto,Auto">
-            <CheckBox
-                x:Name="SkipIdenticalCheckBox"
+            ColumnDefinitions="Auto,*,Auto,Auto">
+            <Button
+                x:Name="OverwriteAllButton"
                 Grid.Column="0"
-                VerticalAlignment="Center"
-                Content="{DynamicResource Text.Conflict.SkipIdentical}"
-                FontSize="12" />
+                MinWidth="110"
+                Padding="16,8"
+                IsVisible="False"
+                Click="OverwriteAllButton_Click"
+                Content="{DynamicResource Text.Conflict.OverwriteAll}" />
             <Button
                 x:Name="ContinueButton"
-                Grid.Column="1"
+                Grid.Column="2"
                 MinWidth="110"
                 Margin="0,0,10,0"
                 Padding="16,8"
@@ -243,7 +253,7 @@
                 Content="{DynamicResource Text.Conflict.Continue}" />
             <Button
                 x:Name="CancelButton"
-                Grid.Column="2"
+                Grid.Column="3"
                 MinWidth="110"
                 Padding="16,8"
                 Click="CancelButton_Click"

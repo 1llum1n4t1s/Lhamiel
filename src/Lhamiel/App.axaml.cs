@@ -165,6 +165,11 @@ public partial class App : Application
 
             base.OnFrameworkInitializationCompleted();
 
+#if DEBUG
+            // デバッグモード: CRDebugger を初期化（ダイアログプレビュー機能付き）
+            Util.DebugHelper.InitializeCRDebugger();
+#endif
+
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktopLifecycle)
             {
                 desktopLifecycle.Exit += (_, _) => OnApplicationExiting();

@@ -233,4 +233,5 @@
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Laktawan ang {0} file na may parehong petsa at laki</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Magpatuloy</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Kanselahin</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Patungan lahat</x:String>
 </ResourceDictionary>

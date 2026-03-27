@@ -233,4 +233,5 @@
   <x:String x:Key="Text.Conflict.SkipIdentical" xml:space="preserve">Omittere {0} fasciculos eiusdem diei et magnitudinis</x:String>
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Perge</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Cancella</x:String>
+  <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Omnia rescribe</x:String>
 </ResourceDictionary>
