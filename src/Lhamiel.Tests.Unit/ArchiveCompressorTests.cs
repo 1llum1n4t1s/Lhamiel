@@ -199,4 +199,103 @@ public class ArchiveCompressorTests
         var patterns = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Test" };
         Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\TestFile.txt", patterns));
     }
+
+    // === ScanSourceFiles: 空ディレクトリ ===
+
+    [Fact]
+    public async Task ScanSourceFiles_IncludesEmptyDirectories()
+    {
+        // 空ディレクトリを含むディレクトリ構造を作成
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testRoot, "Source");
+
+        try
+        {
+            // テスト構造: 空ディレクトリ + ファイルを含むディレクトリ
+            Directory.CreateDirectory(Path.Combine(sourceDir, "EmptyDir"));
+            Directory.CreateDirectory(Path.Combine(sourceDir, "EmptyNested", "SubEmpty"));
+            Directory.CreateDirectory(Path.Combine(sourceDir, "HasFiles"));
+            File.WriteAllText(Path.Combine(sourceDir, "HasFiles", "test.txt"), "hello");
+            File.WriteAllText(Path.Combine(sourceDir, "root.txt"), "world");
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [sourceDir],
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot);
+
+            // ファイルが含まれること
+            Assert.Contains(result, r => r.relativePath.EndsWith("root.txt"));
+            Assert.Contains(result, r => r.relativePath.EndsWith("test.txt"));
+
+            // 空ディレクトリが末尾 / 付きで含まれること
+            Assert.Contains(result, r => r.relativePath.EndsWith("EmptyDir/"));
+            Assert.Contains(result, r => r.relativePath.EndsWith("SubEmpty/"));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
+    public async Task ScanSourceFiles_FlatMode_ExcludesEmptyDirectories()
+    {
+        // Flatモードでは空ディレクトリを含めない
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testRoot, "Source");
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(sourceDir, "EmptyDir"));
+            File.WriteAllText(Path.Combine(sourceDir, "test.txt"), "hello");
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [sourceDir],
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.Flat);
+
+            // ファイルのみ含まれ、ディレクトリエントリは含まれない
+            Assert.Single(result);
+            Assert.DoesNotContain(result, r => r.relativePath.EndsWith("/"));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
+    public async Task ScanSourceFiles_DirectoryWithOnlyEmptySubdirs_AllIncluded()
+    {
+        // ファイルが全くないディレクトリでも空サブディレクトリが全て含まれる
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testRoot, "AllEmpty");
+
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(sourceDir, "A"));
+            Directory.CreateDirectory(Path.Combine(sourceDir, "B", "C"));
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [sourceDir],
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot);
+
+            // 空ディレクトリのみが含まれる（ファイルなし）
+            Assert.All(result, r => Assert.EndsWith("/", r.relativePath));
+            Assert.Contains(result, r => r.relativePath.Contains("A"));
+            Assert.Contains(result, r => r.relativePath.Contains("B"));
+            Assert.Contains(result, r => r.relativePath.Contains("C"));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
 }

@@ -524,4 +524,59 @@ public class ArchiveCompressionTests
     }
 
     // GzipFormat_PreservesEncoding は TarFormat_PreservesEncoding と完全重複のため削除
+
+    /// <summary>
+    /// 空ディレクトリを含むディレクトリの圧縮→展開ラウンドトリップで空ディレクトリが保持されるか確認
+    /// </summary>
+    [Theory]
+    [InlineData(".zip")]
+    [InlineData(".7z")]
+    public async Task CompressAndExtract_WithEmptyDirectories_PreservesEmptyDirs(string extension)
+    {
+        var testDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var sourceDir = Path.Combine(testDir, "source");
+            // ファイルを含むディレクトリ
+            Directory.CreateDirectory(Path.Combine(sourceDir, "HasFiles"));
+            File.WriteAllText(Path.Combine(sourceDir, "HasFiles", "test.txt"), "hello");
+            // 完全に空のディレクトリ
+            Directory.CreateDirectory(Path.Combine(sourceDir, "EmptyDir"));
+            // サブディレクトリのみ持つディレクトリ（全て空）
+            Directory.CreateDirectory(Path.Combine(sourceDir, "EmptyNested", "SubEmpty"));
+            // ルートファイル
+            File.WriteAllText(Path.Combine(sourceDir, "root.txt"), "world");
+
+            var archivePath = Path.Combine(testDir, $"empty_dirs_test{extension}");
+            var extractDir = Path.Combine(testDir, "extracted");
+
+            // 圧縮
+            var format = ArchiveCompressor.ParseFormat(extension.TrimStart('.'));
+            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, format, null, TestContext.Current.CancellationToken);
+            Assert.True(File.Exists(archivePath));
+
+            // 展開
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
+
+            // 空ディレクトリが展開後に存在するか確認
+            var allDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories)
+                .Select(d => Path.GetFileName(d))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            Assert.Contains("EmptyDir", allDirs);
+            Assert.Contains("EmptyNested", allDirs);
+            Assert.Contains("SubEmpty", allDirs);
+            Assert.Contains("HasFiles", allDirs);
+
+            // ファイルも正しく展開されているか確認
+            var allFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
+            Assert.Contains(allFiles, f => f.EndsWith("test.txt"));
+            Assert.Contains(allFiles, f => f.EndsWith("root.txt"));
+        }
+        finally
+        {
+            if (Directory.Exists(testDir))
+                Directory.Delete(testDir, true);
+        }
+    }
 }

@@ -111,7 +111,7 @@ public class ArchiveCompressor
                     // 全ての主要オブジェクトを Task.Run の内部スコープで管理する
                     using var writer = CreateArchiveWriter(format, settings);
 
-                    // ファイルを圧縮アーカイブに追加
+                    // ファイルとディレクトリを圧縮アーカイブに追加
                     foreach (var (fullPath, relativePath) in filesToCompress)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -205,6 +205,9 @@ public class ArchiveCompressor
                     ? (Path.GetDirectoryName(sourcePath) ?? "")
                     : sourcePath;
 
+                // ファイルが存在するディレクトリを記録（空ディレクトリ検出用）
+                var directoriesWithFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
                 var fileCount = 0;
                 foreach (var file in files)
                 {
@@ -215,11 +218,34 @@ public class ArchiveCompressor
                         : Path.GetRelativePath(parentDir, file);
                     filesToCompress.Add((file, relativePath));
 
+                    // このファイルの全祖先ディレクトリを記録
+                    var fileDir = Path.GetDirectoryName(file);
+                    while (fileDir != null && fileDir.Length >= sourcePath.Length)
+                    {
+                        directoriesWithFiles.Add(fileDir);
+                        fileDir = Path.GetDirectoryName(fileDir);
+                    }
+
                     fileCount++;
                     if (fileCount % 100 == 0)
                     {
                         await Task.Yield();
                     }
+                }
+
+                // Flatモードでなければ空ディレクトリを収集してエントリに追加
+                if (dirMode != DirectoryStructureMode.Flat)
+                {
+                    var emptyDirs = CollectEmptyDirectories(sourcePath, excludedPatternSet, directoriesWithFiles);
+                    foreach (var emptyDir in emptyDirs)
+                    {
+                        var relativePath = Path.GetRelativePath(parentDir, emptyDir);
+                        // ディレクトリエントリは末尾に / を付与（アーカイブ仕様）
+                        filesToCompress.Add((emptyDir, relativePath + "/"));
+                    }
+
+                    if (emptyDirs.Count > 0)
+                        Logger.Log($"空ディレクトリ: {emptyDirs.Count}個を追加");
                 }
 
                 Logger.Log($"スキャン完了: {fileCount}個のファイルが見つかりました");
@@ -512,6 +538,42 @@ public class ArchiveCompressor
         }
 
         throw new InvalidOperationException($"ユニークなファイル名を生成できません（10000件の衝突）: {outputPath}");
+    }
+
+    /// <summary>
+    /// ファイルを含まない空ディレクトリを再帰的に収集する
+    /// </summary>
+    /// <param name="rootDir">ルートディレクトリ</param>
+    /// <param name="excludedPatternSet">除外パターン</param>
+    /// <param name="directoriesWithFiles">ファイルが存在するディレクトリのセット</param>
+    /// <returns>空ディレクトリのパスリスト</returns>
+    private static List<string> CollectEmptyDirectories(string rootDir, HashSet<string> excludedPatternSet, HashSet<string> directoriesWithFiles)
+    {
+        var emptyDirs = new List<string>();
+        try
+        {
+            var allDirs = Directory.EnumerateDirectories(rootDir, "*", new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true
+            });
+
+            foreach (var dir in allDirs)
+            {
+                if (ShouldExcludeFile(dir, excludedPatternSet))
+                    continue;
+
+                // ファイルを含むディレクトリ（またはその祖先）でなければ空ディレクトリ
+                if (!directoriesWithFiles.Contains(dir))
+                    emptyDirs.Add(dir);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"空ディレクトリ収集中にエラー: {ex.Message}");
+        }
+
+        return emptyDirs;
     }
 
     /// <summary>
