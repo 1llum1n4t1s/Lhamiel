@@ -94,6 +94,10 @@
   <!-- Progress Window -->
   <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Обробка</x:String>
   <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Скасовано.</x:String>
+  <x:String x:Key="Text.Progress.PreparingFiles" xml:space="preserve">Підготовка файлів...</x:String>
+  <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Переміщення файлів...</x:String>
+  <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Видобування</x:String>
+  <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Стиснення</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Інформація про помилку</x:String>
@@ -234,4 +238,36 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Продовжити</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Скасувати</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Замінити все</x:String>
+
+  <!-- Progress completion -->
+  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Розпакування завершено: {0}/{1} файлів успішно</x:String>
+
+  <!-- Info display -->
+  <x:String x:Key="Text.Info.Unknown" xml:space="preserve">Невідомо</x:String>
+  <x:String x:Key="Text.Info.LicenseLoadFailed" xml:space="preserve">Не вдалося завантажити інформацію про ліцензію.</x:String>
+
+  <!-- Error messages (exceptions) -->
+  <x:String x:Key="Text.Error.DiskSpaceCancelled" xml:space="preserve">Скасовано через недостатньо місця на диску.</x:String>
+  <x:String x:Key="Text.Error.UserCancelledExtraction" xml:space="preserve">Користувач скасував розпакування.</x:String>
+  <x:String x:Key="Text.Error.ArchiveNotFound" xml:space="preserve">Файл архіву не знайдено: {0}</x:String>
+  <x:String x:Key="Text.Error.PreparationFailed" xml:space="preserve">Сталася помилка під час підготовки місця призначення. Файл може використовуватися або у вас немає прав на видалення.</x:String>
+  <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Не вдалося перемістити вміст до місця призначення. Оригінальний вміст залишається в резервному розташуванні.</x:String>
+  <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Не вказано файлів для стиснення.</x:String>
+  <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Вказаний шлях не знайдено: {0}</x:String>
+  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Не вдалося згенерувати унікальне ім'я файлу: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Не вдалося зберегти налаштування: {0}</x:String>
+  <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Розпакований файл не знайдено.</x:String>
+
+  <!-- Path validation messages -->
+  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Шлях до файлу порожній.</x:String>
+  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Шлях занадто довгий. Максимум {0} символів. (Поточна довжина: {1} символів)</x:String>
+  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Шлях до каталогу занадто довгий. Максимум {0} символів.</x:String>
+  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Ім'я файлу занадто довге. Максимум {0} символів.</x:String>
+  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Не вдалося розібрати шлях: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Шлях містить неприпустимий символ: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">Ім'я файлу містить неприпустимий символ: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Сталася помилка під час перевірки імені файлу: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Виявлено неприпустимий формат шляху</x:String>
+  <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Перевірка шляху не пройдена: {0}</x:String>
+  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Використовується зарезервоване ім'я пристрою: {0}</x:String>
 </ResourceDictionary>

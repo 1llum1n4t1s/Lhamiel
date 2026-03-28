@@ -10,6 +10,7 @@ namespace Lhamiel.View;
 /// </summary>
 public partial class ProgressWindow : Window
 {
+    private TextBlock? _operationLabel;
     private ProgressBar? _progressBar;
     private TextBlock? _progressTextBlock;
     private TextBlock? _noticeTextBlock;
@@ -28,6 +29,7 @@ public partial class ProgressWindow : Window
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
+        _operationLabel = this.FindControl<TextBlock>("OperationLabel");
         _progressBar = this.FindControl<ProgressBar>("ProgressBar");
         _progressTextBlock = this.FindControl<TextBlock>("ProgressTextBlock");
         _noticeTextBlock = this.FindControl<TextBlock>("NoticeTextBlock");
@@ -48,8 +50,9 @@ public partial class ProgressWindow : Window
         // コンポーネントの初期化
         InitializeComponent();
 
-        // 操作タイプに応じたタイトルを設定
+        // 操作タイプに応じたタイトルとラベルを設定
         Title = $"{operationType} - Lhamiel";
+        if (_operationLabel != null) _operationLabel.Text = operationType;
 
         // キャンセル処理用のトークンソースを初期化
         _cancellationTokenSource = new CancellationTokenSource();
@@ -98,12 +101,38 @@ public partial class ProgressWindow : Window
             try
             {
                 if (!IsInitialized) return;
-                if (_progressBar != null) _progressBar.Value = percentage;
+                if (_progressBar != null)
+                {
+                    if (_progressBar.IsIndeterminate) _progressBar.IsIndeterminate = false;
+                    _progressBar.Value = percentage;
+                }
                 if (_progressTextBlock != null) _progressTextBlock.Text = $"{percentage}%";
             }
             catch (Exception ex)
             {
                 Logger.Log($"進捗更新時のエラー: {ex.Message}");
+            }
+        });
+    }
+
+    /// <summary>
+    /// 不確定進捗（マーキー表示）に切り替え、メッセージを表示する
+    /// </summary>
+    /// <param name="message">表示するメッセージ</param>
+    public void SetIndeterminate(string message)
+    {
+        if (!IsInitialized) return;
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                if (!IsInitialized) return;
+                if (_progressBar != null) _progressBar.IsIndeterminate = true;
+                if (_progressTextBlock != null) _progressTextBlock.Text = message;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log($"不確定進捗更新時のエラー: {ex.Message}");
             }
         });
     }

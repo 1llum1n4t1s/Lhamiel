@@ -94,6 +94,10 @@
   <!-- Progress Window -->
   <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Обработка</x:String>
   <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Отменено.</x:String>
+  <x:String x:Key="Text.Progress.PreparingFiles" xml:space="preserve">Подготовка файлов...</x:String>
+  <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Перемещение файлов...</x:String>
+  <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Извлечение</x:String>
+  <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Сжатие</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Информация об ошибке</x:String>
@@ -234,4 +238,36 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Продолжить</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Отмена</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Заменить все</x:String>
+
+  <!-- Progress completion -->
+  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Извлечение завершено: {0}/{1} файлов успешно</x:String>
+
+  <!-- Info display -->
+  <x:String x:Key="Text.Info.Unknown" xml:space="preserve">Неизвестно</x:String>
+  <x:String x:Key="Text.Info.LicenseLoadFailed" xml:space="preserve">Не удалось загрузить информацию о лицензии.</x:String>
+
+  <!-- Error messages (exceptions) -->
+  <x:String x:Key="Text.Error.DiskSpaceCancelled" xml:space="preserve">Отменено из-за недостатка места на диске.</x:String>
+  <x:String x:Key="Text.Error.UserCancelledExtraction" xml:space="preserve">Пользователь отменил извлечение.</x:String>
+  <x:String x:Key="Text.Error.ArchiveNotFound" xml:space="preserve">Файл архива не найден: {0}</x:String>
+  <x:String x:Key="Text.Error.PreparationFailed" xml:space="preserve">Ошибка при подготовке места назначения. Файл может быть занят или у вас нет прав на удаление.</x:String>
+  <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Не удалось переместить содержимое в место назначения. Исходное содержимое остаётся в резервном расположении.</x:String>
+  <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Не указаны файлы для сжатия.</x:String>
+  <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Указанный путь не найден: {0}</x:String>
+  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Не удалось сгенерировать уникальное имя файла: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Не удалось сохранить настройки: {0}</x:String>
+  <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Извлечённый файл не найден.</x:String>
+
+  <!-- Path validation messages -->
+  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Путь к файлу пуст.</x:String>
+  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Путь слишком длинный. Максимум {0} символов. (Текущая длина: {1} символов)</x:String>
+  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Путь к каталогу слишком длинный. Максимум {0} символов.</x:String>
+  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Имя файла слишком длинное. Максимум {0} символов.</x:String>
+  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Не удалось разобрать путь: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Путь содержит недопустимый символ: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">Имя файла содержит недопустимый символ: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Ошибка при проверке имени файла: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Обнаружен недопустимый формат пути</x:String>
+  <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Проверка пути не пройдена: {0}</x:String>
+  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Используется зарезервированное имя устройства: {0}</x:String>
 </ResourceDictionary>

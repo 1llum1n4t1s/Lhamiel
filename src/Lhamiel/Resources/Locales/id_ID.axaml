@@ -94,6 +94,10 @@
   <!-- Progress Window -->
   <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Memproses</x:String>
   <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Dibatalkan.</x:String>
+  <x:String x:Key="Text.Progress.PreparingFiles" xml:space="preserve">Menyiapkan file...</x:String>
+  <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Memindahkan file...</x:String>
+  <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Mengekstrak</x:String>
+  <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Mengompresi</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informasi Kesalahan</x:String>
@@ -234,4 +238,36 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Lanjutkan</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Batal</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Timpa semua</x:String>
+
+  <!-- Progress completion -->
+  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Ekstraksi selesai: {0}/{1} berkas berhasil</x:String>
+
+  <!-- Info display -->
+  <x:String x:Key="Text.Info.Unknown" xml:space="preserve">Tidak diketahui</x:String>
+  <x:String x:Key="Text.Info.LicenseLoadFailed" xml:space="preserve">Gagal memuat informasi lisensi.</x:String>
+
+  <!-- Error messages (exceptions) -->
+  <x:String x:Key="Text.Error.DiskSpaceCancelled" xml:space="preserve">Dibatalkan karena ruang disk tidak mencukupi.</x:String>
+  <x:String x:Key="Text.Error.UserCancelledExtraction" xml:space="preserve">Pengguna membatalkan ekstraksi.</x:String>
+  <x:String x:Key="Text.Error.ArchiveNotFound" xml:space="preserve">Berkas arsip tidak ditemukan: {0}</x:String>
+  <x:String x:Key="Text.Error.PreparationFailed" xml:space="preserve">Terjadi kesalahan saat menyiapkan tujuan. Berkas mungkin sedang digunakan atau Anda tidak memiliki izin hapus.</x:String>
+  <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Gagal memindahkan konten ke tujuan. Konten asli tetap berada di lokasi cadangan.</x:String>
+  <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Tidak ada berkas yang ditentukan untuk dikompresi.</x:String>
+  <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Jalur yang ditentukan tidak ditemukan: {0}</x:String>
+  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Tidak dapat menghasilkan nama berkas unik: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Gagal menyimpan pengaturan: {0}</x:String>
+  <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Berkas yang diekstrak tidak ditemukan.</x:String>
+
+  <!-- Path validation messages -->
+  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Jalur berkas kosong.</x:String>
+  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Jalur terlalu panjang. Maksimum {0} karakter diperbolehkan. (Saat ini: {1} karakter)</x:String>
+  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Jalur direktori terlalu panjang. Maksimum {0} karakter diperbolehkan.</x:String>
+  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Nama berkas terlalu panjang. Maksimum {0} karakter diperbolehkan.</x:String>
+  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Gagal mengurai jalur: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Jalur mengandung karakter tidak valid: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">Nama berkas mengandung karakter tidak valid: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Terjadi kesalahan saat memvalidasi nama berkas: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Format jalur tidak valid terdeteksi</x:String>
+  <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Validasi jalur gagal: {0}</x:String>
+  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Nama perangkat yang dicadangkan sedang digunakan: {0}</x:String>
 </ResourceDictionary>

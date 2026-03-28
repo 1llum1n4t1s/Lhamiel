@@ -71,8 +71,9 @@ public static class DiskSpaceChecker
                 if (File.Exists(path))
                     total += new FileInfo(path).Length;
                 else if (Directory.Exists(path))
-                    total += Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)
-                        .Sum(f => new FileInfo(f).Length);
+                    total += new DirectoryInfo(path)
+                        .EnumerateFiles("*", SearchOption.AllDirectories)
+                        .Sum(f => f.Length);
             }
             catch (Exception ex)
             {

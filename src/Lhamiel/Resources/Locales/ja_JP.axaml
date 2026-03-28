@@ -94,6 +94,10 @@
   <!-- Progress Window -->
   <x:String x:Key="Text.Progress.Processing" xml:space="preserve">処理中</x:String>
   <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">キャンセルしました。</x:String>
+  <x:String x:Key="Text.Progress.PreparingFiles" xml:space="preserve">ファイルを準備中...</x:String>
+  <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">ファイルを配置中...</x:String>
+  <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">展開中</x:String>
+  <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">圧縮中</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">エラー情報</x:String>
@@ -232,5 +236,37 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">続行</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">キャンセル</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">すべて上書き</x:String>
+
+  <!-- 進捗完了メッセージ -->
+  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">展開完了: {0}/{1} 個のファイルが成功</x:String>
+
+  <!-- 情報表示 -->
+  <x:String x:Key="Text.Info.Unknown" xml:space="preserve">不明</x:String>
+  <x:String x:Key="Text.Info.LicenseLoadFailed" xml:space="preserve">ライセンス情報を読み込めませんでした。</x:String>
+
+  <!-- エラーメッセージ（例外） -->
+  <x:String x:Key="Text.Error.DiskSpaceCancelled" xml:space="preserve">ディスク容量不足でキャンセルされました。</x:String>
+  <x:String x:Key="Text.Error.UserCancelledExtraction" xml:space="preserve">ユーザーが展開処理をキャンセルしました。</x:String>
+  <x:String x:Key="Text.Error.ArchiveNotFound" xml:space="preserve">アーカイブファイルが見つかりません: {0}</x:String>
+  <x:String x:Key="Text.Error.PreparationFailed" xml:space="preserve">展開先の準備中にエラーが発生しました。ファイルが使用中か、削除権限がない可能性があります。</x:String>
+  <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">展開先への内容移動に失敗しました。元の内容は退避先に残っています。</x:String>
+  <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">圧縮するファイルが指定されていません。</x:String>
+  <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">指定されたパスが見つかりません: {0}</x:String>
+  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">ユニークなファイル名を生成できません: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">設定の保存に失敗しました: {0}</x:String>
+  <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">展開されたファイルが見つかりません。</x:String>
+
+  <!-- パス検証メッセージ -->
+  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">ファイルパスが空です。</x:String>
+  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">パスが長すぎます。最大 {0} 文字まで許可されています。（現在: {1} 文字）</x:String>
+  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">ディレクトリパスが長すぎます。最大 {0} 文字まで許可されています。</x:String>
+  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">ファイル名が長すぎます。最大 {0} 文字まで許可されています。</x:String>
+  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">パスの解析に失敗しました: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">パスに不正な文字が含まれています: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">ファイル名に不正な文字が含まれています: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">ファイル名の検証中にエラーが発生しました: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">不正なパス形式が検出されました</x:String>
+  <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">パスの検証に失敗しました: {0}</x:String>
+  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">予約されたデバイス名が使用されています: {0}</x:String>
 
 </ResourceDictionary>

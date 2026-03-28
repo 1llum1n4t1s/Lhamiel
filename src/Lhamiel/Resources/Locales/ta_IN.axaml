@@ -94,6 +94,10 @@
   <!-- Progress Window -->
   <x:String x:Key="Text.Progress.Processing" xml:space="preserve">செயலாக்கம்</x:String>
   <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">ரத்துசெய்யப்பட்டது.</x:String>
+  <x:String x:Key="Text.Progress.PreparingFiles" xml:space="preserve">கோப்புகள் தயாராகின்றன...</x:String>
+  <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">கோப்புகள் நகர்த்தப்படுகின்றன...</x:String>
+  <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">பிரித்தெடுத்தல்</x:String>
+  <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">சுருக்குதல்</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">பிழைத் தகவல்</x:String>
@@ -234,4 +238,36 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">தொடரவும்</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">ரத்துசெய்</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">அனைத்தையும் மேலெழுது</x:String>
+
+  <!-- Progress completion -->
+  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">பிரித்தெடுத்தல் முடிந்தது: {0}/{1} கோப்புகள் வெற்றி</x:String>
+
+  <!-- Info display -->
+  <x:String x:Key="Text.Info.Unknown" xml:space="preserve">தெரியாது</x:String>
+  <x:String x:Key="Text.Info.LicenseLoadFailed" xml:space="preserve">உரிம தகவலை ஏற்ற இயலவில்லை.</x:String>
+
+  <!-- Error messages (exceptions) -->
+  <x:String x:Key="Text.Error.DiskSpaceCancelled" xml:space="preserve">போதுமான வட்டு இடம் இல்லாததால் ரத்துசெய்யப்பட்டது.</x:String>
+  <x:String x:Key="Text.Error.UserCancelledExtraction" xml:space="preserve">பயனர் பிரித்தெடுத்தலை ரத்துசெய்தார்.</x:String>
+  <x:String x:Key="Text.Error.ArchiveNotFound" xml:space="preserve">காப்பகக் கோப்பு கிடைக்கவில்லை: {0}</x:String>
+  <x:String x:Key="Text.Error.PreparationFailed" xml:space="preserve">இலக்கை தயார் செய்யும்போது பிழை ஏற்பட்டது. கோப்பு பயன்பாட்டில் இருக்கலாம் அல்லது நீக்குவதற்கான அனுமதி இல்லை.</x:String>
+  <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">உள்ளடக்கங்களை இலக்குக்கு நகர்த்த இயலவில்லை. அசல் உள்ளடக்கங்கள் காப்புப் பிரதி இடத்தில் உள்ளன.</x:String>
+  <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">சுருக்குவதற்கு கோப்புகள் குறிப்பிடப்படவில்லை.</x:String>
+  <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">குறிப்பிட்ட பாதை கிடைக்கவில்லை: {0}</x:String>
+  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">தனித்துவமான கோப்புப் பெயரை உருவாக்க இயலவில்லை: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">அமைப்புகளைச் சேமிக்க இயலவில்லை: {0}</x:String>
+  <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">பிரித்தெடுக்கப்பட்ட கோப்பு கிடைக்கவில்லை.</x:String>
+
+  <!-- Path validation messages -->
+  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">கோப்பு பாதை காலியாக உள்ளது.</x:String>
+  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">பாதை மிகவும் நீளமானது. அதிகபட்சம் {0} எழுத்துகள் அனுமதிக்கப்படுகின்றன. (தற்போது: {1} எழுத்துகள்)</x:String>
+  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">அடைவு பாதை மிகவும் நீளமானது. அதிகபட்சம் {0} எழுத்துகள் அனுமதிக்கப்படுகின்றன.</x:String>
+  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">கோப்புப் பெயர் மிகவும் நீளமானது. அதிகபட்சம் {0} எழுத்துகள் அனுமதிக்கப்படுகின்றன.</x:String>
+  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">பாதையை பகுப்பாய்வு செய்ய இயலவில்லை: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">பாதையில் தவறான எழுத்து உள்ளது: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">கோப்புப் பெயரில் தவறான எழுத்து உள்ளது: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">கோப்புப் பெயரைச் சரிபார்க்கும்போது பிழை ஏற்பட்டது: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">தவறான பாதை வடிவம் கண்டறியப்பட்டது</x:String>
+  <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">பாதை சரிபார்ப்பு தோல்வியடைந்தது: {0}</x:String>
+  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">ஒதுக்கப்பட்ட சாதனப் பெயர் பயன்படுத்தப்படுகிறது: {0}</x:String>
 </ResourceDictionary>

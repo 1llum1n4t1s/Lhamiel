@@ -24,7 +24,6 @@ public class SettingsEdgeCaseTests
         Assert.Equal(fresh.OpenCompressionOutputFolder, reset.OpenCompressionOutputFolder);
         Assert.Equal(fresh.LogMaxSizeMB, reset.LogMaxSizeMB);
         Assert.Equal(fresh.LogRetentionDays, reset.LogRetentionDays);
-        Assert.Equal(fresh.EnableShortcutCreation, reset.EnableShortcutCreation);
         Assert.Equal(fresh.ExtractionOutputToSameDirectory, reset.ExtractionOutputToSameDirectory);
         Assert.Equal(fresh.CompressionOutputToSameDirectory, reset.CompressionOutputToSameDirectory);
     }

@@ -94,6 +94,10 @@
   <!-- Progress Window -->
   <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Elaborazione in corso</x:String>
   <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Annullato.</x:String>
+  <x:String x:Key="Text.Progress.PreparingFiles" xml:space="preserve">Preparazione dei file...</x:String>
+  <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Spostamento dei file...</x:String>
+  <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Estrazione</x:String>
+  <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Compressione</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informazioni sull'errore</x:String>
@@ -234,4 +238,36 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Continua</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Annulla</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Sovrascrivi tutto</x:String>
+
+  <!-- Progress completion -->
+  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Estrazione completata: {0}/{1} file riusciti</x:String>
+
+  <!-- Info display -->
+  <x:String x:Key="Text.Info.Unknown" xml:space="preserve">Sconosciuto</x:String>
+  <x:String x:Key="Text.Info.LicenseLoadFailed" xml:space="preserve">Impossibile caricare le informazioni sulla licenza.</x:String>
+
+  <!-- Error messages (exceptions) -->
+  <x:String x:Key="Text.Error.DiskSpaceCancelled" xml:space="preserve">Annullato a causa di spazio su disco insufficiente.</x:String>
+  <x:String x:Key="Text.Error.UserCancelledExtraction" xml:space="preserve">L'utente ha annullato l'estrazione.</x:String>
+  <x:String x:Key="Text.Error.ArchiveNotFound" xml:space="preserve">File archivio non trovato: {0}</x:String>
+  <x:String x:Key="Text.Error.PreparationFailed" xml:space="preserve">Si è verificato un errore durante la preparazione della destinazione. Il file potrebbe essere in uso o non si dispone dei permessi di eliminazione.</x:String>
+  <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Impossibile spostare i contenuti nella destinazione. I contenuti originali rimangono nella posizione di backup.</x:String>
+  <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Nessun file specificato per la compressione.</x:String>
+  <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Il percorso specificato non è stato trovato: {0}</x:String>
+  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Impossibile generare un nome file univoco: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Salvataggio delle impostazioni non riuscito: {0}</x:String>
+  <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">File estratto non trovato.</x:String>
+
+  <!-- Path validation messages -->
+  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Il percorso del file è vuoto.</x:String>
+  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Il percorso è troppo lungo. Massimo {0} caratteri consentiti. (Attuale: {1} caratteri)</x:String>
+  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Il percorso della directory è troppo lungo. Massimo {0} caratteri consentiti.</x:String>
+  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Il nome del file è troppo lungo. Massimo {0} caratteri consentiti.</x:String>
+  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Analisi del percorso non riuscita: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Il percorso contiene un carattere non valido: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">Il nome del file contiene un carattere non valido: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Si è verificato un errore durante la validazione del nome file: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Formato del percorso non valido rilevato</x:String>
+  <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Validazione del percorso non riuscita: {0}</x:String>
+  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">È in uso un nome di dispositivo riservato: {0}</x:String>
 </ResourceDictionary>

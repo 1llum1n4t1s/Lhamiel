@@ -34,7 +34,7 @@ public static class PathValidator
 
         if (string.IsNullOrWhiteSpace(filePath))
         {
-            errorMessage = "ファイルパスが空です。";
+            errorMessage = App.Text("Validation.PathEmpty");
             return false;
         }
 
@@ -87,7 +87,7 @@ public static class PathValidator
 
         if (path.Length > MaxPathLength)
         {
-            errorMessage = $"パスが長すぎます。最大{MaxPathLength}文字まで許可されています。（現在: {path.Length}文字）";
+            errorMessage = App.Text("Validation.PathTooLong", MaxPathLength, path.Length);
             return false;
         }
 
@@ -98,19 +98,19 @@ public static class PathValidator
 
             if (directory != null && directory.Length > MaxDirectoryLength)
             {
-                errorMessage = $"ディレクトリパスが長すぎます。最大{MaxDirectoryLength}文字まで許可されています。";
+                errorMessage = App.Text("Validation.DirTooLong", MaxDirectoryLength);
                 return false;
             }
 
             if (filename != null && filename.Length > MaxFilenameLength)
             {
-                errorMessage = $"ファイル名が長すぎます。最大{MaxFilenameLength}文字まで許可されています。";
+                errorMessage = App.Text("Validation.FilenameTooLong", MaxFilenameLength);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"パスの解析に失敗しました: {ex.Message}";
+            errorMessage = App.Text("Validation.PathParseFailed", ex.Message);
             return false;
         }
 
@@ -128,7 +128,7 @@ public static class PathValidator
         {
             if (InvalidPathCharSet.Contains(c))
             {
-                errorMessage = $"パスに不正な文字が含まれています: '{c}' (0x{((int)c):X2})";
+                errorMessage = App.Text("Validation.InvalidPathChar", c, $"0x{((int)c):X2}");
                 return false;
             }
         }
@@ -142,7 +142,7 @@ public static class PathValidator
                 {
                     if (InvalidFileNameCharSet.Contains(c))
                     {
-                        errorMessage = $"ファイル名に不正な文字が含まれています: '{c}' (0x{((int)c):X2})";
+                        errorMessage = App.Text("Validation.InvalidFileNameChar", c, $"0x{((int)c):X2}");
                         return false;
                     }
                 }
@@ -150,7 +150,7 @@ public static class PathValidator
         }
         catch (Exception ex)
         {
-            errorMessage = $"ファイル名の検証中にエラーが発生しました: {ex.Message}";
+            errorMessage = App.Text("Validation.FileNameCheckFailed", ex.Message);
             return false;
         }
 
@@ -174,14 +174,14 @@ public static class PathValidator
             var root = Path.GetPathRoot(fullPath);
             if (string.IsNullOrEmpty(root) || !fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
             {
-                errorMessage = "不正なパス形式が検出されました";
+                errorMessage = App.Text("Validation.InvalidPathFormat");
                 Logger.Log($"セキュリティ警告: 不正なパス形式 - 元パス: {path}, 正規化パス: {fullPath}", LogLevel.Warning);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"パスの検証に失敗しました: {ex.Message}";
+            errorMessage = App.Text("Validation.PathCheckFailed", ex.Message);
             Logger.Log($"パス検証エラー: {path}, {ex.Message}", LogLevel.Warning);
             return false;
         }
@@ -204,13 +204,13 @@ public static class PathValidator
 
             if (ReservedDeviceNames.Contains(filename))
             {
-                errorMessage = $"予約されたデバイス名が使用されています: {filename}";
+                errorMessage = App.Text("Validation.ReservedDeviceName", filename);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"ファイル名の検証中にエラーが発生しました: {ex.Message}";
+            errorMessage = App.Text("Validation.FileNameCheckFailed", ex.Message);
             return false;
         }
 

@@ -56,7 +56,7 @@ public class PathValidatorTests
         var result = PathValidator.IsValidFilePath(longPath, out var error);
         Assert.False(result);
         Assert.NotNull(error);
-        Assert.Contains("長すぎ", error);
+        Assert.Contains("PathTooLong", error);
     }
 
     [Fact]
@@ -99,7 +99,7 @@ public class PathValidatorTests
         var result = PathValidator.IsValidFilePath(path, out var error);
         Assert.False(result);
         Assert.NotNull(error);
-        Assert.Contains("予約", error);
+        Assert.Contains("ReservedDeviceName", error);
     }
 
     [Theory]

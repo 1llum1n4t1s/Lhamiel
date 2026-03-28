@@ -71,7 +71,7 @@ public class ArchiveCompressor
         var sourceList = sourcePaths.ToList();
         if (sourceList.Count == 0)
         {
-            throw new ArgumentException("圧縮するファイルが指定されていません。");
+            throw new ArgumentException(App.Text("Error.NoFilesToCompress"));
         }
 
         // 出力ディレクトリを作成
@@ -98,8 +98,14 @@ public class ArchiveCompressor
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
+            // 一時コピー準備中を通知（マーキー表示）
+            progressCallback?.Invoke(new ProgressInfo(App.Text("Progress.PreparingFiles")));
+
             // 全ファイルを一時ディレクトリにコピー（ロック中ファイルも読み取り可能にする）
             (filesToCompress, tempDir) = await CopyFilesToTempAsync(filesToCompress, cancellationToken);
+
+            // 一時コピー完了、圧縮に移行
+            progressCallback?.Invoke(new ProgressInfo(0, "圧縮処理中..."));
 
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
             outputCreated = true;
@@ -129,7 +135,7 @@ public class ArchiveCompressor
                     {
                         var percentage = (int)(report.GetRatio() * 100);
                         if (throttler.ShouldReport(percentage))
-                            progressCallback?.Invoke(new ProgressInfo(percentage, "圧縮処理中..."));
+                            progressCallback?.Invoke(new ProgressInfo(percentage, ""));
                     }, cancellationToken);
 
                     // ネイティブメソッドの呼び出し
@@ -270,7 +276,7 @@ public class ArchiveCompressor
             }
             else
             {
-                throw new FileNotFoundException($"指定されたパスが見つかりません: {sourcePath}");
+                throw new FileNotFoundException(App.Text("Error.PathNotFound", sourcePath));
             }
         }
 
@@ -555,7 +561,7 @@ public class ArchiveCompressor
                 return candidate;
         }
 
-        throw new InvalidOperationException($"ユニークなファイル名を生成できません（10000件の衝突）: {outputPath}");
+        throw new InvalidOperationException(App.Text("Error.UniqueNameFailed", outputPath));
     }
 
     /// <summary>

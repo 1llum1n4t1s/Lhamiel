@@ -94,6 +94,10 @@
   <!-- Progress Window -->
   <x:String x:Key="Text.Progress.Processing" xml:space="preserve">संसाधनम्</x:String>
   <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">निरस्तम्।</x:String>
+  <x:String x:Key="Text.Progress.PreparingFiles" xml:space="preserve">सञ्चिकाः सज्जीक्रियन्ते...</x:String>
+  <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">सञ्चिकाः स्थानान्तर्यन्ते...</x:String>
+  <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">निष्कर्षणम्</x:String>
+  <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">संपीडनम्</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">दोषसूचना</x:String>
@@ -234,4 +238,36 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">अनुवर्तताम्</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">निवर्तताम्</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">सर्वं पुनर्लिखतु</x:String>
+
+  <!-- Progress completion -->
+  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">निष्कर्षणं सम्पन्नम्: {0}/{1} सञ्चिकाः सफलाः</x:String>
+
+  <!-- Info display -->
+  <x:String x:Key="Text.Info.Unknown" xml:space="preserve">अज्ञातम्</x:String>
+  <x:String x:Key="Text.Info.LicenseLoadFailed" xml:space="preserve">अनुज्ञापत्रसूचनां लोडयितुं न शक्तम्।</x:String>
+
+  <!-- Error messages (exceptions) -->
+  <x:String x:Key="Text.Error.DiskSpaceCancelled" xml:space="preserve">अपर्याप्तचक्रस्थानकारणात् निरस्तम्।</x:String>
+  <x:String x:Key="Text.Error.UserCancelledExtraction" xml:space="preserve">उपयोक्ता निष्कर्षणं निरस्तवान्।</x:String>
+  <x:String x:Key="Text.Error.ArchiveNotFound" xml:space="preserve">संग्रहसञ्चिका न प्राप्ता: {0}</x:String>
+  <x:String x:Key="Text.Error.PreparationFailed" xml:space="preserve">गन्तव्यस्थानं सज्जीकर्तुं दोषः उत्पन्नः। सञ्चिका उपयोगे स्यात् अथवा विलोपनानुमतिः नास्ति।</x:String>
+  <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">अन्तर्वस्तु गन्तव्यस्थानं प्रति चालयितुं न शक्तम्। मूलान्तर्वस्तु प्रतिलिपिस्थाने तिष्ठति।</x:String>
+  <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">संपीडनाय सञ्चिकाः न निर्दिष्टाः।</x:String>
+  <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">निर्दिष्टमार्गः न प्राप्तः: {0}</x:String>
+  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">अद्वितीयं सञ्चिकानाम उत्पादयितुं न शक्तम्: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">विन्यासं संरक्षितुं न शक्तम्: {0}</x:String>
+  <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">निष्कृतसञ्चिका न प्राप्ता।</x:String>
+
+  <!-- Path validation messages -->
+  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">सञ्चिकामार्गः रिक्तः अस्ति।</x:String>
+  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">मार्गः अतिदीर्घः अस्ति। अधिकतमं {0} वर्णाः अनुमताः। (वर्तमानम्: {1} वर्णाः)</x:String>
+  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">निर्देशिकामार्गः अतिदीर्घः अस्ति। अधिकतमं {0} वर्णाः अनुमताः।</x:String>
+  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">सञ्चिकानाम अतिदीर्घम् अस्ति। अधिकतमं {0} वर्णाः अनुमताः।</x:String>
+  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">मार्गं विश्लेषितुं न शक्तम्: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">मार्गे अमान्यवर्णः विद्यते: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">सञ्चिकानाम्नि अमान्यवर्णः विद्यते: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">सञ्चिकानाम प्रमाणीकर्तुं दोषः उत्पन्नः: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">अमान्यमार्गस्वरूपं प्रत्यभिज्ञातम्</x:String>
+  <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">मार्गप्रमाणीकरणं विफलम्: {0}</x:String>
+  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">आरक्षितसाधननाम उपयुज्यते: {0}</x:String>
 </ResourceDictionary>

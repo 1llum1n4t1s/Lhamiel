@@ -17,7 +17,6 @@ public class SettingsTests
         Assert.Equal("ZIP", settings.CompressionFormat);
         Assert.False(settings.ExtractionOutputToSameDirectory);
         Assert.False(settings.CompressionOutputToSameDirectory);
-        Assert.True(settings.EnableShortcutCreation);
         Assert.Equal("1llum1n4t1s", settings.UpdateRepoOwner);
         Assert.Equal("Lhamiel", settings.UpdateRepoName);
         Assert.Equal("release", settings.UpdateChannel);
@@ -61,7 +60,6 @@ public class SettingsTests
             CompressionFormat = "7z",
             ExtractionOutputToSameDirectory = true,
             CompressionOutputToSameDirectory = true,
-            EnableShortcutCreation = false,
             UpdateRepoOwner = "test",
             UpdateRepoName = "test-repo",
             UpdateChannel = "beta"
@@ -74,7 +72,6 @@ public class SettingsTests
         Assert.Equal("ZIP", settings.CompressionFormat);
         Assert.False(settings.ExtractionOutputToSameDirectory);
         Assert.False(settings.CompressionOutputToSameDirectory);
-        Assert.True(settings.EnableShortcutCreation);
         Assert.Equal("1llum1n4t1s", settings.UpdateRepoOwner);
         Assert.Equal("Lhamiel", settings.UpdateRepoName);
         Assert.Equal("release", settings.UpdateChannel);

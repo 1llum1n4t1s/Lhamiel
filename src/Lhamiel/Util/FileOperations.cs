@@ -30,7 +30,7 @@ internal static class FileOperations
 
         if (!File.Exists(sourcePath))
         {
-            throw new FileNotFoundException("展開されたファイルが見つかりません。", sourcePath);
+            throw new FileNotFoundException(App.Text("Error.ExtractedFileNotFound"), sourcePath);
         }
 
         var targetDir = Path.GetDirectoryName(targetPath);

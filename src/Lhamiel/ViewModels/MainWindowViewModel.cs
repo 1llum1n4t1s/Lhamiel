@@ -416,7 +416,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var validPaths = paths.Where(p => Directory.Exists(p) || File.Exists(p)).ToList();
             if (validPaths.Count == 0) return;
 
-            progressWindow = new ProgressWindow(App.Text("Progress.Processing")) { WindowStartupLocation = WindowStartupLocation.CenterOwner };
+            // 展開か圧縮かを事前に判定して操作種別ラベルを決定
+            var isExtraction = validPaths.Count == 1
+                ? File.Exists(validPaths[0]) && ArchiveExtractor.IsSupportedArchiveType(validPaths[0])
+                : ArchiveExtractor.AreAllSupportedArchives(validPaths);
+            var operationLabel = isExtraction
+                ? App.Text("Progress.Extracting")
+                : App.Text("Progress.Compressing");
+
+            progressWindow = new ProgressWindow(operationLabel) { WindowStartupLocation = WindowStartupLocation.CenterOwner };
             _showProgressWindow(progressWindow);
             await Task.Yield();
             var cancellationToken = progressWindow.GetCancellationToken();
@@ -426,7 +434,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             {
                 // 単一ファイル/フォルダ: 展開か圧縮かを自動判定
                 var path = validPaths[0];
-                if (File.Exists(path) && ArchiveExtractor.IsSupportedArchiveType(path))
+                if (isExtraction)
                 {
                     var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
                         [path],
@@ -452,7 +460,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
                 }
             }
-            else if (ArchiveExtractor.AreAllSupportedArchives(validPaths))
+            else if (isExtraction)
             {
                 // 複数ファイル: すべてアーカイブなら個別展開
                 var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
@@ -630,11 +638,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (File.Exists(dllPath))
             {
                 var fileVersion = FileVersionInfo.GetVersionInfo(dllPath);
-                SevenZipVersionText = fileVersion.FileVersion ?? "不明";
+                SevenZipVersionText = fileVersion.FileVersion ?? App.Text("Info.Unknown");
             }
             else
             {
-                SevenZipVersionText = "不明";
+                SevenZipVersionText = App.Text("Info.Unknown");
             }
             // LICENSEファイルを埋め込みリソースから読み込み
             using var stream = assembly.GetManifestResourceStream("Lhamiel.LICENSE");
@@ -645,14 +653,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
             }
             else
             {
-                LicenseText = "ライセンス情報を読み込めませんでした。";
+                LicenseText = App.Text("Info.LicenseLoadFailed");
             }
             Logger.Log($"バージョン情報を読み込みました: Version {VersionText}");
         }
         catch (Exception ex)
         {
             Logger.LogException("バージョン情報の読み込みでエラーが発生", ex);
-            VersionText = "不明";
+            VersionText = App.Text("Info.Unknown");
             CopyrightText = "Copyright © 2024";
         }
     }

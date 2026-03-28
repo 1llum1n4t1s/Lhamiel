@@ -94,6 +94,10 @@
   <!-- Progress Window -->
   <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Pinoproseso</x:String>
   <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Kinansela.</x:String>
+  <x:String x:Key="Text.Progress.PreparingFiles" xml:space="preserve">Inihahanda ang mga file...</x:String>
+  <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Inililipat ang mga file...</x:String>
+  <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Kinukuha</x:String>
+  <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Kino-compress</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Impormasyon ng Error</x:String>
@@ -234,4 +238,36 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Magpatuloy</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Kanselahin</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Patungan lahat</x:String>
+
+  <!-- Progress completion -->
+  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Extraction kumpleto: {0}/{1} na file ang nagtagumpay</x:String>
+
+  <!-- Info display -->
+  <x:String x:Key="Text.Info.Unknown" xml:space="preserve">Hindi alam</x:String>
+  <x:String x:Key="Text.Info.LicenseLoadFailed" xml:space="preserve">Nabigong i-load ang impormasyon ng lisensya.</x:String>
+
+  <!-- Error messages (exceptions) -->
+  <x:String x:Key="Text.Error.DiskSpaceCancelled" xml:space="preserve">Kinansela dahil sa hindi sapat na espasyo sa disk.</x:String>
+  <x:String x:Key="Text.Error.UserCancelledExtraction" xml:space="preserve">Kinansela ng user ang extraction.</x:String>
+  <x:String x:Key="Text.Error.ArchiveNotFound" xml:space="preserve">Hindi natagpuan ang archive file: {0}</x:String>
+  <x:String x:Key="Text.Error.PreparationFailed" xml:space="preserve">Nagkaroon ng error habang inihahanda ang destinasyon. Maaaring ginagamit ang file o wala kang pahintulot na mag-delete.</x:String>
+  <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Nabigong ilipat ang mga nilalaman sa destinasyon. Ang orihinal na nilalaman ay nananatili sa backup na lokasyon.</x:String>
+  <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Walang tinukoy na mga file para i-compress.</x:String>
+  <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Hindi natagpuan ang tinukoy na path: {0}</x:String>
+  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Hindi makagawa ng natatanging pangalan ng file: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Nabigong i-save ang mga setting: {0}</x:String>
+  <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Hindi natagpuan ang na-extract na file.</x:String>
+
+  <!-- Path validation messages -->
+  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Walang laman ang file path.</x:String>
+  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Masyadong mahaba ang path. Pinakamarami {0} na karakter ang pinapayagan. (Kasalukuyan: {1} na karakter)</x:String>
+  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Masyadong mahaba ang directory path. Pinakamarami {0} na karakter ang pinapayagan.</x:String>
+  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Masyadong mahaba ang pangalan ng file. Pinakamarami {0} na karakter ang pinapayagan.</x:String>
+  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Nabigong i-parse ang path: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">May hindi wastong karakter sa path: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">May hindi wastong karakter sa pangalan ng file: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Nagkaroon ng error habang bina-validate ang pangalan ng file: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Na-detect ang hindi wastong format ng path</x:String>
+  <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Nabigo ang path validation: {0}</x:String>
+  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Ginagamit ang reserved na pangalan ng device: {0}</x:String>
 </ResourceDictionary>

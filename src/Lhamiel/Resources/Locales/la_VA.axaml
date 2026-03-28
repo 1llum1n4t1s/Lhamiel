@@ -94,6 +94,10 @@
   <!-- Progress Window -->
   <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Processus</x:String>
   <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Abrogatum.</x:String>
+  <x:String x:Key="Text.Progress.PreparingFiles" xml:space="preserve">Fasciculi parantur...</x:String>
+  <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Fasciculi moventur...</x:String>
+  <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Extractio</x:String>
+  <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Compressio</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informationes Erroris</x:String>
@@ -234,4 +238,36 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Perge</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Cancella</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Omnia rescribe</x:String>
+
+  <!-- Progress completion -->
+  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Extractio perfecta: {0}/{1} fasciculi feliciter</x:String>
+
+  <!-- Info display -->
+  <x:String x:Key="Text.Info.Unknown" xml:space="preserve">Ignotum</x:String>
+  <x:String x:Key="Text.Info.LicenseLoadFailed" xml:space="preserve">Informationes licentiae onerare non potuit.</x:String>
+
+  <!-- Error messages (exceptions) -->
+  <x:String x:Key="Text.Error.DiskSpaceCancelled" xml:space="preserve">Cancellatum propter spatium disci insufficiens.</x:String>
+  <x:String x:Key="Text.Error.UserCancelledExtraction" xml:space="preserve">Usor extractionem cancellavit.</x:String>
+  <x:String x:Key="Text.Error.ArchiveNotFound" xml:space="preserve">Fasciculus archivi non inventus: {0}</x:String>
+  <x:String x:Key="Text.Error.PreparationFailed" xml:space="preserve">Error accidit dum destinatio paratur. Fasciculus in usu esse potest vel ius delendi deest.</x:String>
+  <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Contenta ad destinationem movere non potuit. Contenta originalia in loco subsidiario manent.</x:String>
+  <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Nulli fasciculi ad compressionem designati.</x:String>
+  <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Via designata non inventa est: {0}</x:String>
+  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Nomen fasciculi unicum generare non potuit: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Optiones servare non potuit: {0}</x:String>
+  <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Fasciculus extractus non inventus.</x:String>
+
+  <!-- Path validation messages -->
+  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Via fasciculi vacua est.</x:String>
+  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Via nimis longa est. Maximum {0} characteres permittuntur. (Nunc: {1} characteres)</x:String>
+  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Via directorii nimis longa est. Maximum {0} characteres permittuntur.</x:String>
+  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Nomen fasciculi nimis longum est. Maximum {0} characteres permittuntur.</x:String>
+  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Viam interpretari non potuit: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Via characterem invalidum continet: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">Nomen fasciculi characterem invalidum continet: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Error accidit dum nomen fasciculi validatur: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Forma viae invalida detecta est</x:String>
+  <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Validatio viae defecit: {0}</x:String>
+  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Nomen instrumenti reservatum in usu est: {0}</x:String>
 </ResourceDictionary>

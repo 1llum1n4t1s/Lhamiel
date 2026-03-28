@@ -8,25 +8,34 @@ namespace Lhamiel.Util;
 public static class ArchiveProcessor
 {
     /// <summary>
+    /// ProgressInfo を ProgressWindow にディスパッチする共通ヘルパー。
+    /// 不確定進捗はマーキー表示、確定進捗はパーセンテージ更新。
+    /// </summary>
+    private static void DispatchProgress(ProgressWindow? progressWindow, ProgressInfo info)
+    {
+        if (info.IsIndeterminate)
+            progressWindow?.SetIndeterminate(info.Status);
+        else
+            Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage));
+    }
+
+    /// <summary>
     /// 並列処理時の進捗マッピングを作成する。
     /// 完了済み件数をベースラインとし、処理中の個別進捗を加算して全体進捗を計算する。
     /// </summary>
-    /// <param name="totalCount">処理対象の総数</param>
-    /// <param name="lockObject">完了数の読み取りに使うロックオブジェクト</param>
-    /// <param name="getCompletedCount">完了数（成功＋失敗）を返すデリゲート</param>
-    /// <param name="progressWindow">進捗表示ウィンドウ</param>
-    /// <returns>マッピング済みの IProgress</returns>
     private static IProgress<ProgressInfo> CreateMappedProgress(
         int totalCount, object lockObject, Func<int> getCompletedCount, ProgressWindow? progressWindow)
     {
         if (totalCount == 1)
-        {
-            return new Progress<ProgressInfo>(info =>
-                Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage)));
-        }
+            return new Progress<ProgressInfo>(info => DispatchProgress(progressWindow, info));
 
         return new Progress<ProgressInfo>(info =>
         {
+            if (info.IsIndeterminate)
+            {
+                progressWindow?.SetIndeterminate(info.Status);
+                return;
+            }
             int baseline;
             lock (lockObject)
             {
@@ -72,10 +81,7 @@ public static class ArchiveProcessor
                 if (progress == null && progressWindow != null)
                 {
                     progress = new Progress<ProgressInfo>(info =>
-                    {
-                        // Task.Run 内で作る場合はコンテキストがないため、Dispatcher経由にする
-                        Dispatcher.UIThread.Post(() => progressWindow.UpdateProgress(info.Percentage));
-                    });
+                        DispatchProgress(progressWindow, info));
                 }
 
                 // ファイル拡張子の確認（ArchiveExtractor.SupportedExtensions を参照して重複管理を回避）
@@ -149,7 +155,7 @@ public static class ArchiveProcessor
                         Logger.Log($"部分展開完了:\n{summary}");
 
                         Dispatcher.UIThread.Post(() =>
-                            progressWindow?.SetCompleted($"展開完了: {result.SuccessCount}/{result.TotalFiles}個のファイルが成功"));
+                            progressWindow?.SetCompleted(App.Text("Progress.ExtractionComplete", result.SuccessCount, result.TotalFiles)));
 
                         if (closeWindowOnCompletion)
                         {
@@ -400,7 +406,7 @@ public static class ArchiveProcessor
                     var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(
                         outputPath, estimatedSize, progressWindow, actualCancellationToken);
                     if (!hasSpace)
-                        throw new OperationCanceledException("ディスク容量不足でキャンセルされました。");
+                        throw new OperationCanceledException(App.Text("Error.DiskSpaceCancelled"));
                 }
 
                 // 圧縮処理を実行
@@ -410,9 +416,7 @@ public static class ArchiveProcessor
                 Action<ProgressInfo>? progressCallback = info =>
                 {
                     if (progressReporter == null)
-                    {
-                        Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage));
-                    }
+                        DispatchProgress(progressWindow, info);
 
                     progressReporter?.Report(info);
                 };
@@ -818,7 +822,7 @@ public static class ArchiveProcessor
                     var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(
                         outputPath, estimatedMergeSize, progressWindow, actualCancellationToken);
                     if (!hasSpace)
-                        throw new OperationCanceledException("ディスク容量不足でキャンセルされました。");
+                        throw new OperationCanceledException(App.Text("Error.DiskSpaceCancelled"));
                 }
 
                 // 解決済みリストが空の場合はスキップ（全ファイルが未選択）

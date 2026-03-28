@@ -88,11 +88,58 @@ internal class DialogPreviewContainer
         ShowDialog(() => new FileConflictDialog(groups, isTwoPane: false));
     }
 
-    [CRCategory("展開")]
-    [CRAction(Label = "ProgressWindow")]
-    public void ShowProgressWindow()
+    [CRCategory("圧縮")]
+    [CRAction(Label = "ProgressWindow（圧縮：準備 → 圧縮 → 完了）")]
+    public void ShowCompressPreparingProgress()
     {
-        ShowWindow(() => new ProgressWindow("デバッグプレビュー"));
+        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+        {
+            var pw = new ProgressWindow(App.Text("Progress.Compressing"));
+            pw.Show();
+
+            // ① マーキー表示（一時コピー中）
+            pw.SetIndeterminate(App.Text("Progress.PreparingFiles"));
+            await Task.Delay(3000);
+
+            // ② 通常進捗に戻る（圧縮処理中）
+            for (var i = 0; i <= 100; i += 5)
+            {
+                pw.UpdateProgress(i);
+                await Task.Delay(100);
+            }
+
+            await Task.Delay(500);
+            pw.CloseSafe();
+        });
+    }
+
+    [CRCategory("展開")]
+    [CRAction(Label = "ProgressWindow（展開：展開 → 配置 → 完了）")]
+    public void ShowExtractMovingProgress()
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+        {
+            var pw = new ProgressWindow(App.Text("Progress.Extracting"));
+            pw.Show();
+
+            // ① 展開進捗（0% → 100%）
+            for (var i = 0; i <= 100; i += 10)
+            {
+                pw.UpdateProgress(i);
+                await Task.Delay(80);
+            }
+
+            await Task.Delay(500);
+
+            // ② マーキー表示（ファイル配置中）
+            pw.SetIndeterminate(App.Text("Progress.MovingFiles"));
+            await Task.Delay(3000);
+
+            // ③ 完了
+            pw.UpdateProgress(100);
+            await Task.Delay(500);
+            pw.CloseSafe();
+        });
     }
 
     [CRCategory("展開")]
@@ -134,18 +181,6 @@ internal class DialogPreviewContainer
                 await dialog.ShowDialog(owner);
             else
                 dialog.Show();
-        });
-    }
-
-    /// <summary>
-    /// 通常ウィンドウとして表示する。
-    /// </summary>
-    private static void ShowWindow<T>(Func<T> factory) where T : Avalonia.Controls.Window
-    {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            var window = factory();
-            window.Show();
         });
     }
 

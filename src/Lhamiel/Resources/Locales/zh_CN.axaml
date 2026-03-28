@@ -94,6 +94,10 @@
   <!-- Progress Window -->
   <x:String x:Key="Text.Progress.Processing" xml:space="preserve">处理中</x:String>
   <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">已取消。</x:String>
+  <x:String x:Key="Text.Progress.PreparingFiles" xml:space="preserve">正在准备文件...</x:String>
+  <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">正在移动文件...</x:String>
+  <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">解压中</x:String>
+  <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">压缩中</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">错误信息</x:String>
@@ -234,4 +238,36 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">继续</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">取消</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">全部覆盖</x:String>
+
+  <!-- Progress completion -->
+  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">解压完成：{0}/{1} 个文件成功</x:String>
+
+  <!-- Info display -->
+  <x:String x:Key="Text.Info.Unknown" xml:space="preserve">未知</x:String>
+  <x:String x:Key="Text.Info.LicenseLoadFailed" xml:space="preserve">无法加载许可证信息。</x:String>
+
+  <!-- Error messages (exceptions) -->
+  <x:String x:Key="Text.Error.DiskSpaceCancelled" xml:space="preserve">因磁盘空间不足而取消。</x:String>
+  <x:String x:Key="Text.Error.UserCancelledExtraction" xml:space="preserve">用户取消了解压。</x:String>
+  <x:String x:Key="Text.Error.ArchiveNotFound" xml:space="preserve">未找到压缩文件：{0}</x:String>
+  <x:String x:Key="Text.Error.PreparationFailed" xml:space="preserve">准备目标位置时发生错误。文件可能正在使用或您没有删除权限。</x:String>
+  <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">无法将内容移动到目标位置。原始内容仍保留在备份位置。</x:String>
+  <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">未指定要压缩的文件。</x:String>
+  <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">未找到指定的路径：{0}</x:String>
+  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">无法生成唯一的文件名：{0}</x:String>
+  <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">保存设置失败：{0}</x:String>
+  <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">未找到已解压的文件。</x:String>
+
+  <!-- Path validation messages -->
+  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">文件路径为空。</x:String>
+  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">路径过长。最大允许 {0} 个字符。（当前：{1} 个字符）</x:String>
+  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">目录路径过长。最大允许 {0} 个字符。</x:String>
+  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">文件名过长。最大允许 {0} 个字符。</x:String>
+  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">无法解析路径：{0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">路径包含无效字符：'{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">文件名包含无效字符：'{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">验证文件名时发生错误：{0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">检测到无效的路径格式</x:String>
+  <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">路径验证失败：{0}</x:String>
+  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">使用了保留的设备名称：{0}</x:String>
 </ResourceDictionary>

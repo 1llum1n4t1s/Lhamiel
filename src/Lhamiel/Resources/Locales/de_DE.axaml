@@ -94,6 +94,10 @@
   <!-- Progress Window -->
   <x:String x:Key="Text.Progress.Processing" xml:space="preserve">Verarbeitung</x:String>
   <x:String x:Key="Text.Progress.Cancelled" xml:space="preserve">Abgebrochen.</x:String>
+  <x:String x:Key="Text.Progress.PreparingFiles" xml:space="preserve">Dateien werden vorbereitet...</x:String>
+  <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Dateien werden verschoben...</x:String>
+  <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Entpacken</x:String>
+  <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Komprimieren</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Fehlerinformationen</x:String>
@@ -234,4 +238,36 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Fortfahren</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Abbrechen</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Alle überschreiben</x:String>
+
+  <!-- Progress completion -->
+  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Entpacken abgeschlossen: {0}/{1} Dateien erfolgreich</x:String>
+
+  <!-- Info display -->
+  <x:String x:Key="Text.Info.Unknown" xml:space="preserve">Unbekannt</x:String>
+  <x:String x:Key="Text.Info.LicenseLoadFailed" xml:space="preserve">Lizenzinformationen konnten nicht geladen werden.</x:String>
+
+  <!-- Error messages (exceptions) -->
+  <x:String x:Key="Text.Error.DiskSpaceCancelled" xml:space="preserve">Abgebrochen wegen unzureichendem Speicherplatz.</x:String>
+  <x:String x:Key="Text.Error.UserCancelledExtraction" xml:space="preserve">Der Benutzer hat die Entpackung abgebrochen.</x:String>
+  <x:String x:Key="Text.Error.ArchiveNotFound" xml:space="preserve">Archivdatei nicht gefunden: {0}</x:String>
+  <x:String x:Key="Text.Error.PreparationFailed" xml:space="preserve">Beim Vorbereiten des Ziels ist ein Fehler aufgetreten. Die Datei wird möglicherweise verwendet oder Sie haben keine Löschberechtigung.</x:String>
+  <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Inhalte konnten nicht zum Ziel verschoben werden. Die Originalinhalte befinden sich noch am Sicherungsort.</x:String>
+  <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Keine Dateien zum Komprimieren angegeben.</x:String>
+  <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Der angegebene Pfad wurde nicht gefunden: {0}</x:String>
+  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Ein eindeutiger Dateiname konnte nicht generiert werden: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Einstellungen konnten nicht gespeichert werden: {0}</x:String>
+  <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Entpackte Datei nicht gefunden.</x:String>
+
+  <!-- Path validation messages -->
+  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Dateipfad ist leer.</x:String>
+  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Pfad ist zu lang. Maximal {0} Zeichen erlaubt. (Aktuell: {1} Zeichen)</x:String>
+  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Verzeichnispfad ist zu lang. Maximal {0} Zeichen erlaubt.</x:String>
+  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Dateiname ist zu lang. Maximal {0} Zeichen erlaubt.</x:String>
+  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Pfad konnte nicht analysiert werden: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Pfad enthält ein ungültiges Zeichen: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">Dateiname enthält ein ungültiges Zeichen: '{0}' ({1})</x:String>
+  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Beim Überprüfen des Dateinamens ist ein Fehler aufgetreten: {0}</x:String>
+  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Ungültiges Pfadformat erkannt</x:String>
+  <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Pfadvalidierung fehlgeschlagen: {0}</x:String>
+  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Reservierter Gerätename wird verwendet: {0}</x:String>
 </ResourceDictionary>

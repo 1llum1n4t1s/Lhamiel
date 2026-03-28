@@ -229,8 +229,14 @@ public static class ArchiveExtractor
         {
             var sepIndex = path.IndexOfAny('/', '\\');
             var segment = sepIndex < 0 ? path : path[..sepIndex];
-            if (segment.Length > 0 && IgnoredSystemDirectories.Contains(segment.ToString()))
-                return true;
+            if (segment.Length > 0)
+            {
+                foreach (var dir in IgnoredSystemDirectories)
+                {
+                    if (segment.Equals(dir.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
+            }
             path = sepIndex < 0 ? [] : path[(sepIndex + 1)..];
         }
         return false;
@@ -394,7 +400,7 @@ public static class ArchiveExtractor
             var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(
                 outputPath, requiredSize, parentWindow, cancellationToken);
             if (!hasSpace)
-                throw new OperationCanceledException("ディスク容量不足でキャンセルされました。");
+                throw new OperationCanceledException(App.Text("Error.DiskSpaceCancelled"));
         }
 
         // 展開先に既存ファイルがあるかチェック（一時展開方式の判定）
@@ -458,6 +464,7 @@ public static class ArchiveExtractor
 
             // ② 一時フォルダ vs 展開先を比較して衝突検出
             var conflicts = DetectFileSystemConflicts(tempDir, outputPath);
+            HashSet<string>? skipArg = null;
 
             if (conflicts.Count > 0)
             {
@@ -468,7 +475,7 @@ public static class ArchiveExtractor
                 if (result == Models.FileConflictResult.Cancel)
                 {
                     Logger.Log("ユーザーが展開をキャンセル");
-                    throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
+                    throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"));
                 }
 
                 // ④ 選択結果に基づいて移動
@@ -491,12 +498,18 @@ public static class ArchiveExtractor
                 if (skipPaths.Count > 0)
                     Logger.Log($"ユーザーが {skipPaths.Count} 件のファイルをスキップ指定");
 
-                await MoveExtractedFilesAsync(tempDir, outputPath, skipPaths, cancellationToken);
+                skipArg = skipPaths.Count > 0 ? skipPaths : null;
             }
-            else
+
+            // ④ ファイル配置（衝突有無共通）
+            progressWindow?.SetIndeterminate(App.Text("Progress.MovingFiles"));
+            try
             {
-                // 衝突なし: 全ファイルを移動
-                await MoveExtractedFilesAsync(tempDir, outputPath, null, cancellationToken);
+                await MoveExtractedFilesAsync(tempDir, outputPath, skipArg, cancellationToken);
+            }
+            finally
+            {
+                progressWindow?.UpdateProgress(100);
             }
         }
         finally
@@ -687,7 +700,7 @@ public static class ArchiveExtractor
 
         if (!File.Exists(archivePath))
         {
-            throw new FileNotFoundException($"アーカイブファイルが見つかりません: {archivePath}");
+            throw new FileNotFoundException(App.Text("Error.ArchiveNotFound", archivePath));
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -705,7 +718,7 @@ public static class ArchiveExtractor
                     Logger.Log($"ExtractArchive内でファイル衝突を検出: {conflicts.Count}件");
                     var (result, _) = await View.FileConflictDialog.ShowFromBackgroundAsync(conflicts, parentWindow);
                     if (result == Models.FileConflictResult.Cancel)
-                        throw new OperationCanceledException("ユーザーが展開処理をキャンセルしました。");
+                        throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"));
                 }
             }
 
@@ -729,7 +742,6 @@ public static class ArchiveExtractor
 
         try
         {
-            Directory.CreateDirectory(tempOutputPath);
             cancellationToken.ThrowIfCancellationRequested();
 
             // Filter で無視しディスクに書き込まないシステム名
@@ -752,7 +764,7 @@ public static class ArchiveExtractor
                     {
                         var percentage = (int)(report.GetRatio() * 100);
                         if (throttler.ShouldReport(percentage))
-                            progressCallback(new ProgressInfo(percentage, "ファイルを展開中..."));
+                            progressCallback(new ProgressInfo(percentage, ""));
                     }, cancellationToken);
 
                     reader.Save(tempOutputPath, progress);
@@ -761,7 +773,7 @@ public static class ArchiveExtractor
                     cancellationToken.ThrowIfCancellationRequested();
 
                     // Terminate で 100% を保証（Ice アプリケーションの実装パターンに準拠）
-                    progressCallback(new ProgressInfo(100, "ファイルを展開中..."));
+                    progressCallback(new ProgressInfo(100, ""));
 
                     // ネイティブ側のコールバック完了を確実に保証
                     NativeInteropHelper.KeepAliveCallbacks(progress, progressCallback);
@@ -877,7 +889,7 @@ public static class ArchiveExtractor
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 Logger.Log($"既存対象の退避に失敗しました: {ex.Message}");
-                throw new InvalidOperationException("展開先の準備中にエラーが発生しました。ファイルが使用中か、削除権限がない可能性があります。", ex);
+                throw new InvalidOperationException(App.Text("Error.PreparationFailed"), ex);
             }
 
             if (!Directory.Exists(outputPath))
@@ -898,7 +910,7 @@ public static class ArchiveExtractor
                 {
                     Logger.Log($"退避先（復元可能）: {backup}");
                 }
-                throw new InvalidOperationException("展開先への内容移動に失敗しました。元の内容は退避先に残っています。", ex);
+                throw new InvalidOperationException(App.Text("Error.MoveFailed"), ex);
             }
 
             // 移動成功後のみバックアップを削除（原子性の完了）
@@ -962,14 +974,6 @@ public static class ArchiveExtractor
             var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath);
             Logger.Log($"アーカイブ展開でエラーが発生しました: {errorInfo.Message}");
             Logger.Log($"エラー詳細: {errorInfo.Details}");
-
-            // 破損ファイルの場合は詳細分析を実行
-            if (errorInfo.ErrorType == ArchiveErrorType.CorruptedFile)
-            {
-                Logger.Log("破損ファイルの詳細分析を実行します");
-                var corruptionAnalysis = ArchiveErrorHandler.AnalyzeCorruption(archivePath);
-                Logger.Log($"破損分析結果: 破損={corruptionAnalysis.IsCorrupted}, 種類={corruptionAnalysis.CorruptionType}, 回復率={corruptionAnalysis.RecoveryRate:F1}%");
-            }
 
             throw;
         }

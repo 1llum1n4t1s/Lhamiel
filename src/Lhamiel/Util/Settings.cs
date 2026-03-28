@@ -67,11 +67,6 @@ public class Settings
     public bool CompressionOutputToSameDirectory { get; set; }
 
     /// <summary>
-    /// ショートカット作成の有効/無効設定
-    /// </summary>
-    public bool EnableShortcutCreation { get; set; } = true;
-
-    /// <summary>
     /// 自動更新用のGitHubオーナー名
     /// </summary>
     public string UpdateRepoOwner { get; set; } = "1llum1n4t1s";
@@ -218,19 +213,8 @@ public class Settings
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"設定の保存に失敗しました: {ex.Message}", ex);
+            throw new InvalidOperationException(App.Text("Error.SaveSettingsFailed", ex.Message), ex);
         }
-    }
-
-    /// <summary>
-    /// 設定が有効かどうかを検証する
-    /// </summary>
-    /// <returns>設定が有効な場合はtrue、そうでなければfalse</returns>
-    public bool IsValid()
-    {
-        return SupportedCompressionFormats.Contains(CompressionFormat) &&
-               Directory.Exists(ExtractionOutputDirectory) &&
-               Directory.Exists(CompressionOutputDirectory);
     }
 
     /// <summary>
@@ -244,7 +228,6 @@ public class Settings
         CompressionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         ExtractionOutputToSameDirectory = false;
         CompressionOutputToSameDirectory = false;
-        EnableShortcutCreation = true;
         OpenExtractionOutputFolder = true;
         OpenCompressionOutputFolder = true;
         UpdateRepoOwner = "1llum1n4t1s";
@@ -256,12 +239,6 @@ public class Settings
         Locale = "";
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
-        ExcludedFilePatterns =
-        [
-            ".DS_Store",
-            "Thumbs.db",
-            "__MACOSX",
-            "desktop.ini"
-        ];
+        ExcludedFilePatterns = [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
     }
 }

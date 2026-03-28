@@ -359,7 +359,7 @@ public partial class App : Application
         ProgressWindow? progressWindow = null;
         try
         {
-            (progressWindow, var cancellationTokenSource, var cancelHandler) = SetupProgressWindow(App.Text("Progress.Processing"));
+            (progressWindow, var cancellationTokenSource, var cancelHandler) = SetupProgressWindow(operationName);
 
             using (cancellationTokenSource)
             {
@@ -419,7 +419,7 @@ public partial class App : Application
             {
                 Logger.Log("複数ファイル展開処理がすべて失敗しました");
             }
-        }, "複数ファイル展開処理", "Error.DuringExtraction", shouldShutdown);
+        }, App.Text("Progress.Extracting"), "Error.DuringExtraction", shouldShutdown);
     }
 
     /// <summary>
@@ -449,7 +449,7 @@ public partial class App : Application
             {
                 Logger.Log("まとめ圧縮処理が失敗しました");
             }
-        }, "まとめ圧縮処理", "Error.DuringCompression", shouldShutdown);
+        }, App.Text("Progress.Compressing"), "Error.DuringCompression", shouldShutdown);
     }
 
     /// <summary>
@@ -575,7 +575,7 @@ public partial class App : Application
             {
                 Logger.Log("ファイル展開処理が失敗しました");
             }
-        }, "ファイル展開処理", "Error.DuringExtraction", shouldShutdown);
+        }, App.Text("Progress.Extracting"), "Error.DuringExtraction", shouldShutdown);
     }
 
     /// <summary>
@@ -606,7 +606,7 @@ public partial class App : Application
             {
                 Logger.Log("圧縮処理が失敗しました");
             }
-        }, "圧縮処理", "Error.DuringCompression", shouldShutdown);
+        }, App.Text("Progress.Compressing"), "Error.DuringCompression", shouldShutdown);
     }
 
     /// <summary>
@@ -809,10 +809,11 @@ public partial class App : Application
         if (string.IsNullOrWhiteSpace(fmt))
             return fullKey;
 
-        // リテラルの \n を実際の改行に変換
-        fmt = fmt.Replace("\\n", "\n");
+        // リテラルの \n を実際の改行に変換（含まない場合はアロケーション回避）
+        if (fmt.Contains("\\n", StringComparison.Ordinal))
+            fmt = fmt.Replace("\\n", "\n");
 
-        if (args == null || args.Length == 0)
+        if (args.Length == 0)
             return fmt;
 
         return string.Format(fmt, args);
