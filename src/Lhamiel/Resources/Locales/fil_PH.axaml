@@ -83,6 +83,10 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Tingnan ang mga Update</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Copyright</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Lisensya</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Ipadala ang iyong feedback at mungkahi</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Magpadala ng Feedback (GitHub)</x:String>
+  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">Buksan ang GitHub Issues page sa browser?</x:String>
+  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">Kumpirmahin</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">I-save</x:String>

@@ -83,6 +83,10 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">檢查更新</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">版權</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">授權條款</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">歡迎向我們提交意見和建議</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">提交回饋（GitHub）</x:String>
+  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">是否在瀏覽器中開啟 GitHub Issues 頁面？</x:String>
+  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">確認</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">儲存</x:String>

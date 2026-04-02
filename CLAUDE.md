@@ -81,7 +81,7 @@ Drag-and-drop drives the app:
 | Class | Responsibility |
 |-------|---------------|
 | `ArchiveProcessor` | Orchestrator — decides extract vs compress, manages workflow |
-| `ArchiveExtractor` | Extraction logic with smart double-folder prevention |
+| `ArchiveExtractor` | Extraction logic with archive-name folder creation and double-nesting prevention |
 | `ArchiveCompressor` | Compression with temp-copy snapshot (handles locked files) |
 | `ArchiveErrorHandler` | Error classification and recovery strategy |
 | `PartialExtractionHandler` | Selective extraction (skip corrupted files) |

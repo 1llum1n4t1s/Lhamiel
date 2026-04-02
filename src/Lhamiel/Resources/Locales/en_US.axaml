@@ -80,6 +80,10 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Check for Updates</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Copyright</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">License</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Send us your feedback and suggestions</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Send Feedback (GitHub)</x:String>
+  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">Open the GitHub Issues page in your browser?</x:String>
+  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">Confirm</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">Save</x:String>

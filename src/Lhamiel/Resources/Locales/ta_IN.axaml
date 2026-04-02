@@ -83,6 +83,10 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">புதுப்பிப்புகளைச் சரிபார்</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">பதிப்புரிமை</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">உரிமம்</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">உங்கள் கருத்துகளையும் ஆலோசனைகளையும் எங்களுக்கு அனுப்புங்கள்</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">கருத்து அனுப்பு (GitHub)</x:String>
+  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">GitHub Issues பக்கத்தை உலாவியில் திறக்கவா?</x:String>
+  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">உறுதிப்படுத்தல்</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">சேமி</x:String>

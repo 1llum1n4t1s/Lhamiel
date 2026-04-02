@@ -201,14 +201,14 @@ public class ArchiveExtractorAdversarialTests
 
     /// <summary>
     /// @adversarial @category boundary @severity medium
-    /// 二重拡張子ファイルの出力ディレクトリ名（archive.tar.gz → archive.tar）
+    /// 二重拡張子ファイルの出力ディレクトリ名（archive.tar.gz → archive）
     /// </summary>
     [Fact]
-    public void GetOutputDirectory_DoubleExtension_UsesOuterStemOnly()
+    public void GetOutputDirectory_DoubleExtension_StripsAllArchiveExtensions()
     {
         var result = ArchiveExtractor.GetOutputDirectory(@"C:\dir\archive.tar.gz", @"C:\output");
-        // Path.GetFileNameWithoutExtension("archive.tar.gz") = "archive.tar"
-        Assert.Equal(Path.Combine(@"C:\output", "archive.tar"), result);
+        // 複合アーカイブ拡張子を全て除去: "archive.tar.gz" → "archive"
+        Assert.Equal(Path.Combine(@"C:\output", "archive"), result);
     }
 
     /// <summary>
@@ -298,5 +298,323 @@ public class ArchiveExtractorAdversarialTests
     public void IgnoredSystemFiles_CaseInsensitive(string fileName)
     {
         Assert.Contains(fileName, ArchiveExtractor.IgnoredSystemFiles);
+    }
+
+    // ==============================
+    // 🗡️ 境界値・極端入力 — GetArchiveBaseName
+    // ==============================
+
+    /// <summary>
+    /// @adversarial @category boundary @severity high
+    /// 単純なzip拡張子 → 拡張子のみ除去
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_SimpleZip_RemovesExtension()
+    {
+        Assert.Equal("project", ArchiveExtractor.GetArchiveBaseName(@"C:\dir\project.zip"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity high
+    /// .tar.gz 複合拡張子 → 両方除去
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_TarGz_RemovesBothExtensions()
+    {
+        Assert.Equal("data", ArchiveExtractor.GetArchiveBaseName("data.tar.gz"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity high
+    /// .tar.xz 複合拡張子 → 両方除去
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_TarXz_RemovesBothExtensions()
+    {
+        Assert.Equal("backup", ArchiveExtractor.GetArchiveBaseName("backup.tar.xz"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity high
+    /// .tar.bz2 複合拡張子 → 両方除去
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_TarBz2_RemovesBothExtensions()
+    {
+        Assert.Equal("archive", ArchiveExtractor.GetArchiveBaseName("archive.tar.bz2"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity high
+    /// .tar.lzma 複合拡張子 → 両方除去
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_TarLzma_RemovesBothExtensions()
+    {
+        Assert.Equal("files", ArchiveExtractor.GetArchiveBaseName("files.tar.lzma"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity high
+    /// foo.rar.zip のようなアーカイブ拡張子の重複 → 最外のみ除去（foo.rar を返す）
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_NestedArchiveExtension_RemovesOnlyOutermost()
+    {
+        Assert.Equal("foo.rar", ArchiveExtractor.GetArchiveBaseName("foo.rar.zip"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity high
+    /// foo.zip.zip → 最外のみ除去（foo.zip を返す）
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_DuplicateZipExtension_RemovesOnlyOutermost()
+    {
+        Assert.Equal("foo.zip", ArchiveExtractor.GetArchiveBaseName("foo.zip.zip"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// 拡張子なしのファイル → そのまま返す
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_NoExtension_ReturnsAsIs()
+    {
+        Assert.Equal("noext", ArchiveExtractor.GetArchiveBaseName("noext"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// 未知の拡張子 → そのまま返す
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_UnknownExtension_ReturnsAsIs()
+    {
+        Assert.Equal("readme.txt", ArchiveExtractor.GetArchiveBaseName("readme.txt"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// ドットだけのファイル名 → そのまま返す
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_DotOnly_ReturnsAsIs()
+    {
+        Assert.Equal(".", ArchiveExtractor.GetArchiveBaseName("."));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// 空文字列 → 空文字列を返す
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_EmptyString_ReturnsEmpty()
+    {
+        Assert.Equal("", ArchiveExtractor.GetArchiveBaseName(""));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// .tar のみ（圧縮なし） → tar を返す（.tar はアーカイブ拡張子）
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_TarOnly_RemovesTarExtension()
+    {
+        Assert.Equal("data", ArchiveExtractor.GetArchiveBaseName("data.tar"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// .gz のみ（.tar なし） → gz除去のみ、内側は非tarなのでそのまま
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_GzOnly_RemovesGzExtension()
+    {
+        Assert.Equal("data", ArchiveExtractor.GetArchiveBaseName("data.gz"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// 日本語ファイル名 + .tar.gz → 日本語部分を保持
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_JapaneseWithTarGz_PreservesJapanese()
+    {
+        Assert.Equal("日本語データ", ArchiveExtractor.GetArchiveBaseName("日本語データ.tar.gz"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// ドット多数のファイル名 → 最外アーカイブ拡張子のみ除去
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_MultipleDotsInName_RemovesOnlyArchiveExtension()
+    {
+        Assert.Equal("my.project.v2.1", ArchiveExtractor.GetArchiveBaseName("my.project.v2.1.zip"));
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity low
+    /// 大文字拡張子 → 大文字小文字無視で処理
+    /// </summary>
+    [Fact]
+    public void GetArchiveBaseName_UpperCaseExtension_CaseInsensitive()
+    {
+        Assert.Equal("DATA", ArchiveExtractor.GetArchiveBaseName("DATA.TAR.GZ"));
+    }
+
+    // ==============================
+    // 🗡️ 境界値・極端入力 — ShouldSkipFolderCreation
+    // ==============================
+
+    /// <summary>
+    /// @adversarial @category boundary @severity high
+    /// ルートフォルダがアーカイブ名と一致し、ルートファイルなし → スキップ
+    /// </summary>
+    [Fact]
+    public void GetArchiveStructureInfo_RootMatchesArchiveName_ShouldSkip()
+    {
+        using var tempDir = new TempDirectory();
+        var zipPath = CreateSimpleTestZip(tempDir.Path, "TestProject", rootFolderName: "TestProject");
+        var info = ArchiveExtractor.GetArchiveStructureInfo(zipPath);
+        Assert.True(info.ShouldSkipFolderCreation);
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity high
+    /// ルートフォルダがアーカイブ名と不一致 → スキップしない
+    /// </summary>
+    [Fact]
+    public void GetArchiveStructureInfo_RootDiffersFromArchiveName_ShouldNotSkip()
+    {
+        using var tempDir = new TempDirectory();
+        var zipPath = CreateSimpleTestZip(tempDir.Path, "Archive", rootFolderName: "DifferentName");
+        var info = ArchiveExtractor.GetArchiveStructureInfo(zipPath);
+        Assert.False(info.ShouldSkipFolderCreation);
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity high
+    /// ルートフォルダ一致だがルートファイルも存在 → スキップしない（ファイル衝突防止）
+    /// </summary>
+    [Fact]
+    public void GetArchiveStructureInfo_RootMatchesButHasRootFiles_ShouldNotSkip()
+    {
+        using var tempDir = new TempDirectory();
+        var zipPath = Path.Combine(tempDir.Path, "Project.zip");
+        using (var zip = new System.IO.Compression.ZipArchive(File.Create(zipPath), System.IO.Compression.ZipArchiveMode.Create))
+        {
+            // ルートフォルダ + ルートファイル
+            var entry1 = zip.CreateEntry("Project/src/main.cs");
+            using (var w = new StreamWriter(entry1.Open())) w.Write("code");
+            var entry2 = zip.CreateEntry("LICENSE");
+            using (var w = new StreamWriter(entry2.Open())) w.Write("MIT");
+        }
+        var info = ArchiveExtractor.GetArchiveStructureInfo(zipPath);
+        Assert.False(info.ShouldSkipFolderCreation);
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// 複数ルートフォルダ → スキップしない
+    /// </summary>
+    [Fact]
+    public void GetArchiveStructureInfo_MultipleRootFolders_ShouldNotSkip()
+    {
+        using var tempDir = new TempDirectory();
+        var zipPath = Path.Combine(tempDir.Path, "bundle.zip");
+        using (var zip = new System.IO.Compression.ZipArchive(File.Create(zipPath), System.IO.Compression.ZipArchiveMode.Create))
+        {
+            var e1 = zip.CreateEntry("src/main.cs");
+            using (var w = new StreamWriter(e1.Open())) w.Write("code");
+            var e2 = zip.CreateEntry("docs/readme.md");
+            using (var w = new StreamWriter(e2.Open())) w.Write("doc");
+        }
+        var info = ArchiveExtractor.GetArchiveStructureInfo(zipPath);
+        Assert.False(info.ShouldSkipFolderCreation);
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// ルートフォルダ名の大文字小文字がアーカイブ名と異なる → スキップ（case-insensitive）
+    /// </summary>
+    [Fact]
+    public void GetArchiveStructureInfo_CaseInsensitiveMatch_ShouldSkip()
+    {
+        using var tempDir = new TempDirectory();
+        var zipPath = Path.Combine(tempDir.Path, "myproject.zip");
+        using (var zip = new System.IO.Compression.ZipArchive(File.Create(zipPath), System.IO.Compression.ZipArchiveMode.Create))
+        {
+            var e = zip.CreateEntry("MyProject/file.txt");
+            using (var w = new StreamWriter(e.Open())) w.Write("data");
+        }
+        var info = ArchiveExtractor.GetArchiveStructureInfo(zipPath);
+        Assert.True(info.ShouldSkipFolderCreation);
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// 存在しないファイル → ShouldSkipFolderCreation=false
+    /// </summary>
+    [Fact]
+    public void GetArchiveStructureInfo_NonExistentFile_ReturnsFalse()
+    {
+        var info = ArchiveExtractor.GetArchiveStructureInfo(@"C:\nonexistent\fake.zip");
+        Assert.False(info.ShouldSkipFolderCreation);
+        Assert.Null(info.SingleRootItemName);
+    }
+
+    /// <summary>
+    /// @adversarial @category boundary @severity medium
+    /// .tar.gz の場合、アーカイブ名は "data"（tar.gzを両方除去）で比較されること
+    /// </summary>
+    [Fact]
+    public void GetArchiveStructureInfo_TarGz_UsesBaseNameForComparison()
+    {
+        using var tempDir = new TempDirectory();
+        // data.tar.gz のアーカイブ名は "data"
+        // ルートフォルダが "data" なら ShouldSkipFolderCreation=true
+        var zipPath = Path.Combine(tempDir.Path, "data.tar.gz");
+        // 注: ZipArchive で .tar.gz を作れないので、.zip で代替テスト
+        // 実際の .tar.gz テストは統合テストで行う
+        var actualZipPath = Path.Combine(tempDir.Path, "data.zip");
+        using (var zip = new System.IO.Compression.ZipArchive(File.Create(actualZipPath), System.IO.Compression.ZipArchiveMode.Create))
+        {
+            var e = zip.CreateEntry("data/file.txt");
+            using (var w = new StreamWriter(e.Open())) w.Write("content");
+        }
+        var info = ArchiveExtractor.GetArchiveStructureInfo(actualZipPath);
+        Assert.True(info.ShouldSkipFolderCreation);
+    }
+
+    // ==============================
+    // ヘルパー
+    // ==============================
+
+    /// <summary>
+    /// テスト用の簡易ZIPファイルを作成する
+    /// </summary>
+    private static string CreateSimpleTestZip(string dir, string archiveName, string rootFolderName)
+    {
+        var zipPath = Path.Combine(dir, $"{archiveName}.zip");
+        using var zip = new System.IO.Compression.ZipArchive(File.Create(zipPath), System.IO.Compression.ZipArchiveMode.Create);
+        var entry = zip.CreateEntry($"{rootFolderName}/file.txt");
+        using var writer = new StreamWriter(entry.Open());
+        writer.Write("test content");
+        return zipPath;
+    }
+
+    /// <summary>
+    /// テスト用の一時ディレクトリ（Dispose で自動削除）
+    /// </summary>
+    private sealed class TempDirectory : IDisposable
+    {
+        public string Path { get; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"Lhamiel_test_{Guid.NewGuid():N}");
+        public TempDirectory() => Directory.CreateDirectory(Path);
+        public void Dispose()
+        {
+            try { if (Directory.Exists(Path)) Directory.Delete(Path, true); } catch { /* テストクリーンアップ */ }
+        }
     }
 }

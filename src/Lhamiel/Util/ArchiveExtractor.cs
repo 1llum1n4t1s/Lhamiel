@@ -29,6 +29,41 @@ public static class ArchiveExtractor
     internal static readonly HashSet<string> IgnoredSystemFiles = new(StringComparer.OrdinalIgnoreCase) { "desktop.ini", "Thumbs.db", ".DS_Store" };
 
     /// <summary>
+    /// 圧縮のみの拡張子（単体ではアーカイブでない）。.tar と組み合わせた複合拡張子のみ2段除去する。
+    /// </summary>
+    private static readonly HashSet<string> CompressionOnlyExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".gz", ".bz2", ".xz", ".lzma", ".z"
+    };
+
+    /// <summary>
+    /// アーカイブファイル名から拡張子を除去したベース名を返す。
+    /// 複合コンテナ（.tar.gz, .tar.xz 等）は両方除去し、それ以外は最外の拡張子のみ除去する。
+    /// 例: "foo.tar.gz" → "foo", "project.zip" → "project", "foo.rar.zip" → "foo.rar"
+    /// </summary>
+    internal static string GetArchiveBaseName(string filePath)
+    {
+        var name = Path.GetFileName(filePath);
+        var ext = Path.GetExtension(name);
+        if (string.IsNullOrEmpty(ext) || !SupportedExtensions.Contains(ext)) return name;
+
+        // 最外の拡張子を除去
+        name = Path.GetFileNameWithoutExtension(name);
+
+        // 圧縮のみの拡張子だった場合、内側が .tar なら追加除去（.tar.gz → foo）
+        if (CompressionOnlyExtensions.Contains(ext))
+        {
+            var innerExt = Path.GetExtension(name);
+            if (string.Equals(innerExt, ".tar", StringComparison.OrdinalIgnoreCase))
+            {
+                name = Path.GetFileNameWithoutExtension(name);
+            }
+        }
+
+        return name;
+    }
+
+    /// <summary>
     /// 指定されたファイルがサポートされているアーカイブ形式かどうかを確認する
     /// </summary>
     /// <param name="filePath">確認するファイルのパス</param>
@@ -58,8 +93,7 @@ public static class ArchiveExtractor
     public static string GetOutputDirectory(string archivePath, string defaultOutputDir, bool outputToSameDirectory = false)
     {
         var baseDir = GetBaseOutputDirectory(archivePath, defaultOutputDir, outputToSameDirectory);
-        var fileName = Path.GetFileNameWithoutExtension(archivePath);
-        return Path.Combine(baseDir, fileName);
+        return Path.Combine(baseDir, GetArchiveBaseName(archivePath));
     }
 
     /// <summary>
@@ -88,17 +122,13 @@ public static class ArchiveExtractor
     public class ArchiveStructureInfo
     {
         /// <summary>
-        /// プロパティ: 二重フォルダ構造が検出された場合の内側のフォルダ名
+        /// フォルダ作成をスキップすべきか。
+        /// ルートフォルダがアーカイブ名と一致する場合、フォルダを作成すると二重ネストになるためスキップする。
         /// </summary>
-        public string? DuplicateFolderName { get; init; }
+        public bool ShouldSkipFolderCreation { get; init; }
 
         /// <summary>
-        /// プロパティ: ルートレベルに単一のアイテムのみが存在するかどうか
-        /// </summary>
-        public bool HasSingleRootItem { get; init; }
-
-        /// <summary>
-        /// プロパティ: ルートレベルが単一アイテムの場合、その名前
+        /// ルートレベルが単一アイテムの場合、その名前（上書き確認パス精密化用）
         /// </summary>
         public string? SingleRootItemName { get; init; }
     }
@@ -112,57 +142,41 @@ public static class ArchiveExtractor
     {
         if (!File.Exists(archivePath))
         {
-            return new ArchiveStructureInfo { HasSingleRootItem = false };
+            return new ArchiveStructureInfo();
         }
 
         try
         {
             using var reader = new ArchiveReader(archivePath);
-            var structure = ParseArchiveFirstTwoLevels(reader);
+            var structure = ParseArchiveRootLevel(reader);
 
             var rootFolders = structure.RootFolders;
             var rootFiles = structure.RootFiles;
 
             var allRootItems = new HashSet<string>(rootFolders, StringComparer.OrdinalIgnoreCase);
             allRootItems.UnionWith(rootFiles);
-            var rootItemsCount = allRootItems.Count;
-            var hasSingleRootItem = rootItemsCount == 1;
+            var hasSingleRootItem = allRootItems.Count == 1;
             var singleRootItemName = hasSingleRootItem ? allRootItems.FirstOrDefault() : null;
 
-            string? duplicateFolderName = null;
+            var archiveName = GetArchiveBaseName(archivePath);
 
-            // 二重フォルダ構造の判定
-            if (rootFolders.Count == 1 && rootFiles.Count == 0)
-            {
-                var rootFolderName = rootFolders.First();
+            // ルートフォルダのみ（ファイルなし）でアーカイブ名と一致 → フォルダ作成すると二重ネストになるのでスキップ
+            var shouldSkipFolderCreation = rootFolders.Count == 1 && rootFiles.Count == 0 &&
+                string.Equals(rootFolders.First(), archiveName, StringComparison.OrdinalIgnoreCase);
 
-                // 第2階層にフォルダが1つのみで、ファイルがないことを確認
-                if (structure.SecondLevelFolders.TryGetValue(rootFolderName, out var slFolders) &&
-                    slFolders.Count == 1 &&
-                    !(structure.SecondLevelFiles.TryGetValue(rootFolderName, out var slFiles) && slFiles.Count > 0))
-                {
-                    var secondLevelFolderName = slFolders.First();
-
-                    // ルートフォルダ名と第2階層フォルダ名が同一か確認
-                    if (string.Equals(rootFolderName, secondLevelFolderName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        duplicateFolderName = secondLevelFolderName;
-                        Logger.Log($"二重フォルダ構造を検出: {rootFolderName}/{secondLevelFolderName}");
-                    }
-                }
-            }
+            if (shouldSkipFolderCreation)
+                Logger.Log($"アーカイブ名と一致するルートフォルダを検出（フォルダ作成スキップ）: {rootFolders.First()}");
 
             return new ArchiveStructureInfo
             {
-                DuplicateFolderName = duplicateFolderName,
-                HasSingleRootItem = hasSingleRootItem,
+                ShouldSkipFolderCreation = shouldSkipFolderCreation,
                 SingleRootItemName = singleRootItemName
             };
         }
         catch (Exception ex)
         {
             Logger.Log($"アーカイブ構造解析エラー: {ex.Message}");
-            return new ArchiveStructureInfo { HasSingleRootItem = false };
+            return new ArchiveStructureInfo();
         }
     }
 
@@ -181,22 +195,8 @@ public static class ArchiveExtractor
         /// </summary>
         public HashSet<string> RootFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-        /// <summary>
-        /// プロパティ: 第2階層のフォルダ名の辞書（キー: ルート名）
-        /// </summary>
-        public Dictionary<string, HashSet<string>> SecondLevelFolders { get; } = new(StringComparer.OrdinalIgnoreCase);
-
-        /// <summary>
-        /// プロパティ: 第2階層のファイル名の辞書（キー: ルート名）
-        /// </summary>
-        public Dictionary<string, HashSet<string>> SecondLevelFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// アーカイブの先頭2階層を解析し、フォルダとファイルの情報を格納した構造を返す
-    /// </summary>
-    /// <param name="reader">アーカイブリーダー</param>
-    /// <returns>解析結果を格納したArchiveStructure</returns>
     private const string TempDirPrefix = "Lhamiel_";
 
     /// <summary>
@@ -242,24 +242,15 @@ public static class ArchiveExtractor
         return false;
     }
 
-    private static ArchiveStructure ParseArchiveFirstTwoLevels(ArchiveReader reader)
+    /// <summary>
+    /// アーカイブのルートレベルのフォルダ・ファイルを解析する
+    /// </summary>
+    private static ArchiveStructure ParseArchiveRootLevel(ArchiveReader reader)
     {
         var structure = new ArchiveStructure();
 
-        // ローカル関数: 辞書のキーに対応する HashSet に値を追加（なければ作成）
-        void AddToHierarchy(Dictionary<string, HashSet<string>> dict, string key, string value)
-        {
-            if (!dict.TryGetValue(key, out var set))
-            {
-                set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                dict[key] = set;
-            }
-            set.Add(value);
-        }
-
         foreach (var item in reader.Items)
         {
-            // パスを正規化（バックスラッシュをスラッシュに）
             var path = item.FullName.Replace('\\', '/');
             var parts = path.Split(['/'], StringSplitOptions.RemoveEmptyEntries);
 
@@ -267,38 +258,12 @@ public static class ArchiveExtractor
 
             var rootName = parts[0];
             if (IgnoredSystemDirectories.Contains(rootName)) continue;
-            if (!item.IsDirectory && parts.Length > 0 && IgnoredSystemFiles.Contains(parts[^1])) continue;
+            if (!item.IsDirectory && IgnoredSystemFiles.Contains(parts[^1])) continue;
 
-            if (parts.Length == 1)
-            {
-                // ルートレベルのアイテム
-                if (item.IsDirectory)
-                {
-                    structure.RootFolders.Add(rootName);
-                }
-                else
-                {
-                    structure.RootFiles.Add(rootName);
-                }
-            }
+            if (parts.Length == 1 && !item.IsDirectory)
+                structure.RootFiles.Add(rootName);
             else
-            {
-                // 子要素を持つため、ルートはフォルダ
                 structure.RootFolders.Add(rootName);
-
-                var secondLevelName = parts[1];
-
-                // parts.Length == 2 かつ item がファイルの場合のみ SecondLevelFiles に追加
-                if (parts.Length == 2 && !item.IsDirectory)
-                {
-                    AddToHierarchy(structure.SecondLevelFiles, rootName, secondLevelName);
-                }
-                else
-                {
-                    // item がディレクトリであるか、より深い階層を持つ場合は、第2階層はフォルダとして扱う
-                    AddToHierarchy(structure.SecondLevelFolders, rootName, secondLevelName);
-                }
-            }
         }
 
         return structure;
@@ -309,9 +274,8 @@ public static class ArchiveExtractor
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
     /// <param name="outputPath">展開先ディレクトリのパス</param>
-    /// <param name="duplicateFolderName">二重フォルダ構造の内側フォルダ名（スマート解凍用）</param>
     /// <returns>衝突するファイルの競合グループリスト。衝突がなければ空リスト</returns>
-    public static List<Models.FileConflictGroup> DetectExtractionConflicts(string archivePath, string outputPath, string? duplicateFolderName = null)
+    public static List<Models.FileConflictGroup> DetectExtractionConflicts(string archivePath, string outputPath)
     {
         var conflicts = new List<Models.FileConflictGroup>();
 
@@ -324,14 +288,6 @@ public static class ArchiveExtractor
                 if (item.IsDirectory) continue;
 
                 var relativePath = item.FullName.Replace('\\', '/');
-
-                // 二重フォルダ構造のスキップ
-                if (!string.IsNullOrEmpty(duplicateFolderName))
-                {
-                    var prefix = duplicateFolderName + "/";
-                    if (relativePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                        relativePath = relativePath[prefix.Length..];
-                }
 
                 // システムファイル・ディレクトリの除外
                 var fileName = Path.GetFileName(relativePath);
@@ -385,12 +341,11 @@ public static class ArchiveExtractor
     /// <param name="progress">進捗コールバック</param>
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    /// <param name="duplicateFolderName">二重フォルダ構造が検出された場合の内側のフォルダ名（スマート解凍用）</param>
-    /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定。親フォルダ直下展開時は実際に上書きされるパスのみ渡す）</param>
+    /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, string? duplicateFolderName = null, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null)
     {
-        Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}, duplicateFolderName={duplicateFolderName}");
+        Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}");
         cancellationToken.ThrowIfCancellationRequested();
 
         // 展開前のディスク容量チェック
@@ -409,7 +364,7 @@ public static class ArchiveExtractor
         if (hasExistingFiles && parentWindow != null)
         {
             // 一時フォルダ方式: 一時展開 → 衝突検出 → ダイアログ → 移動
-            await ExtractViaTempFolderAsync(archivePath, outputPath, progress, parentWindow, cancellationToken, duplicateFolderName, progressWindow);
+            await ExtractViaTempFolderAsync(archivePath, outputPath, progress, parentWindow, cancellationToken, progressWindow);
         }
         else
         {
@@ -419,7 +374,7 @@ public static class ArchiveExtractor
                 var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
                 try
                 {
-                    await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, false, cancellationToken, duplicateFolderName, overwriteCheckPaths, null);
+                    await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, false, cancellationToken, overwriteCheckPaths, null);
                 }
                 finally
                 {
@@ -433,7 +388,7 @@ public static class ArchiveExtractor
     /// 一時フォルダ方式で展開する。
     /// ①一時フォルダに全展開 → ②衝突検出 → ③ダイアログ表示 → ④選択結果に基づいて移動
     /// </summary>
-    private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, string? duplicateFolderName, View.ProgressWindow? progressWindow)
+    private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, View.ProgressWindow? progressWindow)
     {
         // 一時フォルダを出力先ディレクトリ直下に作成（同一ドライブでFile.Moveが高速、かつ書き込み権限が確実）
         // outputPathがファイルの場合は親ディレクトリを使用
@@ -451,7 +406,7 @@ public static class ArchiveExtractor
                 var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
                 try
                 {
-                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, duplicateFolderName, null, null);
+                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, null, null);
                 }
                 finally
                 {
@@ -692,11 +647,10 @@ public static class ArchiveExtractor
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    /// <param name="duplicateFolderName">二重フォルダ構造が検出された場合の内側のフォルダ名（スマート解凍用）</param>
     /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
-    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, string? duplicateFolderName = null, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null)
+    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null)
     {
-        Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}, duplicateFolderName={duplicateFolderName}");
+        Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}");
 
         if (!File.Exists(archivePath))
         {
@@ -712,7 +666,7 @@ public static class ArchiveExtractor
         {
             if (!overwriteConfirmed)
             {
-                var conflicts = DetectExtractionConflicts(archivePath, outputPath, duplicateFolderName);
+                var conflicts = DetectExtractionConflicts(archivePath, outputPath);
                 if (conflicts.Count > 0)
                 {
                     Logger.Log($"ExtractArchive内でファイル衝突を検出: {conflicts.Count}件");
@@ -804,55 +758,6 @@ public static class ArchiveExtractor
                         catch (Exception ex)
                         {
                             Logger.Log($"スキップファイルの削除に失敗: {relativePath}, {ex.Message}");
-                        }
-                    }
-                }
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // スマート解凍：二重フォルダの場合はリフトアップを行う
-            if (duplicateFolderName != null)
-            {
-                var rootItemName = duplicateFolderName;
-
-                var rootPath = Path.Combine(tempOutputPath, rootItemName);
-                var innerFolderPath = Path.Combine(rootPath, rootItemName);
-
-                if (Directory.Exists(innerFolderPath))
-                {
-                    Logger.Log($"スマート解凍：二重フォルダ '{rootItemName}' をリフトアップします");
-
-                    // 一時ディレクトリを作成して、内側フォルダの中身を移動
-                    var tempLiftUpPath = CreateTempDirectory("LiftUp");
-                    try
-                    {
-                        // 内側フォルダの中身を一時ディレクトリに移動
-                        MoveDirectoryContents(innerFolderPath, tempLiftUpPath);
-
-                        // 空になった内側フォルダを削除
-                        RemoveReadOnlyAttributes(innerFolderPath);
-                        Directory.Delete(innerFolderPath, true);
-
-                        // 一時ディレクトリの中身を外側のフォルダ(rootPath)に移動
-                        MoveDirectoryContents(tempLiftUpPath, rootPath);
-
-                        Logger.Log("リフトアップが完了しました");
-                    }
-                    finally
-                    {
-                        // 一時ディレクトリをクリーンアップ
-                        try
-                        {
-                            if (Directory.Exists(tempLiftUpPath))
-                            {
-                                RemoveReadOnlyAttributes(tempLiftUpPath);
-                                Directory.Delete(tempLiftUpPath, true);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log($"リフトアップ処理の一時ディレクトリ削除に失敗しました: {tempLiftUpPath}, {ex.Message}", LogLevel.Warning);
                         }
                     }
                 }

@@ -459,6 +459,27 @@
                                 </Grid>
                             </Border>
 
+                            <!--  ご意見・ご要望  -->
+                            <Border
+                                Margin="0,0,0,12"
+                                Padding="16"
+                                Background="{DynamicResource Brush.Container}"
+                                BorderBrush="{DynamicResource Brush.Border}"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                                <StackPanel>
+                                    <TextBlock
+                                        Margin="0,0,0,8"
+                                        FontSize="13"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="{DynamicResource Text.Version.Feedback.Description}" />
+                                    <Button
+                                        Command="{Binding OpenFeedbackLinkCommand}"
+                                        Content="{DynamicResource Text.Version.Feedback.Button}"
+                                        FontSize="12" />
+                                </StackPanel>
+                            </Border>
+
                             <!--  コピーライト  -->
                             <Border
                                 Margin="0,0,0,12"

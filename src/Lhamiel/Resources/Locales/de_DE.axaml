@@ -83,6 +83,10 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Nach Updates suchen</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Urheberrecht</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Lizenz</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Senden Sie uns Ihr Feedback und Ihre Vorschlaege</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Feedback senden (GitHub)</x:String>
+  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">GitHub Issues-Seite im Browser oeffnen?</x:String>
+  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">Bestaetigung</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">Speichern</x:String>

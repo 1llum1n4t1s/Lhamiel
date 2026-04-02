@@ -96,42 +96,32 @@ public static class ArchiveProcessor
 
                 // --- ここから重いI/O処理 ---
 
-                // 1. スマート解凍の判定 (バックグラウンドで実行)
+                // 1. 出力先の決定 (バックグラウンドで実行)
                 var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(filePath, outputDir, outputToSameDirectory);
 
                 // アーカイブの構造を一度だけ解析
                 structureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
-                var rootItemName = structureInfo.DuplicateFolderName;
-                var hasSingleRootItem = structureInfo.HasSingleRootItem;
-
-                // 出力先を決定
                 var createFolder = SettingsManager.Instance.Current.CreateArchiveNameFolder;
 
+                // 出力先を決定
                 if (!createFolder)
                 {
-                    // フォルダ作成OFF: 常にbaseDirectoryに直接展開（リフトアップもしない）
+                    // フォルダ作成OFF: 常にbaseDirectoryに直接展開
                     outputPath = baseDirectory;
-                    rootItemName = null;
                     Logger.Log($"フォルダ作成OFF: baseDirectoryに直接展開 -> {outputPath}");
                 }
-                else if (rootItemName != null)
+                else if (structureInfo.ShouldSkipFolderCreation)
                 {
-                    // 二重フォルダが検出された場合：baseDirectoryに直接展開してリフトアップ
+                    // フォルダ作成ON だが、ルートフォルダがアーカイブ名と一致 → 二重ネスト防止のためフォルダ作成スキップ
                     outputPath = baseDirectory;
-                    Logger.Log($"スマート解凍適用: 二重フォルダ構造を検出 '{rootItemName}' -> {outputPath}");
-                }
-                else if (hasSingleRootItem)
-                {
-                    // ルート要素が1つだけ：baseDirectoryに直接展開
-                    outputPath = baseDirectory;
-                    Logger.Log($"単一ルート展開: 内容をそのまま展開 -> {outputPath}");
+                    Logger.Log($"フォルダ作成スキップ（二重ネスト防止）: {outputPath}");
                 }
                 else
                 {
-                    // ルート要素が複数：アーカイブ名フォルダを作成して展開
-                    var fileName = Path.GetFileNameWithoutExtension(filePath);
-                    outputPath = Path.Combine(baseDirectory, fileName);
-                    Logger.Log($"複数ルート展開: アーカイブ名フォルダを作成 -> {outputPath}");
+                    // フォルダ作成ON: アーカイブ名フォルダを作成
+                    var archiveName = ArchiveExtractor.GetArchiveBaseName(filePath);
+                    outputPath = Path.Combine(baseDirectory, archiveName);
+                    Logger.Log($"フォルダ作成ON: {outputPath}");
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
@@ -167,12 +157,13 @@ public static class ArchiveProcessor
                 }
                 else
                 {
-                    // 変数: 親フォルダ直下展開時は実際に上書きされるパスのみを上書き確認対象にする（親フォルダの存在だけでダイアログを出さない）
+                    // 上書き確認パスの精密化:
+                    // フォルダ作成時: outputPath（baseDir/archiveName）の存在をチェック → overwriteCheckPaths=null
+                    // baseDir直接展開時: 展開されるトップレベルアイテムのパスのみをチェック
                     IReadOnlyList<string>? overwriteCheckPaths = null;
-                    var topLevelName = rootItemName ?? structureInfo.SingleRootItemName;
-                    if (!string.IsNullOrEmpty(topLevelName))
+                    if (outputPath == baseDirectory && !string.IsNullOrEmpty(structureInfo.SingleRootItemName))
                     {
-                        overwriteCheckPaths = [Path.Combine(outputPath, topLevelName)];
+                        overwriteCheckPaths = [Path.Combine(outputPath, structureInfo.SingleRootItemName)];
                     }
 
                     // 一時フォルダ方式（上書き確認あり）or 直接展開
@@ -180,7 +171,6 @@ public static class ArchiveProcessor
                         progress,
                         progressWindow,
                         cancellationToken,
-                        rootItemName,
                         overwriteCheckPaths,
                         progressWindow);
 

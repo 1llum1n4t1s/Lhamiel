@@ -83,6 +83,10 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">नवीकरणं पृच्छतु</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">प्रतिलिप्यधिकारः</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">अनुज्ञापत्रम्</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">कृपया अस्मभ्यं प्रतिक्रियां सूचनाश्च प्रेषयन्तु</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">प्रतिक्रियां प्रेषयतु (GitHub)</x:String>
+  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">GitHub Issues पृष्ठं ब्राउज़रे उद्घाटयतु?</x:String>
+  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">पुष्टिः</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">रक्षतु</x:String>

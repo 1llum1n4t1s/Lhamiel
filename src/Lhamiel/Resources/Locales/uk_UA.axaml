@@ -83,6 +83,10 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Перевірити оновлення</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Авторське право</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Ліцензія</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Надішліть нам свої відгуки та пропозиції</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Надіслати відгук (GitHub)</x:String>
+  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">Відкрити сторінку GitHub Issues у браузері?</x:String>
+  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">Підтвердження</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">Зберегти</x:String>

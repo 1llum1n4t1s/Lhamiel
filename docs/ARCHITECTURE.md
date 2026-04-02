@@ -93,9 +93,8 @@ D&D → MainWindowViewModel.ProcessDroppedPathsAsync
     → GetArchiveStructureInfo（構造解析）
     → 出力先決定:
         CreateArchiveNameFolder=ON:
-          二重フォルダ → baseDir（リフトアップ）
-          単一ルート → baseDir
-          複数ルート → baseDir/アーカイブ名/
+          ルートフォルダがアーカイブ名と一致 → フォルダ作成スキップ（baseDir直接展開）
+          それ以外 → baseDir/アーカイブ名/ を作成して展開
         CreateArchiveNameFolder=OFF:
           常に baseDir
     → DiskSpaceChecker.EnsureDiskSpaceAsync（容量チェック）

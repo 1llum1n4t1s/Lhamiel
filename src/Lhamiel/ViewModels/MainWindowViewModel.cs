@@ -720,6 +720,28 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private static void OpenExtractedFolders(IEnumerable<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)> extractionResults)
     {
         foreach (var (_, outputPath, structureInfo) in extractionResults)
-            FolderOpener.OpenExtractionResult(outputPath, structureInfo);
+            FolderOpener.OpenExtractionResult(outputPath);
+    }
+
+    /// <summary>
+    /// フィードバック用のGitHub Issuesページをブラウザで開くコマンド
+    /// </summary>
+    [RelayCommand]
+    private async Task OpenFeedbackLinkAsync()
+    {
+        const string url = "https://github.com/1llum1n4t1s/Lhamiel/issues";
+        var confirmed = await MessageService.ShowYesNoQuestionAsync(
+            App.Text("Version.Feedback.Confirm"),
+            App.Text("Version.Feedback.ConfirmTitle"));
+        if (!confirmed) return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true })?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("フィードバックリンクを開けませんでした", ex);
+        }
     }
 }

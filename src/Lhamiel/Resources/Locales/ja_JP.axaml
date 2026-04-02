@@ -83,6 +83,10 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">アップデート確認</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">コピーライト</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">ライセンス</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">ご意見・ご要望はこちらからお寄せください</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">フィードバックを送る（GitHub）</x:String>
+  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">GitHub Issues ページをブラウザで開きますか？</x:String>
+  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">確認</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">保存</x:String>

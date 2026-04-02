@@ -10,51 +10,11 @@ public class FolderOpenerTests
     // === OpenExtractionResult ===
 
     [Fact]
-    public void OpenExtractionResult_WithNullStructureInfo_DoesNotThrow()
-    {
-        // structureInfo が null でも例外にならないこと
-        // 存在しないパスなので実際にエクスプローラーは開かない
-        var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        var exception = Record.Exception(() =>
-            FolderOpener.OpenExtractionResult(nonExistentPath, null));
-        Assert.Null(exception);
-    }
-
-    [Fact]
     public void OpenExtractionResult_WithNonExistentPath_DoesNotThrow()
     {
-        var structureInfo = new ArchiveExtractor.ArchiveStructureInfo
-        {
-            HasSingleRootItem = false
-        };
+        var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         var exception = Record.Exception(() =>
-            FolderOpener.OpenExtractionResult(@"C:\nonexistent\path", structureInfo));
-        Assert.Null(exception);
-    }
-
-    [Fact]
-    public void OpenExtractionResult_WithSingleRootButEmptyName_DoesNotThrow()
-    {
-        var structureInfo = new ArchiveExtractor.ArchiveStructureInfo
-        {
-            HasSingleRootItem = true,
-            SingleRootItemName = ""
-        };
-        var exception = Record.Exception(() =>
-            FolderOpener.OpenExtractionResult(@"C:\nonexistent", structureInfo));
-        Assert.Null(exception);
-    }
-
-    [Fact]
-    public void OpenExtractionResult_WithSingleRootAndNullName_DoesNotThrow()
-    {
-        var structureInfo = new ArchiveExtractor.ArchiveStructureInfo
-        {
-            HasSingleRootItem = true,
-            SingleRootItemName = null
-        };
-        var exception = Record.Exception(() =>
-            FolderOpener.OpenExtractionResult(@"C:\nonexistent", structureInfo));
+            FolderOpener.OpenExtractionResult(nonExistentPath));
         Assert.Null(exception);
     }
 

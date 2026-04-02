@@ -618,7 +618,7 @@ public class ArchiveExtractorTests
             var outputPath = baseOutputDir;
             IReadOnlyList<string> overwriteCheckPaths = [Path.Combine(outputPath, "ProjectD")];
 
-            await ArchiveExtractor.ExtractArchive(zipPath, outputPath, null, null, false, TestContext.Current.CancellationToken, null, overwriteCheckPaths);
+            await ArchiveExtractor.ExtractArchive(zipPath, outputPath, null, null, false, TestContext.Current.CancellationToken, overwriteCheckPaths);
 
             var projectDPath = Path.Combine(outputPath, "ProjectD");
             var macOsxPath = Path.Combine(outputPath, "__MACOSX");
