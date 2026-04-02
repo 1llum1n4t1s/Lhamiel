@@ -74,6 +74,12 @@ Drag-and-drop drives the app:
 3. `ArchiveExtractor` / `ArchiveCompressor` wrap `1llum1n4t1s.Sevenzip`
 4. `ProgressWindow` shows real-time progress via `IProgress<T>`
 
+**展開時の出力先決定** (`ArchiveProcessor`):
+- `CreateArchiveNameFolder=ON` + ルートフォルダがアーカイブ名と一致 → フォルダ作成スキップ（`ShouldSkipFolderCreation`）
+- `CreateArchiveNameFolder=ON` + それ以外 → `baseDir/アーカイブ名/` フォルダを作成
+- `CreateArchiveNameFolder=OFF` → `baseDir` に直接展開
+- 複合拡張子（`.tar.gz` 等）は `GetArchiveBaseName()` で正しく処理
+
 **圧縮時の一時コピー**: `ArchiveCompressor` は圧縮前に全ファイルを `%TEMP%\Lhamiel_compress_*` にコピーしてから 7z.dll に渡す。これにより (1) プロセスがロック中のファイルも `FileShare.ReadWrite` で読み取れる (2) 圧縮中に元ファイルが書き換わってもスナップショットの一貫性が保たれる。一時ディレクトリは `finally` ブロックで確実に削除される。
 
 ### Key Util Classes
@@ -81,7 +87,7 @@ Drag-and-drop drives the app:
 | Class | Responsibility |
 |-------|---------------|
 | `ArchiveProcessor` | Orchestrator — decides extract vs compress, manages workflow |
-| `ArchiveExtractor` | Extraction logic with archive-name folder creation and double-nesting prevention |
+| `ArchiveExtractor` | Extraction with folder creation decision (`ShouldSkipFolderCreation`) and `GetArchiveBaseName` for compound extensions |
 | `ArchiveCompressor` | Compression with temp-copy snapshot (handles locked files) |
 | `ArchiveErrorHandler` | Error classification and recovery strategy |
 | `PartialExtractionHandler` | Selective extraction (skip corrupted files) |
@@ -99,7 +105,7 @@ Drag-and-drop drives the app:
 - **スキップ機能**: 「日付とサイズが同じファイルをスキップ」チェックボックスで同一ファイルをフィルタリング
 
 モデル: `FileConflictEntry` / `FileConflictGroup` / `FileConflictResult`（`Models/FileConflictInfo.cs`）
-ビューモデル: `ConflictRowViewModel` / `ConflictCellViewModel`（`FileConflictDialog.xaml.cs` 内に定義）
+ビューモデル: `ConflictRowViewModel` / `ConflictCellViewModel`（`FileConflictDialog.axaml.cs` 内に定義）
 
 ### Static Singletons
 
