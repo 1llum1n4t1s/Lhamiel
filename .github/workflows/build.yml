@@ -37,8 +37,21 @@ jobs:
           $installerPath = Join-Path $env:RUNNER_TEMP "7z-installer.exe"
           $targetDir = Join-Path "lib" "native" $rid
 
-          Write-Host "7-Zip $rid をダウンロード: $url"
-          Invoke-WebRequest -Uri $url -OutFile $installerPath -UseBasicParsing
+          # リトライ付きダウンロード（7-zip.org のタイムアウト対策）
+          $maxRetries = 3
+          for ($i = 1; $i -le $maxRetries; $i++) {
+            try {
+              Write-Host "7-Zip $rid をダウンロード (試行 $i/$maxRetries): $url"
+              Invoke-WebRequest -Uri $url -OutFile $installerPath -UseBasicParsing -TimeoutSec 60
+              Write-Host "ダウンロード成功"
+              break
+            } catch {
+              Write-Host "ダウンロード失敗: $_"
+              if ($i -eq $maxRetries) { throw "7z.dll のダウンロードに $maxRetries 回失敗しました" }
+              Write-Host "$([int](10 * $i)) 秒待機してリトライ..."
+              Start-Sleep -Seconds ([int](10 * $i))
+            }
+          }
 
           Write-Host "7z.dll を展開..."
           & "C:\Program Files\7-Zip\7z.exe" x $installerPath -o"$tempDir" -y | Out-Null
