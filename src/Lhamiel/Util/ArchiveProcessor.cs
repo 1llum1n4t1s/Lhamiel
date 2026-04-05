@@ -24,13 +24,13 @@ public static class ArchiveProcessor
     /// 完了済み件数をベースラインとし、処理中の個別進捗を加算して全体進捗を計算する。
     /// </summary>
     private static IProgress<ProgressInfo> CreateMappedProgress(
-        int totalCount, object lockObject, Func<int> getCompletedCount, ProgressWindow? progressWindow)
+        int totalCount, object lockObject, Func<int> getCompletedCount, ProgressWindow? progressWindow, ProgressThrottler? sharedThrottler = null)
     {
         if (totalCount == 1)
             return new Progress<ProgressInfo>(info => DispatchProgress(progressWindow, info));
 
-        // 並列処理時もスロットリングを適用してUIスレッド負荷を軽減
-        var throttler = new ProgressThrottler();
+        // 並列処理時は共有スロットラーで全タスク横断のUIスレッド負荷を軽減
+        var throttler = sharedThrottler ?? new ProgressThrottler();
 
         return new Progress<ProgressInfo>(info =>
         {
@@ -230,6 +230,9 @@ public static class ArchiveProcessor
 
             Logger.Log($"複数ファイル展開開始: {totalCount}個のファイル、最大並列度={maxDegreeOfParallelism}");
 
+            // 全タスク横断で共有するスロットラー（UIスレッドへの通知頻度を全体で制限）
+            var sharedThrottler = new ProgressThrottler();
+
             var tasks = filePaths.Select(async (filePath, index) =>
             {
                 try
@@ -238,7 +241,7 @@ public static class ArchiveProcessor
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var mappedProgress = CreateMappedProgress(
-                        totalCount, lockObject, () => successCount + failedFiles.Count, progressWindow);
+                        totalCount, lockObject, () => successCount + failedFiles.Count, progressWindow, sharedThrottler);
 
                     var extractResult = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false);
                     var finalOutputPath = extractResult.outputPath;
@@ -610,6 +613,9 @@ public static class ArchiveProcessor
             // 衝突解決後のカウントで進捗管理
             totalCount = resolvedSourcePaths.Length;
 
+            // 全タスク横断で共有するスロットラー（UIスレッドへの通知頻度を全体で制限）
+            var sharedThrottler = new ProgressThrottler();
+
             var tasks = resolvedSourcePaths.Select(async (sourcePath, index) =>
             {
                 try
@@ -618,7 +624,7 @@ public static class ArchiveProcessor
                     actualCancellationToken.ThrowIfCancellationRequested();
 
                     var innerProgress = CreateMappedProgress(
-                        totalCount, lockObject, () => successCount + failedPaths.Count, progressWindow);
+                        totalCount, lockObject, () => successCount + failedPaths.Count, progressWindow, sharedThrottler);
 
                     // 事前計算された出力パスを使用して圧縮処理を実行
                     var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false, overrideOutputPath: resolvedOutputPaths[index]);

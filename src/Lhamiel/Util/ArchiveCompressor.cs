@@ -9,6 +9,12 @@ namespace Lhamiel.Util;
 public class ArchiveCompressor
 {
     /// <summary>
+    /// 一時コピーディレクトリのプレフィックス。
+    /// ソーススキャンで出力先配下に残った一時ディレクトリを除外するために使用。
+    /// </summary>
+    private const string TempDirPrefix = "Lhamiel_compress_";
+
+    /// <summary>
     /// ライブラリがサポートする圧縮可能な全形式（内部バリデーション用）
     /// </summary>
     internal static readonly HashSet<string> SupportedCompressionFormats = new(StringComparer.OrdinalIgnoreCase)
@@ -624,16 +630,25 @@ public class ArchiveCompressor
         if (fileEntries.Count == 0)
             return (result, tempDir);
 
+        // ファイルサイズを事前集計（ChooseTempBase のドライブ容量チェックで使用）
+        var totalFileSize = 0L;
+        foreach (var (fullPath, _) in fileEntries)
+        {
+            try { totalFileSize += new FileInfo(fullPath).Length; }
+            catch { /* アクセス不可のファイルは無視 */ }
+        }
+
         // 一時ディレクトリを出力先と同一ドライブに作成（ドライブ跨ぎI/Oを回避）
         // ただし出力先ドライブの空き容量が不足する場合は %TEMP% にフォールバック
-        var tempBase = ChooseTempBase(outputPath, fileEntries);
+        var tempBase = ChooseTempBase(outputPath, fileEntries, totalFileSize);
         tempDir = Path.Combine(tempBase, $"Lhamiel_compress_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir);
 
         try
         {
             // 並列コピー（Parallel.ForEachAsync で同時実行数を制限、タスク数の爆発を防止）
-            var maxParallelism = Math.Min(Environment.ProcessorCount, 8);
+            // I/Oバウンドのため CPU コア数の半分（最低2、最大8）を使用
+            var maxParallelism = Math.Clamp(Environment.ProcessorCount / 2, 2, 8);
             var copyResults = new (string destPath, string relativePath)[fileEntries.Count];
 
             await Parallel.ForEachAsync(
@@ -679,7 +694,7 @@ public class ArchiveCompressor
     /// 出力先と同一ドライブに十分な空きがあればそちらを使い、
     /// なければ %TEMP% にフォールバックする。
     /// </summary>
-    private static string ChooseTempBase(string? outputPath, List<(string fullPath, string relativePath)> fileEntries)
+    private static string ChooseTempBase(string? outputPath, List<(string fullPath, string relativePath)> fileEntries, long totalFileSize)
     {
         var fallback = Path.GetTempPath();
 
@@ -692,20 +707,12 @@ public class ArchiveCompressor
 
         try
         {
-            // 全ファイルの合計サイズを概算
-            var totalSize = 0L;
-            foreach (var (fullPath, _) in fileEntries)
-            {
-                try { totalSize += new FileInfo(fullPath).Length; }
-                catch { /* アクセス不可のファイルは無視 */ }
-            }
-
             // 出力先ドライブの空き容量をチェック（一時コピー + アーカイブ出力の余裕を確保）
             var root = Path.GetPathRoot(outputDir);
             if (!string.IsNullOrEmpty(root))
             {
                 var drive = new DriveInfo(root);
-                if (drive.IsReady && drive.AvailableFreeSpace > totalSize * 2)
+                if (drive.IsReady && drive.AvailableFreeSpace > totalFileSize * 2)
                 {
                     // outputDir 配下に一時ディレクトリ名 + 最長 relativePath を足した長さが
                     // MAX_PATH (260) を超える場合は %TEMP% にフォールバック
@@ -769,7 +776,7 @@ public class ArchiveCompressor
             };
 
             return Directory.EnumerateFiles(directoryPath, "*", enumerationOptions)
-                .Where(file => !ShouldExcludeFile(file, excludedPatternSet));
+                .Where(file => !ShouldExcludeFile(file, excludedPatternSet) && !IsInsideTempDir(file));
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -781,5 +788,24 @@ public class ArchiveCompressor
             Logger.Log($"ファイル取得中にI/Oエラー: {directoryPath}, {ex.Message}");
             return [];
         }
+    }
+
+    /// <summary>
+    /// パスが Lhamiel の一時コピーディレクトリ内にあるかチェックする。
+    /// 出力先配下に残った一時ディレクトリ（cleanup失敗時の残骸や並列タスク）を
+    /// ソーススキャンから除外するために使用。
+    /// </summary>
+    private static bool IsInsideTempDir(string path)
+    {
+        ReadOnlySpan<char> separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
+        Span<Range> ranges = stackalloc Range[64];
+        var count = path.AsSpan().SplitAny(ranges, separators, StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < count; i++)
+        {
+            var segment = path.AsSpan()[ranges[i]];
+            if (segment.StartsWith(TempDirPrefix, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
     }
 }
