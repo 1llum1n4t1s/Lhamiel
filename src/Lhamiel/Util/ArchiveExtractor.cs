@@ -614,24 +614,27 @@ public static class ArchiveExtractor
                 if (Directory.Exists(destFile))
                     Directory.Delete(destFile, recursive: true);
 
-                // 既存ファイルがある場合はバックアップしてから移動（失敗時にリストア）
-                var backupFile = File.Exists(destFile) ? $"{destFile}.{Guid.NewGuid():N}.bak" : null;
+                // 上書き移動（ReadOnly属性がある場合は解除してから実行、失敗時はロールバック）
+                FileAttributes originalAttrs = 0;
+                var clearedReadOnly = false;
+                if (File.Exists(destFile))
+                {
+                    originalAttrs = File.GetAttributes(destFile);
+                    if ((originalAttrs & FileAttributes.ReadOnly) != 0)
+                    {
+                        File.SetAttributes(destFile, originalAttrs & ~FileAttributes.ReadOnly);
+                        clearedReadOnly = true;
+                    }
+                }
                 try
                 {
-                    if (backupFile != null)
-                        File.Move(destFile, backupFile, overwrite: true);
-
-                    File.Move(sourceFile, destFile);
-
-                    // 移動成功 → バックアップ削除
-                    if (backupFile != null && File.Exists(backupFile))
-                        File.Delete(backupFile);
+                    File.Move(sourceFile, destFile, overwrite: true);
                 }
                 catch
                 {
-                    // 移動失敗 → バックアップからリストア
-                    if (backupFile != null && File.Exists(backupFile) && !File.Exists(destFile))
-                        File.Move(backupFile, destFile);
+                    // 移動失敗時: ReadOnly属性を元に戻す
+                    if (clearedReadOnly && File.Exists(destFile))
+                        try { File.SetAttributes(destFile, originalAttrs); } catch { /* ベストエフォート */ }
                     throw;
                 }
             }

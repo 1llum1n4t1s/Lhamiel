@@ -14,7 +14,7 @@ public static class ArchiveProcessor
     private static void DispatchProgress(ProgressWindow? progressWindow, ProgressInfo info)
     {
         if (info.IsIndeterminate)
-            progressWindow?.SetIndeterminate(info.Status);
+            Dispatcher.UIThread.Post(() => progressWindow?.SetIndeterminate(info.Status));
         else
             Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage));
     }
@@ -29,11 +29,14 @@ public static class ArchiveProcessor
         if (totalCount == 1)
             return new Progress<ProgressInfo>(info => DispatchProgress(progressWindow, info));
 
+        // 並列処理時もスロットリングを適用してUIスレッド負荷を軽減
+        var throttler = new ProgressThrottler();
+
         return new Progress<ProgressInfo>(info =>
         {
             if (info.IsIndeterminate)
             {
-                progressWindow?.SetIndeterminate(info.Status);
+                Dispatcher.UIThread.Post(() => progressWindow?.SetIndeterminate(info.Status));
                 return;
             }
             int baseline;
@@ -42,7 +45,8 @@ public static class ArchiveProcessor
                 baseline = getCompletedCount();
             }
             var overallProgress = (int)((baseline + info.Percentage / 100.0) / totalCount * 100);
-            Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(overallProgress));
+            if (throttler.ShouldReport(overallProgress))
+                Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(overallProgress));
         });
     }
 
