@@ -80,6 +80,11 @@ Drag-and-drop drives the app:
 - `CreateArchiveNameFolder=OFF` → `baseDir` に直接展開
 - 複合拡張子（`.tar.gz` 等）は `GetArchiveBaseName()` で正しく処理
 
+**展開後にフォルダを開く** (`OpenExtractionOutputFolder` 設定ON時):
+- `CreateArchiveNameFolder=ON`（通常）→ 作成されたアーカイブ名フォルダを開く
+- `CreateArchiveNameFolder=ON`（二重ネスト防止スキップ時）→ アーカイブのルートフォルダを開く
+- `CreateArchiveNameFolder=OFF` → 展開先の親フォルダを開く
+
 **圧縮時の一時コピー**: `ArchiveCompressor` は圧縮前に全ファイルを `%TEMP%\Lhamiel_compress_*` にコピーしてから 7z.dll に渡す。これにより (1) プロセスがロック中のファイルも `FileShare.ReadWrite` で読み取れる (2) 圧縮中に元ファイルが書き換わってもスナップショットの一貫性が保たれる。一時ディレクトリは `finally` ブロックで確実に削除される。
 
 ### Key Util Classes
@@ -95,6 +100,7 @@ Drag-and-drop drives the app:
 | `NativeLibraryManager` | 7z.dll lifecycle management |
 | `UpdateChecker` | Velopack auto-update integration |
 | `FileIconHelper` | Windows Shell API (SHGetFileInfo) でファイルアイコン取得（P/Invoke） |
+| `FolderOpener` | 展開/圧縮完了後にエクスプローラーでフォルダを開く（`Process.Start("explorer.exe", ...)`) |
 
 ### File Conflict Resolution System
 
