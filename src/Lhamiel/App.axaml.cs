@@ -412,7 +412,7 @@ public partial class App : Application
                 if (settings.OpenExtractionOutputFolder)
                 {
                     foreach (var (_, outputPath, structureInfo) in extractionResults)
-                        FolderOpener.OpenExtractionResult(outputPath);
+                        FolderOpener.OpenExtractionResult(outputPath, structureInfo, settings.CreateArchiveNameFolder);
                 }
             }
             else
@@ -569,7 +569,7 @@ public partial class App : Application
             {
                 Logger.Log("ファイル展開処理が完了しました");
                 if (settings.OpenExtractionOutputFolder)
-                    FolderOpener.OpenExtractionResult(finalOutputPath);
+                    FolderOpener.OpenExtractionResult(finalOutputPath, structureInfo, settings.CreateArchiveNameFolder);
             }
             else
             {

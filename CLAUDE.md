@@ -84,6 +84,7 @@ Drag-and-drop drives the app:
 - `CreateArchiveNameFolder=ON`（通常）→ 作成されたアーカイブ名フォルダを開く
 - `CreateArchiveNameFolder=ON`（二重ネスト防止スキップ時）→ アーカイブのルートフォルダを開く
 - `CreateArchiveNameFolder=OFF` → 展開先の親フォルダを開く
+- フォルダ決定ロジックは `FolderOpener.GetExtractionFolderToOpen` に集約。呼び出し側は展開時の `createArchiveNameFolder` 設定値を渡す（展開中の設定変更による不整合を防止）
 
 **圧縮時の一時コピー**: `ArchiveCompressor` は圧縮前に全ファイルを `%TEMP%\Lhamiel_compress_*` にコピーしてから 7z.dll に渡す。これにより (1) プロセスがロック中のファイルも `FileShare.ReadWrite` で読み取れる (2) 圧縮中に元ファイルが書き換わってもスナップショットの一貫性が保たれる。一時ディレクトリは `finally` ブロックで確実に削除される。
 
@@ -100,7 +101,7 @@ Drag-and-drop drives the app:
 | `NativeLibraryManager` | 7z.dll lifecycle management |
 | `UpdateChecker` | Velopack auto-update integration |
 | `FileIconHelper` | Windows Shell API (SHGetFileInfo) でファイルアイコン取得（P/Invoke） |
-| `FolderOpener` | 展開/圧縮完了後にエクスプローラーでフォルダを開く（`Process.Start("explorer.exe", ...)`) |
+| `FolderOpener` | 展開/圧縮完了後にエクスプローラーでフォルダを開く。`GetExtractionFolderToOpen` で開くべきフォルダを決定（二重ネスト防止スキップ時のパス補正含む） |
 
 ### File Conflict Resolution System
 

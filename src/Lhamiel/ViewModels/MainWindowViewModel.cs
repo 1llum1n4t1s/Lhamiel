@@ -444,7 +444,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         cancellationToken,
                         closeWindowOnCompletion: true);
                     if (extractionResults.Count > 0 && settings.OpenExtractionOutputFolder)
-                        OpenExtractedFolders(extractionResults);
+                        OpenExtractedFolders(extractionResults, settings.CreateArchiveNameFolder);
                 }
                 else
                 {
@@ -471,7 +471,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                     cancellationToken,
                     closeWindowOnCompletion: true);
                 if (extractionResults.Count > 0 && settings.OpenExtractionOutputFolder)
-                    OpenExtractedFolders(extractionResults);
+                    OpenExtractedFolders(extractionResults, settings.CreateArchiveNameFolder);
             }
             else
             {
@@ -717,25 +717,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private static void OpenExtractedFolders(IEnumerable<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)> extractionResults)
+    private static void OpenExtractedFolders(
+        IEnumerable<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)> extractionResults,
+        bool createArchiveNameFolder)
     {
-        var createFolder = SettingsManager.Instance.Current.CreateArchiveNameFolder;
         foreach (var (_, outputPath, structureInfo) in extractionResults)
-        {
-            var folderToOpen = outputPath;
-
-            // フォルダ作成ON + 二重ネスト防止でフォルダ作成がスキップされた場合、
-            // アーカイブのルートフォルダを開く
-            if (createFolder && structureInfo.ShouldSkipFolderCreation
-                && !string.IsNullOrEmpty(structureInfo.SingleRootItemName))
-            {
-                var archiveFolder = Path.Combine(outputPath, structureInfo.SingleRootItemName);
-                if (Directory.Exists(archiveFolder))
-                    folderToOpen = archiveFolder;
-            }
-
-            FolderOpener.OpenExtractionResult(folderToOpen);
-        }
+            FolderOpener.OpenExtractionResult(outputPath, structureInfo, createArchiveNameFolder);
     }
 
     /// <summary>
