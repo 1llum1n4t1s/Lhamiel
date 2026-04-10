@@ -684,6 +684,9 @@ public class ArchiveCompressor
                     ct.ThrowIfCancellationRequested();
                     dst.SetLength(srcLength);
                     await src.CopyToAsync(dst, 1_048_576, ct); // 1MB バッファで I/O 回数を削減
+                    // ソースが縮小した場合に末尾ゼロ埋めを除去（実書き込み量に切り詰め）
+                    if (dst.Position < srcLength)
+                        dst.SetLength(dst.Position);
                     copyResults[i] = (destPath, relativePath);
                 });
 
