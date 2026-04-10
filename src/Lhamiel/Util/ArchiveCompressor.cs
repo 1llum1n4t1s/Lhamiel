@@ -15,6 +15,11 @@ public class ArchiveCompressor
     private const string TempDirPrefix = "Lhamiel_compress_";
 
     /// <summary>
+    /// 一時コピー時のバッファサイズ（1MB）。I/O 回数と GC 圧のバランスを取る。
+    /// </summary>
+    private const int CopyBufferSize = 1024 * 1024;
+
+    /// <summary>
     /// ライブラリがサポートする圧縮可能な全形式（内部バリデーション用）
     /// </summary>
     internal static readonly HashSet<string> SupportedCompressionFormats = new(StringComparer.OrdinalIgnoreCase)
@@ -684,7 +689,7 @@ public class ArchiveCompressor
                     ct.ThrowIfCancellationRequested();
                     dst.SetLength(srcLength);
                     // srcLength バイトだけコピー（伸長競合時にスナップショットを超えない）
-                    var buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(1_048_576);
+                    var buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(CopyBufferSize);
                     try
                     {
                         var remaining = srcLength;
