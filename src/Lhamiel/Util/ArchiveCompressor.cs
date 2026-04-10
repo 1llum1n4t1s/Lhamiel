@@ -683,9 +683,26 @@ public class ArchiveCompressor
                     // 宛先ファイルサイズを事前確保（NTFS の連続領域割当で断片化を抑制）
                     ct.ThrowIfCancellationRequested();
                     dst.SetLength(srcLength);
-                    await src.CopyToAsync(dst, 1_048_576, ct); // 1MB バッファで I/O 回数を削減
+                    // srcLength バイトだけコピー（伸長競合時にスナップショットを超えない）
+                    var buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(1_048_576);
+                    try
+                    {
+                        var remaining = srcLength;
+                        while (remaining > 0)
+                        {
+                            var read = await src.ReadAsync(
+                                buffer.AsMemory(0, (int)Math.Min(buffer.Length, remaining)), ct);
+                            if (read == 0) break; // コピー中にソースが縮小
+                            await dst.WriteAsync(buffer.AsMemory(0, read), ct);
+                            remaining -= read;
+                        }
+                    }
+                    finally
+                    {
+                        System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
+                    }
                     // ソースが縮小した場合に末尾ゼロ埋めを除去（実書き込み量に切り詰め）
-                    if (dst.Position < srcLength)
+                    if (dst.Position != srcLength)
                         dst.SetLength(dst.Position);
                     copyResults[i] = (destPath, relativePath);
                 });
