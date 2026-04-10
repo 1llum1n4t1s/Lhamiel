@@ -15,6 +15,11 @@ public class ArchiveCompressor
     private const string TempDirPrefix = "Lhamiel_compress_";
 
     /// <summary>
+    /// 一時コピー時のバッファサイズ（1MB）。I/O 回数と GC 圧のバランスを取る。
+    /// </summary>
+    private const int CopyBufferSize = 1024 * 1024;
+
+    /// <summary>
     /// ライブラリがサポートする圧縮可能な全形式（内部バリデーション用）
     /// </summary>
     internal static readonly HashSet<string> SupportedCompressionFormats = new(StringComparer.OrdinalIgnoreCase)
@@ -665,11 +670,45 @@ public class ArchiveCompressor
                         Directory.CreateDirectory(destDir); // CreateDirectory は既存なら何もしない
 
                     // FileShare.ReadWrite | FileShare.Delete で開くため、ロック中ファイルも読み取り可能
+                    // SequentialScan: OS のファイルキャッシュ先読みを最適化
                     await using var src = new FileStream(fullPath, FileMode.Open, FileAccess.Read,
-                        FileShare.ReadWrite | FileShare.Delete, bufferSize: 81920, useAsync: true);
+                        FileShare.ReadWrite | FileShare.Delete, bufferSize: 4096,
+                        FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    var srcLength = src.Length;
                     await using var dst = new FileStream(destPath, FileMode.Create, FileAccess.Write,
-                        FileShare.None, bufferSize: 81920, useAsync: true);
-                    await src.CopyToAsync(dst, ct);
+                        FileShare.None, bufferSize: 4096, FileOptions.Asynchronous);
+
+                    // ゼロバイトファイルは CopyToAsync 不要（宛先作成のみ）
+                    if (srcLength == 0)
+                    {
+                        copyResults[i] = (destPath, relativePath);
+                        return;
+                    }
+
+                    // 宛先ファイルサイズを事前確保（NTFS の連続領域割当で断片化を抑制）
+                    ct.ThrowIfCancellationRequested();
+                    dst.SetLength(srcLength);
+                    // srcLength バイトだけコピー（伸長競合時にスナップショットを超えない）
+                    var buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(CopyBufferSize);
+                    try
+                    {
+                        var remaining = srcLength;
+                        while (remaining > 0)
+                        {
+                            var read = await src.ReadAsync(
+                                buffer.AsMemory(0, (int)Math.Min(buffer.Length, remaining)), ct);
+                            if (read == 0) break; // コピー中にソースが縮小
+                            await dst.WriteAsync(buffer.AsMemory(0, read), ct);
+                            remaining -= read;
+                        }
+                    }
+                    finally
+                    {
+                        System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
+                    }
+                    // ソースが縮小した場合に末尾ゼロ埋めを除去（実書き込み量に切り詰め）
+                    if (dst.Position != srcLength)
+                        dst.SetLength(dst.Position);
                     copyResults[i] = (destPath, relativePath);
                 });
 
