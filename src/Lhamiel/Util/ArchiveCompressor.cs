@@ -664,12 +664,26 @@ public class ArchiveCompressor
                     if (!string.IsNullOrEmpty(destDir))
                         Directory.CreateDirectory(destDir); // CreateDirectory は既存なら何もしない
 
+                    // ゼロバイトファイルはストリームコピー不要（ファイル作成のみ）
+                    if (new FileInfo(fullPath).Length == 0)
+                    {
+                        await using (File.Create(destPath)) { }
+                        copyResults[i] = (destPath, relativePath);
+                        return;
+                    }
+
                     // FileShare.ReadWrite | FileShare.Delete で開くため、ロック中ファイルも読み取り可能
+                    // SequentialScan: OS のファイルキャッシュ先読みを最適化
                     await using var src = new FileStream(fullPath, FileMode.Open, FileAccess.Read,
-                        FileShare.ReadWrite | FileShare.Delete, bufferSize: 81920, useAsync: true);
+                        FileShare.ReadWrite | FileShare.Delete, bufferSize: 4096,
+                        FileOptions.Asynchronous | FileOptions.SequentialScan);
                     await using var dst = new FileStream(destPath, FileMode.Create, FileAccess.Write,
-                        FileShare.None, bufferSize: 81920, useAsync: true);
-                    await src.CopyToAsync(dst, ct);
+                        FileShare.None, bufferSize: 4096, FileOptions.Asynchronous);
+                    // 宛先ファイルサイズを事前確保（NTFS の連続領域割当で断片化を抑制）
+                    var srcLength = src.Length;
+                    if (srcLength > 0)
+                        dst.SetLength(srcLength);
+                    await src.CopyToAsync(dst, 1_048_576, ct); // 1MB バッファで I/O 回数を削減
                     copyResults[i] = (destPath, relativePath);
                 });
 
