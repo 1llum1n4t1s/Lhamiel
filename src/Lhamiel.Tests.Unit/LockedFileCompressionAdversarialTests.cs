@@ -31,13 +31,13 @@ public class LockedFileCompressionAdversarialTests
         }
     }
 
-    /// <summary>テスト前後で Lhamiel_compress_* 一時ディレクトリが増えていないことを確認</summary>
+    /// <summary>テスト前後で SevenZip_* 一時ディレクトリが増えていないことを確認</summary>
     private static string[] SnapshotLhamielTempDirs() =>
-        Directory.GetDirectories(Path.GetTempPath(), "Lhamiel_compress_*");
+        Directory.GetDirectories(Path.GetTempPath(), "SevenZip_*");
 
     private static void AssertNoNewLhamielTempDirs(string[] snapshot)
     {
-        var current = Directory.GetDirectories(Path.GetTempPath(), "Lhamiel_compress_*");
+        var current = Directory.GetDirectories(Path.GetTempPath(), "SevenZip_*");
         var leaked = current.Except(snapshot).ToArray();
         Assert.True(leaked.Length == 0,
             $"一時ディレクトリが {leaked.Length} 件残留している:\n{string.Join("\n", leaked)}");

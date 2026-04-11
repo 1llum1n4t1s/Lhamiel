@@ -6,10 +6,10 @@
     xmlns:view="using:Lhamiel.View"
     Title="{DynamicResource Text.ErrorRecovery.Title}"
     Width="600"
-    Height="500"
+    SizeToContent="Height"
     x:DataType="view:ErrorRecoveryDialog"
     Background="Transparent"
-    CanResize="True"
+    CanResize="False"
 
     ExtendClientAreaTitleBarHeightHint="32"
     ExtendClientAreaToDecorationsHint="True"
@@ -61,6 +61,7 @@
         <!--  ファイル情報  -->
         <primitives:HeaderedContentControl
             Grid.Row="1"
+            MaxHeight="200"
             Margin="0,0,0,10"
             Header="{DynamicResource Text.ErrorRecovery.ProblematicFile}">
             <Grid>
@@ -128,16 +129,18 @@
             Orientation="Horizontal">
             <Button
                 x:Name="OkButton"
-                Width="80"
+                MinWidth="100"
                 Height="30"
                 Margin="5,0"
+                Padding="20,0"
                 Click="OkButton_Click"
                 Content="{DynamicResource Text.Button.OK}" />
             <Button
                 x:Name="CancelButton"
-                Width="80"
+                MinWidth="100"
                 Height="30"
                 Margin="5,0"
+                Padding="20,0"
                 Click="CancelButton_Click"
                 Content="{DynamicResource Text.Button.Cancel}" />
         </StackPanel>

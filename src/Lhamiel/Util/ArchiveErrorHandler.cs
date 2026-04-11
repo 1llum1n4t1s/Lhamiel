@@ -211,7 +211,8 @@ public static class ArchiveErrorHandler
             using var reader = new ArchiveReader(archivePath);
 
             // アーカイブの基本情報を取得
-            analysis.TotalFiles = reader.Items.Count();
+            var items = reader.Items.ToList();
+            analysis.TotalFiles = items.Count;
             analysis.TotalSize = 0; // 現在のライブラリではサイズ情報が取得できないため0を設定
             var tempPath = Path.Combine(Path.GetTempPath(), $"lhamiel-{Guid.NewGuid()}");
             Directory.CreateDirectory(tempPath);
@@ -238,7 +239,7 @@ public static class ArchiveErrorHandler
                 foreach (var dir in Directory.EnumerateDirectories(tempPath, "*", new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
                     extractedDirs.Add(Path.GetRelativePath(tempPath, dir));
 
-                foreach (var item in reader.Items)
+                foreach (var item in items)
                 {
                     try
                     {

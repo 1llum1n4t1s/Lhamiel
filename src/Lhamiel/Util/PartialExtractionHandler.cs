@@ -354,7 +354,7 @@ public class PartialExtractionHandler
         summary.AppendLine($"失敗: {result.FailureCount}");
         summary.AppendLine($"スキップ: {result.SkippedCount}");
 
-        if (result.FailedFiles.Any())
+        if (result.FailedFiles.Count > 0)
         {
             summary.AppendLine("\n=== 失敗したファイル ===");
             foreach (var failedFile in result.FailedFiles)
@@ -363,7 +363,7 @@ public class PartialExtractionHandler
             }
         }
 
-        if (result.SkippedFiles.Any())
+        if (result.SkippedFiles.Count > 0)
         {
             summary.AppendLine("\n=== スキップされたファイル ===");
             foreach (var skippedFile in result.SkippedFiles)

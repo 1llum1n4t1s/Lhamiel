@@ -28,6 +28,9 @@ public static class ArchiveExtractor
     /// </summary>
     internal static readonly HashSet<string> IgnoredSystemFiles = new(StringComparer.OrdinalIgnoreCase) { "desktop.ini", "Thumbs.db", ".DS_Store" };
 
+    /// <summary>展開フィルタ用の統合済みシステム名配列（static で1回だけ生成）</summary>
+    private static readonly string[] FilterNames = [.. IgnoredSystemDirectories, .. IgnoredSystemFiles];
+
     /// <summary>
     /// 圧縮のみの拡張子（単体ではアーカイブでない）。.tar と組み合わせた複合拡張子のみ2段除去する。
     /// </summary>
@@ -251,16 +254,25 @@ public static class ArchiveExtractor
 
         foreach (var item in reader.Items)
         {
-            var path = item.FullName.Replace('\\', '/');
-            var parts = path.Split(['/'], StringSplitOptions.RemoveEmptyEntries);
+            var path = item.FullName.AsSpan();
 
-            if (parts.Length == 0) continue;
+            // 最初のセグメント（ルート名）を切り出す（配列アロケーション不要）
+            var firstSep = path.IndexOfAny('/', '\\');
+            var rootName = (firstSep < 0 ? path : path[..firstSep]).ToString();
+            var hasSubPath = firstSep >= 0 && firstSep < path.Length - 1;
 
-            var rootName = parts[0];
+            if (rootName.Length == 0) continue;
             if (IgnoredSystemDirectories.Contains(rootName)) continue;
-            if (!item.IsDirectory && IgnoredSystemFiles.Contains(parts[^1])) continue;
 
-            if (parts.Length == 1 && !item.IsDirectory)
+            // ファイル名（最後のセグメント）のシステムファイルチェック
+            if (!item.IsDirectory)
+            {
+                var lastSep = path.LastIndexOfAny('/', '\\');
+                var fileName = lastSep < 0 ? rootName : path[(lastSep + 1)..].ToString();
+                if (IgnoredSystemFiles.Contains(fileName)) continue;
+            }
+
+            if (!hasSubPath && !item.IsDirectory)
                 structure.RootFiles.Add(rootName);
             else
                 structure.RootFolders.Add(rootName);
@@ -701,9 +713,7 @@ public static class ArchiveExtractor
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Filter で無視しディスクに書き込まないシステム名
-            var filterNames = IgnoredSystemDirectories.Concat(IgnoredSystemFiles).ToArray();
-            var extractOption = new ArchiveOption { Filter = Filter.From(filterNames) };
+            var extractOption = new ArchiveOption { Filter = Filter.From(FilterNames) };
 
             // ネイティブ側（7z.dll）との連携を確実に保護するため
             // using スコープ内で reader と progress を管理する

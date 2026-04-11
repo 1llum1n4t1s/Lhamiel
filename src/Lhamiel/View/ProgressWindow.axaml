@@ -14,6 +14,7 @@
     ExtendClientAreaTitleBarHeightHint="32"
     ExtendClientAreaToDecorationsHint="True"
     TransparencyLevelHint="AcrylicBlur"
+    CanResize="False"
     WindowStartupLocation="CenterScreen"
     mc:Ignorable="d">
     <Panel>

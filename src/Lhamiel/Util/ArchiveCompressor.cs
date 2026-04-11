@@ -9,12 +9,6 @@ namespace Lhamiel.Util;
 public class ArchiveCompressor
 {
     /// <summary>
-    /// 一時コピーディレクトリのプレフィックス。
-    /// ソーススキャンで出力先配下に残った一時ディレクトリを除外するために使用。
-    /// </summary>
-    private const string TempDirPrefix = "Lhamiel_compress_";
-
-    /// <summary>
     /// ライブラリがサポートする圧縮可能な全形式（内部バリデーション用）
     /// </summary>
     internal static readonly HashSet<string> SupportedCompressionFormats = new(StringComparer.OrdinalIgnoreCase)
@@ -120,9 +114,15 @@ public class ArchiveCompressor
                     using var writer = CreateArchiveWriter(format, settings);
 
                     // ファイルとディレクトリを圧縮アーカイブに追加
+                    // スキャン後にファイルが削除されている場合はスキップする
                     foreach (var (fullPath, relativePath) in filesToCompress)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
+                        if (!relativePath.EndsWith('/') && !File.Exists(fullPath))
+                        {
+                            Logger.Log($"ファイルが見つかりません（スキップ）: {fullPath}");
+                            continue;
+                        }
                         writer.Add(fullPath, relativePath);
                     }
 
@@ -608,7 +608,7 @@ public class ArchiveCompressor
             };
 
             return Directory.EnumerateFiles(directoryPath, "*", enumerationOptions)
-                .Where(file => !ShouldExcludeFile(file, excludedPatternSet) && !IsInsideTempDir(file));
+                .Where(file => !ShouldExcludeFile(file, excludedPatternSet));
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -622,22 +622,4 @@ public class ArchiveCompressor
         }
     }
 
-    /// <summary>
-    /// パスが Lhamiel の一時コピーディレクトリ内にあるかチェックする。
-    /// 出力先配下に残った一時ディレクトリ（cleanup失敗時の残骸や並列タスク）を
-    /// ソーススキャンから除外するために使用。
-    /// </summary>
-    private static bool IsInsideTempDir(string path)
-    {
-        ReadOnlySpan<char> separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
-        Span<Range> ranges = stackalloc Range[64];
-        var count = path.AsSpan().SplitAny(ranges, separators, StringSplitOptions.RemoveEmptyEntries);
-        for (var i = 0; i < count; i++)
-        {
-            var segment = path.AsSpan()[ranges[i]];
-            if (segment.StartsWith(TempDirPrefix, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        return false;
-    }
 }

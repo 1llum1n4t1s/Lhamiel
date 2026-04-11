@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Lhamiel is a Windows archive compression/decompression desktop app built with **Avalonia 11** (not WPF) and **.NET 10.0**. The UI language is Japanese.
+Lhamiel is a Windows archive compression/decompression desktop app built with **Avalonia 12** (not WPF) and **.NET 10.0**. The UI language is Japanese.
 
 ## Build & Development Commands
 
@@ -86,7 +86,7 @@ Drag-and-drop drives the app:
 - `CreateArchiveNameFolder=OFF` → 展開先の親フォルダを開く
 - フォルダ決定ロジックは `FolderOpener.GetExtractionFolderToOpen` に集約。呼び出し側は展開時の `createArchiveNameFolder` 設定値を渡す（展開中の設定変更による不整合を防止）
 
-**圧縮時の一時コピー**: `ArchiveCompressor` は圧縮前に全ファイルを `%TEMP%\Lhamiel_compress_*` にコピーしてから 7z.dll に渡す。これにより (1) プロセスがロック中のファイルも `FileShare.ReadWrite` で読み取れる (2) 圧縮中に元ファイルが書き換わってもスナップショットの一貫性が保たれる。一時ディレクトリは `finally` ブロックで確実に削除される。
+**圧縮時のロック中ファイル対応**: ソースファイルは元パスのまま `ArchiveWriter.Add()` に渡す（事前の全ファイルコピーは廃止）。ロック中のファイルはライブラリ（`1llum1n4t1s.Sevenzip`）の `UpdateCallback.Open()` が `Save()` 時に自動検出し、`%TEMP%\SevenZip_*` に一時コピーして処理する。一時ディレクトリは `UpdateCallback.Dispose()` で削除される。スキャン後に削除されたファイルは `File.Exists()` チェックでスキップし、残りのファイルで圧縮を続行する。
 
 ### Key Util Classes
 
@@ -94,7 +94,7 @@ Drag-and-drop drives the app:
 |-------|---------------|
 | `ArchiveProcessor` | Orchestrator — decides extract vs compress, manages workflow |
 | `ArchiveExtractor` | Extraction with folder creation decision (`ShouldSkipFolderCreation`) and `GetArchiveBaseName` for compound extensions |
-| `ArchiveCompressor` | Compression with temp-copy snapshot (handles locked files) |
+| `ArchiveCompressor` | Compression — locked file handling is delegated to library side |
 | `ArchiveErrorHandler` | Error classification and recovery strategy |
 | `PartialExtractionHandler` | Selective extraction (skip corrupted files) |
 | `Settings` / `SettingsManager` | JSON config at `%LocalAppData%\Lhamiel\settings.json` |
@@ -154,7 +154,7 @@ var msg = App.Text("Error.DuringExtraction", ex.Message);  // looks up "Text.Err
 
 ## Key Technical Details
 
-- **Avalonia, not WPF** — uses `AvaloniaResource` items, FluentTheme, compiled bindings (`x:CompileBindings="True"`)
+- **Avalonia 12, not WPF** — uses `AvaloniaResource` items, FluentTheme, compiled bindings (`x:CompileBindings="True"`). Avalonia 12 で `ExtendClientAreaChromeHints` は削除済み（`WindowDecorations` に統合）
 - **Native AOT** enabled (`PublishAot=true`) — avoid reflection-heavy patterns; `TrimmerRoots.xml` preserves the main assembly
 - **7z.dll dependency** — native library requires special build handling (see MSBuild targets in `Directory.Build.targets`)
 - **Velopack** for auto-updates (`Program.cs` bootstrap)
