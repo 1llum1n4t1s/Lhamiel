@@ -61,7 +61,7 @@ The solution file is `Lhamiel.slnx` (VS 2026 format). Supports **x64** (default)
 
 ### Layers
 
-- **View/** — Avalonia XAML + code-behind (MainWindow, ProgressWindow, FileConflictDialog, ErrorRecoveryDialog)
+- **View/** — Avalonia XAML + code-behind (MainWindow, ProgressWindow, FileConflictDialog, ErrorRecoveryDialog, DiskSpaceDialog)
 - **ViewModels/** — MainWindowViewModel with `[ObservableProperty]` source generators
 - **Util/** — All business logic (archive operations, settings, logging, file association, updates)
 - **Models/** — Data models
@@ -125,7 +125,7 @@ Drag-and-drop drives the app:
 ### How it works
 
 1. Each locale is a `.axaml` file in `Resources/Locales/` (e.g., `ja_JP.axaml`, `en_US.axaml`)
-2. Locale files are registered in `App.xaml` as `ResourceInclude` with keys matching locale codes
+2. Locale files are registered in `App.axaml` as `ResourceInclude` with keys matching locale codes
 3. `App.SetLocale(localeKey)` swaps the active locale dictionary in `MergedDictionaries`
 4. `App.Text(key, ...args)` retrieves localized strings — note it auto-prepends `"Text."` to the key
 
@@ -142,19 +142,19 @@ var msg = App.Text("Error.DuringExtraction", ex.Message);  // looks up "Text.Err
 ### Adding a new locale
 
 1. Create `Resources/Locales/{xx_YY}.axaml` with all `Text.*` keys
-2. Add `ResourceInclude` entry in `App.xaml` with `x:Key="{xx_YY}"`
+2. Add `ResourceInclude` entry in `App.axaml` with `x:Key="{xx_YY}"`
 3. Add to `App.SupportedLocales` array and `App.LocaleDisplayNames` dictionary
 4. Add corresponding option in `MainWindowViewModel.LocaleOptions`
 
 ### Common pitfalls
 
 - Avalonia's `ResourceInclude` implements `IResourceProvider`, NOT `ResourceDictionary` — type casts must use `IResourceProvider`
-- Locale dictionaries are retrieved via `app.Resources[localeKey]` (by the x:Key set in App.xaml)
+- Locale dictionaries are retrieved via `app.Resources[localeKey]` (by the x:Key set in App.axaml)
 - Fallback chain: active locale dictionary → Application-wide resources → raw key name
 
 ## Key Technical Details
 
-- **Avalonia, not WPF** — uses `AvaloniaResource` items, Actipro theme, compiled bindings (`x:CompileBindings="True"`)
+- **Avalonia, not WPF** — uses `AvaloniaResource` items, FluentTheme, compiled bindings (`x:CompileBindings="True"`)
 - **Native AOT** enabled (`PublishAot=true`) — avoid reflection-heavy patterns; `TrimmerRoots.xml` preserves the main assembly
 - **7z.dll dependency** — native library requires special build handling (see MSBuild targets in `Directory.Build.targets`)
 - **Velopack** for auto-updates (`Program.cs` bootstrap)
