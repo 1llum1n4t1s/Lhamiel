@@ -10,7 +10,7 @@
     x:DataType="view:ErrorRecoveryDialog"
     Background="Transparent"
     CanResize="True"
-    ExtendClientAreaChromeHints="PreferSystemChrome"
+
     ExtendClientAreaTitleBarHeightHint="32"
     ExtendClientAreaToDecorationsHint="True"
     TransparencyLevelHint="AcrylicBlur"

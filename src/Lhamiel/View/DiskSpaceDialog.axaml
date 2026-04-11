@@ -11,7 +11,7 @@
     d:DesignWidth="440"
     Background="Transparent"
     CanResize="False"
-    ExtendClientAreaChromeHints="PreferSystemChrome"
+
     ExtendClientAreaTitleBarHeightHint="32"
     ExtendClientAreaToDecorationsHint="True"
     TransparencyLevelHint="AcrylicBlur"

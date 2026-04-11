@@ -15,11 +15,6 @@ public class ArchiveCompressor
     private const string TempDirPrefix = "Lhamiel_compress_";
 
     /// <summary>
-    /// 一時コピー時のバッファサイズ（1MB）。I/O 回数と GC 圧のバランスを取る。
-    /// </summary>
-    private const int CopyBufferSize = 1024 * 1024;
-
-    /// <summary>
     /// ライブラリがサポートする圧縮可能な全形式（内部バリデーション用）
     /// </summary>
     internal static readonly HashSet<string> SupportedCompressionFormats = new(StringComparer.OrdinalIgnoreCase)
@@ -99,7 +94,6 @@ public class ArchiveCompressor
             StringComparer.OrdinalIgnoreCase);
 
         var outputCreated = false;
-        var tempDir = string.Empty;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -109,13 +103,7 @@ public class ArchiveCompressor
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
-            // 一時コピー準備中を通知（マーキー表示）
-            progressCallback?.Invoke(new ProgressInfo(App.Text("Progress.PreparingFiles")));
-
-            // 全ファイルを一時ディレクトリにコピー（ロック中ファイルも読み取り可能にする）
-            (filesToCompress, tempDir) = await CopyFilesToTempAsync(filesToCompress, cancellationToken, outputPath);
-
-            // 一時コピー完了、圧縮に移行
+            // 圧縮処理を開始（ロック中ファイルはライブラリ側で自動的に一時コピーされる）
             progressCallback?.Invoke(new ProgressInfo(0, "圧縮処理中..."));
 
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
@@ -191,21 +179,6 @@ public class ArchiveCompressor
         {
             Logger.Log($"圧縮でエラーが発生しました: {ex.Message}");
             throw;
-        }
-        finally
-        {
-            // ロック中ファイルの一時コピーを削除
-            if (!string.IsNullOrEmpty(tempDir) && Directory.Exists(tempDir))
-            {
-                try
-                {
-                    Directory.Delete(tempDir, recursive: true);
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"一時ディレクトリの削除に失敗しました: {tempDir}, {ex.Message}");
-                }
-            }
         }
     }
 
@@ -609,186 +582,6 @@ public class ArchiveCompressor
         }
 
         return emptyDirs;
-    }
-
-    /// <summary>
-    /// 全ファイルを一時ディレクトリにコピーし、コピー先パスに差し替えたリストを返す。
-    /// FileShare.ReadWrite | FileShare.Delete で開くため、プロセスにロックされたファイルも読み取れる。
-    /// ファイルが0件またはディレクトリエントリのみの場合は一時ディレクトリを作成しない。
-    /// </summary>
-    private static async Task<(List<(string fullPath, string relativePath)> files, string tempDir)> CopyFilesToTempAsync(
-        List<(string fullPath, string relativePath)> files, CancellationToken cancellationToken, string? outputPath = null)
-    {
-        var tempDir = string.Empty;
-        var result = new List<(string fullPath, string relativePath)>(files.Count);
-
-        // ファイルのみのリストとディレクトリエントリを分離
-        var fileEntries = new List<(string fullPath, string relativePath)>();
-        foreach (var (fullPath, relativePath) in files)
-        {
-            if (relativePath.EndsWith('/'))
-                result.Add((fullPath, relativePath));
-            else
-                fileEntries.Add((fullPath, relativePath));
-        }
-
-        if (fileEntries.Count == 0)
-            return (result, tempDir);
-
-        // ファイルサイズを事前集計（ChooseTempBase のドライブ容量チェックで使用）
-        var totalFileSize = 0L;
-        foreach (var (fullPath, _) in fileEntries)
-        {
-            try { totalFileSize += new FileInfo(fullPath).Length; }
-            catch { /* アクセス不可のファイルは無視 */ }
-        }
-
-        // 一時ディレクトリを出力先と同一ドライブに作成（ドライブ跨ぎI/Oを回避）
-        // ただし出力先ドライブの空き容量が不足する場合は %TEMP% にフォールバック
-        var tempBase = ChooseTempBase(outputPath, fileEntries, totalFileSize);
-        tempDir = Path.Combine(tempBase, $"Lhamiel_compress_{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempDir);
-
-        try
-        {
-            // 並列コピー（Parallel.ForEachAsync で同時実行数を制限、タスク数の爆発を防止）
-            // I/Oバウンドのため CPU コア数の半分（最低2、最大8）を使用
-            var maxParallelism = Math.Clamp(Environment.ProcessorCount / 2, 2, 8);
-            var copyResults = new (string destPath, string relativePath)[fileEntries.Count];
-
-            await Parallel.ForEachAsync(
-                Enumerable.Range(0, fileEntries.Count),
-                new ParallelOptions { MaxDegreeOfParallelism = maxParallelism, CancellationToken = cancellationToken },
-                async (i, ct) =>
-                {
-                    var (fullPath, relativePath) = fileEntries[i];
-
-                    // relative パスのサブディレクトリ構造を保持してコピー
-                    var destPath = Path.Combine(tempDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
-                    var destDir = Path.GetDirectoryName(destPath);
-                    if (!string.IsNullOrEmpty(destDir))
-                        Directory.CreateDirectory(destDir); // CreateDirectory は既存なら何もしない
-
-                    // FileShare.ReadWrite | FileShare.Delete で開くため、ロック中ファイルも読み取り可能
-                    // SequentialScan: OS のファイルキャッシュ先読みを最適化
-                    await using var src = new FileStream(fullPath, FileMode.Open, FileAccess.Read,
-                        FileShare.ReadWrite | FileShare.Delete, bufferSize: 4096,
-                        FileOptions.Asynchronous | FileOptions.SequentialScan);
-                    var srcLength = src.Length;
-                    await using var dst = new FileStream(destPath, FileMode.Create, FileAccess.Write,
-                        FileShare.None, bufferSize: 4096, FileOptions.Asynchronous);
-
-                    // ゼロバイトファイルは CopyToAsync 不要（宛先作成のみ）
-                    if (srcLength == 0)
-                    {
-                        copyResults[i] = (destPath, relativePath);
-                        return;
-                    }
-
-                    // 宛先ファイルサイズを事前確保（NTFS の連続領域割当で断片化を抑制）
-                    ct.ThrowIfCancellationRequested();
-                    dst.SetLength(srcLength);
-                    // srcLength バイトだけコピー（伸長競合時にスナップショットを超えない）
-                    var buffer = System.Buffers.ArrayPool<byte>.Shared.Rent(CopyBufferSize);
-                    try
-                    {
-                        var remaining = srcLength;
-                        while (remaining > 0)
-                        {
-                            var read = await src.ReadAsync(
-                                buffer.AsMemory(0, (int)Math.Min(buffer.Length, remaining)), ct);
-                            if (read == 0) break; // コピー中にソースが縮小
-                            await dst.WriteAsync(buffer.AsMemory(0, read), ct);
-                            remaining -= read;
-                        }
-                    }
-                    finally
-                    {
-                        System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
-                    }
-                    // ソースが縮小した場合に末尾ゼロ埋めを除去（実書き込み量に切り詰め）
-                    if (dst.Position != srcLength)
-                        dst.SetLength(dst.Position);
-                    copyResults[i] = (destPath, relativePath);
-                });
-
-            result.AddRange(copyResults);
-        }
-        catch
-        {
-            // キャンセル等で途中終了した場合、作成済みの一時ディレクトリをクリーンアップする
-            if (!string.IsNullOrEmpty(tempDir) && Directory.Exists(tempDir))
-            {
-                try { Directory.Delete(tempDir, recursive: true); }
-                catch (Exception ex) { Logger.Log($"一時ディレクトリの緊急削除に失敗: {tempDir}, {ex.Message}"); }
-            }
-            throw;
-        }
-
-        return (result, tempDir);
-    }
-
-    /// <summary>
-    /// 一時コピー先のベースディレクトリを選択する。
-    /// 出力先と同一ドライブに十分な空きがあればそちらを使い、
-    /// なければ %TEMP% にフォールバックする。
-    /// </summary>
-    private static string ChooseTempBase(string? outputPath, List<(string fullPath, string relativePath)> fileEntries, long totalFileSize)
-    {
-        var fallback = Path.GetTempPath();
-
-        if (string.IsNullOrEmpty(outputPath))
-            return fallback;
-
-        var outputDir = Path.GetDirectoryName(outputPath);
-        if (string.IsNullOrEmpty(outputDir) || !Directory.Exists(outputDir))
-            return fallback;
-
-        try
-        {
-            // 出力先ドライブの空き容量をチェック（一時コピー + アーカイブ出力の余裕を確保）
-            var root = Path.GetPathRoot(outputDir);
-            if (!string.IsNullOrEmpty(root))
-            {
-                var drive = new DriveInfo(root);
-                if (drive.IsReady && drive.AvailableFreeSpace > totalFileSize * 2)
-                {
-                    // outputDir 配下に一時ディレクトリ名 + 最長 relativePath を足した長さが
-                    // MAX_PATH (260) を超える場合は %TEMP% にフォールバック
-                    // 一時ディレクトリ名: "Lhamiel_compress_" + GUID(32) = 49文字
-                    var maxRelLen = 0;
-                    foreach (var (_, rel) in fileEntries)
-                    {
-                        if (rel.Length > maxRelLen) maxRelLen = rel.Length;
-                    }
-                    var estimatedMaxPath = outputDir.Length + 1 + 49 + 1 + maxRelLen;
-                    if (estimatedMaxPath >= 260)
-                    {
-                        Logger.Log($"出力先パスが長すぎるため %TEMP% にフォールバック（推定最長: {estimatedMaxPath}文字）");
-                        return fallback;
-                    }
-
-                    // サブフォルダ作成権限をプローブ（SMB共有等で Create Folders 権限がない場合に備える）
-                    var probe = Path.Combine(outputDir, $".lhamiel_probe_{Guid.NewGuid():N}");
-                    try
-                    {
-                        Directory.CreateDirectory(probe);
-                        Directory.Delete(probe);
-                        return outputDir;
-                    }
-                    catch
-                    {
-                        Logger.Log($"出力先ディレクトリにサブフォルダ作成不可、%TEMP% にフォールバック");
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"ドライブ空き容量チェックに失敗、%TEMP% にフォールバック: {ex.Message}");
-        }
-
-        return fallback;
     }
 
     /// <summary>

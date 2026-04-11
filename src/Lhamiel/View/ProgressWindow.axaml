@@ -10,7 +10,7 @@
     Height="200"
     x:DataType="view:ProgressWindow"
     Background="Transparent"
-    ExtendClientAreaChromeHints="PreferSystemChrome"
+
     ExtendClientAreaTitleBarHeightHint="32"
     ExtendClientAreaToDecorationsHint="True"
     TransparencyLevelHint="AcrylicBlur"

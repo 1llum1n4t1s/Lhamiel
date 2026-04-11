@@ -17,7 +17,7 @@
     x:DataType="vm:MainWindowViewModel"
     Background="Transparent"
     CanResize="False"
-    ExtendClientAreaChromeHints="PreferSystemChrome"
+
     ExtendClientAreaTitleBarHeightHint="32"
     ExtendClientAreaToDecorationsHint="True"
     TransparencyLevelHint="AcrylicBlur"

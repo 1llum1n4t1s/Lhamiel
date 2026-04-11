@@ -17,7 +17,7 @@
     mc:Ignorable="d"
     Background="Transparent"
     CanResize="True"
-    ExtendClientAreaChromeHints="PreferSystemChrome"
+
     ExtendClientAreaTitleBarHeightHint="32"
     ExtendClientAreaToDecorationsHint="True"
     TransparencyLevelHint="AcrylicBlur"
