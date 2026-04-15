@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- 7z.dll は lib/native/{rid}/ から取得（Directory.Build.targets で解決） -->
+    <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
     <PackageReference Include="coverlet.collector" Version="8.0.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -24,11 +24,5 @@
   <ItemGroup>
     <ProjectReference Include="..\Lhamiel\Lhamiel.csproj" />
   </ItemGroup>
-
-  <!-- ビルド後に7z.dllがルートにあるか確認 -->
-  <Target Name="Verify7zDll" AfterTargets="Build">
-    <Message Text="7z.dll is at: $(OutputPath)7z.dll" Importance="high" Condition="Exists('$(OutputPath)7z.dll')" />
-    <Warning Text="7z.dll NOT FOUND at $(OutputPath)7z.dll — scripts/download-7z.ps1 を実行してください" Condition="!Exists('$(OutputPath)7z.dll')" />
-  </Target>
 
 </Project>

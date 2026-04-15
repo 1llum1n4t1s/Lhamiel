@@ -9,9 +9,6 @@ Lhamiel is a Windows archive compression/decompression desktop app built with **
 ## Build & Development Commands
 
 ```bash
-# 7z.dll をダウンロード（初回 or 更新時のみ）
-pwsh scripts/download-7z.ps1
-
 # Build (x64, デフォルト)
 dotnet build Lhamiel.slnx -c Debug
 dotnet build Lhamiel.slnx -c Release
@@ -42,18 +39,11 @@ vpk pack --packId Lhamiel --packVersion <VERSION> --packTitle "Lhamiel" --packAu
 
 > **Note**: Native AOT ビルド（`dotnet publish -r win-x64`）は VS の C++ ツールチェーン（`vswhere.exe`）が必要。ローカルテストでは `-p:PublishAot=false --self-contained` を使う。
 
-The solution file is `Lhamiel.slnx` (VS 2026 format). Supports **x64** (default) and **ARM64** builds.
+The solution file is `Lhamiel.slnx` (VS 2026 format). **Windows x64 / ARM64** の両方に対応（`1llum1n4t1s.Sevenzip` が両 RID の 7z.dll を同梱）。
 
 ### 7z.dll ネイティブライブラリ
 
-7z.dll は 7-Zip 公式サイトからダウンロードして `lib/native/{rid}/` に配置する（`.gitignore` で除外済み）。
-
-- `lib/native/win-x64/7z.dll` — x64 ビルド用
-- `lib/native/win-arm64/7z.dll` — ARM64 ビルド用
-
-初回セットアップ: `pwsh scripts/download-7z.ps1`（7zr.exe を自動ダウンロードして展開）
-
-`Directory.Build.targets` が `$(RuntimeIdentifier)` に基づいて適切な 7z.dll をビルド出力にコピーする。
+7z.dll は `1llum1n4t1s.Sevenzip` NuGet パッケージに同梱される（`runtimes/win-x64/native/7z.dll` および `runtimes/win-arm64/native/7z.dll`）。.NET SDK が `$(RuntimeIdentifier)` に基づいて対応する 7z.dll をビルド出力に自動配置するため、手動でのダウンロード・配置は不要。
 
 ## Architecture
 
@@ -156,7 +146,8 @@ var msg = App.Text("Error.DuringExtraction", ex.Message);  // looks up "Text.Err
 
 - **Avalonia 12, not WPF** — uses `AvaloniaResource` items, FluentTheme, compiled bindings (`x:CompileBindings="True"`). Avalonia 12 で `ExtendClientAreaChromeHints` は削除済み（`WindowDecorations` に統合）
 - **Native AOT** enabled (`PublishAot=true`) — avoid reflection-heavy patterns; `TrimmerRoots.xml` preserves the main assembly
-- **7z.dll dependency** — native library requires special build handling (see MSBuild targets in `Directory.Build.targets`)
+- **7z.dll dependency** — `1llum1n4t1s.Sevenzip` NuGet パッケージが `runtimes/win-{x64,arm64}/native/7z.dll` を同梱しており、.NET SDK が RID に基づいて自動配置する。`NativeLibraryManager` が起動時に `LoadLibrary` でプロセスに固定し、AOT ライブラリファイナライザによるアクセス違反を防止
+- **Logger** — `SuperLightLogger` の内蔵 File Target を使用。`Logger.Initialize(LoggerConfig)` で `%LocalAppData%\Lhamiel\Lhamiel_yyyyMMdd.log` にローリング出力
 - **Velopack** for auto-updates (`Program.cs` bootstrap)
 - **AllowUnsafeBlocks** enabled for P/Invoke (COM interop in `ShortcutCreator`, `FileIconHelper`)
 - **Acrylic blur** — 全ダイアログで `ExperimentalAcrylicBorder` + `ExtendClientAreaToDecorationsHint` を使用。タイトルバー境界線を見えなくする

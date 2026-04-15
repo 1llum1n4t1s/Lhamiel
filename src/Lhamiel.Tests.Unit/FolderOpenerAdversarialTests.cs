@@ -5,9 +5,15 @@ namespace Lhamiel.Tests.Unit;
 /// <summary>
 /// FolderOpener の嫌がらせテスト — 境界値、特殊パス、状態異常を攻める
 /// </summary>
+[Collection("FolderOpener")]
 public class FolderOpenerAdversarialTests : IDisposable
 {
     private readonly List<string> _tempDirs = [];
+
+    public FolderOpenerAdversarialTests()
+    {
+        FolderOpener.DryRun = true;
+    }
 
     private string CreateTempDir(string? subName = null)
     {
@@ -21,6 +27,7 @@ public class FolderOpenerAdversarialTests : IDisposable
 
     public void Dispose()
     {
+        FolderOpener.DryRun = false;
         foreach (var dir in _tempDirs)
         {
             try { if (Directory.Exists(dir)) Directory.Delete(dir, true); }

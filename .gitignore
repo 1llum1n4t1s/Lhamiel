@@ -9,7 +9,5 @@ bin/
 obj/
 build_output.txt
 
-# ネイティブ DLL（scripts/download-7z.ps1 でダウンロード）
-lib/native/
 local-installer/
 local-publish/

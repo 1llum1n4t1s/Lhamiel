@@ -1,6 +1,4 @@
-using NLog;
-using NLog.Config;
-using NLog.Targets;
+using SuperLightLogger;
 
 namespace Lhamiel.Util;
 
@@ -37,11 +35,11 @@ public sealed class LoggerConfig
 }
 
 /// <summary>
-/// NLogを使用した汎用ログ出力クラス
+/// SuperLightLoggerを使用した汎用ログ出力クラス
 /// </summary>
 public static class Logger
 {
-    private static NLog.Logger? _logger;
+    private static ILog? _logger;
     private static bool _isConfigured;
     private static readonly object _initLock = new();
     private static string _appName = "App";
@@ -71,41 +69,31 @@ public static class Logger
 
             _appName = config.FilePrefix;
 
-            if (!Directory.Exists(config.LogDirectory))
+            Directory.CreateDirectory(config.LogDirectory);
+
+            // 文字列ベース API を使用（Lhamiel.Util.LogLevel と MEL の LogLevel の名前衝突を回避）
+            LogManager.Configure(builder =>
             {
-                Directory.CreateDirectory(config.LogDirectory);
-            }
+                builder.AddSuperLightFile(opt =>
+                {
+                    opt.FileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}.log");
+                    opt.Layout = "${longdate} [${level:uppercase=true}] ${message}${onexception:inner=${newline}${exception:format=tostring}}";
+                    opt.ArchiveAboveSize = (long)config.MaxSizeMB * 1024 * 1024;
+                    opt.ArchiveFileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}_{{#}}.log");
+                    opt.ArchiveNumbering = ArchiveNumbering.Sequence;
+                    opt.MaxArchiveFiles = config.MaxArchiveFiles;
+                    opt.Encoding = System.Text.Encoding.UTF8;
+                    opt.MinLevelName = "Trace";
+                });
 
-            var nlogConfig = new LoggingConfiguration();
+                builder.SetMinimumLevel(ToLevelName(MinLogLevel));
+            });
 
-            var fileTarget = new FileTarget("file")
-            {
-                FileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}.log"),
-                ArchiveAboveSize = config.MaxSizeMB * 1024 * 1024,
-                ArchiveFileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}_{{##}}.log"),
-                ArchiveSuffixFormat = "_{##}",
-                MaxArchiveFiles = config.MaxArchiveFiles,
-                Layout = "${longdate} [${uppercase:${level}}] ${message}${onexception:inner=${newline}${exception:format=tostring}}",
-                Encoding = System.Text.Encoding.UTF8
-            };
-
-            var consoleTarget = new ConsoleTarget("console")
-            {
-                Layout = "${longdate} [${uppercase:${level}}] ${message}${onexception:inner=${newline}${exception:format=tostring}}"
-            };
-
-            nlogConfig.AddTarget(fileTarget);
-            nlogConfig.AddTarget(consoleTarget);
-
-            nlogConfig.AddRule(NLog.LogLevel.Trace, NLog.LogLevel.Fatal, fileTarget);
-            nlogConfig.AddRule(NLog.LogLevel.Trace, NLog.LogLevel.Fatal, consoleTarget);
-
-            LogManager.Configuration = nlogConfig;
             _logger = LogManager.GetLogger(config.FilePrefix);
             _isConfigured = true;
         }
 
-        Log("Logger initialized with NLog (RollingFile)", LogLevel.Debug);
+        Log("Logger initialized with SuperLightLogger (File Target)", LogLevel.Debug);
 
         // 過去のバグで作成された不要な "0" ファイルを削除
         CleanupStaleFile(Path.Combine(config.LogDirectory, "0"));
@@ -122,15 +110,12 @@ public static class Logger
     {
         try
         {
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
-                Log($"不要なファイルを削除しました: {Path.GetFileName(filePath)}", LogLevel.Debug);
-            }
+            File.Delete(filePath);
+            Log($"不要なファイルを削除しました: {Path.GetFileName(filePath)}", LogLevel.Debug);
         }
-        catch (Exception ex)
+        catch
         {
-            Log($"不要ファイルの削除に失敗しました: {filePath} - {ex.Message}", LogLevel.Warning);
+            // ファイルが存在しない or 削除できない場合は無視
         }
     }
 
@@ -147,7 +132,7 @@ public static class Logger
         try
         {
             var cutoffDate = DateTime.Now.Date.AddDays(-retentionDays);
-            var logFiles = Directory.GetFiles(logDirectory, $"{filePrefix}_*.log");
+            var logFiles = Directory.EnumerateFiles(logDirectory, $"{filePrefix}_*.log");
 
             foreach (var file in logFiles)
             {
@@ -189,7 +174,7 @@ public static class Logger
         if (level < MinLogLevel)
             return;
 
-        _logger?.Log(ToNLogLevel(level), message);
+        WriteToLogger(message, level);
     }
 
     /// <summary>
@@ -200,12 +185,10 @@ public static class Logger
     public static void LogLines(string[] messages, LogLevel level = LogLevel.Info)
     {
         if (messages == null || messages.Length == 0) return;
-        if (level < MinLogLevel) return;
 
-        var nlogLevel = ToNLogLevel(level);
         foreach (var message in messages)
         {
-            _logger?.Log(nlogLevel, message);
+            Log(message, level);
         }
     }
 
@@ -216,7 +199,7 @@ public static class Logger
     /// <param name="exception">例外オブジェクト</param>
     public static void LogException(string message, Exception exception)
     {
-        _logger?.Error(exception, message);
+        _logger?.Error(message, exception);
     }
 
     /// <summary>
@@ -248,14 +231,38 @@ public static class Logger
     }
 
     /// <summary>
-    /// 独自LogLevelをNLogのLogLevelに変換
+    /// SuperLightLogger の ILog にレベル別メソッドでメッセージを書き出す
     /// </summary>
-    private static NLog.LogLevel ToNLogLevel(LogLevel level) => level switch
+    private static void WriteToLogger(string message, LogLevel level)
     {
-        LogLevel.Debug => NLog.LogLevel.Debug,
-        LogLevel.Info => NLog.LogLevel.Info,
-        LogLevel.Warning => NLog.LogLevel.Warn,
-        LogLevel.Error => NLog.LogLevel.Error,
-        _ => NLog.LogLevel.Info
+        if (_logger == null) return;
+
+        switch (level)
+        {
+            case LogLevel.Debug:
+                _logger.Debug(message);
+                break;
+            case LogLevel.Info:
+                _logger.Info(message);
+                break;
+            case LogLevel.Warning:
+                _logger.Warn(message);
+                break;
+            case LogLevel.Error:
+                _logger.Error(message);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// 独自LogLevelをSuperLightLoggerが受け付けるレベル名に変換
+    /// </summary>
+    private static string ToLevelName(LogLevel level) => level switch
+    {
+        LogLevel.Debug => "Debug",
+        LogLevel.Info => "Info",
+        LogLevel.Warning => "Warn",
+        LogLevel.Error => "Error",
+        _ => "Info"
     };
 }

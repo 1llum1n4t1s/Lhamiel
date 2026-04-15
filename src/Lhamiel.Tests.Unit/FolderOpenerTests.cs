@@ -5,8 +5,18 @@ namespace Lhamiel.Tests.Unit;
 /// <summary>
 /// FolderOpener のユニットテスト（実装を信用しないエッジケース重視）
 /// </summary>
-public class FolderOpenerTests
+[Collection("FolderOpener")]
+public class FolderOpenerTests : IDisposable
 {
+    public FolderOpenerTests()
+    {
+        FolderOpener.DryRun = true;
+    }
+
+    public void Dispose()
+    {
+        FolderOpener.DryRun = false;
+    }
     // === OpenExtractionResult ===
 
     [Fact]

@@ -7,6 +7,10 @@ namespace Lhamiel.Util;
 public static class FolderOpener
 {
     /// <summary>
+    /// テスト時に Process.Start をスキップするためのフラグ（InternalsVisibleTo 経由で設定）
+    /// </summary>
+    internal static bool DryRun { get; set; }
+    /// <summary>
     /// 展開結果のフォルダを開く。
     /// CreateArchiveNameFolder=ON + 二重ネスト防止スキップ時は、アーカイブのルートフォルダを開く。
     /// </summary>
@@ -67,6 +71,12 @@ public static class FolderOpener
 
         try
         {
+            if (DryRun)
+            {
+                Logger.Log($"フォルダを開く処理をスキップしました（DryRun）: {folderPath}", LogLevel.Debug);
+                return;
+            }
+
             var processInfo = new ProcessStartInfo
             {
                 FileName = "explorer.exe",
@@ -75,11 +85,7 @@ public static class FolderOpener
                 CreateNoWindow = false
             };
 
-            var process = Process.Start(processInfo);
-            if (process != null)
-            {
-                process.Dispose();
-            }
+            using var process = Process.Start(processInfo);
 
             Logger.Log($"フォルダをエクスプローラーで開きました: {folderPath}", LogLevel.Debug);
         }
