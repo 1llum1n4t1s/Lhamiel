@@ -6,8 +6,10 @@
     xmlns:input="using:Avalonia.Input"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:primitives="using:Avalonia.Controls.Primitives"
+    xmlns:models="using:Lhamiel.Models"
     xmlns:vm="using:Lhamiel.ViewModels"
-    Title="{DynamicResource Text.App.Title}"
+    x:CompileBindings="True"
+    Title="{Binding VersionText, StringFormat='Lhamiel v{0}'}"
     Width="700"
     Height="600"
     input:DragDrop.AllowDrop="True"
@@ -30,9 +32,9 @@
             <ExperimentalAcrylicBorder.Material>
                 <ExperimentalAcrylicMaterial
                     BackgroundSource="Digger"
-                    MaterialOpacity="0.65"
+                    MaterialOpacity="0.85"
                     TintColor="{DynamicResource Color.Window}"
-                    TintOpacity="0.8" />
+                    TintOpacity="0.9" />
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
         <!--  アクセントカラーオーバーレイ（OSのアクセントカラーを超薄く重ねる）  -->
@@ -344,7 +346,7 @@
                                 CornerRadius="14">
                                 <ItemsControl ItemsSource="{Binding Associations}">
                                     <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
+                                        <DataTemplate x:DataType="models:FileAssociationItem">
                                             <Border
                                                 Padding="12,8"
                                                 BorderBrush="{DynamicResource Brush.Border}"
