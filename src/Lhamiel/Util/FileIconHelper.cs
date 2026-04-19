@@ -215,6 +215,9 @@ public static class FileIconHelper
                 // 上限到達時はエントリを半数ずつ破棄する（全クリアだと頻繁に上限到達する環境で
                 // P/Invoke のスパイクが再発しやすい。ConcurrentDictionary の Keys は順序
                 // 保証がないため厳密な LRU ではないが、全クリアよりは UI のブロック周期が長くなる）。
+                // Bitmap は unmanaged リソース（GDI+ ハンドル等）を持つので、evict 時は必ず
+                // Dispose する。キャッシュ上限（256）到達はユースケース上まれで、その時点で
+                // 衝突ダイアログは既に閉じられて UI 側の参照も切れている想定。
                 if (_extensionIconCache.Count >= MaxExtensionIconCacheEntries)
                 {
                     var targetRemove = _extensionIconCache.Count / 2;
@@ -222,10 +225,21 @@ public static class FileIconHelper
                     foreach (var key in _extensionIconCache.Keys)
                     {
                         if (removed >= targetRemove) break;
-                        if (_extensionIconCache.TryRemove(key, out _)) removed++;
+                        if (_extensionIconCache.TryRemove(key, out var evicted))
+                        {
+                            evicted?.Dispose();
+                            removed++;
+                        }
                     }
                 }
-                _extensionIconCache[cacheKey] = loaded;
+
+                // 並行スレッドが同じキーで先に設定していたら、自分の loaded を Dispose して
+                // 既存を返す。TryAdd で検査することで race に負けた側の Bitmap がリークしない。
+                if (!_extensionIconCache.TryAdd(cacheKey, loaded))
+                {
+                    loaded.Dispose();
+                    return _extensionIconCache.TryGetValue(cacheKey, out var winner) ? winner : null;
+                }
             }
             return loaded;
         }
