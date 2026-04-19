@@ -113,6 +113,17 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ## 更新履歴
 
+### v1.0.158 (2026-04-20)
+
+- **セキュリティ強化** — Zip Slip ガード、`UpdateRepoOwner/Name` のハードコード固定化、保護ディレクトリチェック、`IsProtectedDirectory` のシンボリックリンク追跡、`FolderOpener` の `ArgumentList` 化、IPC の `PipeOptions.CurrentUserOnly`、GitHub Actions の SHA 固定など P0/P1 系 25 件を反映
+- **設定スナップショット** — `Settings.Snapshot` / `SettingsManager.CreateSnapshot` を導入し、圧縮・展開中に UI 側で設定を変更されても race しないよう根治
+- **パフォーマンス改善** — `ShouldExcludeFile` の stackalloc 64 超え対応、`DetectFileSystemConflicts` の stat 回数削減、`DeduplicateByIdentity` の OS 依存コンパラ最適化、`FileIconHelper` のスレッドセーフなアイコンキャッシュ、`RefreshCompressionLevels` の差分更新化など 12 件
+- **7z.dll 配置刷新** — CI での直ダウンロードを廃止し `1llum1n4t1s.Sevenzip` NuGet 同梱方式に一本化
+- **TempCleanup 追加** — アプリ起動時に残存した `Lhamiel_Temp_*` ディレクトリを安全に掃除
+- **ロケール追加キー** — 17 言語に `Error.ProtectedDirectory` / `Compressor.Processing` を追加
+- **ドキュメント整合** — `SETTINGS_SCHEMA.md` / `ARCHITECTURE.md` を実装と同期
+- **テスト** — 524 / 524 合格（`UpdateRepoOwner_IsHardcodedAndImmutable` 新規追加）
+
 ### v1.0.157 (2026-04-16)
 
 - **依存パッケージ更新** — 1llum1n4t1s.Sevenzip 1.0.66、SuperLightLogger 1.0.6、CRDebugger.Avalonia 1.0.24 に更新。パフォーマンス改善とバグ修正を含む
