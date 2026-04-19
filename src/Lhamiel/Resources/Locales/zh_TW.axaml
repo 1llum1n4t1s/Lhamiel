@@ -274,4 +274,7 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">偵測到無效的路徑格式</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">路徑驗證失敗：{0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">使用了保留的裝置名稱：{0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' 受到系統保護，無法覆寫。請選擇其他位置。</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">正在壓縮...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">壓縮檔包含指向解壓目標之外的不安全項目：{0}</x:String>
 </ResourceDictionary>

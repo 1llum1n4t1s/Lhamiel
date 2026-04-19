@@ -274,4 +274,7 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Na-detect ang hindi wastong format ng path</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Nabigo ang path validation: {0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Ginagamit ang reserved na pangalan ng device: {0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">Ang '{0}' ay protektado ng sistema at hindi maaaring i-overwrite. Mangyaring pumili ng ibang lokasyon.</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Nagko-compress...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">Ang archive ay naglalaman ng hindi ligtas na entry na tumuturo sa labas ng target ng extraction: {0}</x:String>
 </ResourceDictionary>

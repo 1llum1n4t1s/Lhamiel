@@ -99,28 +99,32 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private CompressionLevelItem? _selectedSevenZipLevel;
 
     /// <summary>
-    /// 設定値を即時保存する（ロード中は抑制）
+    /// 設定値を即時保存する（ロード中は抑制）。
+    /// SettingsManager.Mutate / Save と同一ロック下で処理し、バックグラウンドの
+    /// CreateSnapshot と race しないようにする。
     /// </summary>
     private void AutoSave()
     {
         if (_isLoading) return;
         try
         {
-            var s = _settingsManager.Current;
-            s.Theme = SelectedTheme;
-            s.Locale = SelectedLocale;
-            s.CompressionFormat = SelectedCompressionFormat ?? "ZIP";
-            s.ExtractionOutputDirectory = ExtractionOutputDirectory;
-            s.CompressionOutputDirectory = CompressionOutputDirectory;
-            s.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectory;
-            s.CompressionOutputToSameDirectory = CompressionOutputToSameDirectory;
-            s.OpenExtractionOutputFolder = OpenExtractionOutputFolder;
-            s.CreateArchiveNameFolder = CreateArchiveNameFolder;
-            s.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
-            s.CompressMultipleAsOne = CompressMultipleAsOne;
-            s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
-            s.ZipCompressionLevel = ZipCompressionLevel;
-            s.SevenZipCompressionLevel = SevenZipCompressionLevel;
+            _settingsManager.Mutate(s =>
+            {
+                s.Theme = SelectedTheme;
+                s.Locale = SelectedLocale;
+                s.CompressionFormat = SelectedCompressionFormat ?? "ZIP";
+                s.ExtractionOutputDirectory = ExtractionOutputDirectory;
+                s.CompressionOutputDirectory = CompressionOutputDirectory;
+                s.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectory;
+                s.CompressionOutputToSameDirectory = CompressionOutputToSameDirectory;
+                s.OpenExtractionOutputFolder = OpenExtractionOutputFolder;
+                s.CreateArchiveNameFolder = CreateArchiveNameFolder;
+                s.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
+                s.CompressMultipleAsOne = CompressMultipleAsOne;
+                s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
+                s.ZipCompressionLevel = ZipCompressionLevel;
+                s.SevenZipCompressionLevel = SevenZipCompressionLevel;
+            });
             _settingsManager.Save();
         }
         catch (Exception ex)
@@ -198,18 +202,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
     ];
 
     /// <summary>
-    /// 圧縮レベルのコレクションをリフレッシュ（ロケール変更時に表示名を更新）
+    /// 圧縮レベルのコレクションをリフレッシュ（ロケール変更時に表示名を更新）。
+    /// CompressionLevelItem は record なので Name プロパティ自体は値が変わらず（App.Text が動的に解決）、
+    /// ロケール切替時はバインドされた ComboBox に「アイテム自体が変わった」と伝えるだけでよい。
+    /// Clear + Add で 7 回の CollectionChanged を発火する代わりに、各アイテムを同位置で Replace して
+    /// CollectionChanged 発火数を削減する。
     /// </summary>
     private void RefreshCompressionLevels()
     {
         var savedZipLevel = ZipCompressionLevel;
         var savedSevenZipLevel = SevenZipCompressionLevel;
 
-        var items = CompressionLevels.Select(i => new CompressionLevelItem(i.Level, i.ResourceKey)).ToList();
         _isLoading = true;
-        CompressionLevels.Clear();
-        foreach (var item in items)
-            CompressionLevels.Add(item);
+        for (var i = 0; i < CompressionLevels.Count; i++)
+        {
+            var old = CompressionLevels[i];
+            CompressionLevels[i] = new CompressionLevelItem(old.Level, old.ResourceKey);
+        }
 
         // 選択状態を復元
         SelectedZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == savedZipLevel);
@@ -428,7 +437,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _showProgressWindow(progressWindow);
             await Task.Yield();
             var cancellationToken = progressWindow.GetCancellationToken();
-            var settings = _settingsManager.Current;
+            // 並列処理中にUIスレッドが設定を書き換えても影響を受けないよう、処理開始時点で
+            // スナップショットを取って以降は固定値として使う（/rere P0 #3 対応）。
+            var settings = _settingsManager.CreateSnapshot();
 
             if (validPaths.Count == 1)
             {

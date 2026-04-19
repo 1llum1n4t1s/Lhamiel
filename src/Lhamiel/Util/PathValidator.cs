@@ -266,18 +266,45 @@ public static class PathValidator
         {
             if (string.IsNullOrWhiteSpace(path)) return true;
 
-            var fullPath = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            // レキシカル正規化（Path.GetFullPath）と、可能ならシンボリックリンク/ジャンクションの
+            // 実体解決（Directory.ResolveLinkTarget）の両方でチェックすることで、
+            // `mklink /J fake desktop` 経由での保護チェック回避を防ぐ。
+            var normalizedCandidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var lexical = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            normalizedCandidates.Add(lexical);
 
-            // 1. ドライブのルートディレクトリをチェック
-            var root = Path.GetPathRoot(fullPath);
-            if (string.Equals(root?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
-                              fullPath, StringComparison.OrdinalIgnoreCase))
+            try
             {
-                return true;
+                // symlink/junction の最終ターゲットをプラットフォーム既定の上限まで追跡する。
+                // .NET のドキュメント上、深さ上限は Windows が 63、Unix が 40。
+                // ループ・壊れたリンク・非リンクは null を返す（IOException になるケースは catch 側で握る）。
+                var resolved = Directory.ResolveLinkTarget(lexical, returnFinalTarget: true);
+                if (resolved is DirectoryInfo dirInfo && !string.IsNullOrWhiteSpace(dirInfo.FullName))
+                {
+                    normalizedCandidates.Add(dirInfo.FullName
+                        .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                }
+            }
+            catch
+            {
+                // 非対応パスや権限不足等は lexical チェックのみで判定
             }
 
-            // 2. 特殊なフォルダ（シェルフォルダ）をチェック
-            return ProtectedFolders.Value.Contains(fullPath);
+            foreach (var candidate in normalizedCandidates)
+            {
+                // 1. ドライブのルートディレクトリをチェック
+                var root = Path.GetPathRoot(candidate);
+                if (string.Equals(root?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                                  candidate, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                // 2. 特殊なフォルダ（シェルフォルダ）をチェック
+                if (ProtectedFolders.Value.Contains(candidate))
+                    return true;
+            }
+            return false;
         }
         catch
         {

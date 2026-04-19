@@ -54,6 +54,18 @@ public record FileConflictEntry(
 }
 
 /// <summary>
+/// 衝突の種類。展開時（2ペイン比較）と圧縮時（N要素リスト）で扱いが異なることを型レベルで明示する。
+/// </summary>
+public enum ConflictKind
+{
+    /// <summary>展開時の 2 ペイン比較（左=アーカイブ内、右=既存ファイル）</summary>
+    ExtractionTwoPane,
+
+    /// <summary>圧縮時の N 要素グループ（同名になる複数のソースファイル）</summary>
+    CompressionList
+}
+
+/// <summary>
 /// 同名ファイルのグループ（衝突単位）
 /// </summary>
 public class FileConflictGroup
@@ -67,6 +79,12 @@ public class FileConflictGroup
     /// 衝突しているファイルのリスト
     /// </summary>
     public required List<FileConflictEntry> Entries { get; init; }
+
+    /// <summary>
+    /// 衝突の種類。デフォルトは展開時の 2 ペイン。
+    /// Entries のセマンティクス（左右比較 vs リスト）が場面で異なるため、型で明示する。
+    /// </summary>
+    public ConflictKind Kind { get; init; } = ConflictKind.ExtractionTwoPane;
 }
 
 /// <summary>

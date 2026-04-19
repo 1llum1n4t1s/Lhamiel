@@ -274,4 +274,7 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">잘못된 경로 형식이 감지되었습니다</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">경로 검증에 실패했습니다: {0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">예약된 장치 이름이 사용되고 있습니다: {0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}'은(는) 시스템에 의해 보호되어 덮어쓸 수 없습니다. 다른 위치를 선택하세요.</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">압축 중...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">압축 파일에 추출 대상 외부를 가리키는 안전하지 않은 항목이 포함되어 있습니다: {0}</x:String>
 </ResourceDictionary>

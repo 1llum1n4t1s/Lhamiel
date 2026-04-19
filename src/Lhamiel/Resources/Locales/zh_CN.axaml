@@ -274,4 +274,7 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">检测到无效的路径格式</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">路径验证失败：{0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">使用了保留的设备名称：{0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' 受系统保护，无法被覆盖。请选择其他位置。</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">正在压缩...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">归档包含指向解压目标之外的不安全条目: {0}</x:String>
 </ResourceDictionary>

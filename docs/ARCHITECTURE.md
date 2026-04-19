@@ -2,16 +2,16 @@
 
 ## 概要
 
-LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプリ。Avalonia 11 + MVVM（CommunityToolkit.Mvvm）で構築。UIは日本語で17言語対応。
+LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプリ。Avalonia 12 + MVVM（CommunityToolkit.Mvvm）で構築。UIは日本語で17言語対応。
 
 ## 技術スタック
 
 - **フレームワーク**: .NET 10.0
-- **UIフレームワーク**: Avalonia 11（AXAML、compiled bindings）
+- **UIフレームワーク**: Avalonia 12（AXAML、compiled bindings）
 - **圧縮ライブラリ**: 1llum1n4t1s.Sevenzip（7z.dll ラッパー）
 - **MVVM**: CommunityToolkit.Mvvm（`[ObservableProperty]` ソースジェネレーター）
 - **自動更新**: Velopack
-- **テーマ**: Actipro
+- **テーマ**: FluentTheme
 - **ビルド**: Native AOT 対応（`PublishAot=true`）
 
 ## レイヤー構造
@@ -49,7 +49,6 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 │  - FileIconHelper（Shell API）      │
 │  - ShortcutCreator（COM）           │
 │  - PathValidator                    │
-│  - ArchiveFormatDetector            │
 │  - NativeLibraryManager（7z.dll）   │
 │  - UpdateChecker（Velopack）        │
 └─────────────────────────────────────┘

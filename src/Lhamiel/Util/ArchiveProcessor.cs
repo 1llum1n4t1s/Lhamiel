@@ -61,7 +61,8 @@ public static class ArchiveProcessor
     /// <param name="enablePartialExtraction">部分展開を有効にするかどうか</param>
     /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
-    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true)
+    /// <param name="settingsSnapshot">設定のスナップショット（バッチ処理時に呼び出し側で 1 回だけ取得して渡すと、各ファイルごとのロック競合＆アロケを削減できる）</param>
+    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true, Settings? settingsSnapshot = null)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}");
 
@@ -104,8 +105,19 @@ public static class ArchiveProcessor
                 var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(filePath, outputDir, outputToSameDirectory);
 
                 // アーカイブの構造を一度だけ解析
-                structureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
-                var createFolder = SettingsManager.Instance.Current.CreateArchiveNameFolder;
+                var rawStructureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
+                // 設定は処理開始時点でスナップショットを取って一貫性を保つ（UIの設定変更と race しない）。
+                // バッチ処理から渡された settingsSnapshot があればそれを再利用し、各ファイルごとの
+                // ロック競合＆浅コピーアロケを回避する。
+                var snapshot = settingsSnapshot ?? SettingsManager.Instance.CreateSnapshot();
+                var createFolder = snapshot.CreateArchiveNameFolder;
+                // 後段の FolderOpener が同じ値を使うよう、スナップショットした createFolder を
+                // ArchiveStructureInfo に同梱して返す（with 式で rawStructureInfo の他プロパティを
+                // そのまま引き継ぐため、ArchiveStructureInfo にプロパティが追加されても自動追従する）。
+                structureInfo = rawStructureInfo with
+                {
+                    CapturedCreateArchiveNameFolder = createFolder,
+                };
 
                 // 出力先を決定
                 if (!createFolder)
@@ -230,20 +242,27 @@ public static class ArchiveProcessor
 
             Logger.Log($"複数ファイル展開開始: {totalCount}個のファイル、最大並列度={maxDegreeOfParallelism}");
 
+            // バッチ処理の開始時点で 1 回だけスナップショットを取って全タスクに配る。
+            // 各並列タスクが個別に CreateSnapshot すると同じ設定の浅コピー + ロック競合が
+            // 並列度分発生するため、それを回避する。
+            var sharedSettings = SettingsManager.Instance.CreateSnapshot();
+
             // 全タスク横断で共有するスロットラー（UIスレッドへの通知頻度を全体で制限）
             var sharedThrottler = new ProgressThrottler();
 
             var tasks = filePaths.Select(async (filePath, index) =>
             {
+                var acquired = false;
                 try
                 {
                     await semaphore.WaitAsync(cancellationToken);
+                    acquired = true;
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var mappedProgress = CreateMappedProgress(
                         totalCount, lockObject, () => successCount + failedFiles.Count, progressWindow, sharedThrottler);
 
-                    var extractResult = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false);
+                    var extractResult = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false, settingsSnapshot: sharedSettings);
                     var finalOutputPath = extractResult.outputPath;
                     var structureInfo = extractResult.structureInfo;
 
@@ -284,7 +303,9 @@ public static class ArchiveProcessor
                 }
                 finally
                 {
-                    semaphore.Release();
+                    // WaitAsync が失敗した場合（キャンセル等）は Release しない。
+                    // 成功時のみ Release することで SemaphoreFullException / カウント超過を防ぐ。
+                    if (acquired) semaphore.Release();
                 }
             }).ToList();
 
@@ -327,8 +348,9 @@ public static class ArchiveProcessor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <param name="overrideOutputPath">出力パスを明示的に指定する場合（衝突回避で事前計算済みのパス）</param>
+    /// <param name="settingsSnapshot">設定のスナップショット（バッチ処理時に呼び出し側で 1 回だけ取得して渡すと、各ファイルごとのロック競合＆アロケを削減できる）</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true, string? overrideOutputPath = null)
+    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true, string? overrideOutputPath = null, Settings? settingsSnapshot = null)
     {
         Logger.Log($"ArchiveProcessor.CompressItemAsync開始: sourcePath={sourcePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}");
 
@@ -376,9 +398,18 @@ public static class ArchiveProcessor
                         return false;
                     }
 
-                    // 上書きが許可された場合は既存の対象を削除
+                    // 上書きが許可された場合は既存の対象を削除。
+                    // 保護されたパス（デスクトップ・マイドキュメント等の shell folder や
+                    // ドライブルート）を outputPath として指定された場合の削除を拒否する。
+                    // ディレクトリ削除は再帰削除のため特に危険だが、File.Delete 経路でも
+                    // outputPath 自体が保護対象（エッジケース）の場合は拒否しておく。
                     try
                     {
+                        if (PathValidator.IsProtectedDirectory(outputPath))
+                        {
+                            Logger.Log($"圧縮上書き: 保護されたパスへの削除を拒否: {outputPath}", LogLevel.Warning);
+                            throw new InvalidOperationException(App.Text("Error.ProtectedDirectory", outputPath));
+                        }
                         if (Directory.Exists(outputPath))
                         {
                             Directory.Delete(outputPath, true);
@@ -388,6 +419,11 @@ public static class ArchiveProcessor
                             File.Delete(outputPath);
                         }
                         Logger.Log($"既存の対象を削除しました: {outputPath}");
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // 保護ディレクトリエラーはそのまま再スロー
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -410,16 +446,17 @@ public static class ArchiveProcessor
                 Logger.Log($"ArchiveCompressor.CompressFilesAsyncを呼び出し: sourcePath={sourcePath}, outputPath={outputPath}, format={format}");
 
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
-                Action<ProgressInfo>? progressCallback = info =>
-                {
-                    if (progressReporter == null)
-                        DispatchProgress(progressWindow, info);
+                // CompressFilesAsync が IProgress<ProgressInfo> に統一されたので直接渡す。
+                // progressReporter が渡されていればそれをそのまま使い、Progress<T> の二重
+                // ラップと無駄なアロケ・同期コンテキスト転送を避ける。null のときだけ
+                // progressWindow への DispatchProgress 用ラッパを 1 個だけ作る。
+                IProgress<ProgressInfo> compressionProgress = progressReporter
+                    ?? new Progress<ProgressInfo>(info => DispatchProgress(progressWindow, info));
 
-                    progressReporter?.Report(info);
-                };
-
-                // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示
-                var settings = SettingsManager.Instance.Current;
+                // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示。
+                // 設定は処理開始時点でスナップショット化し、以降の処理全体で一貫性を保つ。
+                // バッチから渡された settingsSnapshot があれば再利用する（ロック競合回避）。
+                var settings = settingsSnapshot ?? SettingsManager.Instance.CreateSnapshot();
                 List<(string fullPath, string relativePath)>? resolvedFiles = null;
                 if (settings.DirectoryStructureMode == DirectoryStructureMode.Flat && Directory.Exists(sourcePath))
                 {
@@ -452,7 +489,7 @@ public static class ArchiveProcessor
                     }
                 }
 
-                await ArchiveCompressor.CompressFilesAsync([sourcePath], outputPath, parsedFormat, progressCallback, actualCancellationToken, resolvedFiles);
+                await ArchiveCompressor.CompressFilesAsync([sourcePath], outputPath, parsedFormat, compressionProgress, actualCancellationToken, resolvedFiles, settingsOverride: settings);
 
                 Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
 
@@ -616,18 +653,23 @@ public static class ArchiveProcessor
             // 全タスク横断で共有するスロットラー（UIスレッドへの通知頻度を全体で制限）
             var sharedThrottler = new ProgressThrottler();
 
+            // バッチ開始時点で 1 回だけスナップショットを取って全タスクに配る（ロック競合回避）
+            var sharedSettings = SettingsManager.Instance.CreateSnapshot();
+
             var tasks = resolvedSourcePaths.Select(async (sourcePath, index) =>
             {
+                var acquired = false;
                 try
                 {
                     await semaphore.WaitAsync(actualCancellationToken);
+                    acquired = true;
                     actualCancellationToken.ThrowIfCancellationRequested();
 
                     var innerProgress = CreateMappedProgress(
                         totalCount, lockObject, () => successCount + failedPaths.Count, progressWindow, sharedThrottler);
 
-                    // 事前計算された出力パスを使用して圧縮処理を実行
-                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false, overrideOutputPath: resolvedOutputPaths[index]);
+                    // 事前計算された出力パスを使用して圧縮処理を実行（共有スナップショットを再利用）
+                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false, overrideOutputPath: resolvedOutputPaths[index], settingsSnapshot: sharedSettings);
 
                     // lock 内で状態のみ更新し、Dispatcher への通知は lock 外で実行
                     var completedProgress = 0;
@@ -665,7 +707,8 @@ public static class ArchiveProcessor
                 }
                 finally
                 {
-                    semaphore.Release();
+                    // WaitAsync が失敗した場合（キャンセル等）は Release しない。
+                    if (acquired) semaphore.Release();
                 }
             }).ToList();
 
@@ -768,8 +811,9 @@ public static class ArchiveProcessor
                     File.Delete(outputPath);
                 }
 
-                // ファイルリストをスキャン
-                var settings = SettingsManager.Instance.Current;
+                // ファイルリストをスキャン。
+                // 設定は処理開始時点でスナップショット化して以降の race を避ける。
+                var settings = SettingsManager.Instance.CreateSnapshot();
                 var excludedPatternSet = new HashSet<string>(
                     settings.ExcludedFilePatterns ?? [],
                     StringComparer.OrdinalIgnoreCase);
@@ -834,7 +878,7 @@ public static class ArchiveProcessor
 
                 // 解決済みリストで圧縮
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
-                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, parsedFormat, p => progress.Report(p), actualCancellationToken, resolvedFiles);
+                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, parsedFormat, progress, actualCancellationToken, resolvedFiles, settingsOverride: settings);
 
                 Logger.Log($"まとめ圧縮完了: {outputPath}（{resolvedFiles.Count}個のファイル）");
 

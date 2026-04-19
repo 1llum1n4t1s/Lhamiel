@@ -272,5 +272,8 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">不正なパス形式が検出されました</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">パスの検証に失敗しました: {0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">予約されたデバイス名が使用されています: {0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' はシステムによって保護されているため、上書きできません。別の場所を選択してください。</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">圧縮処理中...</x:String>
 
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">アーカイブに展開先の外側を指す不正なエントリが含まれています: {0}</x:String>
 </ResourceDictionary>

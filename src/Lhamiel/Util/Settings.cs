@@ -32,6 +32,12 @@ public class Settings
     private static readonly string SettingsFilePath = Path.Combine(AppDataDirectory, "settings.json");
 
     /// <summary>
+    /// 自動更新で許可する GitHub リポジトリの正規値（悪意ある誘導を防ぐためハードコード固定）
+    /// </summary>
+    internal const string CanonicalUpdateRepoOwner = "1llum1n4t1s";
+    internal const string CanonicalUpdateRepoName = "Lhamiel";
+
+    /// <summary>
     /// テーマ設定（"System", "Dark", "Light"）
     /// </summary>
     public string Theme { get; set; } = "System";
@@ -67,14 +73,18 @@ public class Settings
     public bool CompressionOutputToSameDirectory { get; set; }
 
     /// <summary>
-    /// 自動更新用のGitHubオーナー名
+    /// 自動更新用のGitHubオーナー名。
+    /// セキュリティ上の理由でハードコード固定。settings.json から書き換えても反映されない。
     /// </summary>
-    public string UpdateRepoOwner { get; set; } = "1llum1n4t1s";
+    [JsonIgnore]
+    public string UpdateRepoOwner => CanonicalUpdateRepoOwner;
 
     /// <summary>
-    /// 自動更新用のGitHubリポジトリ名
+    /// 自動更新用のGitHubリポジトリ名。
+    /// セキュリティ上の理由でハードコード固定。settings.json から書き換えても反映されない。
     /// </summary>
-    public string UpdateRepoName { get; set; } = "Lhamiel";
+    [JsonIgnore]
+    public string UpdateRepoName => CanonicalUpdateRepoName;
 
     /// <summary>
     /// 自動更新用のチャンネル名
@@ -148,6 +158,19 @@ public class Settings
     /// 7z圧縮レベルの設定
     /// </summary>
     public int SevenZipCompressionLevel { get; set; } = 5; // Normal
+
+    /// <summary>
+    /// 並列アクセスに対して安全なスナップショット（浅いコピー）を返す。
+    /// 呼び出し元は処理開始時に1回だけ呼び出し、その後はスナップショットを使うことで
+    /// UI スレッド側の設定変更との race を回避する。
+    /// </summary>
+    public Settings Snapshot()
+    {
+        var copy = (Settings)MemberwiseClone();
+        // List は参照型なので明示コピーする
+        copy.ExcludedFilePatterns = ExcludedFilePatterns is null ? [] : [.. ExcludedFilePatterns];
+        return copy;
+    }
 
     /// <summary>
     /// 設定をファイルから読み込むメソッド
@@ -230,8 +253,6 @@ public class Settings
         CompressionOutputToSameDirectory = false;
         OpenExtractionOutputFolder = true;
         OpenCompressionOutputFolder = true;
-        UpdateRepoOwner = "1llum1n4t1s";
-        UpdateRepoName = "Lhamiel";
         UpdateChannel = "release";
         LogMaxSizeMB = 10;
         LogRetentionDays = 7;

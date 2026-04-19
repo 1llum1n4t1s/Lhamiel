@@ -274,4 +274,7 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">தவறான பாதை வடிவம் கண்டறியப்பட்டது</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">பாதை சரிபார்ப்பு தோல்வியடைந்தது: {0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">ஒதுக்கப்பட்ட சாதனப் பெயர் பயன்படுத்தப்படுகிறது: {0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' கணினியால் பாதுகாக்கப்பட்டுள்ளது மற்றும் மேலெழுத முடியாது. வேறு இடத்தைத் தேர்ந்தெடுக்கவும்.</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">சுருக்குகிறது...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">பிரித்தெடுப்பதற்கான இலக்கிற்கு வெளியே சுட்டிக்காட்டும் பாதுகாப்பற்ற உள்ளீட்டை காப்பகம் கொண்டுள்ளது: {0}</x:String>
 </ResourceDictionary>

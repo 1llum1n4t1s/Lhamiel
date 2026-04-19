@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media.Imaging;
@@ -181,10 +182,113 @@ public static class FileIconHelper
     }
 
     /// <summary>
+    /// 拡張子→Bitmap の共有キャッシュ（ジェネリックアイコン用）。
+    /// SHGetFileInfo の P/Invoke コストは 1〜5ms と高く、同一拡張子のファイルが 100 件並ぶと
+    /// UI スレッド上で 500ms オーダーのブロックになるため拡張子単位でメモ化する。
+    /// 悪意ある/未知の拡張子多数ケースでメモリが無制限に増えないよう上限を設ける。
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, Bitmap> _extensionIconCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>キャッシュの最大エントリ数。越えた場合は単純に全クリアする（LRU は Avalonia 依存を増やさないため非採用）。</summary>
+    private const int MaxExtensionIconCacheEntries = 256;
+
+    /// <summary>
+    /// eviction 実行中フラグ（0 = idle, 1 = running）。
+    /// 複数スレッドが同時に <see cref="GetFileIcon"/> を呼んで上限到達と判断した場合、
+    /// それぞれが半数削除を実行すると合計で N/2 以上が消えてキャッシュヒット率が崩壊する。
+    /// また <see cref="ConcurrentDictionary{TKey,TValue}.Keys"/> はスナップショット生成で
+    /// O(n) のロックを取るため、多重実行は競合コストも高い。
+    /// よって <see cref="Interlocked.CompareExchange(ref int, int, int)"/> で 1 スレッドだけが
+    /// eviction を実行し、他スレッドはスキップ（次の追加タイミングで再評価される）。
+    /// </summary>
+    private static int _evictionInProgress;
+
+    /// <summary>
+    /// キャッシュ件数の独立カウンタ。
+    /// <see cref="ConcurrentDictionary{TKey,TValue}.Count"/> は内部で全バケットをロックするため
+    /// ホットパス（ファイルリスト表示など短時間に大量呼び出しされる経路）での参照コストが O(N) に
+    /// 近づき、キャッシュが大きくなるほどボトルネックになる。
+    /// TryAdd 成功時 <see cref="Interlocked.Increment(ref int)"/>、TryRemove 成功時 Decrement で
+    /// 管理する近似カウンタ（Dictionary 本体と一瞬ずれることはあるが、eviction トリガの判定には十分）。
+    /// </summary>
+    private static int _cacheCount;
+
+    /// <summary>
     /// ファイルパスからアイコンを Avalonia Bitmap として取得する。
-    /// ファイルが存在しない場合は拡張子ベースでジェネリックアイコンを取得する。
+    /// ファイルが存在しない場合は拡張子ベースでジェネリックアイコンを取得し、拡張子単位でキャッシュする。
     /// </summary>
     public static Bitmap? GetFileIcon(string filePath, bool largeIcon = true)
+    {
+        // 実ファイルが存在しない場合は拡張子キャッシュを利用して P/Invoke を省略する。
+        // 存在する実ファイル自体のアイコンは埋め込みアイコンが優先されるためキャッシュ対象外。
+        var shouldCache = !File.Exists(filePath) && !Directory.Exists(filePath);
+        if (shouldCache)
+        {
+            var ext = Path.GetExtension(filePath);
+            var cacheKey = $"{(largeIcon ? "L:" : "S:")}{ext}";
+            if (_extensionIconCache.TryGetValue(cacheKey, out var cached))
+                return cached;
+
+            var loaded = LoadFileIcon(filePath, largeIcon);
+            // 失敗（null）はキャッシュしない。後で別条件で成功するかもしれないため毎回再試行する。
+            if (loaded is not null)
+            {
+                // 上限到達時はエントリを半数ずつ破棄する（全クリアだと頻繁に上限到達する環境で
+                // P/Invoke のスパイクが再発しやすい。ConcurrentDictionary の Keys は順序
+                // 保証がないため厳密な LRU ではないが、全クリアよりは UI のブロック周期が長くなる）。
+                //
+                // evict した Bitmap は **ここで Dispose しない**。ConflictCellViewModel 等が
+                // GetFileIcon の戻り値を強参照として保持しており、ダイアログ表示中にも
+                // 256 以上のユニーク拡張子で evict が走りうる。Dispose するとまだ画面に
+                // 表示中の行でレンダリング失敗 / 白抜きアイコンが起きる。
+                // 参照が UI から切れたあとは .NET の GC + Bitmap のファイナライザが
+                // unmanaged ハンドル（GDI+）を回収するのに任せる（多少遅れるが安全側）。
+                // 一度に 1 スレッドだけ eviction を実行。他スレッドは超過分を次回呼び出しに任せる。
+                // CompareExchange は 0→1 に成功したスレッドだけが本体に入り、失敗した側は単に
+                // TryAdd に進む（上限を数エントリ超過する可能性はあるが許容範囲）。
+                // _cacheCount は独立カウンタ（ConcurrentDictionary.Count は O(N) ロックのため回避）。
+                if (_cacheCount >= MaxExtensionIconCacheEntries &&
+                    Interlocked.CompareExchange(ref _evictionInProgress, 1, 0) == 0)
+                {
+                    try
+                    {
+                        var targetRemove = _cacheCount / 2;
+                        var removed = 0;
+                        foreach (var key in _extensionIconCache.Keys)
+                        {
+                            if (removed >= targetRemove) break;
+                            if (_extensionIconCache.TryRemove(key, out _))
+                            {
+                                Interlocked.Decrement(ref _cacheCount);
+                                removed++;
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        Interlocked.Exchange(ref _evictionInProgress, 0);
+                    }
+                }
+
+                // 並行スレッドが同じキーで先に設定していたら、自分の loaded を Dispose して
+                // 既存を返す。この loaded はまだ UI にバインドされておらず呼び出し元にも
+                // 返していないので、Dispose しても安全（race 敗者だけのローカル参照）。
+                if (!_extensionIconCache.TryAdd(cacheKey, loaded))
+                {
+                    loaded.Dispose();
+                    return _extensionIconCache.TryGetValue(cacheKey, out var winner) ? winner : null;
+                }
+                Interlocked.Increment(ref _cacheCount);
+            }
+            return loaded;
+        }
+        return LoadFileIcon(filePath, largeIcon);
+    }
+
+    /// <summary>
+    /// 実際に SHGetFileInfo を呼び出してアイコンを読み込む。
+    /// </summary>
+    private static Bitmap? LoadFileIcon(string filePath, bool largeIcon)
     {
         try
         {

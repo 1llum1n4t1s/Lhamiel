@@ -7,6 +7,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:primitives="using:Avalonia.Controls.Primitives"
     xmlns:models="using:Lhamiel.Models"
+    xmlns:sys="using:System"
     xmlns:vm="using:Lhamiel.ViewModels"
     x:CompileBindings="True"
     Title="{Binding VersionText, StringFormat='Lhamiel v{0}'}"
@@ -99,7 +100,7 @@
                                     ItemsSource="{Binding CompressionFormats}"
                                     SelectedItem="{Binding SelectedCompressionFormat}">
                                     <ComboBox.SelectionBoxItemTemplate>
-                                        <DataTemplate>
+                                        <DataTemplate x:DataType="sys:String">
                                             <TextBlock Text="{Binding}" />
                                         </DataTemplate>
                                     </ComboBox.SelectionBoxItemTemplate>

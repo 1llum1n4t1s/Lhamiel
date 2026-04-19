@@ -274,4 +274,7 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Formato del percorso non valido rilevato</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Validazione del percorso non riuscita: {0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">È in uso un nome di dispositivo riservato: {0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' è protetto dal sistema e non può essere sovrascritto. Selezionare un'altra posizione.</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Compressione in corso...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">L'archivio contiene una voce non sicura che punta al di fuori della destinazione di estrazione: {0}</x:String>
 </ResourceDictionary>

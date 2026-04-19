@@ -272,4 +272,7 @@
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Path validation failed: {0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Reserved device name is used: {0}</x:String>
 
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">The output '{0}' is protected by the system and cannot be overwritten. Please choose a different location.</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Compressing...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">The archive contains an unsafe entry pointing outside the extraction target: {0}</x:String>
 </ResourceDictionary>

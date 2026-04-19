@@ -35,25 +35,27 @@ analyzed_commits: 200
 ```
 src/
 ├── Lhamiel/
-│   ├── App.xaml(.cs)               # アプリエントリポイント、ロケール管理
+│   ├── App.axaml(.cs)              # アプリエントリポイント、ロケール管理
 │   ├── Program.cs                  # Velopackブートストラップ
-│   ├── Models/                     # データモデル (1ファイル)
-│   │   └── FileAssociationItem.cs
-│   ├── View/                       # Avalonia XAML + コードビハインド (4ダイアログ)
-│   │   ├── MainWindow.xaml(.cs)
-│   │   ├── ProgressWindow.xaml(.cs)
-│   │   ├── OverwriteConfirmDialog.xaml(.cs)
-│   │   └── ErrorRecoveryDialog.xaml(.cs)
+│   ├── Models/                     # データモデル
+│   │   ├── FileAssociationItem.cs
+│   │   └── FileConflictInfo.cs
+│   ├── View/                       # Avalonia AXAML + コードビハインド
+│   │   ├── MainWindow.axaml(.cs)
+│   │   ├── ProgressWindow.axaml(.cs)
+│   │   ├── FileConflictDialog.axaml(.cs)  # 展開/圧縮両方の衝突解決を統合
+│   │   ├── ErrorRecoveryDialog.axaml(.cs)
+│   │   └── DiskSpaceDialog.axaml(.cs)
 │   ├── ViewModels/                 # MVVM ViewModel (1ファイル)
 │   │   └── MainWindowViewModel.cs
-│   ├── Util/                       # ビジネスロジック全体 (26ファイル)
+│   ├── Util/                       # ビジネスロジック全体
 │   │   ├── Archive*.cs             # アーカイブ処理の中核
 │   │   ├── Settings*.cs            # 設定管理
 │   │   ├── Native*.cs / Shell*.cs  # ネイティブ相互運用
 │   │   └── ...                     # ファイル操作、IPC、ログ等
 │   └── Resources/
 │       └── Locales/                # 17言語のローカライズファイル (.axaml)
-└── Lhamiel.Tests.Unit/             # xUnit 3 + Moq テスト (7テストファイル)
+└── Lhamiel.Tests.Unit/             # xUnit 3 + Moq テスト (27テストファイル、adversarial含む)
 ```
 
 ## Hottest Files (変更頻度が高いファイル)
@@ -120,7 +122,7 @@ src/
 
 | コンポーネント | 技術 |
 |-------------|------|
-| UI | Avalonia 11 + FluentTheme |
+| UI | Avalonia 12 + FluentTheme |
 | パターン | MVVM (CommunityToolkit.Mvvm) |
 | アーカイブ | 1llum1n4t1s.Sevenzip (7z.dll) |
 | シリアライズ | System.Text.Json (AOTソースジェネレーター) |

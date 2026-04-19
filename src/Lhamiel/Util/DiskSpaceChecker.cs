@@ -129,20 +129,36 @@ public static class DiskSpaceChecker
 
     /// <summary>
     /// 処理中の定期ディスク容量チェックを開始する。
-    /// 容量不足を検出した場合、CancellationTokenSource をキャンセルし、
-    /// コールバックで通知する。
+    /// 容量不足を検出した場合、<paramref name="operationCts"/> をキャンセルし、
+    /// <paramref name="parentWindow"/> が指定されていれば通知ダイアログを表示する。
     /// </summary>
+    /// <remarks>
+    /// 旧実装は「通知用コールバック」が渡された時のみダイアログを出す設計だったため、
+    /// 呼び出し側（<see cref="ArchiveExtractor"/> 等）がコールバックを渡し忘れると
+    /// 容量不足のキャンセルが UI 無しでサイレントに起きてユーザーが原因を特定できない。
+    /// そこで通知の有無は <paramref name="parentWindow"/> 1 つで判定する設計に改める。
+    /// </remarks>
     /// <returns>定期チェックを停止するための IDisposable</returns>
     public static IDisposable StartPeriodicCheck(
         string outputPath, long requiredBytes,
-        Window? parentWindow, CancellationTokenSource operationCts,
-        Func<long, long, Task<bool>>? onInsufficientSpace = null)
+        Window? parentWindow, CancellationTokenSource operationCts)
     {
         var checkCts = new CancellationTokenSource();
-        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(checkCts.Token, operationCts.Token);
+        // Token プロパティは CancellationTokenSource.Dispose 後に触れると
+        // ObjectDisposedException を投げる。Task.Run の開始前に呼び出し側が即 Dispose した
+        // 場合、タスク内部で checkCts.Token を読むタイミングで未監視例外になりうる。
+        // そこで Token は Task.Run の外で先に取得しておき、CTS 本体の Dispose はタスクが
+        // 終了してから行う（PeriodicCheckDisposable.Dispose 参照）。
+        var checkToken = checkCts.Token;
+        var operationToken = operationCts.Token;
 
-        _ = Task.Run(async () =>
+        var checkTask = Task.Run(async () =>
         {
+            // linkedCts は Task.Run 内の using スコープで確実に破棄する。
+            // CreateLinkedTokenSource は 2 つのソーストークンにコールバックを登録するため、
+            // Dispose しないとソーストークンに参照が残り続けてメモリリーク要因になる。
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                checkToken, operationToken);
             try
             {
                 while (!linkedCts.Token.IsCancellationRequested)
@@ -150,40 +166,49 @@ public static class DiskSpaceChecker
                     await Task.Delay(TimeSpan.FromSeconds(CheckIntervalSeconds), linkedCts.Token);
 
                     var available = GetAvailableSpace(outputPath);
-                    // 空き容量がMinFreeSpaceThreshold未満、または処理中に残りが必要量の10%を切った場合に警告
-                    if (available < MinFreeSpaceThresholdBytes || available < requiredBytes / 10)
+                    // 空き容量が MinFreeSpaceThreshold 未満、または処理中に残りが必要量の 10% を切った場合に警告。
+                    // requiredBytes <= 0（メタデータ不明 / 空アーカイブ）の場合、相対判定は無意味で常に
+                    // 条件を満たしてしまうため、絶対閾値チェックのみに限定する。
+                    var relativeShortage = requiredBytes > 0 && available < requiredBytes / 10;
+                    if (available < MinFreeSpaceThresholdBytes || relativeShortage)
                     {
                         Logger.Log($"定期チェックで容量不足を検出: 空き={FormatSize(available)}");
 
-                        if (onInsufficientSpace != null)
-                        {
-                            // 操作を一時停止
-                            operationCts.Cancel();
+                        // 現在の 7z.dll ベースの処理では「再開」がサポートされていないため、
+                        // 容量不足を検出した時点で即座にキャンセルを通知し、その後に通知ダイアログを出す。
+                        // （旧実装はダイアログ表示まで Cancel を待ってしまい、ネイティブ処理が進み続けていた）
+                        operationCts.Cancel();
 
-                            // UIでダイアログ表示
-                            var shouldContinue = await Dispatcher.UIThread.InvokeAsync(async () =>
+                        if (parentWindow is not null)
+                        {
+                            // キャンセル後の通知としてダイアログ表示（結果は無視。ユーザーには操作中断を認知させる目的）。
+                            // requiredBytes<=0（メタデータ不明アーカイブ）時は `requiredBytes - available` が
+                            // 負数になってしまうので、shortage は 0 以上にクランプして UI 表示を守る。
+                            // また、ダイアログの ShowDialog を await すると、この Task.Run 側が break で
+                            // 抜けて periodicCheck が Dispose されたとき InvokeAsync の継続がキャンセルされて
+                            // ダイアログが消えかねない。そのため通知は fire-and-forget で UI スレッドに
+                            // 投げてから即 break する（ダイアログのライフサイクルは Avalonia に委ねる）。
+                            var shortage = Math.Max(0, requiredBytes - available);
+                            var capturedRequired = requiredBytes;
+                            var capturedAvailable = available;
+                            var capturedOutput = outputPath;
+                            _ = Dispatcher.UIThread.InvokeAsync(async () =>
                             {
-                                if (parentWindow is null) return false;
-                                var dialog = new View.DiskSpaceDialog(
-                                    requiredBytes, available, requiredBytes - available, outputPath);
-                                dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-                                return await dialog.ShowDialog<bool>(parentWindow);
+                                try
+                                {
+                                    var dialog = new View.DiskSpaceDialog(
+                                        capturedRequired, capturedAvailable, shortage, capturedOutput);
+                                    dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                                    await dialog.ShowDialog<bool>(parentWindow);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.Log($"ディスク容量通知ダイアログの表示に失敗: {ex.Message}", LogLevel.Warning);
+                                }
                             });
-
-                            if (!shouldContinue)
-                            {
-                                Logger.Log("定期チェック: ユーザーがキャンセル");
-                                break;
-                            }
-                            // 再開は現在の7z.dll処理では難しいため、キャンセル扱いにする
-                            Logger.Log("定期チェック: 7z.dll処理中の再開は不可のため操作をキャンセル");
-                            break;
                         }
-                        else
-                        {
-                            operationCts.Cancel();
-                            break;
-                        }
+                        Logger.Log("定期チェック: 7z.dll処理中の再開は不可のため操作をキャンセル");
+                        break;
                     }
                 }
             }
@@ -192,9 +217,9 @@ public static class DiskSpaceChecker
             {
                 Logger.Log($"定期容量チェックエラー: {ex.Message}");
             }
-        }, linkedCts.Token);
+        });
 
-        return new PeriodicCheckDisposable(checkCts, linkedCts);
+        return new PeriodicCheckDisposable(checkCts, checkTask);
     }
 
     /// <summary>
@@ -210,15 +235,30 @@ public static class DiskSpaceChecker
         _ => $"{bytes / (1024.0 * 1024 * 1024):F2} GB"
     };
 
-    private sealed class PeriodicCheckDisposable(
-        CancellationTokenSource checkCts,
-        CancellationTokenSource linkedCts) : IDisposable
+    /// <summary>
+    /// <see cref="StartPeriodicCheck"/> の戻り値。Dispose() で内部の checkCts に Cancel を
+    /// 発火させて Task.Run 側のループを停止させる。linkedCts は Task.Run 内で using
+    /// 破棄されるので、ここでは checkCts のみ管理する。
+    /// <para>
+    /// CTS 本体の Dispose は背後タスクの終了を待ってから実行する。呼び出し側が
+    /// StartPeriodicCheck 直後に Dispose した場合、Task.Run がまだスケジュール待ちで
+    /// checkCts.Token を参照する前に CTS が破棄されると ObjectDisposedException
+    /// （未監視）が発生しうるため、ContinueWith で破棄を遅延させる。
+    /// </para>
+    /// </summary>
+    private sealed class PeriodicCheckDisposable(CancellationTokenSource checkCts, Task checkTask) : IDisposable
     {
         public void Dispose()
         {
             checkCts.Cancel();
-            checkCts.Dispose();
-            linkedCts.Dispose();
+            // タスク完了後に CTS を破棄。背後タスクが未開始のケースでも、ContinueWith は
+            // ソースタスク完了（成功/失敗/キャンセル問わず）で起動するため安全。
+            _ = checkTask.ContinueWith(
+                static (_, state) => ((CancellationTokenSource)state!).Dispose(),
+                checkCts,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
     }
 }

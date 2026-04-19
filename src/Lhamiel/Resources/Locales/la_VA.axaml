@@ -274,4 +274,7 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Forma viae invalida detecta est</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Validatio viae defecit: {0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Nomen instrumenti reservatum in usu est: {0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' a systemate tutum est et superscribi non potest. Aliam locationem elige.</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Comprimendo...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">Archivum entriam perniciosam continet quae extra locum extractionis indicat: {0}</x:String>
 </ResourceDictionary>
