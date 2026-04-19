@@ -295,10 +295,12 @@ public static class ArchiveCompressor
         // 衝突判定は「同じ relativePath に対して 2 つ以上の異なる fullPath が存在する」場合のみ。
         // 同一 fullPath が重複しているだけのケース（呼び出し側の不注意な重複入力等）は
         // 衝突扱いせず、代表 1 件だけ残すのが期待挙動。
+        // ScanSourceFiles 側で fullPath は既に絶対パス化されているため、ここでの
+        // Path.GetFullPath 再正規化は不要（大量ファイル時のオーバーヘッド回避）。
         var groups = files
             .GroupBy(f => f.relativePath, StringComparer.OrdinalIgnoreCase)
             .Where(g => g
-                .Select(f => Path.GetFullPath(f.fullPath))
+                .Select(f => f.fullPath)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .Skip(1)
                 .Any())

@@ -298,14 +298,44 @@ public static class ArchiveExtractor
         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
     /// <summary>
-    /// アーカイブ内のエントリ名を展開先の相対パスとして安全に解決する。
-    /// 絶対パス・ドライブレター・UNC・`..` セグメントを含むエントリは弾かれる。
+    /// パス境界チェック用に <paramref name="basePath"/> を絶対化 + 末尾セパレータ付与した形に正規化する。
+    /// エントリ単位のループで繰り返し正規化するコストを避けるため、ループ外で 1 度だけ呼び出すのが想定用途。
     /// </summary>
-    /// <param name="basePath">展開先のベースディレクトリ</param>
+    internal static string NormalizeBaseDirectory(string basePath) =>
+        Path.GetFullPath(basePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+        + Path.DirectorySeparatorChar;
+
+    /// <summary>
+    /// アーカイブ内のエントリ名を展開先の相対パスとして安全に解決する（呼び出しごとに basePath を正規化する版）。
+    /// 単発呼び出し用。ループ内からの呼び出しには <see cref="TryResolveSafeEntryPathFromNormalized"/> を使い、
+    /// <see cref="NormalizeBaseDirectory"/> でループ外に正規化コストを追い出すこと。
+    /// </summary>
+    /// <param name="basePath">展開先のベースディレクトリ（未正規化可）</param>
     /// <param name="entryName">アーカイブ内のエントリ名（攻撃者制御）</param>
     /// <param name="safeFullPath">境界内に収まる結合済み絶対パス</param>
     /// <returns>境界内なら true、境界を超える場合は false</returns>
     internal static bool TryResolveSafeEntryPath(string basePath, string entryName, out string safeFullPath)
+    {
+        try
+        {
+            return TryResolveSafeEntryPathFromNormalized(NormalizeBaseDirectory(basePath), entryName, out safeFullPath);
+        }
+        catch
+        {
+            safeFullPath = string.Empty;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// <see cref="NormalizeBaseDirectory"/> で事前正規化したベースディレクトリを使って境界チェックを行う。
+    /// アーカイブ内エントリをループ走査する場面では、1 回だけ正規化して本メソッドを繰り返し呼ぶことで
+    /// <see cref="Path.GetFullPath(string)"/> の繰り返しコストを避けられる。
+    /// </summary>
+    /// <param name="normalizedBase">末尾セパレータ付きの絶対パス（<see cref="NormalizeBaseDirectory"/> の戻り値）</param>
+    /// <param name="entryName">アーカイブ内のエントリ名（攻撃者制御）</param>
+    /// <param name="safeFullPath">境界内に収まる結合済み絶対パス</param>
+    internal static bool TryResolveSafeEntryPathFromNormalized(string normalizedBase, string entryName, out string safeFullPath)
     {
         safeFullPath = string.Empty;
         if (string.IsNullOrEmpty(entryName)) return false;
@@ -318,13 +348,8 @@ public static class ArchiveExtractor
 
         try
         {
-            // basePath が相対パスでも CWD に依存しないよう、まず絶対化してから
-            // Path.GetFullPath(path, basePath) オーバーロード（.NET Core 2.1+）で結合する。
-            // 旧実装の Path.Combine(basePath, ...) + Path.GetFullPath(...) は基準が
-            // CWD にフォールバックしうるため避ける。
-            var normalizedBase = Path.GetFullPath(basePath)
-                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
-                + Path.DirectorySeparatorChar;
+            // basePath が相対パスでも CWD に依存しないよう、Path.GetFullPath(path, basePath)
+            // オーバーロード（.NET Core 2.1+）で事前正規化済みベースを使って結合する。
             var combined = Path.GetFullPath(normalized, normalizedBase);
 
             // 比較は OS 依存。case-sensitive FS で `../output/evil` 形のケース違い traversal が
@@ -357,6 +382,8 @@ public static class ArchiveExtractor
         try
         {
             using var reader = new ArchiveReader(archivePath);
+            // outputPath の絶対化はループ外で 1 回だけ行い、ループ内は正規化済み版を使う
+            var normalizedOutputBase = NormalizeBaseDirectory(outputPath);
 
             foreach (var item in reader.Items)
             {
@@ -370,7 +397,7 @@ public static class ArchiveExtractor
                 if (ContainsIgnoredDirectory(relativePath)) continue;
 
                 // Zip Slip ガード: outputPath 境界外に出るエントリ（`..` / 絶対パス / UNC）はスキップ
-                if (!TryResolveSafeEntryPath(outputPath, relativePath, out var destFilePath))
+                if (!TryResolveSafeEntryPathFromNormalized(normalizedOutputBase, relativePath, out var destFilePath))
                 {
                     Logger.Log($"展開衝突検出で境界外パスを検出しスキップ: {relativePath}", LogLevel.Warning);
                     continue;
@@ -814,6 +841,8 @@ public static class ArchiveExtractor
                 // アーカイブ内の全エントリ名が tempOutputPath 境界内に収まるかを検証する。
                 // （DetectExtractionConflicts は衝突検出専用で、境界外エントリをスキップするだけなので
                 //   ここで改めて全エントリを検証して安全性を担保する）
+                // tempOutputPath の絶対化はループ外で 1 回だけ行う。
+                var normalizedTempBase = NormalizeBaseDirectory(tempOutputPath);
                 foreach (var item in reader.Items)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -825,7 +854,7 @@ public static class ArchiveExtractor
                     if (IgnoredSystemFiles.Contains(fileName)) continue;
                     if (ContainsIgnoredDirectory(entryName.Replace('\\', '/'))) continue;
 
-                    if (!TryResolveSafeEntryPath(tempOutputPath, entryName, out _))
+                    if (!TryResolveSafeEntryPathFromNormalized(normalizedTempBase, entryName, out _))
                     {
                         Logger.Log($"危険なエントリ名を検出しアーカイブ展開を中止: {entryName}", LogLevel.Warning);
                         throw new InvalidOperationException(
@@ -872,9 +901,11 @@ public static class ArchiveExtractor
             if (skipRelativePaths is { Count: > 0 })
             {
                 Logger.Log($"スキップ対象の {skipRelativePaths.Count} ファイルを一時ディレクトリから除外");
+                // ループ外で 1 回だけ正規化してから繰り返し境界チェックする
+                var normalizedSkipBase = NormalizeBaseDirectory(tempOutputPath);
                 foreach (var relativePath in skipRelativePaths)
                 {
-                    if (!TryResolveSafeEntryPath(tempOutputPath, relativePath, out var tempFilePath))
+                    if (!TryResolveSafeEntryPathFromNormalized(normalizedSkipBase, relativePath, out var tempFilePath))
                     {
                         Logger.Log($"スキップ対象の境界外パスを拒否: {relativePath}", LogLevel.Warning);
                         continue;
