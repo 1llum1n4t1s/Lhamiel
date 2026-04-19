@@ -104,9 +104,17 @@ public static class ArchiveProcessor
                 var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(filePath, outputDir, outputToSameDirectory);
 
                 // アーカイブの構造を一度だけ解析
-                structureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
+                var rawStructureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
                 // 設定は処理開始時点でスナップショットを取って一貫性を保つ（UIの設定変更と race しない）
                 var createFolder = SettingsManager.Instance.CreateSnapshot().CreateArchiveNameFolder;
+                // 後段の FolderOpener が同じ値を使うよう、スナップショットした createFolder を
+                // ArchiveStructureInfo に同梱して返す。
+                structureInfo = new ArchiveExtractor.ArchiveStructureInfo
+                {
+                    ShouldSkipFolderCreation = rawStructureInfo.ShouldSkipFolderCreation,
+                    SingleRootItemName = rawStructureInfo.SingleRootItemName,
+                    CapturedCreateArchiveNameFolder = createFolder,
+                };
 
                 // 出力先を決定
                 if (!createFolder)

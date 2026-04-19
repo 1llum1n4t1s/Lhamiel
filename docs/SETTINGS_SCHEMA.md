@@ -25,11 +25,11 @@
   "ExcludedFilePatterns": [".DS_Store", "Thumbs.db", "__MACOSX"],
   "ZipCompressionLevel": 5,
   "SevenZipCompressionLevel": 5,
-  "UpdateRepoOwner": "1llum1n4t1s",
-  "UpdateRepoName": "Lhamiel",
   "UpdateChannel": "release"
 }
 ```
+
+> **ℹ️ 補足**: `UpdateRepoOwner` / `UpdateRepoName` は `[JsonIgnore]` 属性付きの読み取り専用プロパティのため `settings.json` には書き出されず、記述しても読み込まれません（悪意ある第三者リポジトリへの誘導を防ぐための固定値）。
 
 ## プロパティ一覧
 

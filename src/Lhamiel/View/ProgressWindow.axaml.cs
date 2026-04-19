@@ -85,13 +85,25 @@ public partial class ProgressWindow : Window
     /// ウィンドウが閉じられて CTS が破棄された後は CancellationToken.None を返すと
     /// 後続処理がキャンセル不能になるため、代わりに「既にキャンセル済み」のトークンを返す。
     /// </summary>
+    /// <remarks>
+    /// <see cref="OnClosed"/> で <c>Dispose()</c> → <c>= null</c> の順で解放する微小な窓で、
+    /// 他スレッドが <c>cts.Token</c> を触ると <see cref="ObjectDisposedException"/> が出る可能性があるため、
+    /// ここでも try/catch で吸収して「キャンセル済みトークン」にフォールバックする。
+    /// </remarks>
     /// <returns>キャンセルトークン</returns>
     public CancellationToken GetCancellationToken()
     {
         var cts = _cancellationTokenSource;
         if (cts is null)
             return new CancellationToken(canceled: true);
-        return cts.Token;
+        try
+        {
+            return cts.Token;
+        }
+        catch (ObjectDisposedException)
+        {
+            return new CancellationToken(canceled: true);
+        }
     }
 
     /// <summary>
@@ -228,8 +240,11 @@ public partial class ProgressWindow : Window
         // 基本クラスの処理を実行
         base.OnClosed(e);
 
-        // バックグラウンド処理が完了しているので、CTSを安全に破棄する
-        _cancellationTokenSource?.Dispose();
+        // バックグラウンド処理が完了しているので、CTS を安全に破棄する。
+        // 他スレッドの GetCancellationToken() が「Dispose 後・null 代入前」の隙間で
+        // 解放済みトークンに触れないよう、先にフィールドを null に差し替えてから Dispose する。
+        var cts = _cancellationTokenSource;
         _cancellationTokenSource = null;
+        cts?.Dispose();
     }
 }

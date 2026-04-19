@@ -99,28 +99,32 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private CompressionLevelItem? _selectedSevenZipLevel;
 
     /// <summary>
-    /// 設定値を即時保存する（ロード中は抑制）
+    /// 設定値を即時保存する（ロード中は抑制）。
+    /// SettingsManager.Mutate / Save と同一ロック下で処理し、バックグラウンドの
+    /// CreateSnapshot と race しないようにする。
     /// </summary>
     private void AutoSave()
     {
         if (_isLoading) return;
         try
         {
-            var s = _settingsManager.Current;
-            s.Theme = SelectedTheme;
-            s.Locale = SelectedLocale;
-            s.CompressionFormat = SelectedCompressionFormat ?? "ZIP";
-            s.ExtractionOutputDirectory = ExtractionOutputDirectory;
-            s.CompressionOutputDirectory = CompressionOutputDirectory;
-            s.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectory;
-            s.CompressionOutputToSameDirectory = CompressionOutputToSameDirectory;
-            s.OpenExtractionOutputFolder = OpenExtractionOutputFolder;
-            s.CreateArchiveNameFolder = CreateArchiveNameFolder;
-            s.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
-            s.CompressMultipleAsOne = CompressMultipleAsOne;
-            s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
-            s.ZipCompressionLevel = ZipCompressionLevel;
-            s.SevenZipCompressionLevel = SevenZipCompressionLevel;
+            _settingsManager.Mutate(s =>
+            {
+                s.Theme = SelectedTheme;
+                s.Locale = SelectedLocale;
+                s.CompressionFormat = SelectedCompressionFormat ?? "ZIP";
+                s.ExtractionOutputDirectory = ExtractionOutputDirectory;
+                s.CompressionOutputDirectory = CompressionOutputDirectory;
+                s.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectory;
+                s.CompressionOutputToSameDirectory = CompressionOutputToSameDirectory;
+                s.OpenExtractionOutputFolder = OpenExtractionOutputFolder;
+                s.CreateArchiveNameFolder = CreateArchiveNameFolder;
+                s.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
+                s.CompressMultipleAsOne = CompressMultipleAsOne;
+                s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
+                s.ZipCompressionLevel = ZipCompressionLevel;
+                s.SevenZipCompressionLevel = SevenZipCompressionLevel;
+            });
             _settingsManager.Save();
         }
         catch (Exception ex)

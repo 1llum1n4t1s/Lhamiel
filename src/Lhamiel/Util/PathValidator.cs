@@ -275,8 +275,9 @@ public static class PathValidator
 
             try
             {
-                // リンク系（symlink/junction）を最大5階層再帰的に追跡。
-                // ループや壊れたリンクは null を返すので安全。
+                // symlink/junction の最終ターゲットをプラットフォーム既定の上限まで追跡する。
+                // .NET のドキュメント上、深さ上限は Windows が 63、Unix が 40。
+                // ループ・壊れたリンク・非リンクは null を返す（IOException になるケースは catch 側で握る）。
                 var resolved = Directory.ResolveLinkTarget(lexical, returnFinalTarget: true);
                 if (resolved is DirectoryInfo dirInfo && !string.IsNullOrWhiteSpace(dirInfo.FullName))
                 {

@@ -38,8 +38,9 @@ jobs:
       # dotnet test が実行時に NuGet キャッシュから解決する。
 
       - name: テスト実行
+        # continue-on-error は付けない（テスト失敗を CI で検知するため）。
+        # テスト結果アーティファクトは下の `if: always()` で確実にアップロードされる。
         run: dotnet test Lhamiel.slnx --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
-        continue-on-error: true
 
       - name: テスト結果をアップロード
         # actions/upload-artifact@v4.4.3

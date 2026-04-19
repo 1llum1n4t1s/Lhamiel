@@ -132,6 +132,14 @@ public static class ArchiveExtractor
         /// ルートレベルが単一アイテムの場合、その名前（上書き確認パス精密化用）
         /// </summary>
         public string? SingleRootItemName { get; init; }
+
+        /// <summary>
+        /// 展開時に使われた <c>CreateArchiveNameFolder</c> 設定のスナップショット値。
+        /// 展開中にユーザーが設定を変更しても、完了後の「開くフォルダ」決定と矛盾しないよう
+        /// <see cref="FolderOpener.OpenExtractionResult"/> にここの値を渡す。
+        /// null の場合は現在の設定値が使われる（下位互換）。
+        /// </summary>
+        public bool? CapturedCreateArchiveNameFolder { get; init; }
     }
 
     /// <summary>
@@ -789,6 +797,29 @@ public static class ArchiveExtractor
             using (var reader = new ArchiveReader(archivePath, (string?)null, extractOption))
             {
                 Logger.Log($"一時ディレクトリへの展開処理開始: {archivePath} -> {tempOutputPath}");
+
+                // Zip Slip プリチェック: reader.Save() が全エントリを展開する前に、
+                // アーカイブ内の全エントリ名が tempOutputPath 境界内に収まるかを検証する。
+                // （DetectExtractionConflicts は衝突検出専用で、境界外エントリをスキップするだけなので
+                //   ここで改めて全エントリを検証して安全性を担保する）
+                foreach (var item in reader.Items)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var entryName = item.FullName ?? string.Empty;
+                    if (string.IsNullOrEmpty(entryName)) continue;
+
+                    // ライブラリのフィルタで除外される __MACOSX / .DS_Store 等は OK なのでスキップ
+                    var fileName = Path.GetFileName(entryName);
+                    if (IgnoredSystemFiles.Contains(fileName)) continue;
+                    if (ContainsIgnoredDirectory(entryName.Replace('\\', '/'))) continue;
+
+                    if (!TryResolveSafeEntryPath(tempOutputPath, entryName, out _))
+                    {
+                        Logger.Log($"危険なエントリ名を検出しアーカイブ展開を中止: {entryName}", LogLevel.Warning);
+                        throw new InvalidOperationException(
+                            $"アーカイブに展開先の外側を指すエントリが含まれています: {entryName}");
+                    }
+                }
 
                 if (progressCallback != null)
                 {

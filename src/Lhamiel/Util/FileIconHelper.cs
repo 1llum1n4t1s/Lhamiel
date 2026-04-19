@@ -185,8 +185,12 @@ public static class FileIconHelper
     /// 拡張子→Bitmap の共有キャッシュ（ジェネリックアイコン用）。
     /// SHGetFileInfo の P/Invoke コストは 1〜5ms と高く、同一拡張子のファイルが 100 件並ぶと
     /// UI スレッド上で 500ms オーダーのブロックになるため拡張子単位でメモ化する。
+    /// 悪意ある/未知の拡張子多数ケースでメモリが無制限に増えないよう上限を設ける。
     /// </summary>
-    private static readonly ConcurrentDictionary<string, Bitmap?> _extensionIconCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, Bitmap> _extensionIconCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>キャッシュの最大エントリ数。越えた場合は単純に全クリアする（LRU は Avalonia 依存を増やさないため非採用）。</summary>
+    private const int MaxExtensionIconCacheEntries = 256;
 
     /// <summary>
     /// ファイルパスからアイコンを Avalonia Bitmap として取得する。
@@ -205,7 +209,15 @@ public static class FileIconHelper
                 return cached;
 
             var loaded = LoadFileIcon(filePath, largeIcon);
-            _extensionIconCache[cacheKey] = loaded;
+            // 失敗（null）はキャッシュしない。後で別条件で成功するかもしれないため毎回再試行する。
+            if (loaded is not null)
+            {
+                // 上限到達時は単純全クリア（簡素な TTL/LRU 代替）。ユーザー操作途中での
+                // スパイクを抑えることを優先する。
+                if (_extensionIconCache.Count >= MaxExtensionIconCacheEntries)
+                    _extensionIconCache.Clear();
+                _extensionIconCache[cacheKey] = loaded;
+            }
             return loaded;
         }
         return LoadFileIcon(filePath, largeIcon);

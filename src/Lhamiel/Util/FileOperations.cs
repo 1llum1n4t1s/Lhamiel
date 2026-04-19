@@ -10,9 +10,12 @@ internal static class FileOperations
         OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
     /// <summary>
-    /// 一時展開した内容からファイルをコピーする
+    /// 一時展開した内容からファイルをコピーする。
+    /// 部分展開用途では <paramref name="overwrite"/> を false にして既存ファイルを保護する。
+    /// 主フローとの整合性を保つため、既存ファイル存在時は <see cref="IOException"/> を投げ、
+    /// 呼び出し側でスキップ扱いにする。
     /// </summary>
-    public static void CopyExtractedItem(string tempPath, string outputPath, string fullName, bool isDirectory)
+    public static void CopyExtractedItem(string tempPath, string outputPath, string fullName, bool isDirectory, bool overwrite = false)
     {
         var fullTempPath = Path.GetFullPath(tempPath);
         var fullOutputPath = Path.GetFullPath(outputPath);
@@ -39,7 +42,9 @@ internal static class FileOperations
             Directory.CreateDirectory(targetDir);
         }
 
-        File.Copy(sourcePath, targetPath, true);
+        // 既存ファイルを無条件上書きしないことで、部分展開フローでも
+        // FileConflictDialog と同等の「既存保護」セマンティクスを提供する。
+        File.Copy(sourcePath, targetPath, overwrite);
     }
 
     private static string EnsureSafePath(string basePath, string relativePath, string pathLabel)

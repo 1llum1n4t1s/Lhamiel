@@ -32,13 +32,25 @@ public static class FolderOpener
     /// CreateArchiveNameFolder=ON + 二重ネスト防止でフォルダ作成がスキップされた場合、
     /// アーカイブのルートフォルダ（outputPath/SingleRootItemName）を返す。
     /// </summary>
-    /// <param name="createArchiveNameFolder">展開時に使用された設定値。nullの場合は現在の設定を参照する。</param>
+    /// <remarks>
+    /// 展開時に使われた設定値を最も優先する：
+    /// <list type="number">
+    ///   <item><description><see cref="ArchiveExtractor.ArchiveStructureInfo.CapturedCreateArchiveNameFolder"/>（展開時スナップショット）</description></item>
+    ///   <item><description><paramref name="createArchiveNameFolder"/>（呼び出し側が明示）</description></item>
+    ///   <item><description>現在の設定値（フォールバック）</description></item>
+    /// </list>
+    /// この順で参照することで、展開中のユーザー設定変更に対しても
+    /// 「作成したフォルダ」と「開くフォルダ」の整合性を保つ。
+    /// </remarks>
+    /// <param name="createArchiveNameFolder">展開時に使用された設定値。nullの場合は structureInfo か現在の設定を参照する。</param>
     internal static string GetExtractionFolderToOpen(
         string outputPath,
         ArchiveExtractor.ArchiveStructureInfo? structureInfo,
         bool? createArchiveNameFolder = null)
     {
-        var createFolder = createArchiveNameFolder ?? SettingsManager.Instance.Current.CreateArchiveNameFolder;
+        var createFolder = structureInfo?.CapturedCreateArchiveNameFolder
+                           ?? createArchiveNameFolder
+                           ?? SettingsManager.Instance.Current.CreateArchiveNameFolder;
 
         if (createFolder && structureInfo is { ShouldSkipFolderCreation: true }
             && !string.IsNullOrEmpty(structureInfo.SingleRootItemName))
