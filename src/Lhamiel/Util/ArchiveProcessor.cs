@@ -112,11 +112,10 @@ public static class ArchiveProcessor
                 var snapshot = settingsSnapshot ?? SettingsManager.Instance.CreateSnapshot();
                 var createFolder = snapshot.CreateArchiveNameFolder;
                 // 後段の FolderOpener が同じ値を使うよう、スナップショットした createFolder を
-                // ArchiveStructureInfo に同梱して返す。
-                structureInfo = new ArchiveExtractor.ArchiveStructureInfo
+                // ArchiveStructureInfo に同梱して返す（with 式で rawStructureInfo の他プロパティを
+                // そのまま引き継ぐため、ArchiveStructureInfo にプロパティが追加されても自動追従する）。
+                structureInfo = rawStructureInfo with
                 {
-                    ShouldSkipFolderCreation = rawStructureInfo.ShouldSkipFolderCreation,
-                    SingleRootItemName = rawStructureInfo.SingleRootItemName,
                     CapturedCreateArchiveNameFolder = createFolder,
                 };
 

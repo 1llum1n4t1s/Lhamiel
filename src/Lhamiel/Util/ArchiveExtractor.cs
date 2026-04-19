@@ -118,9 +118,11 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
-    /// アーカイブの先頭2階層の解析結果を保持するデータ構造
+    /// アーカイブの先頭2階層の解析結果を保持するデータ構造。
+    /// record にすることで <c>with</c> 式による部分コピーを可能にし、プロパティ追加時の
+    /// コピー漏れバグ（各呼び出し側で全プロパティを列挙するパターン）を防ぐ。
     /// </summary>
-    public class ArchiveStructureInfo
+    public record ArchiveStructureInfo
     {
         /// <summary>
         /// フォルダ作成をスキップすべきか。

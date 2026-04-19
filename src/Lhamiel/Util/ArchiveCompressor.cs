@@ -26,6 +26,13 @@ public static class ArchiveCompressor
         OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
 
     /// <summary>
+    /// <see cref="PathPairComparer"/> のステートレスな共有インスタンス。
+    /// <see cref="DeduplicateByIdentity"/> のようなホットパスで毎回 new すると
+    /// 無駄なアロケーションになるため、<see cref="PathComparer"/> と同じく静的にキャッシュする。
+    /// </summary>
+    private static readonly PathPairComparer DefaultPathPairComparer = new(PathComparer);
+
+    /// <summary>
     /// 圧縮ファイル名を取得する
     /// </summary>
     /// <param name="sourcePath">圧縮対象のパス</param>
@@ -302,7 +309,7 @@ public static class ArchiveCompressor
     {
         if (files.Count <= 1) return files;
 
-        var seen = new HashSet<(string fullPath, string relativePath)>(new PathPairComparer(PathComparer));
+        var seen = new HashSet<(string fullPath, string relativePath)>(DefaultPathPairComparer);
         var result = new List<(string fullPath, string relativePath)>(files.Count);
         var skipped = 0;
         foreach (var entry in files)
