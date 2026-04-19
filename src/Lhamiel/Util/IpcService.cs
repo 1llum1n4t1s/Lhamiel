@@ -29,12 +29,18 @@ public static class IpcService
     /// 接続失敗時は少し待ってリトライする（サーバー側のパイプ再生成の隙間に落ちるのを避けるため）。
     /// </summary>
     /// <param name="args">送信するコマンドライン引数</param>
+    /// <param name="cancellationToken">
+    /// 呼び出し側の Cancellation Token。アプリ終了時等の早期打ち切りに使う。
+    /// 省略時は <see cref="CancellationToken.None"/> で、<see cref="ConnectTotalTimeoutMs"/> の
+    /// タイムアウトのみで制御される。
+    /// </param>
     /// <returns>送信に成功した場合は true</returns>
-    public static async Task<bool> SendArgsToExistingInstanceAsync(string[] args)
+    public static async Task<bool> SendArgsToExistingInstanceAsync(string[] args, CancellationToken cancellationToken = default)
     {
         var startedAt = Environment.TickCount64;
         var attempt = 0;
-        while (Environment.TickCount64 - startedAt < ConnectTotalTimeoutMs)
+        while (!cancellationToken.IsCancellationRequested &&
+               Environment.TickCount64 - startedAt < ConnectTotalTimeoutMs)
         {
             attempt++;
             try
@@ -44,21 +50,28 @@ public static class IpcService
                 using var client = new NamedPipeClientStream(
                     ".", PipeName, PipeDirection.Out,
                     PipeOptions.CurrentUserOnly);
-                await client.ConnectAsync(ConnectAttemptTimeoutMs);
+                await client.ConnectAsync(ConnectAttemptTimeoutMs, cancellationToken);
 
                 var json = JsonSerializer.Serialize(args, AppJsonContext.Default.StringArray);
                 var buffer = Encoding.UTF8.GetBytes(json);
 
-                await client.WriteAsync(buffer, 0, buffer.Length);
+                await client.WriteAsync(buffer, cancellationToken);
 
                 // 書き込み完了を確実にする
                 client.WaitForPipeDrain();
                 return true;
             }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // 呼び出し側からの明示キャンセル。リトライせず即終了。
+                Logger.Log("IPC引数送信がキャンセルされました", LogLevel.Debug);
+                return false;
+            }
             catch (TimeoutException)
             {
                 // サーバー再生成の瞬間に落ちた可能性があるのでリトライ
-                await Task.Delay(50);
+                try { await Task.Delay(50, cancellationToken); }
+                catch (OperationCanceledException) { return false; }
             }
             catch (IOException ex)
             {
@@ -67,7 +80,8 @@ public static class IpcService
                 // 旧実装は attempt < 5 の when ガードで 5 回目以降を generic catch に
                 // 落として即 false を返しており、実質 ~200ms で打ち切られていた。
                 Logger.Log($"IPC送信リトライ({attempt}回目): {ex.Message}");
-                await Task.Delay(50);
+                try { await Task.Delay(50, cancellationToken); }
+                catch (OperationCanceledException) { return false; }
             }
             catch (Exception ex)
             {
@@ -76,7 +90,11 @@ public static class IpcService
                 return false;
             }
         }
-        Logger.Log("IPC引数送信に失敗しました（タイムアウト到達）", LogLevel.Warning);
+
+        if (cancellationToken.IsCancellationRequested)
+            Logger.Log("IPC引数送信がキャンセルされました（ループ離脱時）", LogLevel.Debug);
+        else
+            Logger.Log("IPC引数送信に失敗しました（タイムアウト到達）", LogLevel.Warning);
         return false;
     }
 
