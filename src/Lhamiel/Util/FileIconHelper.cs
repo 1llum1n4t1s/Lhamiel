@@ -193,6 +193,17 @@ public static class FileIconHelper
     private const int MaxExtensionIconCacheEntries = 256;
 
     /// <summary>
+    /// eviction 実行中フラグ（0 = idle, 1 = running）。
+    /// 複数スレッドが同時に <see cref="GetFileIcon"/> を呼んで上限到達と判断した場合、
+    /// それぞれが半数削除を実行すると合計で N/2 以上が消えてキャッシュヒット率が崩壊する。
+    /// また <see cref="ConcurrentDictionary{TKey,TValue}.Keys"/> はスナップショット生成で
+    /// O(n) のロックを取るため、多重実行は競合コストも高い。
+    /// よって <see cref="Interlocked.CompareExchange(ref int, int, int)"/> で 1 スレッドだけが
+    /// eviction を実行し、他スレッドはスキップ（次の追加タイミングで再評価される）。
+    /// </summary>
+    private static int _evictionInProgress;
+
+    /// <summary>
     /// ファイルパスからアイコンを Avalonia Bitmap として取得する。
     /// ファイルが存在しない場合は拡張子ベースでジェネリックアイコンを取得し、拡張子単位でキャッシュする。
     /// </summary>
@@ -222,15 +233,26 @@ public static class FileIconHelper
                 // 表示中の行でレンダリング失敗 / 白抜きアイコンが起きる。
                 // 参照が UI から切れたあとは .NET の GC + Bitmap のファイナライザが
                 // unmanaged ハンドル（GDI+）を回収するのに任せる（多少遅れるが安全側）。
-                if (_extensionIconCache.Count >= MaxExtensionIconCacheEntries)
+                // 一度に 1 スレッドだけ eviction を実行。他スレッドは超過分を次回呼び出しに任せる。
+                // CompareExchange は 0→1 に成功したスレッドだけが本体に入り、失敗した側は単に
+                // TryAdd に進む（上限を数エントリ超過する可能性はあるが許容範囲）。
+                if (_extensionIconCache.Count >= MaxExtensionIconCacheEntries &&
+                    Interlocked.CompareExchange(ref _evictionInProgress, 1, 0) == 0)
                 {
-                    var targetRemove = _extensionIconCache.Count / 2;
-                    var removed = 0;
-                    foreach (var key in _extensionIconCache.Keys)
+                    try
                     {
-                        if (removed >= targetRemove) break;
-                        if (_extensionIconCache.TryRemove(key, out _))
-                            removed++;
+                        var targetRemove = _extensionIconCache.Count / 2;
+                        var removed = 0;
+                        foreach (var key in _extensionIconCache.Keys)
+                        {
+                            if (removed >= targetRemove) break;
+                            if (_extensionIconCache.TryRemove(key, out _))
+                                removed++;
+                        }
+                    }
+                    finally
+                    {
+                        Interlocked.Exchange(ref _evictionInProgress, 0);
                     }
                 }
 
