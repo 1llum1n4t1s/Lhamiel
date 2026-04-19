@@ -276,4 +276,5 @@
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Nome de dispositivo reservado está sendo usado: {0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' está protegido pelo sistema e não pode ser substituído. Escolha outro local.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Compactando...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">O arquivo contém uma entrada insegura apontando para fora do destino de extração: {0}</x:String>
 </ResourceDictionary>

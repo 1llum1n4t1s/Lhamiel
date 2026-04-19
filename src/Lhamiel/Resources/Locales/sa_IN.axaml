@@ -276,4 +276,5 @@
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">आरक्षितसाधननाम उपयुज्यते: {0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' संगणकेन रक्षितं अस्ति अधिलेखनं न शक्यते। अन्यत् स्थानं चिनुत।</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">सङ्कोचनं चलति...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">सङ्ग्रहे निष्कर्षणलक्ष्यात् बहिः इङ्गितं कुर्वन् अपायकरं प्रविष्टम् अस्ति: {0}</x:String>
 </ResourceDictionary>

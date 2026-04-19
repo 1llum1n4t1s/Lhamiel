@@ -447,15 +447,12 @@ public static class ArchiveProcessor
                 Logger.Log($"ArchiveCompressor.CompressFilesAsyncを呼び出し: sourcePath={sourcePath}, outputPath={outputPath}, format={format}");
 
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
-                // CompressFilesAsync が IProgress<ProgressInfo> に統一されたので Progress<T> を使う。
-                // （ExtractArchiveAsync と契約を揃えることで ArchiveProcessor 側の変換が不要に）
-                IProgress<ProgressInfo> compressionProgress = new Progress<ProgressInfo>(info =>
-                {
-                    if (progressReporter == null)
-                        DispatchProgress(progressWindow, info);
-
-                    progressReporter?.Report(info);
-                });
+                // CompressFilesAsync が IProgress<ProgressInfo> に統一されたので直接渡す。
+                // progressReporter が渡されていればそれをそのまま使い、Progress<T> の二重
+                // ラップと無駄なアロケ・同期コンテキスト転送を避ける。null のときだけ
+                // progressWindow への DispatchProgress 用ラッパを 1 個だけ作る。
+                IProgress<ProgressInfo> compressionProgress = progressReporter
+                    ?? new Progress<ProgressInfo>(info => DispatchProgress(progressWindow, info));
 
                 // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示。
                 // 設定は処理開始時点でスナップショット化し、以降の処理全体で一貫性を保つ。

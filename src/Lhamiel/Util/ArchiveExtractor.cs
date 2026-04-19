@@ -469,6 +469,11 @@ public static class ArchiveExtractor
         // requiredSize <= 0 の場合（メタデータが読めない / 空アーカイブ）は相対的な「必要量の
         // 10%」基準での判定が意味を持たないため 0 を渡し、DiskSpaceChecker 側で絶対閾値
         // （MinFreeSpaceThresholdBytes）のみの判定にフォールバックさせる。
+        //
+        // 戻り値の IDisposable は PeriodicCheckDisposable（DiskSpaceChecker 内部の型）で、
+        // Dispose() 内で内部の checkCts.Cancel() を呼ぶ実装になっているため、通常の
+        // CancellationTokenSource のように「Dispose ではキャンセルされない」問題はない。
+        // using でスコープを抜けた時点で監視 Task.Run は確実に停止する。
         using var extractCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         using var periodicCheck = DiskSpaceChecker.StartPeriodicCheck(
             outputPath, requiredSize > 0 ? requiredSize : 0, parentWindow, extractCts);
@@ -858,7 +863,7 @@ public static class ArchiveExtractor
                     {
                         Logger.Log($"危険なエントリ名を検出しアーカイブ展開を中止: {entryName}", LogLevel.Warning);
                         throw new InvalidOperationException(
-                            $"アーカイブに展開先の外側を指すエントリが含まれています: {entryName}");
+                            App.Text("Error.ZipSlipDetected", entryName));
                     }
                 }
 

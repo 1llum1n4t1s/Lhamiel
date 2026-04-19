@@ -276,4 +276,5 @@
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Використовується зарезервоване ім'я пристрою: {0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' захищено системою і не може бути перезаписано. Виберіть інше розташування.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Стиснення...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">Архів містить небезпечний запис, що вказує поза межі каталогу розпакування: {0}</x:String>
 </ResourceDictionary>

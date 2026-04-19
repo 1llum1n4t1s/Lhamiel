@@ -276,4 +276,5 @@
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Un nom de périphérique réservé est utilisé : {0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' est protégé par le système et ne peut pas être écrasé. Veuillez choisir un autre emplacement.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Compression en cours...</x:String>
+  <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">L'archive contient une entrée non sécurisée pointant à l'extérieur du répertoire cible : {0}</x:String>
 </ResourceDictionary>
