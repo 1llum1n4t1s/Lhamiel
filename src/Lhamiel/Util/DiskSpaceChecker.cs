@@ -165,12 +165,15 @@ public static class DiskSpaceChecker
 
                         if (onInsufficientSpace != null)
                         {
-                            // キャンセル後の通知としてダイアログ表示（結果は無視。ユーザーには操作中断を認知させる目的）
+                            // キャンセル後の通知としてダイアログ表示（結果は無視。ユーザーには操作中断を認知させる目的）。
+                            // requiredBytes<=0（メタデータ不明アーカイブ）時は `requiredBytes - available` が
+                            // 負数になってしまうので、shortage は 0 以上にクランプして UI 表示を守る。
+                            var shortage = Math.Max(0, requiredBytes - available);
                             _ = await Dispatcher.UIThread.InvokeAsync(async () =>
                             {
                                 if (parentWindow is null) return false;
                                 var dialog = new View.DiskSpaceDialog(
-                                    requiredBytes, available, requiredBytes - available, outputPath);
+                                    requiredBytes, available, shortage, outputPath);
                                 dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
                                 return await dialog.ShowDialog<bool>(parentWindow);
                             });

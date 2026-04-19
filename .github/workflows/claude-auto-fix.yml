@@ -31,14 +31,41 @@ permissions:
 
 jobs:
   claude:
-    # `@claude` メンションが含まれる場合のみ起動（@claude-bot 等も許容）
-    # bot 自身のコメントには反応しない（無限ループ防止）
+    # `@claude` メンションが含まれる場合のみ起動。以下を満たす場合のみ走らせる:
+    #   1. sender が bot ではない（bot 同士の無限ループ防止）
+    #   2. author_association が OWNER / MEMBER / COLLABORATOR のいずれか
+    #      （信頼されないフォーク PR 外部ユーザーによる書き込みトリガー防止）
+    #   3. 該当 event body に `@claude` が含まれる
     if: |
       github.event.sender.type != 'Bot' &&
       (
-        (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-        (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-        (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude'))
+        (
+          github.event_name == 'pull_request_review_comment' &&
+          contains(github.event.comment.body, '@claude') &&
+          (
+            github.event.comment.author_association == 'OWNER' ||
+            github.event.comment.author_association == 'MEMBER' ||
+            github.event.comment.author_association == 'COLLABORATOR'
+          )
+        ) ||
+        (
+          github.event_name == 'issue_comment' &&
+          contains(github.event.comment.body, '@claude') &&
+          (
+            github.event.comment.author_association == 'OWNER' ||
+            github.event.comment.author_association == 'MEMBER' ||
+            github.event.comment.author_association == 'COLLABORATOR'
+          )
+        ) ||
+        (
+          github.event_name == 'pull_request_review' &&
+          contains(github.event.review.body, '@claude') &&
+          (
+            github.event.review.author_association == 'OWNER' ||
+            github.event.review.author_association == 'MEMBER' ||
+            github.event.review.author_association == 'COLLABORATOR'
+          )
+        )
       )
     runs-on: ubuntu-latest
     steps:

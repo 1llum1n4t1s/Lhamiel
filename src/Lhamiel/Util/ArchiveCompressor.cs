@@ -63,11 +63,11 @@ public static class ArchiveCompressor
     /// <param name="sourcePaths">圧縮するファイル・フォルダのパス</param>
     /// <param name="outputPath">出力アーカイブのパス</param>
     /// <param name="format">圧縮形式</param>
-    /// <param name="progressCallback">進捗コールバック</param>
+    /// <param name="progress">進捗レポータ。<see cref="ArchiveExtractor.ExtractArchiveAsync"/> と同じ <see cref="IProgress{T}"/> 契約に統一。</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="resolvedFiles">衝突解決済みのファイルリスト（指定時はsourcePathsのスキャンをスキップ）</param>
     /// <param name="settingsOverride">使用する設定のスナップショット（並列処理時の race を避けるため呼び出し側で明示）</param>
-    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null, Settings? settingsOverride = null)
+    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null, Settings? settingsOverride = null)
     {
         var sourceList = sourcePaths.ToList();
         if (sourceList.Count == 0)
@@ -99,7 +99,7 @@ public static class ArchiveCompressor
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
             // 圧縮処理を開始（ロック中ファイルはライブラリ側で自動的に一時コピーされる）
-            progressCallback?.Invoke(new ProgressInfo(0, App.Text("Compressor.Processing")));
+            progress?.Report(new ProgressInfo(0, App.Text("Compressor.Processing")));
 
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
             outputCreated = true;
@@ -135,7 +135,7 @@ public static class ArchiveCompressor
                     {
                         var percentage = (int)(report.GetRatio() * 100);
                         if (throttler.ShouldReport(percentage))
-                            progressCallback?.Invoke(new ProgressInfo(percentage, ""));
+                            progress?.Report(new ProgressInfo(percentage, ""));
                     }, cancellationToken);
 
                     // ネイティブメソッドの呼び出し
@@ -145,11 +145,11 @@ public static class ArchiveCompressor
                     cancellationToken.ThrowIfCancellationRequested();
 
                     // Terminate で 100% を保証（Ice アプリケーションの実装パターンに準拠）
-                    progressCallback?.Invoke(new ProgressInfo(100, App.Text("Compressor.Processing")));
+                    progress?.Report(new ProgressInfo(100, App.Text("Compressor.Processing")));
 
                     // 全てのオブジェクトの生存を、ネイティブ処理完了直後に明示的に保証する
                     // これにより、JIT最適化による早期解放（およびそれに伴うアクセス違反）を防ぐ
-                    NativeInteropHelper.KeepAliveCallbacks(writer, reportProgress, progressCallback);
+                    NativeInteropHelper.KeepAliveCallbacks(writer, reportProgress, progress);
                 }, cancellationToken);
             }
             catch (Exception ex)
@@ -292,9 +292,16 @@ public static class ArchiveCompressor
             return value;
         }
 
+        // 衝突判定は「同じ relativePath に対して 2 つ以上の異なる fullPath が存在する」場合のみ。
+        // 同一 fullPath が重複しているだけのケース（呼び出し側の不注意な重複入力等）は
+        // 衝突扱いせず、代表 1 件だけ残すのが期待挙動。
         var groups = files
             .GroupBy(f => f.relativePath, StringComparer.OrdinalIgnoreCase)
-            .Where(g => g.Skip(1).Any())
+            .Where(g => g
+                .Select(f => Path.GetFullPath(f.fullPath))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Skip(1)
+                .Any())
             .Select(g => new Models.FileConflictGroup
             {
                 ConflictingName = g.Key,

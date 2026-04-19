@@ -444,13 +444,15 @@ public static class ArchiveProcessor
                 Logger.Log($"ArchiveCompressor.CompressFilesAsyncを呼び出し: sourcePath={sourcePath}, outputPath={outputPath}, format={format}");
 
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
-                Action<ProgressInfo>? progressCallback = info =>
+                // CompressFilesAsync が IProgress<ProgressInfo> に統一されたので Progress<T> を使う。
+                // （ExtractArchiveAsync と契約を揃えることで ArchiveProcessor 側の変換が不要に）
+                IProgress<ProgressInfo> compressionProgress = new Progress<ProgressInfo>(info =>
                 {
                     if (progressReporter == null)
                         DispatchProgress(progressWindow, info);
 
                     progressReporter?.Report(info);
-                };
+                });
 
                 // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示。
                 // 設定は処理開始時点でスナップショット化し、以降の処理全体で一貫性を保つ。
@@ -488,7 +490,7 @@ public static class ArchiveProcessor
                     }
                 }
 
-                await ArchiveCompressor.CompressFilesAsync([sourcePath], outputPath, parsedFormat, progressCallback, actualCancellationToken, resolvedFiles, settingsOverride: settings);
+                await ArchiveCompressor.CompressFilesAsync([sourcePath], outputPath, parsedFormat, compressionProgress, actualCancellationToken, resolvedFiles, settingsOverride: settings);
 
                 Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
 
@@ -877,7 +879,7 @@ public static class ArchiveProcessor
 
                 // 解決済みリストで圧縮
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
-                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, parsedFormat, p => progress.Report(p), actualCancellationToken, resolvedFiles, settingsOverride: settings);
+                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, parsedFormat, progress, actualCancellationToken, resolvedFiles, settingsOverride: settings);
 
                 Logger.Log($"まとめ圧縮完了: {outputPath}（{resolvedFiles.Count}個のファイル）");
 
