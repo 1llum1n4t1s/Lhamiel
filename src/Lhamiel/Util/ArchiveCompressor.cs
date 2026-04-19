@@ -408,14 +408,20 @@ public static class ArchiveCompressor
             }
         }
 
-        // バッファ上限到達時は後段セグメントを見落としている可能性があるので
-        // フォールバックとしてファイル名（最後のセグメント）だけでも個別チェックする。
-        // （WSL マウントや深い UNC で 64 階層超え対策）
+        // バッファ上限到達時は後段セグメントを見落としている可能性があるので、
+        // アロケーションを受け入れて全セグメントを再走査する（node_modules 等の
+        // 中間ディレクトリ除外も確実に判定するため）。
+        // 64 階層超えは WSL マウントや深い UNC のレアケースなので、この経路のコストは許容する。
         if (count == StackBufSize)
         {
-            var fileName = Path.GetFileName(path);
-            if (fileName.Length > 0 && excludedPatternSet.Contains(fileName))
-                return true;
+            var segments = path.Split(
+                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                StringSplitOptions.RemoveEmptyEntries);
+            foreach (var segment in segments)
+            {
+                if (excludedPatternSet.Contains(segment))
+                    return true;
+            }
         }
 
         return false;

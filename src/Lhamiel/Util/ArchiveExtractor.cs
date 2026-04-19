@@ -300,10 +300,14 @@ public static class ArchiveExtractor
 
         try
         {
+            // basePath が相対パスでも CWD に依存しないよう、まず絶対化してから
+            // Path.GetFullPath(path, basePath) オーバーロード（.NET Core 2.1+）で結合する。
+            // 旧実装の Path.Combine(basePath, ...) + Path.GetFullPath(...) は基準が
+            // CWD にフォールバックしうるため避ける。
             var normalizedBase = Path.GetFullPath(basePath)
                 .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
                 + Path.DirectorySeparatorChar;
-            var combined = Path.GetFullPath(Path.Combine(basePath, normalized));
+            var combined = Path.GetFullPath(normalized, normalizedBase);
 
             if (!combined.StartsWith(normalizedBase, StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(combined, normalizedBase.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
