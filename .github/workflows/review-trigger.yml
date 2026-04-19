@@ -1,0 +1,49 @@
+name: Trigger AI Reviews
+
+# PR への push のたびに Gemini / CodeRabbit のレビューを自動でリクエストする。
+# @gemini review / @coderabbitai review のメンションコメントを bot として投稿するだけで
+# Claude 自体を GitHub Actions 上では動かさないため、CLAUDE_CODE_OAUTH_TOKEN や
+# ANTHROPIC_API_KEY は不要。Claude 対応はローカル環境の Claude Code で行う想定。
+#
+# セットアップ:
+#   Repository settings > Secrets and variables > Actions > New repository secret
+#     Name : REVIEW_PAT
+#     Value: repo スコープを持つ Personal Access Token
+#   ※ GITHUB_TOKEN で投稿すると bot 同士のメンションが意図どおり発火しないケースが
+#     あるため、個人 PAT を使う（Komorebi と同じ方式）。
+
+on:
+  pull_request:
+    types: [synchronize]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  trigger-reviews:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Request AI reviews
+        # actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
+        with:
+          github-token: ${{ secrets.REVIEW_PAT }}
+          script: |
+            const pr = context.payload.pull_request.number;
+            const repo = context.repo;
+
+            const commands = [
+              '@gemini review',
+              '@coderabbitai review',
+            ];
+
+            for (const cmd of commands) {
+              await github.rest.issues.createComment({
+                ...repo,
+                issue_number: pr,
+                body: cmd,
+              });
+              // レート制限対策で少し待つ
+              await new Promise(r => setTimeout(r, 2000));
+            }
