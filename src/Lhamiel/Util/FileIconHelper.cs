@@ -204,6 +204,16 @@ public static class FileIconHelper
     private static int _evictionInProgress;
 
     /// <summary>
+    /// キャッシュ件数の独立カウンタ。
+    /// <see cref="ConcurrentDictionary{TKey,TValue}.Count"/> は内部で全バケットをロックするため
+    /// ホットパス（ファイルリスト表示など短時間に大量呼び出しされる経路）での参照コストが O(N) に
+    /// 近づき、キャッシュが大きくなるほどボトルネックになる。
+    /// TryAdd 成功時 <see cref="Interlocked.Increment(ref int)"/>、TryRemove 成功時 Decrement で
+    /// 管理する近似カウンタ（Dictionary 本体と一瞬ずれることはあるが、eviction トリガの判定には十分）。
+    /// </summary>
+    private static int _cacheCount;
+
+    /// <summary>
     /// ファイルパスからアイコンを Avalonia Bitmap として取得する。
     /// ファイルが存在しない場合は拡張子ベースでジェネリックアイコンを取得し、拡張子単位でキャッシュする。
     /// </summary>
@@ -236,18 +246,22 @@ public static class FileIconHelper
                 // 一度に 1 スレッドだけ eviction を実行。他スレッドは超過分を次回呼び出しに任せる。
                 // CompareExchange は 0→1 に成功したスレッドだけが本体に入り、失敗した側は単に
                 // TryAdd に進む（上限を数エントリ超過する可能性はあるが許容範囲）。
-                if (_extensionIconCache.Count >= MaxExtensionIconCacheEntries &&
+                // _cacheCount は独立カウンタ（ConcurrentDictionary.Count は O(N) ロックのため回避）。
+                if (_cacheCount >= MaxExtensionIconCacheEntries &&
                     Interlocked.CompareExchange(ref _evictionInProgress, 1, 0) == 0)
                 {
                     try
                     {
-                        var targetRemove = _extensionIconCache.Count / 2;
+                        var targetRemove = _cacheCount / 2;
                         var removed = 0;
                         foreach (var key in _extensionIconCache.Keys)
                         {
                             if (removed >= targetRemove) break;
                             if (_extensionIconCache.TryRemove(key, out _))
+                            {
+                                Interlocked.Decrement(ref _cacheCount);
                                 removed++;
+                            }
                         }
                     }
                     finally
@@ -264,6 +278,7 @@ public static class FileIconHelper
                     loaded.Dispose();
                     return _extensionIconCache.TryGetValue(cacheKey, out var winner) ? winner : null;
                 }
+                Interlocked.Increment(ref _cacheCount);
             }
             return loaded;
         }

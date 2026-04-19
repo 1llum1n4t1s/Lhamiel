@@ -837,6 +837,23 @@ public static class ArchiveExtractor
 
         var tempOutputPath = CreateTempDirectory("Extract");
 
+        // tempOutputPath は %TEMP% 配下に作られるため、outputPath と別ドライブの場合に
+        // TEMP 側の空き容量枯渇を外側の periodicCheck（outputPath 監視）では検出できない。
+        // 両者が別ドライブのときのみ TEMP 側も並行監視する（同一ドライブなら冗長なので省略）。
+        // requiredBytes は上位で確保済みなので 0 を渡し、絶対閾値のみで判定。
+        using var innerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var tempDriveRoot = Path.GetPathRoot(tempOutputPath);
+        var outputDriveRoot = Path.GetPathRoot(outputPath);
+        IDisposable? tempPeriodicCheck = null;
+        if (!string.IsNullOrEmpty(tempDriveRoot) &&
+            !string.IsNullOrEmpty(outputDriveRoot) &&
+            !string.Equals(tempDriveRoot, outputDriveRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            tempPeriodicCheck = DiskSpaceChecker.StartPeriodicCheck(
+                tempOutputPath, 0, parentWindow, innerCts);
+        }
+        cancellationToken = innerCts.Token;
+
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1051,6 +1068,11 @@ public static class ArchiveExtractor
             Logger.Log($"エラー詳細: {errorInfo.Details}");
 
             throw;
+        }
+        finally
+        {
+            // TEMP ドライブ監視を停止（開始していない場合は no-op）
+            tempPeriodicCheck?.Dispose();
         }
     }
 

@@ -144,14 +144,21 @@ public static class DiskSpaceChecker
         Window? parentWindow, CancellationTokenSource operationCts)
     {
         var checkCts = new CancellationTokenSource();
+        // Token プロパティは CancellationTokenSource.Dispose 後に触れると
+        // ObjectDisposedException を投げる。Task.Run の開始前に呼び出し側が即 Dispose した
+        // 場合、タスク内部で checkCts.Token を読むタイミングで未監視例外になりうる。
+        // そこで Token は Task.Run の外で先に取得しておき、CTS 本体の Dispose はタスクが
+        // 終了してから行う（PeriodicCheckDisposable.Dispose 参照）。
+        var checkToken = checkCts.Token;
+        var operationToken = operationCts.Token;
 
-        _ = Task.Run(async () =>
+        var checkTask = Task.Run(async () =>
         {
             // linkedCts は Task.Run 内の using スコープで確実に破棄する。
             // CreateLinkedTokenSource は 2 つのソーストークンにコールバックを登録するため、
             // Dispose しないとソーストークンに参照が残り続けてメモリリーク要因になる。
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-                checkCts.Token, operationCts.Token);
+                checkToken, operationToken);
             try
             {
                 while (!linkedCts.Token.IsCancellationRequested)
@@ -212,7 +219,7 @@ public static class DiskSpaceChecker
             }
         });
 
-        return new PeriodicCheckDisposable(checkCts);
+        return new PeriodicCheckDisposable(checkCts, checkTask);
     }
 
     /// <summary>
@@ -232,13 +239,26 @@ public static class DiskSpaceChecker
     /// <see cref="StartPeriodicCheck"/> の戻り値。Dispose() で内部の checkCts に Cancel を
     /// 発火させて Task.Run 側のループを停止させる。linkedCts は Task.Run 内で using
     /// 破棄されるので、ここでは checkCts のみ管理する。
+    /// <para>
+    /// CTS 本体の Dispose は背後タスクの終了を待ってから実行する。呼び出し側が
+    /// StartPeriodicCheck 直後に Dispose した場合、Task.Run がまだスケジュール待ちで
+    /// checkCts.Token を参照する前に CTS が破棄されると ObjectDisposedException
+    /// （未監視）が発生しうるため、ContinueWith で破棄を遅延させる。
+    /// </para>
     /// </summary>
-    private sealed class PeriodicCheckDisposable(CancellationTokenSource checkCts) : IDisposable
+    private sealed class PeriodicCheckDisposable(CancellationTokenSource checkCts, Task checkTask) : IDisposable
     {
         public void Dispose()
         {
             checkCts.Cancel();
-            checkCts.Dispose();
+            // タスク完了後に CTS を破棄。背後タスクが未開始のケースでも、ContinueWith は
+            // ソースタスク完了（成功/失敗/キャンセル問わず）で起動するため安全。
+            _ = checkTask.ContinueWith(
+                static (_, state) => ((CancellationTokenSource)state!).Dispose(),
+                checkCts,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
         }
     }
 }
