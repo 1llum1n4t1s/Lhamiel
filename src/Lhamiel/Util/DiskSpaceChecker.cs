@@ -150,8 +150,11 @@ public static class DiskSpaceChecker
                     await Task.Delay(TimeSpan.FromSeconds(CheckIntervalSeconds), linkedCts.Token);
 
                     var available = GetAvailableSpace(outputPath);
-                    // 空き容量がMinFreeSpaceThreshold未満、または処理中に残りが必要量の10%を切った場合に警告
-                    if (available < MinFreeSpaceThresholdBytes || available < requiredBytes / 10)
+                    // 空き容量が MinFreeSpaceThreshold 未満、または処理中に残りが必要量の 10% を切った場合に警告。
+                    // requiredBytes <= 0（メタデータ不明 / 空アーカイブ）の場合、相対判定は無意味で常に
+                    // 条件を満たしてしまうため、絶対閾値チェックのみに限定する。
+                    var relativeShortage = requiredBytes > 0 && available < requiredBytes / 10;
+                    if (available < MinFreeSpaceThresholdBytes || relativeShortage)
                     {
                         Logger.Log($"定期チェックで容量不足を検出: 空き={FormatSize(available)}");
 

@@ -419,10 +419,12 @@ public static class ArchiveExtractor
 
         // 展開中のランタイム容量監視（Zip bomb 対策 / 悪意あるメタデータサイズへの保険）
         // operationCts と linkedCts で外側のキャンセルとも連携する。
+        // requiredSize <= 0 の場合（メタデータが読めない / 空アーカイブ）は相対的な「必要量の
+        // 10%」基準での判定が意味を持たないため 0 を渡し、DiskSpaceChecker 側で絶対閾値
+        // （MinFreeSpaceThresholdBytes）のみの判定にフォールバックさせる。
         using var extractCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        // requiredSize <= 0 の場合もメタデータが信用できないので最低閾値チェックだけは有効にする
         using var periodicCheck = DiskSpaceChecker.StartPeriodicCheck(
-            outputPath, requiredSize > 0 ? requiredSize : long.MaxValue / 2, parentWindow, extractCts);
+            outputPath, requiredSize > 0 ? requiredSize : 0, parentWindow, extractCts);
         cancellationToken = extractCts.Token;
 
         // 展開先に既存ファイルがあるかチェック（一時展開方式の判定）
