@@ -267,7 +267,40 @@ public static class ArchiveCompressor
             }
         }
 
-        return filesToCompress;
+        // 同一 (fullPath, relativePath) の重複を最終的に排除する。
+        // 呼び出し側が同じパスを複数回渡した場合（CLI で重複引数、複数選択時の
+        // 偶発的重複など）や、sourceList に祖先と子孫が同時に含まれて走査で重複した
+        // ケースに備える。DetectConflicts は「異なる fullPath が同じ relativePath に
+        // 衝突するか」で判定するため、同一 fullPath 重複は衝突検出で素通しされてしまい、
+        // このステップで除去しないと ArchiveWriter が同名エントリを重複追加してしまう。
+        return DeduplicateByIdentity(filesToCompress);
+    }
+
+    /// <summary>
+    /// (fullPath, relativePath) ペアで同一のエントリを除去する。順序は維持し、先勝ち。
+    /// </summary>
+    private static List<(string fullPath, string relativePath)> DeduplicateByIdentity(
+        List<(string fullPath, string relativePath)> files)
+    {
+        if (files.Count <= 1) return files;
+
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<(string fullPath, string relativePath)>(files.Count);
+        var skipped = 0;
+        foreach (var entry in files)
+        {
+            // '|' は Windows の不正パス文字なので、ファイル名に含まれることがなく
+            // キー衝突の心配がない区切り文字として使える。
+            var key = string.Concat(entry.fullPath, "|", entry.relativePath);
+            if (seen.Add(key))
+                result.Add(entry);
+            else
+                skipped++;
+        }
+
+        if (skipped > 0)
+            Logger.Log($"同一 (fullPath, relativePath) の重複 {skipped} 件を除去しました");
+        return result;
     }
 
     /// <summary>
