@@ -50,8 +50,8 @@
       },
       "1llum1n4t1s.Sevenzip": {
         "type": "Transitive",
-        "resolved": "1.0.68",
-        "contentHash": "mfXiafRzDJGYWReKAu6cRR5I2oE1MoYN8z3pya8n3NiuPctfmuLxf81EnK9uVeBDHeKtUNy9UmsyQLn6baznHg=="
+        "resolved": "1.0.70",
+        "contentHash": "+gPzkCIYUCyoMEPC7nDG3TKdPI6VgqaFWBM5N+KWyBxdqHjVAxvfg9uzmSpJW8pKriM4ZfUUPP52z605Gkn2vw=="
       },
       "Avalonia": {
         "type": "Transitive",
@@ -501,7 +501,7 @@
       "lhamiel": {
         "type": "Project",
         "dependencies": {
-          "1llum1n4t1s.Sevenzip": "[1.0.68, )",
+          "1llum1n4t1s.Sevenzip": "[1.0.70, )",
           "Avalonia": "[12.0.1, )",
           "Avalonia.Desktop": "[12.0.1, )",
           "Avalonia.Fonts.Inter": "[12.0.1, )",
