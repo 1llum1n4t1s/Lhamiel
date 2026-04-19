@@ -56,19 +56,23 @@ public static class IpcService
                 // サーバー再生成の瞬間に落ちた可能性があるのでリトライ
                 await Task.Delay(50);
             }
-            catch (IOException ex) when (attempt < 5)
+            catch (IOException ex)
             {
-                // broken pipe / 接続拒否なども短時間リトライ
+                // broken pipe / 接続拒否 / サーバー再生成の隙間などは
+                // ConnectTotalTimeoutMs の窓が残っている限りリトライし続ける。
+                // 旧実装は attempt < 5 の when ガードで 5 回目以降を generic catch に
+                // 落として即 false を返しており、実質 ~200ms で打ち切られていた。
                 Logger.Log($"IPC送信リトライ({attempt}回目): {ex.Message}");
                 await Task.Delay(50);
             }
             catch (Exception ex)
             {
+                // IOException 以外の例外（シリアライズ失敗等）はリトライしても解決しないため即失敗
                 Logger.Log($"IPC引数送信エラー: {ex.Message}");
                 return false;
             }
         }
-        Logger.Log("IPC引数送信に失敗しました（リトライ上限到達）", LogLevel.Warning);
+        Logger.Log("IPC引数送信に失敗しました（タイムアウト到達）", LogLevel.Warning);
         return false;
     }
 
