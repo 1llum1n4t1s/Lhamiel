@@ -400,16 +400,19 @@ public static class ArchiveProcessor
                     }
 
                     // 上書きが許可された場合は既存の対象を削除。
-                    // 保護されたディレクトリ（デスクトップなど）に対する再帰削除を明示的に拒否する。
+                    // 保護されたパス（デスクトップ・マイドキュメント等の shell folder や
+                    // ドライブルート）を outputPath として指定された場合の削除を拒否する。
+                    // ディレクトリ削除は再帰削除のため特に危険だが、File.Delete 経路でも
+                    // outputPath 自体が保護対象（エッジケース）の場合は拒否しておく。
                     try
                     {
+                        if (PathValidator.IsProtectedDirectory(outputPath))
+                        {
+                            Logger.Log($"圧縮上書き: 保護されたパスへの削除を拒否: {outputPath}", LogLevel.Warning);
+                            throw new InvalidOperationException(App.Text("Error.ProtectedDirectory", outputPath));
+                        }
                         if (Directory.Exists(outputPath))
                         {
-                            if (PathValidator.IsProtectedDirectory(outputPath))
-                            {
-                                Logger.Log($"圧縮上書き: 保護ディレクトリへの再帰削除を拒否: {outputPath}", LogLevel.Warning);
-                                throw new InvalidOperationException(App.Text("Error.ProtectedDirectory", outputPath));
-                            }
                             Directory.Delete(outputPath, true);
                         }
                         else

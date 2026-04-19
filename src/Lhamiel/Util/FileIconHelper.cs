@@ -212,10 +212,19 @@ public static class FileIconHelper
             // 失敗（null）はキャッシュしない。後で別条件で成功するかもしれないため毎回再試行する。
             if (loaded is not null)
             {
-                // 上限到達時は単純全クリア（簡素な TTL/LRU 代替）。ユーザー操作途中での
-                // スパイクを抑えることを優先する。
+                // 上限到達時はエントリを半数ずつ破棄する（全クリアだと頻繁に上限到達する環境で
+                // P/Invoke のスパイクが再発しやすい。ConcurrentDictionary の Keys は順序
+                // 保証がないため厳密な LRU ではないが、全クリアよりは UI のブロック周期が長くなる）。
                 if (_extensionIconCache.Count >= MaxExtensionIconCacheEntries)
-                    _extensionIconCache.Clear();
+                {
+                    var targetRemove = _extensionIconCache.Count / 2;
+                    var removed = 0;
+                    foreach (var key in _extensionIconCache.Keys)
+                    {
+                        if (removed >= targetRemove) break;
+                        if (_extensionIconCache.TryRemove(key, out _)) removed++;
+                    }
+                }
                 _extensionIconCache[cacheKey] = loaded;
             }
             return loaded;

@@ -173,13 +173,27 @@ public static class DiskSpaceChecker
                             // キャンセル後の通知としてダイアログ表示（結果は無視。ユーザーには操作中断を認知させる目的）。
                             // requiredBytes<=0（メタデータ不明アーカイブ）時は `requiredBytes - available` が
                             // 負数になってしまうので、shortage は 0 以上にクランプして UI 表示を守る。
+                            // また、ダイアログの ShowDialog を await すると、この Task.Run 側が break で
+                            // 抜けて periodicCheck が Dispose されたとき InvokeAsync の継続がキャンセルされて
+                            // ダイアログが消えかねない。そのため通知は fire-and-forget で UI スレッドに
+                            // 投げてから即 break する（ダイアログのライフサイクルは Avalonia に委ねる）。
                             var shortage = Math.Max(0, requiredBytes - available);
-                            _ = await Dispatcher.UIThread.InvokeAsync(async () =>
+                            var capturedRequired = requiredBytes;
+                            var capturedAvailable = available;
+                            var capturedOutput = outputPath;
+                            _ = Dispatcher.UIThread.InvokeAsync(async () =>
                             {
-                                var dialog = new View.DiskSpaceDialog(
-                                    requiredBytes, available, shortage, outputPath);
-                                dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-                                return await dialog.ShowDialog<bool>(parentWindow);
+                                try
+                                {
+                                    var dialog = new View.DiskSpaceDialog(
+                                        capturedRequired, capturedAvailable, shortage, capturedOutput);
+                                    dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+                                    await dialog.ShowDialog<bool>(parentWindow);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.Log($"ディスク容量通知ダイアログの表示に失敗: {ex.Message}", LogLevel.Warning);
+                                }
                             });
                         }
                         Logger.Log("定期チェック: 7z.dll処理中の再開は不可のため操作をキャンセル");

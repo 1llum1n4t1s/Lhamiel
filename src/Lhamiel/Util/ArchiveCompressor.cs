@@ -421,10 +421,12 @@ public static class ArchiveCompressor
         // アロケーションを受け入れて全セグメントを再走査する（node_modules 等の
         // 中間ディレクトリ除外も確実に判定するため）。
         // 64 階層超えは WSL マウントや深い UNC のレアケースなので、この経路のコストは許容する。
+        // セパレータ配列は ArchiveFormatConstants の共有 static フィールドを使い、
+        // 呼出毎のアロケを避ける。
         if (count == StackBufSize)
         {
             var segments = path.Split(
-                [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+                ArchiveFormatConstants.PathSeparators,
                 StringSplitOptions.RemoveEmptyEntries);
             foreach (var segment in segments)
             {

@@ -30,6 +30,13 @@ internal static class ArchiveFormatConstants
     ];
 
     /// <summary>
+    /// パス区切り文字の配列（<c>\</c> と <c>/</c>）。
+    /// <see cref="string.Split(char[], StringSplitOptions)"/> 等に渡すとき
+    /// 毎回配列生成するとホットパスでアロケが発生するため、読取専用定数として共有する。
+    /// </summary>
+    internal static readonly char[] PathSeparators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
+
+    /// <summary>
     /// パス区切り文字を `/` に正規化する共通ヘルパ（アーカイブ内パスの比較・表示用）。
     /// </summary>
     internal static string NormalizeToForwardSlash(string path) =>
