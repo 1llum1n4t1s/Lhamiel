@@ -874,34 +874,30 @@ public static class ArchiveExtractor
                     }
                 }
 
-                if (progressCallback != null)
+                // 進捗コールバックの有無に関わらず CancellableProgress<Report> を介して
+                // reader.Save() に cancellationToken を接続する。旧実装は progressCallback が
+                // null のとき `reader.Save(tempOutputPath)` を直接呼んでいたため、
+                // DiskSpaceChecker の定期チェック等で extractCts.Cancel() が発火しても
+                // ネイティブ展開処理がキャンセルを受け取らず走り続ける問題があった。
+                var throttler = progressCallback != null ? new ProgressThrottler() : null;
+                using var progress = new CancellableProgress<Report>(report =>
                 {
-                    // 進捗スロットリング（UIスレッド負荷軽減用）
-                    var throttler = new ProgressThrottler();
+                    if (progressCallback is null || throttler is null) return;
+                    var percentage = (int)(report.GetRatio() * 100);
+                    if (throttler.ShouldReport(percentage))
+                        progressCallback(new ProgressInfo(percentage, ""));
+                }, cancellationToken);
 
-                    // キャンセル可能な進捗報告オブジェクト（using でスコープを維持）
-                    using var progress = new CancellableProgress<Report>(report =>
-                    {
-                        var percentage = (int)(report.GetRatio() * 100);
-                        if (throttler.ShouldReport(percentage))
-                            progressCallback(new ProgressInfo(percentage, ""));
-                    }, cancellationToken);
+                reader.Save(tempOutputPath, progress);
 
-                    reader.Save(tempOutputPath, progress);
+                // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）
+                cancellationToken.ThrowIfCancellationRequested();
 
-                    // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）
-                    cancellationToken.ThrowIfCancellationRequested();
+                // Terminate で 100% を保証（Ice アプリケーションの実装パターンに準拠）
+                progressCallback?.Invoke(new ProgressInfo(100, ""));
 
-                    // Terminate で 100% を保証（Ice アプリケーションの実装パターンに準拠）
-                    progressCallback(new ProgressInfo(100, ""));
-
-                    // ネイティブ側のコールバック完了を確実に保証
-                    NativeInteropHelper.KeepAliveCallbacks(progress, progressCallback);
-                }
-                else
-                {
-                    reader.Save(tempOutputPath);
-                }
+                // ネイティブ側のコールバック完了を確実に保証
+                NativeInteropHelper.KeepAliveCallbacks(progress, progressCallback);
 
                 // reader自体の生存も保証
                 NativeInteropHelper.KeepAliveCallbacks(reader);
