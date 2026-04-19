@@ -878,17 +878,23 @@ public static class ArchiveExtractor
                     var entryName = item.FullName ?? string.Empty;
                     if (string.IsNullOrEmpty(entryName)) continue;
 
-                    // ライブラリのフィルタで除外される __MACOSX / .DS_Store 等は OK なのでスキップ
-                    var fileName = Path.GetFileName(entryName);
-                    if (IgnoredSystemFiles.Contains(fileName)) continue;
-                    if (ContainsIgnoredDirectory(entryName.Replace('\\', '/'))) continue;
-
+                    // Zip Slip ガードを最優先で実行。攻撃者が `__MACOSX/../../evil.txt` のような
+                    // エントリ名を仕込んだ場合、`ContainsIgnoredDirectory` が先頭の `__MACOSX` を
+                    // 検出して無視判定を下すと、本来境界外へ書き込まれるエントリの検証が
+                    // スキップされてしまう。フィルタリングより前にセキュリティ境界を確定させる。
                     if (!TryResolveSafeEntryPathFromNormalized(normalizedTempBase, entryName, out _))
                     {
                         Logger.Log($"危険なエントリ名を検出しアーカイブ展開を中止: {entryName}", LogLevel.Warning);
                         throw new InvalidOperationException(
                             App.Text("Error.ZipSlipDetected", entryName));
                     }
+
+                    // Zip Slip チェック通過後にライブラリ側フィルタ（__MACOSX / .DS_Store 等）と
+                    // 歩調を合わせた無視判定。ここで continue しても上記セキュリティ境界は既に
+                    // 通過済みなので、攻撃者が親ディレクトリ名を偽装してもバイパスにはならない。
+                    var fileName = Path.GetFileName(entryName);
+                    if (IgnoredSystemFiles.Contains(fileName)) continue;
+                    if (ContainsIgnoredDirectory(entryName.Replace('\\', '/'))) continue;
                 }
 
                 // 進捗コールバックの有無に関わらず CancellableProgress<Report> を介して
