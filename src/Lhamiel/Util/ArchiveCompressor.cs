@@ -17,6 +17,15 @@ public static class ArchiveCompressor
     };
 
     /// <summary>
+    /// ファイルシステム上の絶対パス（fullPath）比較に使う OS 依存コンパラ。
+    /// Windows は NTFS 既定で case-insensitive、Linux/macOS は case-sensitive なので、
+    /// OrdinalIgnoreCase 固定にすると case-sensitive FS 上で `A.txt` と `a.txt` が
+    /// 同一視されて別ファイルを取りこぼす/誤マージする問題が起きる。
+    /// </summary>
+    private static readonly StringComparer PathComparer =
+        OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
+
+    /// <summary>
     /// 圧縮ファイル名を取得する
     /// </summary>
     /// <param name="sourcePath">圧縮対象のパス</param>
@@ -278,13 +287,16 @@ public static class ArchiveCompressor
 
     /// <summary>
     /// (fullPath, relativePath) ペアで同一のエントリを除去する。順序は維持し、先勝ち。
+    /// fullPath 部分は OS 依存（Windows=ignore case / Linux=case sensitive）、
+    /// relativePath 部分も同じコンパラで判定する（Windows 上では `A/` と `a/` が同じ
+    /// アーカイブエントリ扱いになる既存セマンティクスを維持）。
     /// </summary>
     private static List<(string fullPath, string relativePath)> DeduplicateByIdentity(
         List<(string fullPath, string relativePath)> files)
     {
         if (files.Count <= 1) return files;
 
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seen = new HashSet<string>(PathComparer);
         var result = new List<(string fullPath, string relativePath)>(files.Count);
         var skipped = 0;
         foreach (var entry in files)
@@ -312,8 +324,9 @@ public static class ArchiveCompressor
     /// </remarks>
     public static List<Models.FileConflictGroup> DetectConflicts(List<(string fullPath, string relativePath)> files)
     {
-        // 同一 fullPath の FileInfo を 1 回だけ生成してキャッシュする（衝突グループ内の stat 多発を回避）
-        var fileInfoCache = new Dictionary<string, (long length, DateTime lastWrite)>(StringComparer.OrdinalIgnoreCase);
+        // 同一 fullPath の FileInfo を 1 回だけ生成してキャッシュする（衝突グループ内の stat 多発を回避）。
+        // キーは fullPath なので PathComparer を使って OS のファイルシステム semantics に合わせる。
+        var fileInfoCache = new Dictionary<string, (long length, DateTime lastWrite)>(PathComparer);
         (long length, DateTime lastWrite) GetInfo(string fullPath)
         {
             if (fileInfoCache.TryGetValue(fullPath, out var cached)) return cached;
@@ -330,11 +343,14 @@ public static class ArchiveCompressor
         // 衝突扱いせず、代表 1 件だけ残すのが期待挙動。
         // ScanSourceFiles 側で fullPath は既に絶対パス化されているため、ここでの
         // Path.GetFullPath 再正規化は不要（大量ファイル時のオーバーヘッド回避）。
+        // 相対パス（アーカイブ内パス）は ZIP/7z 仕様に合わせて OrdinalIgnoreCase、
+        // fullPath（実 FS パス）は OS 依存の PathComparer を使うことで、case-sensitive FS
+        // 上の `A.txt` と `a.txt` を正しく別ファイルとして扱う。
         var groups = files
             .GroupBy(f => f.relativePath, StringComparer.OrdinalIgnoreCase)
             .Where(g => g
                 .Select(f => f.fullPath)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Distinct(PathComparer)
                 .Skip(1)
                 .Any())
             .Select(g => new Models.FileConflictGroup
