@@ -22,7 +22,11 @@ permissions:
 jobs:
   trigger-reviews:
     runs-on: ubuntu-latest
-    if: github.event.pull_request.draft == false
+    # draft PR / fork PR はスキップ。fork PR は repository secret（REVIEW_PAT）が
+    # 渡らないので即失敗してしまう（セキュリティ上の GitHub の仕様）。
+    if: |
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.fork == false
     steps:
       # REVIEW_PAT が未設定のリポジトリでも workflow 全体を fail させないよう、
       # 事前にシークレット存在チェックして未設定なら後続ステップをスキップする。

@@ -129,14 +129,19 @@ public static class DiskSpaceChecker
 
     /// <summary>
     /// 処理中の定期ディスク容量チェックを開始する。
-    /// 容量不足を検出した場合、CancellationTokenSource をキャンセルし、
-    /// コールバックで通知する。
+    /// 容量不足を検出した場合、<paramref name="operationCts"/> をキャンセルし、
+    /// <paramref name="parentWindow"/> が指定されていれば通知ダイアログを表示する。
     /// </summary>
+    /// <remarks>
+    /// 旧実装は「通知用コールバック」が渡された時のみダイアログを出す設計だったため、
+    /// 呼び出し側（<see cref="ArchiveExtractor"/> 等）がコールバックを渡し忘れると
+    /// 容量不足のキャンセルが UI 無しでサイレントに起きてユーザーが原因を特定できない。
+    /// そこで通知の有無は <paramref name="parentWindow"/> 1 つで判定する設計に改める。
+    /// </remarks>
     /// <returns>定期チェックを停止するための IDisposable</returns>
     public static IDisposable StartPeriodicCheck(
         string outputPath, long requiredBytes,
-        Window? parentWindow, CancellationTokenSource operationCts,
-        Func<long, long, Task<bool>>? onInsufficientSpace = null)
+        Window? parentWindow, CancellationTokenSource operationCts)
     {
         var checkCts = new CancellationTokenSource();
         var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(checkCts.Token, operationCts.Token);
@@ -163,7 +168,7 @@ public static class DiskSpaceChecker
                         // （旧実装はダイアログ表示まで Cancel を待ってしまい、ネイティブ処理が進み続けていた）
                         operationCts.Cancel();
 
-                        if (onInsufficientSpace != null)
+                        if (parentWindow is not null)
                         {
                             // キャンセル後の通知としてダイアログ表示（結果は無視。ユーザーには操作中断を認知させる目的）。
                             // requiredBytes<=0（メタデータ不明アーカイブ）時は `requiredBytes - available` が
@@ -171,7 +176,6 @@ public static class DiskSpaceChecker
                             var shortage = Math.Max(0, requiredBytes - available);
                             _ = await Dispatcher.UIThread.InvokeAsync(async () =>
                             {
-                                if (parentWindow is null) return false;
                                 var dialog = new View.DiskSpaceDialog(
                                     requiredBytes, available, shortage, outputPath);
                                 dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
