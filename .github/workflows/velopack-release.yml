@@ -22,7 +22,8 @@ jobs:
       framework: ${{ steps.version.outputs.framework }}
     steps:
       - name: リポジトリをチェックアウト
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: バージョン情報を出力
         id: version
@@ -48,15 +49,18 @@ jobs:
             channel: win-arm64
     steps:
       - name: リポジトリをチェックアウト
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: .NET SDK をセットアップ
-        uses: actions/setup-dotnet@v4
+        # actions/setup-dotnet@v4.3.1
+        uses: actions/setup-dotnet@3e891b0cb619bf60e2c25674b222b8940e2c1c25
         with:
           dotnet-version: '10.0.x'
 
       - name: ビルド成果物をダウンロード
-        uses: actions/download-artifact@v4
+        # actions/download-artifact@v4.1.8
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: lhamiel.${{ matrix.runtime }}
           path: publish
@@ -103,7 +107,8 @@ jobs:
             --shortcuts "StartMenu,Desktop"
 
       - name: Velopack 成果物をアップロード
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: velopack.${{ matrix.label }}
           path: artifacts/*
@@ -115,7 +120,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: リポジトリをチェックアウト
-        uses: actions/checkout@v4
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: 既存リリースを削除
         env:
@@ -130,7 +136,8 @@ jobs:
           fi
 
       - name: Velopack 成果物をダウンロード
-        uses: actions/download-artifact@v4
+        # actions/download-artifact@v4.1.8
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           pattern: velopack.*
           path: packages

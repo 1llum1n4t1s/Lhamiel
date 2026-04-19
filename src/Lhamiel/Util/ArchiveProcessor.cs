@@ -105,7 +105,8 @@ public static class ArchiveProcessor
 
                 // アーカイブの構造を一度だけ解析
                 structureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
-                var createFolder = SettingsManager.Instance.Current.CreateArchiveNameFolder;
+                // 設定は処理開始時点でスナップショットを取って一貫性を保つ（UIの設定変更と race しない）
+                var createFolder = SettingsManager.Instance.CreateSnapshot().CreateArchiveNameFolder;
 
                 // 出力先を決定
                 if (!createFolder)
@@ -235,9 +236,11 @@ public static class ArchiveProcessor
 
             var tasks = filePaths.Select(async (filePath, index) =>
             {
+                var acquired = false;
                 try
                 {
                     await semaphore.WaitAsync(cancellationToken);
+                    acquired = true;
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var mappedProgress = CreateMappedProgress(
@@ -284,7 +287,9 @@ public static class ArchiveProcessor
                 }
                 finally
                 {
-                    semaphore.Release();
+                    // WaitAsync が失敗した場合（キャンセル等）は Release しない。
+                    // 成功時のみ Release することで SemaphoreFullException / カウント超過を防ぐ。
+                    if (acquired) semaphore.Release();
                 }
             }).ToList();
 
@@ -376,11 +381,17 @@ public static class ArchiveProcessor
                         return false;
                     }
 
-                    // 上書きが許可された場合は既存の対象を削除
+                    // 上書きが許可された場合は既存の対象を削除。
+                    // 保護されたディレクトリ（デスクトップなど）に対する再帰削除を明示的に拒否する。
                     try
                     {
                         if (Directory.Exists(outputPath))
                         {
+                            if (PathValidator.IsProtectedDirectory(outputPath))
+                            {
+                                Logger.Log($"圧縮上書き: 保護ディレクトリへの再帰削除を拒否: {outputPath}", LogLevel.Warning);
+                                throw new InvalidOperationException(App.Text("Error.ProtectedDirectory", outputPath));
+                            }
                             Directory.Delete(outputPath, true);
                         }
                         else
@@ -388,6 +399,11 @@ public static class ArchiveProcessor
                             File.Delete(outputPath);
                         }
                         Logger.Log($"既存の対象を削除しました: {outputPath}");
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // 保護ディレクトリエラーはそのまま再スロー
+                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -418,8 +434,9 @@ public static class ArchiveProcessor
                     progressReporter?.Report(info);
                 };
 
-                // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示
-                var settings = SettingsManager.Instance.Current;
+                // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示。
+                // 設定は処理開始時点でスナップショット化し、以降の処理全体で一貫性を保つ。
+                var settings = SettingsManager.Instance.CreateSnapshot();
                 List<(string fullPath, string relativePath)>? resolvedFiles = null;
                 if (settings.DirectoryStructureMode == DirectoryStructureMode.Flat && Directory.Exists(sourcePath))
                 {
@@ -452,7 +469,7 @@ public static class ArchiveProcessor
                     }
                 }
 
-                await ArchiveCompressor.CompressFilesAsync([sourcePath], outputPath, parsedFormat, progressCallback, actualCancellationToken, resolvedFiles);
+                await ArchiveCompressor.CompressFilesAsync([sourcePath], outputPath, parsedFormat, progressCallback, actualCancellationToken, resolvedFiles, settingsOverride: settings);
 
                 Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
 
@@ -618,9 +635,11 @@ public static class ArchiveProcessor
 
             var tasks = resolvedSourcePaths.Select(async (sourcePath, index) =>
             {
+                var acquired = false;
                 try
                 {
                     await semaphore.WaitAsync(actualCancellationToken);
+                    acquired = true;
                     actualCancellationToken.ThrowIfCancellationRequested();
 
                     var innerProgress = CreateMappedProgress(
@@ -665,7 +684,8 @@ public static class ArchiveProcessor
                 }
                 finally
                 {
-                    semaphore.Release();
+                    // WaitAsync が失敗した場合（キャンセル等）は Release しない。
+                    if (acquired) semaphore.Release();
                 }
             }).ToList();
 
@@ -768,8 +788,9 @@ public static class ArchiveProcessor
                     File.Delete(outputPath);
                 }
 
-                // ファイルリストをスキャン
-                var settings = SettingsManager.Instance.Current;
+                // ファイルリストをスキャン。
+                // 設定は処理開始時点でスナップショット化して以降の race を避ける。
+                var settings = SettingsManager.Instance.CreateSnapshot();
                 var excludedPatternSet = new HashSet<string>(
                     settings.ExcludedFilePatterns ?? [],
                     StringComparer.OrdinalIgnoreCase);
@@ -834,7 +855,7 @@ public static class ArchiveProcessor
 
                 // 解決済みリストで圧縮
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
-                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, parsedFormat, p => progress.Report(p), actualCancellationToken, resolvedFiles);
+                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, parsedFormat, p => progress.Report(p), actualCancellationToken, resolvedFiles, settingsOverride: settings);
 
                 Logger.Log($"まとめ圧縮完了: {outputPath}（{resolvedFiles.Count}個のファイル）");
 

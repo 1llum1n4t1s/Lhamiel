@@ -22,10 +22,9 @@
   "OpenCompressionOutputFolder": true,
   "CompressMultipleAsOne": true,
   "DirectoryStructureMode": "IncludeRoot",
-  "ExcludedFilePatterns": [".DS_Store", "Thumbs.db", "__MACOSX", ".Spotlight-V100"],
+  "ExcludedFilePatterns": [".DS_Store", "Thumbs.db", "__MACOSX"],
   "ZipCompressionLevel": 5,
   "SevenZipCompressionLevel": 5,
-  "EnableShortcutCreation": true,
   "UpdateRepoOwner": "1llum1n4t1s",
   "UpdateRepoName": "Lhamiel",
   "UpdateChannel": "release"
@@ -40,7 +39,6 @@
 |-----------|------|----------|------|
 | `Theme` | string | `"System"` | テーマ。`"System"`, `"Dark"`, `"Light"` |
 | `Locale` | string | `""` | ロケール。空文字はシステム自動検出。例: `"ja_JP"`, `"en_US"` |
-| `EnableShortcutCreation` | bool | `true` | デスクトップショートカット作成 |
 
 ### 展開設定
 
@@ -55,7 +53,7 @@
 
 | プロパティ | 型 | デフォルト | 説明 |
 |-----------|------|----------|------|
-| `CompressionFormat` | string | `"ZIP"` | 圧縮形式。`"ZIP"`, `"SevenZip"`, `"Tar"` |
+| `CompressionFormat` | string | `"ZIP"` | 圧縮形式。`"ZIP"`, `"7z"`, `"TAR"` |
 | `CompressionOutputDirectory` | string | デスクトップ | 圧縮先ディレクトリ |
 | `CompressionOutputToSameDirectory` | bool | `false` | 元ファイルと同じ場所に作成 |
 | `OpenCompressionOutputFolder` | bool | `true` | 圧縮後にフォルダを開く |
@@ -67,11 +65,13 @@
 
 ### 自動更新設定
 
+`UpdateRepoOwner` と `UpdateRepoName` は**セキュリティ上ハードコード固定**されており、`settings.json` から書き換えても反映されない（悪意ある第三者リポジトリへの誘導を防ぐため）。
+
 | プロパティ | 型 | デフォルト | 説明 |
 |-----------|------|----------|------|
-| `UpdateRepoOwner` | string | `"1llum1n4t1s"` | GitHub リポジトリオーナー |
-| `UpdateRepoName` | string | `"Lhamiel"` | GitHub リポジトリ名 |
-| `UpdateChannel` | string | `"release"` | 更新チャンネル |
+| `UpdateRepoOwner` | string | `"1llum1n4t1s"` | **設定不可（固定）**。書き換え検知時は警告ログを出してデフォルトへ戻す |
+| `UpdateRepoName` | string | `"Lhamiel"` | **設定不可（固定）**。書き換え検知時は警告ログを出してデフォルトへ戻す |
+| `UpdateChannel` | string | `"release"` | 更新チャンネル（`"release"` / `"prerelease"`） |
 
 ## DirectoryStructureMode
 

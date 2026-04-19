@@ -274,4 +274,6 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">अमान्यमार्गस्वरूपं प्रत्यभिज्ञातम्</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">मार्गप्रमाणीकरणं विफलम्: {0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">आरक्षितसाधननाम उपयुज्यते: {0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' संगणकेन रक्षितं अस्ति अधिलेखनं न शक्यते। अन्यत् स्थानं चिनुत।</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">सङ्कोचनं चलति...</x:String>
 </ResourceDictionary>

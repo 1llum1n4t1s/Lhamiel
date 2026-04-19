@@ -274,4 +274,6 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Обнаружен недопустимый формат пути</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Проверка пути не пройдена: {0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Используется зарезервированное имя устройства: {0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' защищён системой и не может быть перезаписан. Выберите другое расположение.</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Сжатие...</x:String>
 </ResourceDictionary>

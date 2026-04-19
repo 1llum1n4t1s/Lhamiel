@@ -19,9 +19,16 @@ public sealed class SettingsManager
     public static SettingsManager Instance => _instance.Value;
 
     /// <summary>
-    /// 現在の設定を取得
+    /// 現在の設定を取得（読み取り専用の参照を返す）。
+    /// 並列処理や長時間の処理で使う場合は <see cref="CreateSnapshot"/> を使うこと。
     /// </summary>
     public Settings Current => _settings;
+
+    /// <summary>
+    /// 現在の設定の浅いコピー（スナップショット）を作成する。
+    /// 並列処理中に UI スレッドから設定変更が起きても、スナップショットは影響を受けない。
+    /// </summary>
+    public Settings CreateSnapshot() => _settings.Snapshot();
 
     /// <summary>
     /// プライベートコンストラクタ

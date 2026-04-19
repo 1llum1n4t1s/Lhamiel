@@ -33,11 +33,9 @@ public static class ArchiveExtractor
 
     /// <summary>
     /// 圧縮のみの拡張子（単体ではアーカイブでない）。.tar と組み合わせた複合拡張子のみ2段除去する。
+    /// 定義は <see cref="ArchiveFormatConstants.CompressionOnlyExtensions"/> を参照する（DRY 統合）。
     /// </summary>
-    private static readonly HashSet<string> CompressionOnlyExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".gz", ".bz2", ".xz", ".lzma", ".z"
-    };
+    private static HashSet<string> CompressionOnlyExtensions => ArchiveFormatConstants.CompressionOnlyExtensions;
 
     /// <summary>
     /// アーカイブファイル名から拡張子を除去したベース名を返す。
@@ -282,6 +280,47 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
+    /// アーカイブ内のエントリ名を展開先の相対パスとして安全に解決する。
+    /// 絶対パス・ドライブレター・UNC・`..` セグメントを含むエントリは弾かれる。
+    /// </summary>
+    /// <param name="basePath">展開先のベースディレクトリ</param>
+    /// <param name="entryName">アーカイブ内のエントリ名（攻撃者制御）</param>
+    /// <param name="safeFullPath">境界内に収まる結合済み絶対パス</param>
+    /// <returns>境界内なら true、境界を超える場合は false</returns>
+    internal static bool TryResolveSafeEntryPath(string basePath, string entryName, out string safeFullPath)
+    {
+        safeFullPath = string.Empty;
+        if (string.IsNullOrEmpty(entryName)) return false;
+
+        // Zip Slip ガード: パス区切り・絶対パス・UNC・ドライブレターを拒否
+        if (entryName.StartsWith('/') || entryName.StartsWith('\\')) return false;
+        if (Path.IsPathRooted(entryName)) return false;
+
+        var normalized = entryName.Replace('/', Path.DirectorySeparatorChar);
+
+        try
+        {
+            var normalizedBase = Path.GetFullPath(basePath)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                + Path.DirectorySeparatorChar;
+            var combined = Path.GetFullPath(Path.Combine(basePath, normalized));
+
+            if (!combined.StartsWith(normalizedBase, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(combined, normalizedBase.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            safeFullPath = combined;
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// アーカイブ内のファイルと展開先の既存ファイルを突き合わせて衝突を検出する。
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
@@ -306,8 +345,12 @@ public static class ArchiveExtractor
                 if (IgnoredSystemFiles.Contains(fileName)) continue;
                 if (ContainsIgnoredDirectory(relativePath)) continue;
 
-                // 展開先に同名ファイルが存在するかチェック
-                var destFilePath = Path.Combine(outputPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                // Zip Slip ガード: outputPath 境界外に出るエントリ（`..` / 絶対パス / UNC）はスキップ
+                if (!TryResolveSafeEntryPath(outputPath, relativePath, out var destFilePath))
+                {
+                    Logger.Log($"展開衝突検出で境界外パスを検出しスキップ: {relativePath}", LogLevel.Warning);
+                    continue;
+                }
                 if (!File.Exists(destFilePath)) continue;
 
                 // 衝突発見: 左=アーカイブ内ファイル（ソース）、右=既存ファイル（宛先）
@@ -360,7 +403,7 @@ public static class ArchiveExtractor
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}");
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 展開前のディスク容量チェック
+        // 展開前のディスク容量チェック（アーカイブのメタデータ上の非圧縮サイズ）
         var requiredSize = DiskSpaceChecker.GetArchiveUncompressedSize(archivePath);
         if (requiredSize > 0)
         {
@@ -369,6 +412,14 @@ public static class ArchiveExtractor
             if (!hasSpace)
                 throw new OperationCanceledException(App.Text("Error.DiskSpaceCancelled"));
         }
+
+        // 展開中のランタイム容量監視（Zip bomb 対策 / 悪意あるメタデータサイズへの保険）
+        // operationCts と linkedCts で外側のキャンセルとも連携する。
+        using var extractCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        // requiredSize <= 0 の場合もメタデータが信用できないので最低閾値チェックだけは有効にする
+        using var periodicCheck = DiskSpaceChecker.StartPeriodicCheck(
+            outputPath, requiredSize > 0 ? requiredSize : long.MaxValue / 2, parentWindow, extractCts);
+        cancellationToken = extractCts.Token;
 
         // 展開先に既存ファイルがあるかチェック（一時展開方式の判定）
         var hasExistingFiles = ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths);
@@ -533,8 +584,15 @@ public static class ArchiveExtractor
             var relativePath = Path.GetRelativePath(sourceDir, sourceFile).Replace('\\', '/');
             var destFile = Path.Combine(destDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
 
-            // ファイル同士の衝突、またはファイル↔ディレクトリのパス型衝突を検出
-            if (!File.Exists(destFile) && !Directory.Exists(destFile)) continue;
+            // ファイル同士の衝突、またはファイル↔ディレクトリのパス型衝突を検出。
+            // File.Exists + Directory.Exists + FileInfo で 3〜4 回 stat が走るのを避けるため、
+            // File.GetAttributes を 1 回だけ呼んで属性フラグで分岐する。
+            FileAttributes destAttrs;
+            try { destAttrs = File.GetAttributes(destFile); }
+            catch (FileNotFoundException) { continue; }
+            catch (DirectoryNotFoundException) { continue; }
+            catch (IOException) { continue; }
+            catch (UnauthorizedAccessException) { continue; }
 
             // システムファイル・ディレクトリをスキップ
             var fileName = Path.GetFileName(relativePath);
@@ -543,20 +601,20 @@ public static class ArchiveExtractor
 
             var sourceInfo = new FileInfo(sourceFile);
 
-            // 宛先がファイルかディレクトリかでサイズ・日時を取り分ける
+            // 宛先がファイルかディレクトリかを FileAttributes で判定
             long destSize;
             DateTime destLastWrite;
-            if (File.Exists(destFile))
+            if ((destAttrs & FileAttributes.Directory) != 0)
+            {
+                destSize = 0;
+                // ディレクトリの最終更新日時は Directory.GetLastWriteTime を使うと FileInfo 経由より syscall が軽い
+                destLastWrite = Directory.GetLastWriteTime(destFile);
+            }
+            else
             {
                 var destInfo = new FileInfo(destFile);
                 destSize = destInfo.Length;
                 destLastWrite = destInfo.LastWriteTime;
-            }
-            else
-            {
-                var destDirInfo = new DirectoryInfo(destFile);
-                destSize = 0;
-                destLastWrite = destDirInfo.LastWriteTime;
             }
 
             // 左=アーカイブから展開されたファイル、右=既存ファイル/ディレクトリ
@@ -598,7 +656,9 @@ public static class ArchiveExtractor
             }
             Directory.CreateDirectory(destDir);
 
-            // 空ディレクトリも保持するため、先にディレクトリ構造を作成
+            // 空ディレクトリも保持するため、先にディレクトリ構造を作成する。
+            // （ファイル側ループ内の CreateDirectory は親ディレクトリにしか届かないため、
+            //   子孫空ディレクトリを確実に保持するにはこの 1 回の走査が必要）
             foreach (var sourceSubDir in Directory.EnumerateDirectories(sourceDir, "*", SearchOption.AllDirectories))
             {
                 var relDir = Path.GetRelativePath(sourceDir, sourceSubDir);
@@ -618,8 +678,11 @@ public static class ArchiveExtractor
                     continue;
 
                 var destFile = Path.Combine(destDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                // 親ディレクトリは上のディレクトリ構造作成ループで既に作られているため
+                // CreateDirectory の重複呼び出しは基本的に不要。ただし空ディレクトリ列挙で
+                // 親が拾えないエッジケース（権限等）に備えて、未存在時のみ作成する。
                 var destFileDir = Path.GetDirectoryName(destFile);
-                if (!string.IsNullOrEmpty(destFileDir))
+                if (!string.IsNullOrEmpty(destFileDir) && !Directory.Exists(destFileDir))
                     Directory.CreateDirectory(destFileDir);
 
                 // パス型衝突: 宛先にディレクトリがあるがソースはファイルの場合は削除
@@ -754,13 +817,19 @@ public static class ArchiveExtractor
                 NativeInteropHelper.KeepAliveCallbacks(reader);
             }
 
-            // スキップ対象ファイルを一時ディレクトリから削除（移動前に除外）
+            // スキップ対象ファイルを一時ディレクトリから削除（移動前に除外）。
+            // 攻撃者制御のエントリ名 `../foo` などで tempOutputPath 外のファイルを削除されないよう
+            // TryResolveSafeEntryPath で境界内に収まっているかを必ず検証する。
             if (skipRelativePaths is { Count: > 0 })
             {
                 Logger.Log($"スキップ対象の {skipRelativePaths.Count} ファイルを一時ディレクトリから除外");
                 foreach (var relativePath in skipRelativePaths)
                 {
-                    var tempFilePath = Path.Combine(tempOutputPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                    if (!TryResolveSafeEntryPath(tempOutputPath, relativePath, out var tempFilePath))
+                    {
+                        Logger.Log($"スキップ対象の境界外パスを拒否: {relativePath}", LogLevel.Warning);
+                        continue;
+                    }
                     if (File.Exists(tempFilePath))
                     {
                         try

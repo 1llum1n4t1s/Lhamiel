@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media.Imaging;
@@ -181,10 +182,39 @@ public static class FileIconHelper
     }
 
     /// <summary>
+    /// 拡張子→Bitmap の共有キャッシュ（ジェネリックアイコン用）。
+    /// SHGetFileInfo の P/Invoke コストは 1〜5ms と高く、同一拡張子のファイルが 100 件並ぶと
+    /// UI スレッド上で 500ms オーダーのブロックになるため拡張子単位でメモ化する。
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, Bitmap?> _extensionIconCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// ファイルパスからアイコンを Avalonia Bitmap として取得する。
-    /// ファイルが存在しない場合は拡張子ベースでジェネリックアイコンを取得する。
+    /// ファイルが存在しない場合は拡張子ベースでジェネリックアイコンを取得し、拡張子単位でキャッシュする。
     /// </summary>
     public static Bitmap? GetFileIcon(string filePath, bool largeIcon = true)
+    {
+        // 実ファイルが存在しない場合は拡張子キャッシュを利用して P/Invoke を省略する。
+        // 存在する実ファイル自体のアイコンは埋め込みアイコンが優先されるためキャッシュ対象外。
+        var shouldCache = !File.Exists(filePath) && !Directory.Exists(filePath);
+        if (shouldCache)
+        {
+            var ext = Path.GetExtension(filePath);
+            var cacheKey = $"{(largeIcon ? "L:" : "S:")}{ext}";
+            if (_extensionIconCache.TryGetValue(cacheKey, out var cached))
+                return cached;
+
+            var loaded = LoadFileIcon(filePath, largeIcon);
+            _extensionIconCache[cacheKey] = loaded;
+            return loaded;
+        }
+        return LoadFileIcon(filePath, largeIcon);
+    }
+
+    /// <summary>
+    /// 実際に SHGetFileInfo を呼び出してアイコンを読み込む。
+    /// </summary>
+    private static Bitmap? LoadFileIcon(string filePath, bool largeIcon)
     {
         try
         {

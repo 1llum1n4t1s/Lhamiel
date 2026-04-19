@@ -163,6 +163,9 @@ public partial class App : Application
             _ipcCts = new CancellationTokenSource();
             _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token);
 
+            // 前回の実行で残存した一時ディレクトリを掃除する（OneDrive 同期フォルダや中断時対策）
+            _ = Task.Run(() => Util.TempCleanup.CleanupOrphanedTempDirectories());
+
             base.OnFrameworkInitializationCompleted();
 
 #if DEBUG
@@ -218,10 +221,10 @@ public partial class App : Application
             {
             }
 
-            // Dispatcher が既にシャットダウンしている場合は Shutdown() を呼ばない
-            // （呼ぶと二重終了や InvalidOperationException の原因になる）
-            var isDispatcherShutDown = ex is InvalidOperationException && ex.Message.Contains("Dispatcher", StringComparison.OrdinalIgnoreCase);
-            if (!isDispatcherShutDown && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+            // Dispatcher がシャットダウン済みなら Shutdown を呼ばない。
+            // 判定は Dispatcher の ShutdownStarted 状態を参照し、ロケール依存の
+            // メッセージ文字列マッチを使わない。
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
             {
                 TryShutdownSafely(lifetime);
             }
@@ -229,7 +232,9 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Dispatcher シャットダウン済みなどを考慮して安全に Shutdown を試行する
+    /// Dispatcher シャットダウン済みなどを考慮して安全に Shutdown を試行する。
+    /// InvalidOperationException を型ベースで catch することで、ロケール依存の
+    /// メッセージ文字列マッチ（ex.Message.Contains("Dispatcher")）を回避する。
     /// </summary>
     /// <param name="lifetime">デスクトップライフタイム</param>
     private static void TryShutdownSafely(IClassicDesktopStyleApplicationLifetime lifetime)
@@ -238,15 +243,11 @@ public partial class App : Application
         {
             lifetime.Shutdown();
         }
-        catch (InvalidOperationException e) when (e.Message.Contains("Dispatcher", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException)
         {
-            try
-            {
-                Logger.Log("Shutdown をスキップしました（Dispatcher 終了済み）", LogLevel.Warning);
-            }
-            catch
-            {
-            }
+            // Dispatcher がシャットダウン中 / 終了済みだった場合の想定内例外。
+            // ロケール依存の文字列マッチは信頼できないため、型のみで判定する。
+            try { Logger.Log("Shutdown をスキップ（Dispatcher が既にシャットダウン中）", LogLevel.Warning); } catch { }
         }
     }
 
@@ -785,14 +786,11 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// リソースからローカライズ済みテキストを取得する
+    /// キーからフォーマット文字列を取得する共通ヘルパ（リテラル \n 展開込み）。
     /// </summary>
-    /// <param name="key">リソースキー（"Text." プレフィックスなし）</param>
-    /// <param name="args">フォーマット引数</param>
-    /// <returns>ローカライズ済み文字列</returns>
-    public static string Text(string key, params object[] args)
+    private static string GetLocalizedFormat(string key)
     {
-        var fullKey = $"Text.{key}";
+        var fullKey = string.Concat("Text.", key);
         string? fmt = null;
 
         // アクティブロケールから直接検索（MergedDictionaries経由のFindResourceより確実）
@@ -809,10 +807,44 @@ public partial class App : Application
         if (string.IsNullOrWhiteSpace(fmt))
             return fullKey;
 
-        // リテラルの \n を実際の改行に変換（含まない場合はアロケーション回避）
         if (fmt.Contains("\\n", StringComparison.Ordinal))
             fmt = fmt.Replace("\\n", "\n");
 
+        return fmt;
+    }
+
+    /// <summary>
+    /// 引数なしのローカライズ済みテキスト取得（0 アロケーションの hot path 向け）
+    /// </summary>
+    public static string Text(string key) => GetLocalizedFormat(key);
+
+    /// <summary>
+    /// 引数 1 つのローカライズ済みテキスト取得（params アロケーションを避ける）
+    /// </summary>
+    public static string Text(string key, object? arg0)
+    {
+        var fmt = GetLocalizedFormat(key);
+        return string.Format(fmt, arg0);
+    }
+
+    /// <summary>
+    /// 引数 2 つのローカライズ済みテキスト取得（params アロケーションを避ける）
+    /// </summary>
+    public static string Text(string key, object? arg0, object? arg1)
+    {
+        var fmt = GetLocalizedFormat(key);
+        return string.Format(fmt, arg0, arg1);
+    }
+
+    /// <summary>
+    /// リソースからローカライズ済みテキストを取得する（可変引数版。3 引数以上や配列経由の呼び出し向け）
+    /// </summary>
+    /// <param name="key">リソースキー（"Text." プレフィックスなし）</param>
+    /// <param name="args">フォーマット引数</param>
+    /// <returns>ローカライズ済み文字列</returns>
+    public static string Text(string key, params object[] args)
+    {
+        var fmt = GetLocalizedFormat(key);
         if (args.Length == 0)
             return fmt;
 

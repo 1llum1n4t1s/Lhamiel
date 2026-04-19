@@ -81,12 +81,17 @@ public partial class ProgressWindow : Window
     }
 
     /// <summary>
-    /// キャンセルトークンを取得する
+    /// キャンセルトークンを取得する。
+    /// ウィンドウが閉じられて CTS が破棄された後は CancellationToken.None を返すと
+    /// 後続処理がキャンセル不能になるため、代わりに「既にキャンセル済み」のトークンを返す。
     /// </summary>
     /// <returns>キャンセルトークン</returns>
     public CancellationToken GetCancellationToken()
     {
-        return _cancellationTokenSource?.Token ?? CancellationToken.None;
+        var cts = _cancellationTokenSource;
+        if (cts is null)
+            return new CancellationToken(canceled: true);
+        return cts.Token;
     }
 
     /// <summary>

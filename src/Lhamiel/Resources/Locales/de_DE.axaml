@@ -274,4 +274,6 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Ungültiges Pfadformat erkannt</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Pfadvalidierung fehlgeschlagen: {0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Reservierter Gerätename wird verwendet: {0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' ist vom System geschützt und kann nicht überschrieben werden. Bitte wählen Sie einen anderen Speicherort.</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Komprimiere...</x:String>
 </ResourceDictionary>

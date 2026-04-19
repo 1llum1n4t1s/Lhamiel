@@ -6,7 +6,7 @@ namespace Lhamiel.Util;
 /// <summary>
 /// アーカイブ圧縮機能
 /// </summary>
-public class ArchiveCompressor
+public static class ArchiveCompressor
 {
     /// <summary>
     /// ライブラリがサポートする圧縮可能な全形式（内部バリデーション用）
@@ -66,7 +66,8 @@ public class ArchiveCompressor
     /// <param name="progressCallback">進捗コールバック</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="resolvedFiles">衝突解決済みのファイルリスト（指定時はsourcePathsのスキャンをスキップ）</param>
-    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null)
+    /// <param name="settingsOverride">使用する設定のスナップショット（並列処理時の race を避けるため呼び出し側で明示）</param>
+    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, Action<ProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null, Settings? settingsOverride = null)
     {
         var sourceList = sourcePaths.ToList();
         if (sourceList.Count == 0)
@@ -81,8 +82,8 @@ public class ArchiveCompressor
             Directory.CreateDirectory(outputDir);
         }
 
-        // 設定から除外パターンを取得し、HashSet化してO(1)照合を実現
-        var settings = SettingsManager.Instance.Current;
+        // 設定スナップショットを取得（race を避けるため処理開始時点で1回だけ）
+        var settings = settingsOverride ?? SettingsManager.Instance.CreateSnapshot();
         var excludedPatternSet = new HashSet<string>(
             settings.ExcludedFilePatterns ?? [],
             StringComparer.OrdinalIgnoreCase);
@@ -93,12 +94,12 @@ public class ArchiveCompressor
             cancellationToken.ThrowIfCancellationRequested();
 
             // 解決済みリストが渡された場合はそのまま使用、なければスキャン
-            var filesToCompress = resolvedFiles ?? await ScanSourceFiles(sourceList, excludedPatternSet, cancellationToken);
+            var filesToCompress = resolvedFiles ?? await ScanSourceFiles(sourceList, excludedPatternSet, cancellationToken, settings.DirectoryStructureMode);
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
             // 圧縮処理を開始（ロック中ファイルはライブラリ側で自動的に一時コピーされる）
-            progressCallback?.Invoke(new ProgressInfo(0, "圧縮処理中..."));
+            progressCallback?.Invoke(new ProgressInfo(0, App.Text("Compressor.Processing")));
 
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
             outputCreated = true;
@@ -144,7 +145,7 @@ public class ArchiveCompressor
                     cancellationToken.ThrowIfCancellationRequested();
 
                     // Terminate で 100% を保証（Ice アプリケーションの実装パターンに準拠）
-                    progressCallback?.Invoke(new ProgressInfo(100, "圧縮処理中..."));
+                    progressCallback?.Invoke(new ProgressInfo(100, App.Text("Compressor.Processing")));
 
                     // 全てのオブジェクトの生存を、ネイティブ処理完了直後に明示的に保証する
                     // これにより、JIT最適化による早期解放（およびそれに伴うアクセス違反）を防ぐ
@@ -226,11 +227,13 @@ public class ArchiveCompressor
                         : Path.GetRelativePath(parentDir, file);
                     filesToCompress.Add((file, relativePath));
 
-                    // このファイルの全祖先ディレクトリを記録
+                    // このファイルの全祖先ディレクトリを記録。
+                    // 既に登録済みの祖先に到達したら break（他のファイルで登録済みの場合は上位まで登録済み）。
+                    // これにより O(N × D) から平均 O(N) に近づく。
                     var fileDir = Path.GetDirectoryName(file);
                     while (fileDir != null && fileDir.Length >= sourcePath.Length)
                     {
-                        directoriesWithFiles.Add(fileDir);
+                        if (!directoriesWithFiles.Add(fileDir)) break;
                         fileDir = Path.GetDirectoryName(fileDir);
                     }
 
@@ -271,22 +274,35 @@ public class ArchiveCompressor
     /// ファイルリストから衝突グループを検出する。
     /// 衝突がない場合は空リストを返す。
     /// </summary>
+    /// <remarks>
+    /// FileInfo は同一 fullPath に対して 1 回だけ構築して使い回すことで、重複 stat syscall を回避する。
+    /// </remarks>
     public static List<Models.FileConflictGroup> DetectConflicts(List<(string fullPath, string relativePath)> files)
     {
+        // 同一 fullPath の FileInfo を 1 回だけ生成してキャッシュする（衝突グループ内の stat 多発を回避）
+        var fileInfoCache = new Dictionary<string, (long length, DateTime lastWrite)>(StringComparer.OrdinalIgnoreCase);
+        (long length, DateTime lastWrite) GetInfo(string fullPath)
+        {
+            if (fileInfoCache.TryGetValue(fullPath, out var cached)) return cached;
+            var info = new FileInfo(fullPath);
+            var value = info.Exists
+                ? (info.Length, info.LastWriteTime)
+                : (0L, DateTime.MinValue);
+            fileInfoCache[fullPath] = value;
+            return value;
+        }
+
         var groups = files
             .GroupBy(f => f.relativePath, StringComparer.OrdinalIgnoreCase)
-            .Where(g => g.Count() > 1)
+            .Where(g => g.Skip(1).Any())
             .Select(g => new Models.FileConflictGroup
             {
                 ConflictingName = g.Key,
+                Kind = Models.ConflictKind.CompressionList,
                 Entries = g.Select(f =>
                 {
-                    var info = new FileInfo(f.fullPath);
-                    return new Models.FileConflictEntry(
-                        f.fullPath,
-                        f.relativePath,
-                        info.Exists ? info.Length : 0,
-                        info.Exists ? info.LastWriteTime : DateTime.MinValue);
+                    var (len, lastWrite) = GetInfo(f.fullPath);
+                    return new Models.FileConflictEntry(f.fullPath, f.relativePath, len, lastWrite);
                 }).ToList()
             })
             .ToList();
@@ -381,7 +397,8 @@ public class ArchiveCompressor
         // ファイル名もパスセグメントの一部なので、個別チェック不要
         // MemoryExtensions.Split + stackalloc で配列アロケーションを回避
         ReadOnlySpan<char> separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
-        Span<Range> ranges = stackalloc Range[64]; // パスセグメント数の上限（通常十分）
+        const int StackBufSize = 64;
+        Span<Range> ranges = stackalloc Range[StackBufSize]; // パスセグメント数の上限（通常十分）
         var count = path.AsSpan().SplitAny(ranges, separators, StringSplitOptions.RemoveEmptyEntries);
         for (var i = 0; i < count; i++)
         {
@@ -389,6 +406,16 @@ public class ArchiveCompressor
             {
                 return true;
             }
+        }
+
+        // バッファ上限到達時は後段セグメントを見落としている可能性があるので
+        // フォールバックとしてファイル名（最後のセグメント）だけでも個別チェックする。
+        // （WSL マウントや深い UNC で 64 階層超え対策）
+        if (count == StackBufSize)
+        {
+            var fileName = Path.GetFileName(path);
+            if (fileName.Length > 0 && excludedPatternSet.Contains(fileName))
+                return true;
         }
 
         return false;
@@ -464,10 +491,8 @@ public class ArchiveCompressor
     /// </summary>
     internal static (string stem, string extension) SplitStemAndExtension(string fileName)
     {
-        // 既知の複合拡張子パターン
-        ReadOnlySpan<string> compoundExtensions = [".tar.gz", ".tar.bz2", ".tar.xz", ".tar.lz", ".tar.zst"];
-
-        foreach (var compoundExt in compoundExtensions)
+        // 既知の複合拡張子パターン（ArchiveFormatConstants で一元管理）
+        foreach (var compoundExt in ArchiveFormatConstants.CompoundTarExtensions)
         {
             if (fileName.EndsWith(compoundExt, StringComparison.OrdinalIgnoreCase) && fileName.Length > compoundExt.Length)
             {
@@ -482,43 +507,48 @@ public class ArchiveCompressor
     }
 
     /// <summary>
-    /// リネーム方式: 衝突するファイル名に連番サフィックスを付与して解決
+    /// リネーム方式: 衝突するファイル名に連番サフィックスを付与して解決する。
+    /// usedPaths の値を「次に試す連番」として使い、do-while で毎回先頭から探索する
+    /// O(K²) の挙動を避けて O(K) で解決する。
     /// </summary>
     private static List<(string fullPath, string relativePath)> ResolveByRenaming(
         List<(string fullPath, string relativePath)> files)
     {
         var result = new List<(string fullPath, string relativePath)>(files.Count);
-        var usedPaths = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        // key = 元の relativePath、value = 次に試す連番（次回は value++ したものを使う）
+        var nextSuffix = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        // 既に使用済みの実パス集合（衝突回避用）
+        var usedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var (fullPath, relativePath) in files)
         {
-            var key = relativePath;
-            if (!usedPaths.TryGetValue(key, out var count))
+            if (!usedPaths.Contains(relativePath))
             {
                 // 初出: そのまま使用
-                usedPaths[key] = 1;
+                usedPaths.Add(relativePath);
+                nextSuffix[relativePath] = 1;
                 result.Add((fullPath, relativePath));
+                continue;
             }
-            else
-            {
-                // 衝突: 連番サフィックスを付与（001_1.jpg, 001_2.jpg, ...）
-                var dir = Path.GetDirectoryName(relativePath) ?? "";
-                var nameOnly = Path.GetFileName(relativePath);
-                var (name, ext) = SplitStemAndExtension(nameOnly);
-                string newPath;
-                do
-                {
-                    newPath = string.IsNullOrEmpty(dir)
-                        ? $"{name}_{count}{ext}"
-                        : Path.Combine(dir, $"{name}_{count}{ext}");
-                    count++;
-                } while (usedPaths.ContainsKey(newPath));
 
-                usedPaths[key] = count;
-                usedPaths[newPath] = 1;
-                result.Add((fullPath, newPath));
-                Logger.Log($"同名ファイルをリネーム: {relativePath} → {newPath}");
-            }
+            // 衝突: 連番サフィックスを付与（foo_1.jpg, foo_2.jpg, ...）
+            var dir = Path.GetDirectoryName(relativePath) ?? "";
+            var nameOnly = Path.GetFileName(relativePath);
+            var (name, ext) = SplitStemAndExtension(nameOnly);
+            var count = nextSuffix.TryGetValue(relativePath, out var prev) ? prev : 1;
+            string newPath;
+            do
+            {
+                newPath = string.IsNullOrEmpty(dir)
+                    ? $"{name}_{count}{ext}"
+                    : Path.Combine(dir, $"{name}_{count}{ext}");
+                count++;
+            } while (usedPaths.Contains(newPath));
+
+            nextSuffix[relativePath] = count; // 次回はここから開始
+            usedPaths.Add(newPath);
+            result.Add((fullPath, newPath));
+            Logger.Log($"同名ファイルをリネーム: {relativePath} → {newPath}");
         }
 
         return result;
@@ -549,8 +579,13 @@ public class ArchiveCompressor
     }
 
     /// <summary>
-    /// ファイルを含まない空ディレクトリを再帰的に収集する
+    /// ファイルを含まない空ディレクトリを再帰的に収集する。
     /// </summary>
+    /// <remarks>
+    /// <c>GetFilesRecursively</c> でファイル列挙時に記録した <paramref name="directoriesWithFiles"/>
+    /// の補集合を返す。`Directory.EnumerateDirectories` による 2 回目の走査を避けるため、
+    /// HashSet 差分で高速に算出する。
+    /// </remarks>
     /// <param name="rootDir">ルートディレクトリ</param>
     /// <param name="excludedPatternSet">除外パターン</param>
     /// <param name="directoriesWithFiles">ファイルが存在するディレクトリのセット</param>

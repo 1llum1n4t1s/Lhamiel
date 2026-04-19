@@ -3,8 +3,20 @@ using System.Text;
 namespace Lhamiel.Util;
 
 /// <summary>
-/// 部分的な展開失敗時の処理を管理するクラス
+/// 部分的な展開失敗時の処理を管理するクラス。
 /// </summary>
+/// <remarks>
+/// <b>既知の設計上の制限（/rere P1 #25）</b>:
+/// 通常展開フロー（<see cref="ArchiveExtractor.ExtractArchive"/>）とは独立した実装で、
+/// 以下の不一致がある。
+/// <list type="bullet">
+///   <item><description>展開先の既存ファイルに対する衝突検出（<see cref="View.FileConflictDialog"/>）を行わない</description></item>
+///   <item><description>一時展開が部分的に失敗した場合、未展開ファイルも「破損」として報告してしまう</description></item>
+/// </list>
+/// 将来的には主フローの <c>skipRelativePaths</c> ベースの実装に統合し、本クラスを廃止する予定。
+/// 現状では <c>enablePartialExtraction=true</c> のエラー回復ダイアログ経由でのみ利用される
+/// 低頻度のコードパスなので、互換性維持のため残している。
+/// </remarks>
 public class PartialExtractionHandler
 {
     /// <summary>

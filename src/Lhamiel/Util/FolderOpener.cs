@@ -77,13 +77,15 @@ public static class FolderOpener
                 return;
             }
 
+            // ArgumentList を使うことで explorer.exe の引数が CommandLineToArgvW の規則通り
+            // 安全にエスケープされ、スイッチ注入（/select,... 等）を防ぐ。
             var processInfo = new ProcessStartInfo
             {
                 FileName = "explorer.exe",
-                Arguments = folderPath,
                 UseShellExecute = true,
                 CreateNoWindow = false
             };
+            processInfo.ArgumentList.Add(folderPath);
 
             using var process = Process.Start(processInfo);
 

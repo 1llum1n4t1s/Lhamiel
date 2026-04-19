@@ -55,13 +55,13 @@ public class SettingsTests
     public void ResetToDefaults_RestoresDefaultValues()
     {
         // Arrange
+        // UpdateRepoOwner / UpdateRepoName はセキュリティ上ハードコード固定のため
+        // 初期化子で書き換えは不可（読み取り専用）。
         var settings = new Settings
         {
             CompressionFormat = "7z",
             ExtractionOutputToSameDirectory = true,
             CompressionOutputToSameDirectory = true,
-            UpdateRepoOwner = "test",
-            UpdateRepoName = "test-repo",
             UpdateChannel = "beta"
         };
 
@@ -75,6 +75,16 @@ public class SettingsTests
         Assert.Equal("1llum1n4t1s", settings.UpdateRepoOwner);
         Assert.Equal("Lhamiel", settings.UpdateRepoName);
         Assert.Equal("release", settings.UpdateChannel);
+    }
+
+    [Fact]
+    public void UpdateRepoOwner_IsHardcodedAndImmutable()
+    {
+        // 自動更新の更新元リポジトリは settings.json で書き換えできない（固定）。
+        // 悪意あるユーザーが攻撃者リポジトリに誘導できないことを担保する回帰テスト。
+        var settings = new Settings();
+        Assert.Equal("1llum1n4t1s", settings.UpdateRepoOwner);
+        Assert.Equal("Lhamiel", settings.UpdateRepoName);
     }
 
     [Fact]

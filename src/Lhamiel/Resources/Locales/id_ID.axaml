@@ -274,4 +274,6 @@
   <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Format jalur tidak valid terdeteksi</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Validasi jalur gagal: {0}</x:String>
   <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Nama perangkat yang dicadangkan sedang digunakan: {0}</x:String>
+  <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' dilindungi oleh sistem dan tidak dapat ditimpa. Pilih lokasi lain.</x:String>
+  <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Mengompresi...</x:String>
 </ResourceDictionary>

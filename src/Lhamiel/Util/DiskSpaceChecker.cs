@@ -155,13 +155,15 @@ public static class DiskSpaceChecker
                     {
                         Logger.Log($"定期チェックで容量不足を検出: 空き={FormatSize(available)}");
 
+                        // 現在の 7z.dll ベースの処理では「再開」がサポートされていないため、
+                        // 容量不足を検出した時点で即座にキャンセルを通知し、その後に通知ダイアログを出す。
+                        // （旧実装はダイアログ表示まで Cancel を待ってしまい、ネイティブ処理が進み続けていた）
+                        operationCts.Cancel();
+
                         if (onInsufficientSpace != null)
                         {
-                            // 操作を一時停止
-                            operationCts.Cancel();
-
-                            // UIでダイアログ表示
-                            var shouldContinue = await Dispatcher.UIThread.InvokeAsync(async () =>
+                            // キャンセル後の通知としてダイアログ表示（結果は無視。ユーザーには操作中断を認知させる目的）
+                            _ = await Dispatcher.UIThread.InvokeAsync(async () =>
                             {
                                 if (parentWindow is null) return false;
                                 var dialog = new View.DiskSpaceDialog(
@@ -169,21 +171,9 @@ public static class DiskSpaceChecker
                                 dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
                                 return await dialog.ShowDialog<bool>(parentWindow);
                             });
-
-                            if (!shouldContinue)
-                            {
-                                Logger.Log("定期チェック: ユーザーがキャンセル");
-                                break;
-                            }
-                            // 再開は現在の7z.dll処理では難しいため、キャンセル扱いにする
-                            Logger.Log("定期チェック: 7z.dll処理中の再開は不可のため操作をキャンセル");
-                            break;
                         }
-                        else
-                        {
-                            operationCts.Cancel();
-                            break;
-                        }
+                        Logger.Log("定期チェック: 7z.dll処理中の再開は不可のため操作をキャンセル");
+                        break;
                     }
                 }
             }
