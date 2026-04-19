@@ -344,7 +344,13 @@ public static class ArchiveExtractor
         if (entryName.StartsWith('/') || entryName.StartsWith('\\')) return false;
         if (Path.IsPathRooted(entryName)) return false;
 
-        var normalized = entryName.Replace('/', Path.DirectorySeparatorChar);
+        // `/` と `\` の両方を Path.DirectorySeparatorChar に統一する。
+        // Linux/macOS では `\` がファイル名として正当なため Path.GetFullPath が
+        // 区切りと認識せず、アーカイブ内の `a\..\b` が traversal として解釈されない
+        // リスクがある。両方を事前置換して Path.GetFullPath の境界判定に確実に乗せる。
+        var normalized = entryName
+            .Replace('\\', Path.DirectorySeparatorChar)
+            .Replace('/', Path.DirectorySeparatorChar);
 
         try
         {
@@ -471,8 +477,9 @@ public static class ArchiveExtractor
         // （MinFreeSpaceThresholdBytes）のみの判定にフォールバックさせる。
         //
         // 戻り値の IDisposable は PeriodicCheckDisposable（DiskSpaceChecker 内部の型）で、
-        // Dispose() 内で内部の checkCts.Cancel() を呼ぶ実装になっているため、通常の
+        // Dispose() 内で checkCts.Cancel() を呼ぶ実装になっているため、通常の
         // CancellationTokenSource のように「Dispose ではキャンセルされない」問題はない。
+        // 内部の linkedCts は Task.Run の using スコープで別途破棄される。
         // using でスコープを抜けた時点で監視 Task.Run は確実に停止する。
         using var extractCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         using var periodicCheck = DiskSpaceChecker.StartPeriodicCheck(

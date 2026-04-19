@@ -291,20 +291,23 @@ public static class ArchiveCompressor
     /// relativePath 部分も同じコンパラで判定する（Windows 上では `A/` と `a/` が同じ
     /// アーカイブエントリ扱いになる既存セマンティクスを維持）。
     /// </summary>
+    /// <remarks>
+    /// 旧実装は `"{fullPath}|{relativePath}"` の文字列結合をキーにしていたが、`|` は
+    /// Linux/macOS では正当なファイル名文字になりうるため、例えば `("a","b|c")` と
+    /// `("a|b","c")` がキー衝突してしまう。ValueTuple + <see cref="PathPairComparer"/>
+    /// に置き換えて衝突を構造的に回避する。
+    /// </remarks>
     private static List<(string fullPath, string relativePath)> DeduplicateByIdentity(
         List<(string fullPath, string relativePath)> files)
     {
         if (files.Count <= 1) return files;
 
-        var seen = new HashSet<string>(PathComparer);
+        var seen = new HashSet<(string fullPath, string relativePath)>(new PathPairComparer(PathComparer));
         var result = new List<(string fullPath, string relativePath)>(files.Count);
         var skipped = 0;
         foreach (var entry in files)
         {
-            // '|' は Windows の不正パス文字なので、ファイル名に含まれることがなく
-            // キー衝突の心配がない区切り文字として使える。
-            var key = string.Concat(entry.fullPath, "|", entry.relativePath);
-            if (seen.Add(key))
+            if (seen.Add(entry))
                 result.Add(entry);
             else
                 skipped++;
@@ -313,6 +316,21 @@ public static class ArchiveCompressor
         if (skipped > 0)
             Logger.Log($"同一 (fullPath, relativePath) の重複 {skipped} 件を除去しました");
         return result;
+    }
+
+    /// <summary>
+    /// (fullPath, relativePath) ValueTuple に対して OS 依存のパス比較を適用する
+    /// <see cref="IEqualityComparer{T}"/> 実装。
+    /// </summary>
+    private sealed class PathPairComparer(StringComparer comparer) : IEqualityComparer<(string fullPath, string relativePath)>
+    {
+        public bool Equals((string fullPath, string relativePath) x, (string fullPath, string relativePath) y) =>
+            comparer.Equals(x.fullPath, y.fullPath) && comparer.Equals(x.relativePath, y.relativePath);
+
+        public int GetHashCode((string fullPath, string relativePath) obj) =>
+            HashCode.Combine(
+                comparer.GetHashCode(obj.fullPath ?? string.Empty),
+                comparer.GetHashCode(obj.relativePath ?? string.Empty));
     }
 
     /// <summary>

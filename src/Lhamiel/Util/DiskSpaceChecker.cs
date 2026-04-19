@@ -144,10 +144,14 @@ public static class DiskSpaceChecker
         Window? parentWindow, CancellationTokenSource operationCts)
     {
         var checkCts = new CancellationTokenSource();
-        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(checkCts.Token, operationCts.Token);
 
         _ = Task.Run(async () =>
         {
+            // linkedCts は Task.Run 内の using スコープで確実に破棄する。
+            // CreateLinkedTokenSource は 2 つのソーストークンにコールバックを登録するため、
+            // Dispose しないとソーストークンに参照が残り続けてメモリリーク要因になる。
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                checkCts.Token, operationCts.Token);
             try
             {
                 while (!linkedCts.Token.IsCancellationRequested)
@@ -206,9 +210,9 @@ public static class DiskSpaceChecker
             {
                 Logger.Log($"定期容量チェックエラー: {ex.Message}");
             }
-        }, linkedCts.Token);
+        });
 
-        return new PeriodicCheckDisposable(checkCts, linkedCts);
+        return new PeriodicCheckDisposable(checkCts);
     }
 
     /// <summary>
@@ -224,15 +228,17 @@ public static class DiskSpaceChecker
         _ => $"{bytes / (1024.0 * 1024 * 1024):F2} GB"
     };
 
-    private sealed class PeriodicCheckDisposable(
-        CancellationTokenSource checkCts,
-        CancellationTokenSource linkedCts) : IDisposable
+    /// <summary>
+    /// <see cref="StartPeriodicCheck"/> の戻り値。Dispose() で内部の checkCts に Cancel を
+    /// 発火させて Task.Run 側のループを停止させる。linkedCts は Task.Run 内で using
+    /// 破棄されるので、ここでは checkCts のみ管理する。
+    /// </summary>
+    private sealed class PeriodicCheckDisposable(CancellationTokenSource checkCts) : IDisposable
     {
         public void Dispose()
         {
             checkCts.Cancel();
             checkCts.Dispose();
-            linkedCts.Dispose();
         }
     }
 }
