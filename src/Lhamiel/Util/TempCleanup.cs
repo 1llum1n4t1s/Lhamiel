@@ -1,4 +1,3 @@
-using System.Buffers;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -130,16 +129,14 @@ internal static class TempCleanup
 
     /// <summary>
     /// GUID "N" 形式（ハイフンなし 32 桁 16 進）か判定。
-    /// <see cref="Guid.NewGuid()"/>.ToString("N") が生成する形式に対応。
+    /// <see cref="Guid.NewGuid()"/>.ToString("N") が生成する形式。
+    /// 16 進長さチェックだけでなく GUID としての妥当性を BCL に委ねる。
     /// </summary>
-    private static bool IsGuidNFormat(string s) =>
-        s.Length == 32 && s.AsSpan().IndexOfAnyExcept(HexDigits) < 0;
+    private static bool IsGuidNFormat(string s) => Guid.TryParseExact(s, "N", out _);
 
     /// <summary>
     /// GUID "D" 形式（ハイフン区切り 36 桁）か判定。
     /// <see cref="Guid.NewGuid()"/>.ToString() の既定形式。
     /// </summary>
     private static bool IsGuidDFormat(string s) => Guid.TryParseExact(s, "D", out _);
-
-    private static readonly SearchValues<char> HexDigits = SearchValues.Create("0123456789abcdefABCDEF");
 }

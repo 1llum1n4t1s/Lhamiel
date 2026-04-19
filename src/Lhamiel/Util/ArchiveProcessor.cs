@@ -61,7 +61,8 @@ public static class ArchiveProcessor
     /// <param name="enablePartialExtraction">部分展開を有効にするかどうか</param>
     /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
-    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true)
+    /// <param name="settingsSnapshot">設定のスナップショット（バッチ処理時に呼び出し側で 1 回だけ取得して渡すと、各ファイルごとのロック競合＆アロケを削減できる）</param>
+    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true, Settings? settingsSnapshot = null)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}");
 
@@ -105,8 +106,11 @@ public static class ArchiveProcessor
 
                 // アーカイブの構造を一度だけ解析
                 var rawStructureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
-                // 設定は処理開始時点でスナップショットを取って一貫性を保つ（UIの設定変更と race しない）
-                var createFolder = SettingsManager.Instance.CreateSnapshot().CreateArchiveNameFolder;
+                // 設定は処理開始時点でスナップショットを取って一貫性を保つ（UIの設定変更と race しない）。
+                // バッチ処理から渡された settingsSnapshot があればそれを再利用し、各ファイルごとの
+                // ロック競合＆浅コピーアロケを回避する。
+                var snapshot = settingsSnapshot ?? SettingsManager.Instance.CreateSnapshot();
+                var createFolder = snapshot.CreateArchiveNameFolder;
                 // 後段の FolderOpener が同じ値を使うよう、スナップショットした createFolder を
                 // ArchiveStructureInfo に同梱して返す。
                 structureInfo = new ArchiveExtractor.ArchiveStructureInfo
@@ -239,6 +243,11 @@ public static class ArchiveProcessor
 
             Logger.Log($"複数ファイル展開開始: {totalCount}個のファイル、最大並列度={maxDegreeOfParallelism}");
 
+            // バッチ処理の開始時点で 1 回だけスナップショットを取って全タスクに配る。
+            // 各並列タスクが個別に CreateSnapshot すると同じ設定の浅コピー + ロック競合が
+            // 並列度分発生するため、それを回避する。
+            var sharedSettings = SettingsManager.Instance.CreateSnapshot();
+
             // 全タスク横断で共有するスロットラー（UIスレッドへの通知頻度を全体で制限）
             var sharedThrottler = new ProgressThrottler();
 
@@ -254,7 +263,7 @@ public static class ArchiveProcessor
                     var mappedProgress = CreateMappedProgress(
                         totalCount, lockObject, () => successCount + failedFiles.Count, progressWindow, sharedThrottler);
 
-                    var extractResult = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false);
+                    var extractResult = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false, settingsSnapshot: sharedSettings);
                     var finalOutputPath = extractResult.outputPath;
                     var structureInfo = extractResult.structureInfo;
 
@@ -340,8 +349,9 @@ public static class ArchiveProcessor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <param name="overrideOutputPath">出力パスを明示的に指定する場合（衝突回避で事前計算済みのパス）</param>
+    /// <param name="settingsSnapshot">設定のスナップショット（バッチ処理時に呼び出し側で 1 回だけ取得して渡すと、各ファイルごとのロック競合＆アロケを削減できる）</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true, string? overrideOutputPath = null)
+    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true, string? overrideOutputPath = null, Settings? settingsSnapshot = null)
     {
         Logger.Log($"ArchiveProcessor.CompressItemAsync開始: sourcePath={sourcePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}");
 
@@ -444,7 +454,8 @@ public static class ArchiveProcessor
 
                 // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示。
                 // 設定は処理開始時点でスナップショット化し、以降の処理全体で一貫性を保つ。
-                var settings = SettingsManager.Instance.CreateSnapshot();
+                // バッチから渡された settingsSnapshot があれば再利用する（ロック競合回避）。
+                var settings = settingsSnapshot ?? SettingsManager.Instance.CreateSnapshot();
                 List<(string fullPath, string relativePath)>? resolvedFiles = null;
                 if (settings.DirectoryStructureMode == DirectoryStructureMode.Flat && Directory.Exists(sourcePath))
                 {
@@ -641,6 +652,9 @@ public static class ArchiveProcessor
             // 全タスク横断で共有するスロットラー（UIスレッドへの通知頻度を全体で制限）
             var sharedThrottler = new ProgressThrottler();
 
+            // バッチ開始時点で 1 回だけスナップショットを取って全タスクに配る（ロック競合回避）
+            var sharedSettings = SettingsManager.Instance.CreateSnapshot();
+
             var tasks = resolvedSourcePaths.Select(async (sourcePath, index) =>
             {
                 var acquired = false;
@@ -653,8 +667,8 @@ public static class ArchiveProcessor
                     var innerProgress = CreateMappedProgress(
                         totalCount, lockObject, () => successCount + failedPaths.Count, progressWindow, sharedThrottler);
 
-                    // 事前計算された出力パスを使用して圧縮処理を実行
-                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false, overrideOutputPath: resolvedOutputPaths[index]);
+                    // 事前計算された出力パスを使用して圧縮処理を実行（共有スナップショットを再利用）
+                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false, overrideOutputPath: resolvedOutputPaths[index], settingsSnapshot: sharedSettings);
 
                     // lock 内で状態のみ更新し、Dispatcher への通知は lock 外で実行
                     var completedProgress = 0;

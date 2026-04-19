@@ -39,7 +39,11 @@ public static class IpcService
             attempt++;
             try
             {
-                using var client = new NamedPipeClientStream(".", PipeName, PipeDirection.Out);
+                // PipeOptions.CurrentUserOnly: 同名のパイプを別ユーザーが先回りして
+                // 作成していた場合の接続・書き込みを拒否する（悪意ある待ち伏せへの保険）。
+                using var client = new NamedPipeClientStream(
+                    ".", PipeName, PipeDirection.Out,
+                    PipeOptions.CurrentUserOnly);
                 await client.ConnectAsync(ConnectAttemptTimeoutMs);
 
                 var json = JsonSerializer.Serialize(args, AppJsonContext.Default.StringArray);
