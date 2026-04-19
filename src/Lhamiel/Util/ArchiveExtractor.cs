@@ -288,6 +288,16 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
+    /// パス境界チェックに使う OS 依存の文字列比較モード。
+    /// Windows は case-insensitive（NTFS 既定）、Linux/macOS は case-sensitive。
+    /// 全プラットフォームで <see cref="StringComparison.OrdinalIgnoreCase"/> を使うと
+    /// case-sensitive FS で <c>../output/evil</c> 形の traversal を許してしまうため、
+    /// 実ファイルシステムの挙動に合わせた比較を採用する。
+    /// </summary>
+    private static readonly StringComparison PathComparison =
+        OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+    /// <summary>
     /// アーカイブ内のエントリ名を展開先の相対パスとして安全に解決する。
     /// 絶対パス・ドライブレター・UNC・`..` セグメントを含むエントリは弾かれる。
     /// </summary>
@@ -317,8 +327,10 @@ public static class ArchiveExtractor
                 + Path.DirectorySeparatorChar;
             var combined = Path.GetFullPath(normalized, normalizedBase);
 
-            if (!combined.StartsWith(normalizedBase, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(combined, normalizedBase.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            // 比較は OS 依存。case-sensitive FS で `../output/evil` 形のケース違い traversal が
+            // 通らないよう、実際のファイルシステムの挙動に合わせる。
+            if (!combined.StartsWith(normalizedBase, PathComparison) &&
+                !string.Equals(combined, normalizedBase.TrimEnd(Path.DirectorySeparatorChar), PathComparison))
             {
                 return false;
             }
