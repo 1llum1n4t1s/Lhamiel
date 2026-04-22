@@ -276,4 +276,15 @@
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">圧縮処理中...</x:String>
 
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">アーカイブに展開先の外側を指す不正なエントリが含まれています: {0}</x:String>
+
+  <!-- Password Dialog -->
+  <x:String x:Key="Text.Password.Title" xml:space="preserve">パスワードの入力</x:String>
+  <x:String x:Key="Text.Password.Message" xml:space="preserve">このアーカイブはパスワードで保護されています。展開するためのパスワードを入力してください。</x:String>
+  <x:String x:Key="Text.Password.Placeholder" xml:space="preserve">パスワード</x:String>
+  <x:String x:Key="Text.Password.WrongPasswordRetry" xml:space="preserve">パスワードが間違っています。もう一度入力してください。</x:String>
+
+  <!-- Encryption-related error -->
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">パスワードが必要、または不一致です</x:String>
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">このアーカイブはパスワード保護されています。パスワードが指定されていない、または一致しませんでした: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">もう一度展開し、正しいパスワードを入力してください。</x:String>
 </ResourceDictionary>

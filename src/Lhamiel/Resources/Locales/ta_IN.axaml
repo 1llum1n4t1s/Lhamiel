@@ -277,4 +277,15 @@
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' கணினியால் பாதுகாக்கப்பட்டுள்ளது மற்றும் மேலெழுத முடியாது. வேறு இடத்தைத் தேர்ந்தெடுக்கவும்.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">சுருக்குகிறது...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">பிரித்தெடுப்பதற்கான இலக்கிற்கு வெளியே சுட்டிக்காட்டும் பாதுகாப்பற்ற உள்ளீட்டை காப்பகம் கொண்டுள்ளது: {0}</x:String>
+
+  <!-- Password Dialog -->
+  <x:String x:Key="Text.Password.Title" xml:space="preserve">கடவுச்சொல் தேவை</x:String>
+  <x:String x:Key="Text.Password.Message" xml:space="preserve">இந்த காப்பகம் கடவுச்சொல்லால் பாதுகாக்கப்பட்டுள்ளது. பிரித்தெடுக்க கடவுச்சொல்லை உள்ளிடவும்.</x:String>
+  <x:String x:Key="Text.Password.Placeholder" xml:space="preserve">கடவுச்சொல்</x:String>
+  <x:String x:Key="Text.Password.WrongPasswordRetry" xml:space="preserve">முந்தைய கடவுச்சொல் தவறானது. மீண்டும் முயற்சிக்கவும்.</x:String>
+
+  <!-- Encryption-related error -->
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">கடவுச்சொல் தேவை அல்லது தவறு</x:String>
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">இந்த காப்பகம் கடவுச்சொல்லால் பாதுகாக்கப்பட்டுள்ளது. கடவுச்சொல் வழங்கப்படவில்லை அல்லது பொருந்தவில்லை: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">பிரித்தெடுப்பதை மீண்டும் முயற்சித்து சரியான கடவுச்சொல்லை உள்ளிடவும்.</x:String>
 </ResourceDictionary>

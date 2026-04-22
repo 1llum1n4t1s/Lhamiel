@@ -277,4 +277,15 @@
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' dilindungi oleh sistem dan tidak dapat ditimpa. Pilih lokasi lain.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Mengompresi...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">Arsip berisi entri tidak aman yang menunjuk keluar dari target ekstraksi: {0}</x:String>
+
+  <!-- Password Dialog -->
+  <x:String x:Key="Text.Password.Title" xml:space="preserve">Kata sandi diperlukan</x:String>
+  <x:String x:Key="Text.Password.Message" xml:space="preserve">Arsip ini dilindungi kata sandi. Masukkan kata sandi untuk mengekstraknya.</x:String>
+  <x:String x:Key="Text.Password.Placeholder" xml:space="preserve">Kata sandi</x:String>
+  <x:String x:Key="Text.Password.WrongPasswordRetry" xml:space="preserve">Kata sandi sebelumnya salah. Silakan coba lagi.</x:String>
+
+  <!-- Encryption-related error -->
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">Kata sandi diperlukan atau salah</x:String>
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">Arsip ini dilindungi kata sandi. Tidak ada kata sandi yang diberikan atau tidak cocok: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">Ulangi ekstraksi dan masukkan kata sandi yang benar.</x:String>
 </ResourceDictionary>

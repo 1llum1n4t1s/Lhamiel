@@ -113,6 +113,13 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ## 更新履歴
 
+### v1.0.159 (2026-04-22)
+
+- **パスワード保護アーカイブ対応** — 暗号化 ZIP / 7z / RAR をドロップすると専用の入力ダイアログが開くように。誤入力時は再試行メッセージ付きで自動的にダイアログが再表示される
+- **暗号化エラーの表示改善** — これまで「I/O error occurred.」と表示されていた `EncryptionException` を、ユーザーが理解できる「パスワードが必要、または不一致です」に分類して案内
+- **パスワード入力キャンセル対応** — ダイアログで「キャンセル」を押した場合は通常のキャンセルフローとして扱い、誤って「パスワードが違います」と案内しないよう修正
+- **ロケール拡張** — 17 言語に `Text.Password.*` / `Text.ErrorHandler.EncryptedOrWrongPassword*` の 7 キーを追加
+
 ### v1.0.158 (2026-04-20)
 
 - **セキュリティ強化** — Zip Slip ガード、`UpdateRepoOwner/Name` のハードコード固定化、保護ディレクトリチェック、`IsProtectedDirectory` のシンボリックリンク追跡、`FolderOpener` の `ArgumentList` 化、IPC の `PipeOptions.CurrentUserOnly`、GitHub Actions の SHA 固定など P0/P1 系 25 件を反映

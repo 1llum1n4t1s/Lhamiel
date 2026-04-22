@@ -277,4 +277,15 @@
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' está protegido por el sistema y no se puede sobrescribir. Elija una ubicación diferente.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Comprimiendo...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">El archivo contiene una entrada insegura que apunta fuera del destino de extracción: {0}</x:String>
+
+  <!-- Password Dialog -->
+  <x:String x:Key="Text.Password.Title" xml:space="preserve">Contraseña requerida</x:String>
+  <x:String x:Key="Text.Password.Message" xml:space="preserve">Este archivo está protegido con contraseña. Ingrese la contraseña para extraerlo.</x:String>
+  <x:String x:Key="Text.Password.Placeholder" xml:space="preserve">Contraseña</x:String>
+  <x:String x:Key="Text.Password.WrongPasswordRetry" xml:space="preserve">La contraseña anterior era incorrecta. Inténtelo de nuevo.</x:String>
+
+  <!-- Encryption-related error -->
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">Contraseña requerida o incorrecta</x:String>
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">Este archivo está protegido con contraseña. No se proporcionó contraseña o no coincide: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">Reintente la extracción e ingrese la contraseña correcta.</x:String>
 </ResourceDictionary>

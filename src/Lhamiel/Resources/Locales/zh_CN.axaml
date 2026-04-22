@@ -277,4 +277,15 @@
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' 受系统保护，无法被覆盖。请选择其他位置。</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">正在压缩...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">归档包含指向解压目标之外的不安全条目: {0}</x:String>
+
+  <!-- Password Dialog -->
+  <x:String x:Key="Text.Password.Title" xml:space="preserve">需要密码</x:String>
+  <x:String x:Key="Text.Password.Message" xml:space="preserve">此压缩档案受密码保护。请输入密码以解压。</x:String>
+  <x:String x:Key="Text.Password.Placeholder" xml:space="preserve">密码</x:String>
+  <x:String x:Key="Text.Password.WrongPasswordRetry" xml:space="preserve">先前输入的密码不正确，请重试。</x:String>
+
+  <!-- Encryption-related error -->
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">需要密码或密码不正确</x:String>
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">此压缩档案受密码保护。未提供密码或密码不匹配: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">请重新解压并输入正确的密码。</x:String>
 </ResourceDictionary>

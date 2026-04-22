@@ -862,9 +862,37 @@ public static class ArchiveExtractor
 
             var extractOption = new ArchiveOption { Filter = Filter.From(FilterNames) };
 
+            // パスワード保護アーカイブ対応:
+            // 7z.dll は暗号化エントリに遭遇した時点で ICryptoGetTextPassword コールバックを呼ぶ。
+            // AsyncPasswordQuery 経由で UI ダイアログに委譲する。
+            // 誤入力時は 7z.dll が同じハンドラを再度呼ぶため、attemptCount で UI に再試行表示を出す。
+            // ExtractArchive は既に Task.Run 配下で呼ばれている（ExtractArchiveAsync 参照）ので
+            // AsyncPasswordQuery の「UI スレッドから呼ぶな」制約に抵触しない。
+            //
+            // キャンセル追跡の必要性:
+            // ユーザーがダイアログで Cancel を押すと ShowFromBackgroundAsync は null を返す。
+            // 空文字で返しても 7z.dll は WrongPassword とみなし EncryptionException を投げるため、
+            // ここでユーザー意図によるキャンセルを記録し、Save() 後に OperationCanceledException に
+            // 変換する（「パスワードが違います」という誤解を招く通知を回避）。
+            var archiveName = Path.GetFileName(archivePath);
+            var attemptCount = 0;
+            var userCancelledPassword = false;
+            var passwordQuery = new AsyncPasswordQuery(async _ =>
+            {
+                var isRetry = System.Threading.Interlocked.Increment(ref attemptCount) > 1;
+                var pw = await View.PasswordDialog.ShowFromBackgroundAsync(archiveName, isRetry, parentWindow);
+                if (pw is null)
+                {
+                    userCancelledPassword = true;
+                    // 空文字を返すと AsyncPasswordQuery 側で Cancel=true にマップされる
+                    return string.Empty;
+                }
+                return pw;
+            }, cancellationToken);
+
             // ネイティブ側（7z.dll）との連携を確実に保護するため
             // using スコープ内で reader と progress を管理する
-            using (var reader = new ArchiveReader(archivePath, (string?)null, extractOption))
+            using (var reader = new ArchiveReader(archivePath, passwordQuery, extractOption))
             {
                 Logger.Log($"一時ディレクトリへの展開処理開始: {archivePath} -> {tempOutputPath}");
 
@@ -913,7 +941,17 @@ public static class ArchiveExtractor
                         progressCallback(new ProgressInfo(percentage, ""));
                 }, cancellationToken);
 
-                reader.Save(tempOutputPath, progress);
+                try
+                {
+                    reader.Save(tempOutputPath, progress);
+                }
+                catch (EncryptionException) when (userCancelledPassword)
+                {
+                    // ユーザーがパスワードダイアログで Cancel を押した結果としての EncryptionException。
+                    // 「パスワードが違います」ではなく通常のキャンセル扱いにする。
+                    Logger.Log("パスワード入力がキャンセルされたため展開を中止します");
+                    throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"));
+                }
 
                 // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）
                 cancellationToken.ThrowIfCancellationRequested();

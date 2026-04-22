@@ -81,7 +81,12 @@ public enum ArchiveErrorType
     /// <summary>
     /// ファイルが使用中
     /// </summary>
-    FileInUse
+    FileInUse,
+
+    /// <summary>
+    /// アーカイブがパスワード保護されている／パスワード不一致
+    /// </summary>
+    EncryptedOrWrongPassword
 }
 
 /// <summary>
@@ -120,6 +125,17 @@ public static class ArchiveErrorHandler
                 errorInfo.Message = App.Text("ErrorHandler.AccessDenied");
                 errorInfo.Details = App.Text("ErrorHandler.AccessDeniedDetail", archivePath);
                 errorInfo.RecommendedAction = App.Text("ErrorHandler.AccessDeniedAction");
+                errorInfo.IsRecoverable = true;
+                break;
+
+            // EncryptionException は IOException を継承しているため、必ず IOException ケースより前で処理する。
+            // Cube.FileSystem.SevenZip は「パスワード無し/誤入力」時にこの例外を投げるが、既定の
+            // IOException message "I/O error occurred." が表示され本当の原因が隠れてしまうため、専用の案内に置き換える。
+            case EncryptionException:
+                errorInfo.ErrorType = ArchiveErrorType.EncryptedOrWrongPassword;
+                errorInfo.Message = App.Text("ErrorHandler.EncryptedOrWrongPassword");
+                errorInfo.Details = App.Text("ErrorHandler.EncryptedOrWrongPasswordDetail", archivePath);
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.EncryptedOrWrongPasswordAction");
                 errorInfo.IsRecoverable = true;
                 break;
 
