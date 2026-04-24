@@ -189,7 +189,15 @@ public static class FileIconHelper
     /// </summary>
     private static readonly ConcurrentDictionary<string, Bitmap> _extensionIconCache = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>キャッシュの最大エントリ数。越えた場合は単純に全クリアする（LRU は Avalonia 依存を増やさないため非採用）。</summary>
+    /// <summary>
+    /// 挿入順を保持するキュー。eviction 時に <see cref="ConcurrentDictionary{TKey,TValue}.Keys"/> の
+    /// O(N) スナップショット生成を避け、先頭から O(1) で取り出して FIFO 削除する。
+    /// 途中で削除されたキーは <see cref="_extensionIconCache"/> 側で TryRemove が失敗するだけなので
+    /// 両構造の厳密同期は不要（近似 LRU ≒ FIFO）。
+    /// </summary>
+    private static readonly ConcurrentQueue<string> _insertionOrder = new();
+
+    /// <summary>キャッシュの最大エントリ数。</summary>
     private const int MaxExtensionIconCacheEntries = 256;
 
     /// <summary>
@@ -252,16 +260,19 @@ public static class FileIconHelper
                 {
                     try
                     {
+                        // 挿入順キューから FIFO で古い半数を削除。_extensionIconCache.Keys の
+                        // O(N) スナップショット生成を回避し、TryDequeue は O(1)。
                         var targetRemove = _cacheCount / 2;
                         var removed = 0;
-                        foreach (var key in _extensionIconCache.Keys)
+                        while (removed < targetRemove && _insertionOrder.TryDequeue(out var oldKey))
                         {
-                            if (removed >= targetRemove) break;
-                            if (_extensionIconCache.TryRemove(key, out _))
+                            if (_extensionIconCache.TryRemove(oldKey, out _))
                             {
                                 Interlocked.Decrement(ref _cacheCount);
                                 removed++;
                             }
+                            // TryRemove 失敗 = 既に誰かが削除済み。カウンタは他スレッドで
+                            // 減算済みなのでスキップして次のキーを試す。
                         }
                     }
                     finally
@@ -279,6 +290,7 @@ public static class FileIconHelper
                     return _extensionIconCache.TryGetValue(cacheKey, out var winner) ? winner : null;
                 }
                 Interlocked.Increment(ref _cacheCount);
+                _insertionOrder.Enqueue(cacheKey);
             }
             return loaded;
         }
