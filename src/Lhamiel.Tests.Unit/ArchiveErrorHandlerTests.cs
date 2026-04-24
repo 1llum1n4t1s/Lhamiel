@@ -43,4 +43,30 @@ public class ArchiveErrorHandlerTests
         // EncryptedOrWrongPassword にはならない（キャンセルの伝播）
         Assert.NotEqual(ArchiveErrorType.EncryptedOrWrongPassword, info.ErrorType);
     }
+
+    [Theory]
+    [InlineData("File is corrupted")]
+    [InlineData("Data is damaged")]
+    [InlineData("Invalid archive format")]
+    [InlineData("CRC mismatch")]
+    [InlineData("Checksum error")]
+    public void AnalyzeError_EnglishCorruptionKeyword_ClassifiedAsCorruptedFile(string msg)
+    {
+        var ex = new InvalidOperationException(msg);
+        var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\broken.zip", @"C:\out");
+        Assert.Equal(ArchiveErrorType.CorruptedFile, info.ErrorType);
+    }
+
+    [Theory]
+    [InlineData("ファイルが破損しています")]
+    [InlineData("アーカイブが壊れています")]
+    [InlineData("無効なデータ形式です")]
+    [InlineData("チェックサムが一致しません")]
+    public void AnalyzeError_JapaneseCorruptionKeyword_ClassifiedAsCorruptedFile(string msg)
+    {
+        // 日本語 OS で CLR が例外メッセージを翻訳したケース（v1.0.160 で追加された日本語フォールバック）
+        var ex = new InvalidOperationException(msg);
+        var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\broken.zip", @"C:\out");
+        Assert.Equal(ArchiveErrorType.CorruptedFile, info.ErrorType);
+    }
 }

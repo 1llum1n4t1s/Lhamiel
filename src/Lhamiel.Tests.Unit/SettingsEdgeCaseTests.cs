@@ -153,4 +153,40 @@ public class SettingsEdgeCaseTests
         settings.SanitizeAfterLoad();
         Assert.Equal(desktop, settings.CompressionOutputDirectory);
     }
+
+    [Fact]
+    public void SanitizeAfterLoad_UnknownTheme_FallsBackToSystem()
+    {
+        var settings = new Settings { Theme = "HackerGreen" };
+        settings.SanitizeAfterLoad();
+        Assert.Equal("System", settings.Theme);
+    }
+
+    [Theory]
+    [InlineData("System")]
+    [InlineData("Dark")]
+    [InlineData("Light")]
+    public void SanitizeAfterLoad_SupportedTheme_Preserved(string theme)
+    {
+        var settings = new Settings { Theme = theme };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(theme, settings.Theme);
+    }
+
+    [Fact]
+    public void SanitizeAfterLoad_UnknownCompressionFormat_FallsBackToZip()
+    {
+        var settings = new Settings { CompressionFormat = "RAR" }; // Lhamiel は RAR を圧縮できない
+        settings.SanitizeAfterLoad();
+        Assert.Equal("ZIP", settings.CompressionFormat);
+    }
+
+    [Fact]
+    public void SupportedThemes_ContainsAllThreeValues()
+    {
+        Assert.Contains("System", Settings.SupportedThemes);
+        Assert.Contains("Dark", Settings.SupportedThemes);
+        Assert.Contains("Light", Settings.SupportedThemes);
+        Assert.Equal(3, Settings.SupportedThemes.Length);
+    }
 }

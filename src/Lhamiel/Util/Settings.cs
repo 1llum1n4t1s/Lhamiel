@@ -125,6 +125,12 @@ public class Settings
         [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
 
     /// <summary>
+    /// サポートされているテーマ一覧。UI および <see cref="SanitizeAfterLoad"/> で使用。
+    /// マジック文字列の散在を避けるためここに集約する。
+    /// </summary>
+    public static readonly string[] SupportedThemes = ["System", "Dark", "Light"];
+
+    /// <summary>
     /// サポートされている圧縮形式の一覧
     /// </summary>
     public static readonly string[] SupportedCompressionFormats = ["ZIP", "7z", "TAR"];
@@ -271,6 +277,18 @@ public class Settings
             !string.Equals(UpdateChannel, "prerelease", StringComparison.OrdinalIgnoreCase))
         {
             UpdateChannel = "release";
+        }
+
+        // Theme の allow-list 化: タイポや未知のテーマが渡された場合に "System" フォールバック
+        if (!SupportedThemes.Contains(Theme, StringComparer.OrdinalIgnoreCase))
+        {
+            Theme = "System";
+        }
+
+        // CompressionFormat の allow-list 化
+        if (!SupportedCompressionFormats.Contains(CompressionFormat, StringComparer.OrdinalIgnoreCase))
+        {
+            CompressionFormat = "ZIP";
         }
 
         // 出力先ディレクトリのパス妥当性チェック（存在確認 + 保護ディレクトリ除外）
