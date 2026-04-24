@@ -9,7 +9,7 @@
             </ResourceDictionary.MergedDictionaries>
 
             <!--
-              Locale Resources は App.axaml.cs:ApplyLocale で動的ロードする（/rere #12）。
+              Locale Resources は App.axaml.cs:ApplyLocale で動的ロードする。
               17 言語をすべて起動時に MergedDictionaries に登録すると ~450KB が常駐し、
               Native AOT の起動速度の利点が削がれるため、選択ロケールのみオンデマンドロードする。
             -->

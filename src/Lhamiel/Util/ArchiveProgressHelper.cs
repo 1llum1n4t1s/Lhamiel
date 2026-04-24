@@ -5,19 +5,21 @@ namespace Lhamiel.Util;
 /// <summary>
 /// 展開・圧縮処理から ProgressWindow への進捗ディスパッチを共通化するヘルパ。
 /// </summary>
-/// <remarks>
-/// /rere レビュー指摘 #24「ArchiveProcessor 責務過多」の入口対応として、
-/// 進捗マッピング系の static 関数を <see cref="ArchiveProcessor"/> から分離した。
-/// 将来的に ArchiveProcessor を ExtractionOrchestrator / CompressionOrchestrator に
-/// 分割する際、このヘルパは両方から共有して使う。
-/// </remarks>
 internal static class ArchiveProgressHelper
 {
     /// <summary>
-    /// ProgressInfo を ProgressWindow にディスパッチする共通ヘルパー。
+    /// I/O バウンド処理の推奨並列度。
+    /// SHGetFileInfo / 7z.dll のようなディスク I/O 系は ProcessorCount に比例して並列化しても
+    /// シェル / NTFS 側でキューイングされるだけなので、おおむね 2〜4 に収める。
+    /// </summary>
+    public static int IoBoundParallelism =>
+        Math.Clamp(Environment.ProcessorCount / 2, 2, 4);
+
+    /// <summary>
+    /// ProgressInfo を ProgressWindow にディスパッチする。
     /// 不確定進捗はマーキー表示、確定進捗はパーセンテージ更新。
     /// </summary>
-    public static void DispatchProgress(ProgressWindow? progressWindow, ProgressInfo info)
+    internal static void DispatchProgress(ProgressWindow? progressWindow, ProgressInfo info)
     {
         if (info.IsIndeterminate)
             Dispatcher.UIThread.Post(() => progressWindow?.SetIndeterminate(info.Status));
@@ -29,7 +31,7 @@ internal static class ArchiveProgressHelper
     /// 並列処理時の進捗マッピングを作成する。
     /// 完了済み件数をベースラインとし、処理中の個別進捗を加算して全体進捗を計算する。
     /// </summary>
-    public static IProgress<ProgressInfo> CreateMappedProgress(
+    internal static IProgress<ProgressInfo> CreateMappedProgress(
         int totalCount, object lockObject, Func<int> getCompletedCount,
         ProgressWindow? progressWindow, ProgressThrottler? sharedThrottler = null)
     {

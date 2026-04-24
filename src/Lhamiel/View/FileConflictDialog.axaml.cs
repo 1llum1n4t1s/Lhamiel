@@ -135,10 +135,15 @@ public partial class FileConflictDialog : Window
             skipCheckBox.IsCheckedChanged += (_, _) => ApplySkipIdentical(skipCheckBox.IsChecked == true);
         }
 
-        // /rere #11: ダイアログ表示後にアイコンをバックグラウンドでバッチロード。
-        // 旧実装は ConflictCellViewModel コンストラクタで同期取得しており、500 件衝突時に
-        // SHGetFileInfo の P/Invoke が UI スレッドを 500ms〜2.5s ブロックしていた。
-        Opened += async (_, _) => await LoadAllIconsAsync();
+        // ダイアログ表示後にアイコンをバックグラウンドでバッチロードする。
+        // ハンドラを async void にすると例外がフレームワーク側で握り潰されるため
+        // fire-and-forget + ContinueWith で例外をログに残す。
+        Opened += (_, _) => _ = LoadAllIconsAsync()
+            .ContinueWith(
+                t => Logger.LogException("FileConflictDialog のアイコン遅延ロードに失敗", t.Exception!),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
     }
 
     /// <summary>
@@ -146,31 +151,29 @@ public partial class FileConflictDialog : Window
     /// </summary>
     private async Task LoadAllIconsAsync()
     {
-        try
+        // SelectMany で配列を行ごとに new するのを避け、単純な foreach で詰める。
+        var cells = new List<ConflictCellViewModel>(_rows.Count * 2);
+        foreach (var row in _rows)
         {
-            var cells = _rows
-                .SelectMany(r => new[] { r.Left, r.Right })
-                .Where(c => c != null)
-                .Cast<ConflictCellViewModel>()
-                .ToList();
+            if (row.Left != null) cells.Add(row.Left);
+            if (row.Right != null) cells.Add(row.Right);
+        }
 
-            // 並列度は ProcessorCount/2（最低 2、最大 4）。SHGetFileInfo は I/O バウンドだが
-            // 過剰並列化はシェル側でキューイングされるだけなので緩めの並列で十分。
-            var maxParallel = Math.Clamp(Environment.ProcessorCount / 2, 2, 4);
-            using var sem = new SemaphoreSlim(maxParallel);
+        using var sem = new SemaphoreSlim(ArchiveProgressHelper.IoBoundParallelism);
 
-            var tasks = cells.Select(async cell =>
+        // 全 cells 分の Task.WhenAll を一気に積むと SemaphoreSlim キューが肥大化するため、
+        // 順次 WaitAsync してから Task を起動するパターンに切り替える。
+        var tasks = new List<Task>(cells.Count);
+        foreach (var cell in cells)
+        {
+            await sem.WaitAsync();
+            tasks.Add(Task.Run(async () =>
             {
-                await sem.WaitAsync();
                 try { await cell.LoadIconAsync(); }
                 finally { sem.Release(); }
-            });
-            await Task.WhenAll(tasks);
+            }));
         }
-        catch (Exception ex)
-        {
-            Logger.LogException("FileConflictDialog のアイコン遅延ロードに失敗", ex);
-        }
+        await Task.WhenAll(tasks);
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
@@ -544,9 +547,9 @@ public partial class ConflictCellViewModel : ObservableObject
 
     /// <summary>
     /// OS から取得したファイルアイコン。
-    /// /rere #11: ダイアログ表示時に同期取得すると 500 件衝突で 500ms〜2.5s の UI フリーズが
-    /// 発生していたため、初期値は null とし <see cref="LoadIconAsync"/> によるバックグラウンドロード
-    /// 完了後に <see cref="ObservableProperty"/> 通知で UI へ反映する。
+    /// SHGetFileInfo を UI スレッドで一括同期取得すると、衝突件数 N に比例してダイアログ表示が
+    /// ブロックされる（500 件で 500ms〜2.5s）。初期値 null とし、<see cref="LoadIconAsync"/> で
+    /// バックグラウンドロード完了後にバインディング通知する。
     /// </summary>
     [ObservableProperty]
     private Bitmap? _icon;
@@ -558,17 +561,19 @@ public partial class ConflictCellViewModel : ObservableObject
     }
 
     /// <summary>
-    /// バックグラウンドスレッドでアイコンを取得し、UI スレッドで <see cref="Icon"/> プロパティに反映する。
+    /// バックグラウンドスレッドでアイコンを取得し、<see cref="Icon"/> プロパティに反映する。
     /// </summary>
     /// <remarks>
-    /// <see cref="FileIconHelper.GetThumbnailOrIcon"/> / <see cref="FileIconHelper.GetFileIcon"/> は
-    /// 内部でスレッドセーフキャッシュを持っており、複数セル分を同時に Task.Run で呼び出しても安全。
+    /// Avalonia の binding インフラは <see cref="System.ComponentModel.INotifyPropertyChanged"/>
+    /// 由来の通知を受けるとき内部で UI スレッドにマーシャリングするため、
+    /// バックグラウンドからの直接代入で問題ない。
+    /// <see cref="FileIconHelper"/> 側は内部でスレッドセーフキャッシュを持つ。
     /// </remarks>
     public async Task LoadIconAsync()
     {
         if (Icon != null) return;
         var entry = Entry;
-        var bitmap = await Task.Run(() =>
+        Icon = await Task.Run(() =>
         {
             try
             {
@@ -583,8 +588,5 @@ public partial class ConflictCellViewModel : ObservableObject
                 return null;
             }
         });
-        // Avalonia の Bitmap は UI スレッド以外で代入しても問題ないが、ObservableProperty の
-        // 通知は UI スレッドでバインドリスナーに伝搬する必要がある。Dispatcher 経由で確実化。
-        await Dispatcher.UIThread.InvokeAsync(() => Icon = bitmap);
     }
 }

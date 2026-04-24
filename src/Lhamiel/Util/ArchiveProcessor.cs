@@ -7,7 +7,7 @@ namespace Lhamiel.Util;
 /// </summary>
 public static class ArchiveProcessor
 {
-    // 進捗ディスパッチ系のヘルパは ArchiveProgressHelper.cs に分離（/rere #24 入口対応）。
+    // 進捗ディスパッチ系のヘルパは ArchiveProgressHelper.cs に分離。
 
     /// <summary>
     /// アーカイブファイルの展開処理を実行
@@ -199,7 +199,7 @@ public static class ArchiveProcessor
             var lockObject = new object();
 
             // ディスクI/O負荷を考慮し、並列数をCPUコア数ではなく制限
-            var maxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount / 2, 2, 4);
+            var maxDegreeOfParallelism = ArchiveProgressHelper.IoBoundParallelism;
             using var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
 
             Logger.Log($"複数ファイル展開開始: {totalCount}個のファイル、最大並列度={maxDegreeOfParallelism}");

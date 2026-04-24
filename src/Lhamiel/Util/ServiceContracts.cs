@@ -2,16 +2,10 @@ using Avalonia.Controls;
 namespace Lhamiel.Util;
 
 /// <summary>
-/// アプリケーションログ出力の契約。
-/// </summary>
-/// <remarks>
-/// /rere レビュー指摘 #25「静的シングルトンでテスト不能域拡大」の入口対応。
-/// 既存の <see cref="Logger"/> 静的クラスをそのまま残しつつ、将来の DI 移行や
-/// テストでのモック差し替えに備えてインターフェースを定義する。
-/// 呼び出し元の段階的移行を可能にするため、<see cref="DefaultAppLogger"/> が
-/// 既存 <see cref="Logger"/> 実装に委譲する形で動作する。
+/// アプリケーションログ出力の契約。テストでのモック差し替えと将来の DI 移行のため
+/// 既存 <see cref="Logger"/> 静的クラスとは別に契約を切り出している。
 /// 名前空間衝突を避けるため <c>IAppLogger</c> としている（<c>Microsoft.Extensions.Logging.ILogger</c> と区別）。
-/// </remarks>
+/// </summary>
 public interface IAppLogger
 {
     /// <summary>メッセージをログに記録する。</summary>
@@ -22,12 +16,8 @@ public interface IAppLogger
 }
 
 /// <summary>
-/// メッセージダイアログ表示の契約。
+/// メッセージダイアログ表示の契約。テストでのモック差し替え用に定義する。
 /// </summary>
-/// <remarks>
-/// /rere レビュー指摘 #25 の入口対応。テストでのモック差し替え用。
-/// 既存 <see cref="MessageService"/> 静的クラスはそのまま残す。
-/// </remarks>
 public interface IAppMessageService
 {
     /// <summary>エラーメッセージを表示する。</summary>
@@ -75,13 +65,10 @@ internal sealed class DefaultAppMessageService : IAppMessageService
 /// <summary>
 /// アプリケーションスコープのサービスインスタンスを保持するコンテナ。
 /// 既定では静的クラスへの委譲アダプタを返すが、テストやワイヤリング段階で差し替え可能。
+/// 完全な DI コンテナ化はロードマップ外。プロダクションコードからは現状参照されておらず、
+/// 主にテストでの差し替えポイントとして公開している。
 /// </summary>
-/// <remarks>
-/// /rere レビュー指摘 #25 入口対応。完全な DI コンテナ化は別ロードマップだが、
-/// テストで差し替えたい場合は <see cref="ResetForTests"/> を呼んで
-/// <see cref="Logger"/> / <see cref="MessageService"/> 経路を経由しないモックを設定できる。
-/// </remarks>
-public static class AppServices
+internal static class AppServices
 {
     private static IAppLogger _logger = new DefaultAppLogger();
     private static IAppMessageService _messageService = new DefaultAppMessageService();
@@ -93,13 +80,13 @@ public static class AppServices
     public static IAppMessageService MessageService => _messageService;
 
     /// <summary>テスト用にロガーを差し替える（プロダクションでは使わないこと）。</summary>
-    internal static void SetLoggerForTests(IAppLogger logger) => _logger = logger ?? new DefaultAppLogger();
+    public static void SetLoggerForTests(IAppLogger logger) => _logger = logger ?? new DefaultAppLogger();
 
     /// <summary>テスト用にメッセージサービスを差し替える（プロダクションでは使わないこと）。</summary>
-    internal static void SetMessageServiceForTests(IAppMessageService messageService) => _messageService = messageService ?? new DefaultAppMessageService();
+    public static void SetMessageServiceForTests(IAppMessageService messageService) => _messageService = messageService ?? new DefaultAppMessageService();
 
     /// <summary>テスト同士の独立性を保つため、既定の静的クラス委譲実装に戻す。</summary>
-    internal static void ResetForTests()
+    public static void ResetForTests()
     {
         _logger = new DefaultAppLogger();
         _messageService = new DefaultAppMessageService();

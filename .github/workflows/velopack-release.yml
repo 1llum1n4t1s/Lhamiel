@@ -156,6 +156,10 @@ jobs:
           echo "パッケージ一覧:"
           ls -lh packages/
 
+      # publish 済みリリース存在ケース（同 release/x.y.z ブランチへの再 push 時のホットフィックス用途）
+      # は --clobber でアーティファクトを直接置換するため、x64 と arm64 の同期ウィンドウ内で部分配信される
+      # 可能性が残る。draft 経路ほどの安全性は保証されないが、新規リリース時は draft 経路に乗るため
+      # 通常運用ではこの分岐に入らない。
       - name: draft リリースを作成しアップロード
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -787,10 +787,8 @@ public partial class App : Application
     private string? _activeLocaleKey;
 
     /// <summary>
-    /// ロケールを実際に適用する（インスタンスメソッド。コンストラクタからも安全に呼べる）。
-    /// /rere #12: 17 言語の <c>ResourceInclude</c> を App.axaml で一括ロードしていた旧実装を
-    /// 廃止し、選択ロケールのみオンデマンドで読み込む方式に変更。前回ロード済みのものは
-    /// プロセス内でキャッシュして再パースを避ける。
+    /// 選択ロケールのみオンデマンドで読み込み、<see cref="MergedDictionaries"/> に挿入する。
+    /// 前回ロード済みの辞書はプロセス内でキャッシュして再パースを避ける。
     /// </summary>
     /// <param name="localeKey">ロケールキー（"ja_JP", "en_US" など）</param>
     private void ApplyLocale(string localeKey)
@@ -817,12 +815,6 @@ public partial class App : Application
                 Util.Logger.LogException($"ロケール辞書のロードに失敗: {localeKey}", ex);
                 return;
             }
-        }
-
-        if (targetLocale == _activeLocale)
-        {
-            _activeLocaleKey = localeKey;
-            return;
         }
 
         if (_activeLocale != null)
