@@ -25,6 +25,8 @@
   "ExcludedFilePatterns": [".DS_Store", "Thumbs.db", "__MACOSX"],
   "ZipCompressionLevel": 5,
   "SevenZipCompressionLevel": 5,
+  "LogMaxSizeMB": 10,
+  "LogRetentionDays": 7,
   "UpdateChannel": "release"
 }
 ```
@@ -63,15 +65,22 @@
 | `SevenZipCompressionLevel` | int | `5` | 7z圧縮レベル（0-9） |
 | `ExcludedFilePatterns` | string[] | システムファイル | 圧縮時に除外するパターン |
 
+### ログ設定
+
+| プロパティ | 型 | デフォルト | 説明 |
+|-----------|------|----------|------|
+| `LogMaxSizeMB` | int | `10` | ログファイル 1 つあたりの最大サイズ (MB) |
+| `LogRetentionDays` | int | `7` | この日数より古いログファイルは起動時に自動削除 |
+
 ### 自動更新設定
 
 `UpdateRepoOwner` と `UpdateRepoName` は**セキュリティ上ハードコード固定**されており、`settings.json` から書き換えても反映されない（悪意ある第三者リポジトリへの誘導を防ぐため）。
 
 | プロパティ | 型 | デフォルト | 説明 |
 |-----------|------|----------|------|
-| `UpdateRepoOwner` | string | `"1llum1n4t1s"` | **設定不可（固定）**。書き換え検知時は警告ログを出してデフォルトへ戻す |
-| `UpdateRepoName` | string | `"Lhamiel"` | **設定不可（固定）**。書き換え検知時は警告ログを出してデフォルトへ戻す |
-| `UpdateChannel` | string | `"release"` | 更新チャンネル（`"release"` / `"prerelease"`） |
+| `UpdateRepoOwner` | string | `"1llum1n4t1s"` | **設定不可（固定）**。`[JsonIgnore]` により `settings.json` の読み書き対象外。記述しても反映されない |
+| `UpdateRepoName` | string | `"Lhamiel"` | **設定不可（固定）**。`[JsonIgnore]` により `settings.json` の読み書き対象外。記述しても反映されない |
+| `UpdateChannel` | string | `"release"` | 更新チャンネル（`"release"` / `"prerelease"`）。v1.0.160 から未知の値を検知した場合は `release` にフォールバックし警告ログを出す |
 
 ## DirectoryStructureMode
 
@@ -86,6 +95,16 @@
 ## 設定のリセット
 
 `settings.json` を削除してアプリを再起動するとデフォルト設定が復元される。
+
+## 破損検知時の挙動（v1.0.160〜）
+
+`settings.json` が JSON として解析不能になった場合、Lhamiel は以下の順で処理する：
+
+1. 破損ファイルを `settings.json.corrupt_<YYYYMMDDHHmmss>.bak` に退避
+2. デフォルト設定を使用して起動
+3. `Lhamiel_yyyyMMdd.log` に警告ログを出力
+
+また、`ExtractionOutputDirectory` / `CompressionOutputDirectory` が存在しないパスや保護ディレクトリを指している場合は、起動時に自動的にデスクトップへフォールバックする。
 
 ## 関連ファイル
 

@@ -294,9 +294,15 @@ public partial class FileConflictDialog : Window
     /// </summary>
     private void ApplySkipIdentical(bool skip)
     {
+        // visibleCount を foreach 中に積算して二重走査（O(2N) → O(N)）を避ける
+        var visibleCount = 0;
         foreach (var row in _rows)
         {
-            if (row.Left == null || row.Right == null) continue;
+            if (row.Left == null || row.Right == null)
+            {
+                if (row.IsVisible) visibleCount++;
+                continue;
+            }
 
             if (AreEntriesIdentical(row.Left.Entry, row.Right.Entry))
             {
@@ -308,10 +314,11 @@ public partial class FileConflictDialog : Window
                     row.Right.IsSelected = false;
                 }
             }
+
+            if (row.IsVisible) visibleCount++;
         }
 
         // ヘッダーの件数を更新（表示中の行数 = 衝突ファイル数）
-        var visibleCount = _rows.Count(r => r.IsVisible);
         var headerText = this.FindControl<TextBlock>("HeaderText");
         if (headerText != null)
         {

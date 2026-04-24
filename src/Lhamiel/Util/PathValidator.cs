@@ -58,19 +58,29 @@ public static class PathValidator
     }
 
     /// <summary>
-    /// ファイルパスが指定された基準ディレクトリ内にあるかどうかを検証する
+    /// ファイルパスが指定された基準ディレクトリ内にあるかどうかを検証する。
+    /// Zip Slip ガードは <c>ArchiveExtractor.TryResolveSafeEntryPathFromNormalized</c> を使うこと。
+    /// 本メソッドは末尾セパレータを強制付与してプレフィックス衝突（例: C:\Users\Bob と C:\Users\Bob-evil）
+    /// によるバイパスを防ぐ。
     /// </summary>
     /// <param name="filePath">検証するファイルパス</param>
     /// <param name="baseDirectory">基準ディレクトリ</param>
-    /// <returns>基準ディレクトリ内にある場合はtrue</returns>
+    /// <returns>基準ディレクトリ内またはパスが完全に一致する場合は true</returns>
+    [Obsolete("新規コードでは ArchiveExtractor.TryResolveSafeEntryPathFromNormalized を使うこと。本メソッドは将来削除予定。")]
     public static bool IsWithinDirectory(string filePath, string baseDirectory)
     {
         try
         {
             var fullFilePath = Path.GetFullPath(filePath);
-            var fullBasePath = Path.GetFullPath(baseDirectory);
+            var fullBasePath = Path.GetFullPath(baseDirectory)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-            return fullFilePath.StartsWith(fullBasePath, StringComparison.OrdinalIgnoreCase);
+            // 完全一致はベース自身を指しているので true
+            if (string.Equals(fullFilePath, fullBasePath, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            var prefixWithSeparator = fullBasePath + Path.DirectorySeparatorChar;
+            return fullFilePath.StartsWith(prefixWithSeparator, StringComparison.OrdinalIgnoreCase);
         }
         catch
         {

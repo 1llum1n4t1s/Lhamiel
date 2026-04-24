@@ -62,7 +62,7 @@ public static class ArchiveProcessor
     /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <param name="settingsSnapshot">設定のスナップショット（バッチ処理時に呼び出し側で 1 回だけ取得して渡すと、各ファイルごとのロック競合＆アロケを削減できる）</param>
-    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true, Settings? settingsSnapshot = null)
+    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, ProgressWindow? progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true, Settings? settingsSnapshot = null)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}");
 
@@ -226,7 +226,7 @@ public static class ArchiveProcessor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <returns>成功したアーカイブのソースパス、展開先パス、構造情報のリスト。すべて失敗した場合は空のリスト</returns>
-    public static async Task<List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    public static async Task<List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, ProgressWindow? progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
         var results = new List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>();
         try
@@ -370,8 +370,12 @@ public static class ArchiveProcessor
             return false;
         }
 
-        // ProgressWindow からキャンセルトークンを取得（UIスレッドで事前に取得）
-        var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
+        // ProgressWindow のキャンセルと呼び出し元のキャンセルを両方尊重するためリンクする。
+        // 旧実装は progressWindow!=null のとき引数の cancellationToken を無視していた。
+        using var linkedCts = progressWindow != null
+            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, progressWindow.GetCancellationToken())
+            : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var actualCancellationToken = linkedCts.Token;
 
         // 重い処理全体を Task.Run でバックグラウンドへ移動
         return await Task.Run(async () =>

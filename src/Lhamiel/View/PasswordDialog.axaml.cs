@@ -59,12 +59,17 @@ public partial class PasswordDialog : Window, INotifyPropertyChanged
     private void OkButton_Click(object? sender, RoutedEventArgs e)
     {
         Password = _passwordBox?.Text ?? string.Empty;
+        // TextBox の内部参照を切り、ダイアログ閉じた後にコントロール側に平文が残り続けるのを防ぐ。
+        if (_passwordBox != null)
+            _passwordBox.Text = string.Empty;
         Close(true);
     }
 
     private void CancelButton_Click(object? sender, RoutedEventArgs e)
     {
         Password = null;
+        if (_passwordBox != null)
+            _passwordBox.Text = string.Empty;
         Close(false);
     }
 
@@ -110,7 +115,9 @@ public partial class PasswordDialog : Window, INotifyPropertyChanged
                 ok = await tcs.Task;
             }
             if (!ok) return null;
-            Logger.Log($"パスワード入力ダイアログ完了: archive={archiveName}, retry={isRetry}");
+            // パスワード関連のログは Debug レベルに固定し、リリースビルドでは
+            // アーカイブ名・再試行回数・試行タイミングのいずれもログファイルに残さない。
+            Logger.Log($"パスワード入力ダイアログ完了: retry={isRetry}", LogLevel.Debug);
             return dialog.Password;
         });
     }

@@ -80,7 +80,7 @@ public partial class App : Application
         InitializeComponent();
 
         // SettingsManager を先に初期化（コンストラクタ内で Logger.Initialize も実行される）
-        var settings = SettingsManager.Instance.Current;
+        var settings = SettingsManager.Instance.CreateSnapshot();
 
         // テーマ設定を適用
         RequestedThemeVariant = GetThemeVariant(settings.Theme);
@@ -113,8 +113,10 @@ public partial class App : Application
             // メソッド冒頭でコマンドライン引数を一度取得
             var startupArgs = Environment.GetCommandLineArgs().Skip(1).ToArray();
 
-            // メインウィンドウの多重起動チェック
-            const string mutexName = "Lhamiel_MainWindow_SingleInstance";
+            // メインウィンドウの多重起動チェック。
+            // Local\ プレフィックスでセッションローカルに限定し、別セッション/別ユーザーによる
+            // Mutex 先取りでのサービス妨害（DoS）を防ぐ。
+            const string mutexName = @"Local\Lhamiel_MainWindow_SingleInstance";
 
             try
             {
@@ -161,7 +163,14 @@ public partial class App : Application
 
             // 初回起動時は IPC サーバーを開始して後続インスタンスからの引数を待機
             _ipcCts = new CancellationTokenSource();
-            _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token);
+            // fire-and-forget で捨てた Task が予期せぬ例外で黙って停止すると
+            // シングルインスタンス引継ぎが機能しなくなるため、ContinueWith でログ出力
+            _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token)
+                .ContinueWith(
+                    t => Logger.LogException("IPCサーバーが予期せず停止しました", t.Exception!),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted,
+                    TaskScheduler.Default);
 
             // 前回の実行で残存した一時ディレクトリを掃除する（OneDrive 同期フォルダや中断時対策）
             _ = Task.Run(() => Util.TempCleanup.CleanupOrphanedTempDirectories());
@@ -322,7 +331,7 @@ public partial class App : Application
 
         if (validPaths.Count == 0) return;
 
-        var settings = SettingsManager.Instance.Current;
+        var settings = SettingsManager.Instance.CreateSnapshot();
 
         // すべてアーカイブで圧縮形式未指定なら個別展開
         if (compressionFormat == "default" && ArchiveExtractor.AreAllSupportedArchives(validPaths))
@@ -475,7 +484,7 @@ public partial class App : Application
             }
 
             // 設定を読み込み
-            var settings = SettingsManager.Instance.Current;
+            var settings = SettingsManager.Instance.CreateSnapshot();
 
             // ファイルかフォルダかを判定して適切な処理を実行
             if (File.Exists(path))

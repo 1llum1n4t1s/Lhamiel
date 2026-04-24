@@ -876,14 +876,29 @@ public static class ArchiveExtractor
             // 変換する（「パスワードが違います」という誤解を招く通知を回避）。
             var archiveName = Path.GetFileName(archivePath);
             var attemptCount = 0;
-            var userCancelledPassword = false;
+            // userCancelledPassword は PasswordDialog のコールバックスレッド（7z.dll 由来）から書き込まれ、
+            // reader.Save() 例外ハンドラ側のスレッドから読み取られるため、
+            // volatile 相当のメモリ可視性保証が必要。attemptCount と対称に Interlocked で扱う。
+            var userCancelledPassword = 0;
+            // 再試行上限: 悪意あるアーカイブや構造的に誤判定されるアーカイブでの無限ダイアログループを防ぐ
+            const int MaxPasswordAttempts = 3;
             var passwordQuery = new AsyncPasswordQuery(async _ =>
             {
-                var isRetry = System.Threading.Interlocked.Increment(ref attemptCount) > 1;
+                var currentAttempt = System.Threading.Interlocked.Increment(ref attemptCount);
+                var isRetry = currentAttempt > 1;
+
+                // 上限を超えたら自動キャンセル扱い（null 返しと同じ経路）
+                if (currentAttempt > MaxPasswordAttempts)
+                {
+                    Logger.Log($"パスワード入力上限（{MaxPasswordAttempts}回）を超えたため展開を中止します", LogLevel.Warning);
+                    System.Threading.Interlocked.Exchange(ref userCancelledPassword, 1);
+                    return string.Empty;
+                }
+
                 var pw = await View.PasswordDialog.ShowFromBackgroundAsync(archiveName, isRetry, parentWindow);
                 if (pw is null)
                 {
-                    userCancelledPassword = true;
+                    System.Threading.Interlocked.Exchange(ref userCancelledPassword, 1);
                     // 空文字を返すと AsyncPasswordQuery 側で Cancel=true にマップされる
                     return string.Empty;
                 }
@@ -945,10 +960,12 @@ public static class ArchiveExtractor
                 {
                     reader.Save(tempOutputPath, progress);
                 }
-                catch (EncryptionException) when (userCancelledPassword)
+                catch (EncryptionException) when (System.Threading.Volatile.Read(ref userCancelledPassword) == 1)
                 {
-                    // ユーザーがパスワードダイアログで Cancel を押した結果としての EncryptionException。
+                    // ユーザーがパスワードダイアログで Cancel を押した結果、または再試行上限超過で
+                    // 自動キャンセルされた結果としての EncryptionException。
                     // 「パスワードが違います」ではなく通常のキャンセル扱いにする。
+                    // Volatile.Read で別スレッドの書き込みを確実に可視化する。
                     Logger.Log("パスワード入力がキャンセルされたため展開を中止します");
                     throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"));
                 }

@@ -87,7 +87,9 @@ jobs:
           Write-Host "README.txt generated"
 
       - name: Velopack CLI をインストール
-        run: dotnet tool install --global vpk
+        # サプライチェーン攻撃防止のため NuGet パッケージ側の Velopack と
+        # 同一バージョンに固定する（バージョン未指定だと最新版取得でリスクあり）
+        run: dotnet tool install --global vpk --version 0.0.1369-g1d5c984
 
       - name: Velopack パッケージを作成
         shell: pwsh
