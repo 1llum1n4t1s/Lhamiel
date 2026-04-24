@@ -113,6 +113,18 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ## 更新履歴
 
+### v1.0.160 (2026-04-25)
+
+- **セキュリティ強化** — Mutex 名に `Local\` プレフィックスを付与し、別セッション/別ユーザーによる先取り DoS を防止。Velopack CLI (`vpk`) のバージョンを固定してサプライチェーン耐性を向上。`PathValidator.IsWithinDirectory` のプレフィックス衝突バイパス（`C:\Users\Bob` と `C:\Users\Bob-evil` が混同される問題）を修正
+- **パスワード経路の堅牢化** — `userCancelledPassword` の race（パスワードキャンセル時に「パスワードが違います」誤メッセージが出る経路）を `Interlocked` / `Volatile.Read` で解消。再試行回数を最大 3 回に制限して悪意あるアーカイブでの無限ダイアログループを防止。パスワード入力ログをデバッグレベル化、入力欄を Cancel/OK 時にクリア
+- **設定ファイルの破損耐性** — `Settings.Load()` が JSON 解析失敗時にサイレントで全デフォルトに戻るバグを修正。破損ファイルを `settings.json.corrupt_<timestamp>.bak` に退避してから警告ログ + デフォルト復帰。`UpdateChannel` / `Theme` / `CompressionFormat` / 出力先パスを起動時に検証してフォールバック
+- **エラー分類の多言語化** — `IsCorruptedFileError` に `SevenZipException` 型チェックを最優先で追加。日本語 OS で CLR が例外を翻訳した場合のキーワード（破損 / 壊れ / 無効 / チェックサム）にも対応
+- **パフォーマンス改善** — 17 ロケール辞書の起動時一括ロードを廃止し、選択ロケールのみオンデマンドロード（約 450KB のメモリ常駐削減 + 起動時 XAML パース 16 言語分削減）。`reader.Items` の多重走査統合（3 パス → 2 パス）。`FileConflictDialog` のアイコン取得をバックグラウンド遅延化（500 件衝突時の UI フリーズ 500ms〜2.5s を解消）。`ApplySkipIdentical` を O(2N) → O(N)。`FileIconHelper` の eviction を `ConcurrentQueue` で O(1) FIFO 化。`Logger.Initialize` のログ掃除を `Task.Run` に逃がして起動クリティカルパスから除外
+- **アーキテクチャ整備** — `ArchiveProgressHelper` を新設し、進捗マッピングと `IoBoundParallelism` 定数を `ArchiveProcessor` から分離。`IAppLogger` / `IAppMessageService` インターフェースを定義してテストでのモック差し替えを可能に。`ResetToDefaults` の漏れ（`CreateArchiveNameFolder` / `DirectoryStructureMode`）を修正
+- **CI 改善** — Velopack リリースを draft 方式に変更し、x64 / ARM64 の部分配信時にユーザーへ中間状態が見えないように。`vpk` バージョンを `0.0.1369-g1d5c984` に固定
+- **ロケール / ドキュメント整合** — README ライセンス年を `2025-2026` に統一、`SETTINGS_SCHEMA.md` にログ設定と破損検知挙動を追記、`ARCHITECTURE.md` に `PasswordDialog` を追加、CLAUDE.md に Windows Only の明示
+- **テスト** — 549 / 549 合格（パスワード経路 / `SanitizeAfterLoad` / `IsCorruptedFileError` 日英キーワード / `IsWithinDirectory` プレフィックス衝突など +15 件追加）
+
 ### v1.0.159 (2026-04-22)
 
 - **パスワード保護アーカイブ対応** — 暗号化 ZIP / 7z / RAR をドロップすると専用の入力ダイアログが開くように。誤入力時は再試行メッセージ付きで自動的にダイアログが再表示される
