@@ -63,7 +63,7 @@
 | `DirectoryStructureMode` | string | `"IncludeRoot"` | ディレクトリ構造モード（下記参照） |
 | `ZipCompressionLevel` | int | `5` | ZIP圧縮レベル（0-9） |
 | `SevenZipCompressionLevel` | int | `5` | 7z圧縮レベル（0-9） |
-| `ExcludedFilePatterns` | string[] | システムファイル | 圧縮時に除外するパターン |
+| `ExcludedFilePatterns` | string[] | システムファイル | 圧縮時に除外するパス/ファイル名（**glob 非対応、パスセグメント完全一致のみ**。例: `.DS_Store`、`__MACOSX`） |
 
 ### ログ設定
 
