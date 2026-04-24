@@ -8,24 +8,11 @@
                 <ResourceInclude Source="/Resources/Themes.axaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!--  Locale Resources  -->
-            <ResourceInclude x:Key="en_US" Source="/Resources/Locales/en_US.axaml" />
-            <ResourceInclude x:Key="ja_JP" Source="/Resources/Locales/ja_JP.axaml" />
-            <ResourceInclude x:Key="zh_CN" Source="/Resources/Locales/zh_CN.axaml" />
-            <ResourceInclude x:Key="zh_TW" Source="/Resources/Locales/zh_TW.axaml" />
-            <ResourceInclude x:Key="de_DE" Source="/Resources/Locales/de_DE.axaml" />
-            <ResourceInclude x:Key="fr_FR" Source="/Resources/Locales/fr_FR.axaml" />
-            <ResourceInclude x:Key="es_ES" Source="/Resources/Locales/es_ES.axaml" />
-            <ResourceInclude x:Key="it_IT" Source="/Resources/Locales/it_IT.axaml" />
-            <ResourceInclude x:Key="pt_BR" Source="/Resources/Locales/pt_BR.axaml" />
-            <ResourceInclude x:Key="ru_RU" Source="/Resources/Locales/ru_RU.axaml" />
-            <ResourceInclude x:Key="uk_UA" Source="/Resources/Locales/uk_UA.axaml" />
-            <ResourceInclude x:Key="id_ID" Source="/Resources/Locales/id_ID.axaml" />
-            <ResourceInclude x:Key="fil_PH" Source="/Resources/Locales/fil_PH.axaml" />
-            <ResourceInclude x:Key="ta_IN" Source="/Resources/Locales/ta_IN.axaml" />
-            <ResourceInclude x:Key="ko_KR" Source="/Resources/Locales/ko_KR.axaml" />
-            <ResourceInclude x:Key="la_VA" Source="/Resources/Locales/la_VA.axaml" />
-            <ResourceInclude x:Key="sa_IN" Source="/Resources/Locales/sa_IN.axaml" />
+            <!--
+              Locale Resources は App.axaml.cs:ApplyLocale で動的ロードする（/rere #12）。
+              17 言語をすべて起動時に MergedDictionaries に登録すると ~450KB が常駐し、
+              Native AOT の起動速度の利点が削がれるため、選択ロケールのみオンデマンドロードする。
+            -->
         </ResourceDictionary>
     </Application.Resources>
 

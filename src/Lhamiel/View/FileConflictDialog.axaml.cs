@@ -134,6 +134,43 @@ public partial class FileConflictDialog : Window
             skipCheckBox.Content = App.Text("Conflict.SkipIdentical", identicalCount);
             skipCheckBox.IsCheckedChanged += (_, _) => ApplySkipIdentical(skipCheckBox.IsChecked == true);
         }
+
+        // /rere #11: ダイアログ表示後にアイコンをバックグラウンドでバッチロード。
+        // 旧実装は ConflictCellViewModel コンストラクタで同期取得しており、500 件衝突時に
+        // SHGetFileInfo の P/Invoke が UI スレッドを 500ms〜2.5s ブロックしていた。
+        Opened += async (_, _) => await LoadAllIconsAsync();
+    }
+
+    /// <summary>
+    /// 全セルのアイコンをバックグラウンドで取得する。
+    /// </summary>
+    private async Task LoadAllIconsAsync()
+    {
+        try
+        {
+            var cells = _rows
+                .SelectMany(r => new[] { r.Left, r.Right })
+                .Where(c => c != null)
+                .Cast<ConflictCellViewModel>()
+                .ToList();
+
+            // 並列度は ProcessorCount/2（最低 2、最大 4）。SHGetFileInfo は I/O バウンドだが
+            // 過剰並列化はシェル側でキューイングされるだけなので緩めの並列で十分。
+            var maxParallel = Math.Clamp(Environment.ProcessorCount / 2, 2, 4);
+            using var sem = new SemaphoreSlim(maxParallel);
+
+            var tasks = cells.Select(async cell =>
+            {
+                await sem.WaitAsync();
+                try { await cell.LoadIconAsync(); }
+                finally { sem.Release(); }
+            });
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("FileConflictDialog のアイコン遅延ロードに失敗", ex);
+        }
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
@@ -492,16 +529,12 @@ public class ConflictRowViewModel : ObservableObject
 /// <summary>
 /// 左右いずれかのセル（1つのファイルバージョン）。
 /// </summary>
-public class ConflictCellViewModel : ObservableObject
+public partial class ConflictCellViewModel : ObservableObject
 {
     public FileConflictEntry Entry { get; }
 
+    [ObservableProperty]
     private bool _isSelected;
-    public bool IsSelected
-    {
-        get => _isSelected;
-        set => SetProperty(ref _isSelected, value);
-    }
 
     public string FileSizeDisplay => Entry.FileSizeDisplay;
     public string LastModifiedDisplay => Entry.LastModified.ToString("yyyy/MM/dd HH:mm");
@@ -510,18 +543,48 @@ public class ConflictCellViewModel : ObservableObject
     public string DateAndSizeDisplay => $"{LastModifiedDisplay}  {FileSizeDisplay}";
 
     /// <summary>
-    /// OS から取得したファイルアイコン
+    /// OS から取得したファイルアイコン。
+    /// /rere #11: ダイアログ表示時に同期取得すると 500 件衝突で 500ms〜2.5s の UI フリーズが
+    /// 発生していたため、初期値は null とし <see cref="LoadIconAsync"/> によるバックグラウンドロード
+    /// 完了後に <see cref="ObservableProperty"/> 通知で UI へ反映する。
     /// </summary>
-    public Bitmap? Icon { get; }
+    [ObservableProperty]
+    private Bitmap? _icon;
 
     public ConflictCellViewModel(FileConflictEntry entry)
     {
         Entry = entry;
-        // 実在する画像・動画ファイルはサムネイル優先、それ以外はアイコン
-        var isRealFile = (File.Exists(entry.FullPath) || Directory.Exists(entry.FullPath))
-            && !ArchiveExtractor.IsSupportedArchiveType(entry.FullPath);
-        Icon = isRealFile
-            ? FileIconHelper.GetThumbnailOrIcon(entry.FullPath)
-            : FileIconHelper.GetFileIcon(Path.GetFileName(entry.RelativePath));
+        // Icon は遅延ロード。コンストラクタでは null のまま返し、後段で LoadIconAsync を呼ぶ。
+    }
+
+    /// <summary>
+    /// バックグラウンドスレッドでアイコンを取得し、UI スレッドで <see cref="Icon"/> プロパティに反映する。
+    /// </summary>
+    /// <remarks>
+    /// <see cref="FileIconHelper.GetThumbnailOrIcon"/> / <see cref="FileIconHelper.GetFileIcon"/> は
+    /// 内部でスレッドセーフキャッシュを持っており、複数セル分を同時に Task.Run で呼び出しても安全。
+    /// </remarks>
+    public async Task LoadIconAsync()
+    {
+        if (Icon != null) return;
+        var entry = Entry;
+        var bitmap = await Task.Run(() =>
+        {
+            try
+            {
+                var isRealFile = (File.Exists(entry.FullPath) || Directory.Exists(entry.FullPath))
+                    && !ArchiveExtractor.IsSupportedArchiveType(entry.FullPath);
+                return isRealFile
+                    ? FileIconHelper.GetThumbnailOrIcon(entry.FullPath)
+                    : FileIconHelper.GetFileIcon(Path.GetFileName(entry.RelativePath));
+            }
+            catch
+            {
+                return null;
+            }
+        });
+        // Avalonia の Bitmap は UI スレッド以外で代入しても問題ないが、ObservableProperty の
+        // 通知は UI スレッドでバインドリスナーに伝搬する必要がある。Dispatcher 経由で確実化。
+        await Dispatcher.UIThread.InvokeAsync(() => Icon = bitmap);
     }
 }

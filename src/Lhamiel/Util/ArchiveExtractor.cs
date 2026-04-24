@@ -142,6 +142,13 @@ public static class ArchiveExtractor
         /// null の場合は現在の設定値が使われる（下位互換）。
         /// </summary>
         public bool? CapturedCreateArchiveNameFolder { get; init; }
+
+        /// <summary>
+        /// アーカイブ内の非圧縮サイズ合計（バイト）。<see cref="GetArchiveStructureInfo"/> が
+        /// reader.Items を走査するついでに計算するため、別途 <c>DiskSpaceChecker.GetArchiveUncompressedSize</c>
+        /// を呼ぶ必要はない。-1 の場合は未計算（取得失敗または旧経路）。
+        /// </summary>
+        public long TotalUncompressedSize { get; init; } = -1;
     }
 
     /// <summary>
@@ -181,7 +188,8 @@ public static class ArchiveExtractor
             return new ArchiveStructureInfo
             {
                 ShouldSkipFolderCreation = shouldSkipFolderCreation,
-                SingleRootItemName = singleRootItemName
+                SingleRootItemName = singleRootItemName,
+                TotalUncompressedSize = structure.TotalUncompressedSize
             };
         }
         catch (Exception ex)
@@ -206,6 +214,10 @@ public static class ArchiveExtractor
         /// </summary>
         public HashSet<string> RootFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// 非圧縮サイズ合計（バイト）。reader.Items のループで同時集計する。
+        /// </summary>
+        public long TotalUncompressedSize { get; set; }
     }
 
     private const string TempDirPrefix = "Lhamiel_";
@@ -262,6 +274,11 @@ public static class ArchiveExtractor
 
         foreach (var item in reader.Items)
         {
+            // 非圧縮サイズの集計はディレクトリエントリを除外して 1 度のループで完結させる。
+            // (long) キャストで item.Length が int の場合のオーバーフローも防ぐ。
+            if (!item.IsDirectory)
+                structure.TotalUncompressedSize += (long)item.Length;
+
             var path = item.FullName.AsSpan();
 
             // 最初のセグメント（ルート名）を切り出す（配列アロケーション不要）
@@ -457,13 +474,19 @@ public static class ArchiveExtractor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null, long precomputedUncompressedSize = -1)
     {
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}");
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 展開前のディスク容量チェック（アーカイブのメタデータ上の非圧縮サイズ）
-        var requiredSize = DiskSpaceChecker.GetArchiveUncompressedSize(archivePath);
+        // 展開前のディスク容量チェック（アーカイブのメタデータ上の非圧縮サイズ）。
+        // GetArchiveStructureInfo で既に reader.Items を 1 周しており、その時点で集計済みの
+        // サイズを引き回すことで「同じアーカイブを 2 回開いて Items 列挙」を回避する（#10 軽量統合）。
+        // 旧経路や呼び出し元が事前計算していない場合（precomputedUncompressedSize < 0）は
+        // 従来通り DiskSpaceChecker 側で再計算する（後方互換）。
+        var requiredSize = precomputedUncompressedSize >= 0
+            ? precomputedUncompressedSize
+            : DiskSpaceChecker.GetArchiveUncompressedSize(archivePath);
         if (requiredSize > 0)
         {
             var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(

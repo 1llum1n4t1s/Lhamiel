@@ -125,16 +125,22 @@ jobs:
         # actions/checkout@v4.2.2
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      - name: 既存リリースを削除
+      # /rere #26: 旧実装は「既存リリース削除 → 再作成」だったため、
+      # マルチアーティファクト（x64 + ARM64）配信中に失敗するとユーザーから
+      # アクセス可能な状態で「タグ消失 / 部分パッケージ」になる経路があった。
+      # draft 方式に変更し、すべてのアップロード完了後にのみ publish する。
+      # 既存リリース（publish 済み）は残してロールバック可能性を保つ。
+      - name: 失敗残存 draft をクリーンアップ（同タグ再実行時の冪等性）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.version.outputs.tag }}
         run: |
-          if gh release view "$TAG" > /dev/null 2>&1; then
-            echo "既存リリース $TAG を削除..."
-            gh release delete "$TAG" --yes --cleanup-tag
+          # 既存タグが draft の場合のみ削除する。publish 済みは保持。
+          if gh release view "$TAG" --json isDraft -q '.isDraft' 2>/dev/null | grep -q '^true$'; then
+            echo "既存 draft $TAG を削除して再作成..."
+            gh release delete "$TAG" --yes
           else
-            echo "既存リリースなし: $TAG"
+            echo "既存 draft なし、または既に publish 済み: $TAG"
           fi
 
       - name: Velopack 成果物をダウンロード
@@ -150,13 +156,28 @@ jobs:
           echo "パッケージ一覧:"
           ls -lh packages/
 
-      - name: リリースを作成
+      - name: draft リリースを作成しアップロード
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.version.outputs.tag }}
           VERSION: ${{ needs.version.outputs.version }}
         run: |
-          gh release create "$TAG" \
-            -t "Lhamiel $VERSION" \
-            --generate-notes
-          gh release upload "$TAG" packages/*
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "既存 publish 済みリリース $TAG が存在 → アーティファクトを --clobber で更新"
+            gh release upload "$TAG" packages/* --clobber
+          else
+            echo "新規 draft リリース $TAG を作成"
+            gh release create "$TAG" \
+              --draft \
+              -t "Lhamiel $VERSION" \
+              --generate-notes
+            gh release upload "$TAG" packages/*
+          fi
+
+      - name: 全アップロード完了後に draft を公開
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          # publish 済みの場合は no-op、draft の場合のみ公開状態に切替（idempotent）
+          gh release edit "$TAG" --draft=false

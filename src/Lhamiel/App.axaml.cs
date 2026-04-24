@@ -778,20 +778,59 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// ロケールを実際に適用する（インスタンスメソッド。コンストラクタからも安全に呼べる）
+    /// 既にロード済みのロケール辞書をキャッシュ。同じロケールへの再切替時にディスク I/O と
+    /// XAML パースを回避する。
+    /// </summary>
+    private readonly Dictionary<string, IResourceProvider> _localeCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>現在アクティブなロケールキー。</summary>
+    private string? _activeLocaleKey;
+
+    /// <summary>
+    /// ロケールを実際に適用する（インスタンスメソッド。コンストラクタからも安全に呼べる）。
+    /// /rere #12: 17 言語の <c>ResourceInclude</c> を App.axaml で一括ロードしていた旧実装を
+    /// 廃止し、選択ロケールのみオンデマンドで読み込む方式に変更。前回ロード済みのものは
+    /// プロセス内でキャッシュして再パースを避ける。
     /// </summary>
     /// <param name="localeKey">ロケールキー（"ja_JP", "en_US" など）</param>
     private void ApplyLocale(string localeKey)
     {
-        if (Resources[localeKey] is not IResourceProvider targetLocale ||
-            targetLocale == _activeLocale)
+        if (string.IsNullOrEmpty(localeKey)) return;
+        if (string.Equals(_activeLocaleKey, localeKey, StringComparison.OrdinalIgnoreCase)) return;
+
+        IResourceProvider? targetLocale;
+        if (!_localeCache.TryGetValue(localeKey, out targetLocale))
+        {
+            try
+            {
+                var uri = new Uri($"avares://Lhamiel/Resources/Locales/{localeKey}.axaml");
+                if (AvaloniaXamlLoader.Load(uri) is not IResourceProvider loaded)
+                {
+                    Util.Logger.Log($"ロケール辞書のロードに失敗（IResourceProvider にキャストできない）: {localeKey}", Util.LogLevel.Warning);
+                    return;
+                }
+                targetLocale = loaded;
+                _localeCache[localeKey] = targetLocale;
+            }
+            catch (Exception ex)
+            {
+                Util.Logger.LogException($"ロケール辞書のロードに失敗: {localeKey}", ex);
+                return;
+            }
+        }
+
+        if (targetLocale == _activeLocale)
+        {
+            _activeLocaleKey = localeKey;
             return;
+        }
 
         if (_activeLocale != null)
             Resources.MergedDictionaries.Remove(_activeLocale);
 
         Resources.MergedDictionaries.Add(targetLocale);
         _activeLocale = targetLocale;
+        _activeLocaleKey = localeKey;
     }
 
     /// <summary>

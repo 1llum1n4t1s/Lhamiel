@@ -7,48 +7,7 @@ namespace Lhamiel.Util;
 /// </summary>
 public static class ArchiveProcessor
 {
-    /// <summary>
-    /// ProgressInfo を ProgressWindow にディスパッチする共通ヘルパー。
-    /// 不確定進捗はマーキー表示、確定進捗はパーセンテージ更新。
-    /// </summary>
-    private static void DispatchProgress(ProgressWindow? progressWindow, ProgressInfo info)
-    {
-        if (info.IsIndeterminate)
-            Dispatcher.UIThread.Post(() => progressWindow?.SetIndeterminate(info.Status));
-        else
-            Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage));
-    }
-
-    /// <summary>
-    /// 並列処理時の進捗マッピングを作成する。
-    /// 完了済み件数をベースラインとし、処理中の個別進捗を加算して全体進捗を計算する。
-    /// </summary>
-    private static IProgress<ProgressInfo> CreateMappedProgress(
-        int totalCount, object lockObject, Func<int> getCompletedCount, ProgressWindow? progressWindow, ProgressThrottler? sharedThrottler = null)
-    {
-        if (totalCount == 1)
-            return new Progress<ProgressInfo>(info => DispatchProgress(progressWindow, info));
-
-        // 並列処理時は共有スロットラーで全タスク横断のUIスレッド負荷を軽減
-        var throttler = sharedThrottler ?? new ProgressThrottler();
-
-        return new Progress<ProgressInfo>(info =>
-        {
-            if (info.IsIndeterminate)
-            {
-                Dispatcher.UIThread.Post(() => progressWindow?.SetIndeterminate(info.Status));
-                return;
-            }
-            int baseline;
-            lock (lockObject)
-            {
-                baseline = getCompletedCount();
-            }
-            var overallProgress = (int)((baseline + info.Percentage / 100.0) / totalCount * 100);
-            if (throttler.ShouldReport(overallProgress))
-                Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(overallProgress));
-        });
-    }
+    // 進捗ディスパッチ系のヘルパは ArchiveProgressHelper.cs に分離（/rere #24 入口対応）。
 
     /// <summary>
     /// アーカイブファイルの展開処理を実行
@@ -86,7 +45,7 @@ public static class ArchiveProcessor
                 if (progress == null && progressWindow != null)
                 {
                     progress = new Progress<ProgressInfo>(info =>
-                        DispatchProgress(progressWindow, info));
+                        ArchiveProgressHelper.DispatchProgress(progressWindow, info));
                 }
 
                 // ファイル拡張子の確認（ArchiveExtractor.SupportedExtensions を参照して重複管理を回避）
@@ -183,12 +142,15 @@ public static class ArchiveProcessor
                     }
 
                     // 一時フォルダ方式（上書き確認あり）or 直接展開
+                    // structureInfo.TotalUncompressedSize は GetArchiveStructureInfo で計算済み。
+                    // ExtractArchiveAsync 側で再度 reader を開いて Items を走査するのを避ける。
                     await ArchiveExtractor.ExtractArchiveAsync(filePath, outputPath,
                         progress,
                         progressWindow,
                         cancellationToken,
                         overwriteCheckPaths,
-                        progressWindow);
+                        progressWindow,
+                        structureInfo.TotalUncompressedSize);
 
                     if (closeWindowOnCompletion)
                     {
@@ -259,7 +221,7 @@ public static class ArchiveProcessor
                     acquired = true;
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var mappedProgress = CreateMappedProgress(
+                    var mappedProgress = ArchiveProgressHelper.CreateMappedProgress(
                         totalCount, lockObject, () => successCount + failedFiles.Count, progressWindow, sharedThrottler);
 
                     var extractResult = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false, settingsSnapshot: sharedSettings);
@@ -455,7 +417,7 @@ public static class ArchiveProcessor
                 // ラップと無駄なアロケ・同期コンテキスト転送を避ける。null のときだけ
                 // progressWindow への DispatchProgress 用ラッパを 1 個だけ作る。
                 IProgress<ProgressInfo> compressionProgress = progressReporter
-                    ?? new Progress<ProgressInfo>(info => DispatchProgress(progressWindow, info));
+                    ?? new Progress<ProgressInfo>(info => ArchiveProgressHelper.DispatchProgress(progressWindow, info));
 
                 // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示。
                 // 設定は処理開始時点でスナップショット化し、以降の処理全体で一貫性を保つ。
@@ -669,7 +631,7 @@ public static class ArchiveProcessor
                     acquired = true;
                     actualCancellationToken.ThrowIfCancellationRequested();
 
-                    var innerProgress = CreateMappedProgress(
+                    var innerProgress = ArchiveProgressHelper.CreateMappedProgress(
                         totalCount, lockObject, () => successCount + failedPaths.Count, progressWindow, sharedThrottler);
 
                     // 事前計算された出力パスを使用して圧縮処理を実行（共有スナップショットを再利用）
