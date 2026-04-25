@@ -159,21 +159,14 @@ public partial class FileConflictDialog : Window
             if (row.Right != null) cells.Add(row.Right);
         }
 
-        using var sem = new SemaphoreSlim(ArchiveProgressHelper.IoBoundParallelism);
-
-        // 全 cells 分の Task.WhenAll を一気に積むと SemaphoreSlim キューが肥大化するため、
-        // 順次 WaitAsync してから Task を起動するパターンに切り替える。
-        var tasks = new List<Task>(cells.Count);
-        foreach (var cell in cells)
+        // Parallel.ForEachAsync は内部で MaxDegreeOfParallelism を超えない範囲でしか
+        // Task を生成しないため、全 cells 分の Task を事前にリスト化する必要がない。
+        // SemaphoreSlim + Task.Run の自前実装より省メモリかつ簡潔。
+        var options = new ParallelOptions { MaxDegreeOfParallelism = ArchiveProgressHelper.IoBoundParallelism };
+        await Parallel.ForEachAsync(cells, options, async (cell, _) =>
         {
-            await sem.WaitAsync();
-            tasks.Add(Task.Run(async () =>
-            {
-                try { await cell.LoadIconAsync(); }
-                finally { sem.Release(); }
-            }));
-        }
-        await Task.WhenAll(tasks);
+            await cell.LoadIconAsync();
+        });
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
