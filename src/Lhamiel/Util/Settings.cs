@@ -306,7 +306,12 @@ public class Settings
         try
         {
             if (!Directory.Exists(path)) return false;
-            if (PathValidator.IsProtectedDirectory(path)) return false;
+            // 注意: IsProtectedDirectory ではなく IsSystemCriticalDirectory を使う。
+            // 前者は Desktop / Documents / Downloads などの一般的な出力先までブロックし、
+            // ユーザーが選択した出力先設定を起動毎に Desktop へ書き換えてしまう
+            // （出力先設定の永続化破壊）。実害が確実な OS 構造（Windows / Program Files /
+            // System32 / ドライブルート / プロファイル根）のみを拒否する。
+            if (PathValidator.IsSystemCriticalDirectory(path)) return false;
         }
         catch { return false; }
         return true;

@@ -167,6 +167,35 @@ public class SettingsEdgeCaseTests
     }
 
     [Fact]
+    public void SanitizeAfterLoad_DesktopAsOutputDirectory_PreservedNotOverwritten()
+    {
+        // ユーザーが意図的に出力先として選んだ Desktop が、起動のたびに
+        // SanitizeAfterLoad でリセットされない（= 設定の永続化が壊れない）ことを保証する。
+        // PathValidator.IsProtectedDirectory は Desktop を保護対象に含むが、
+        // SanitizeAfterLoad は IsSystemCriticalDirectory（より厳格）を使う設計。
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        if (!Directory.Exists(desktop))
+            return; // テスト環境に Desktop が無いプラットフォーム（CI 等）はスキップ
+        var settings = new Settings { ExtractionOutputDirectory = desktop };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(desktop, settings.ExtractionOutputDirectory);
+    }
+
+    [Fact]
+    public void SanitizeAfterLoad_SystemCriticalDirectory_FallsBackToDesktop()
+    {
+        // 改竄耐性: settings.json を書き換えて Windows / Program Files を出力先にされても
+        // 起動時に Desktop へフォールバックすることを保証する。
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if (!Directory.Exists(windows))
+            return;
+        var settings = new Settings { ExtractionOutputDirectory = windows };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(desktop, settings.ExtractionOutputDirectory);
+    }
+
+    [Fact]
     public void SanitizeAfterLoad_UnknownTheme_FallsBackToSystem()
     {
         var settings = new Settings { Theme = "HackerGreen" };

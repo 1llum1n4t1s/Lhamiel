@@ -232,8 +232,16 @@ public static class PathValidator
     /// </summary>
     /// <param name="path">検証するパス</param>
     /// <returns>保護されている場合はtrue</returns>
-    // 保護フォルダのキャッシュ（初回アクセス時に構築）
+    // 保護フォルダのキャッシュ（初回アクセス時に構築）。
+    // 「上書き／削除のターゲットとしてその shell folder 自身を指定された場合」に
+    // 再帰削除を拒否するためのもの。エクスプローラの Desktop / Documents / Downloads 等を
+    // 出力先として選ぶこと自体は許可する（中にサブフォルダを作って展開するのは安全）。
     private static readonly Lazy<HashSet<string>> ProtectedFolders = new(BuildProtectedFolders);
+
+    // システム重大ディレクトリのキャッシュ（同上）。
+    // こちらは「設定値として保存することすら許可しない」レベルの強い制限で、
+    // 主に settings.json 改竄耐性のための判定に使う。
+    private static readonly Lazy<HashSet<string>> SystemCriticalFolders = new(BuildSystemCriticalFolders);
 
     private static HashSet<string> BuildProtectedFolders()
     {
@@ -265,6 +273,32 @@ public static class PathValidator
         {
             var downloads = Path.Combine(userProfile, "Downloads");
             folders.Add(Path.GetFullPath(downloads).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        }
+
+        return folders;
+    }
+
+    private static HashSet<string> BuildSystemCriticalFolders()
+    {
+        // 出力先として「絶対に保存させてはいけない」OS / プログラム本体ディレクトリのみ。
+        // 一般的なユーザーコンテンツフォルダ（Desktop / Documents / Downloads / Music /
+        // Pictures / Videos）は除外し、ユーザーが選択した出力先として尊重する。
+        var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var systemFolders = new[]
+        {
+            Environment.SpecialFolder.Windows,
+            Environment.SpecialFolder.ProgramFiles,
+            Environment.SpecialFolder.ProgramFilesX86,
+            Environment.SpecialFolder.System,
+            Environment.SpecialFolder.CommonDocuments,
+            Environment.SpecialFolder.UserProfile, // C:\Users\foo 直下も除外（個人プロファイル根）
+        };
+
+        foreach (var sf in systemFolders)
+        {
+            var p = Environment.GetFolderPath(sf);
+            if (!string.IsNullOrEmpty(p))
+                folders.Add(Path.GetFullPath(p).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         }
 
         return folders;
@@ -319,6 +353,60 @@ public static class PathValidator
         catch
         {
             // エラーが発生した場合は安全のために保護されているとみなす
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// 「設定値として保存させない」レベルの強い保護判定。
+    /// IsProtectedDirectory より範囲を狭め、Desktop / Documents / Downloads などの
+    /// 一般的なユーザーコンテンツフォルダは許可する（出力先として正当な選択肢のため）。
+    /// 主に settings.json 改竄耐性として、Windows / Program Files / System32 /
+    /// ドライブルート / プロファイル根のような OS 構造を出力先設定として防ぐ用途。
+    /// シンボリックリンク追跡は IsProtectedDirectory と同じロジックを共有する。
+    /// </summary>
+    public static bool IsSystemCriticalDirectory(string path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path)) return true;
+
+            var normalizedCandidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var lexical = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            normalizedCandidates.Add(lexical);
+
+            try
+            {
+                var resolved = Directory.ResolveLinkTarget(lexical, returnFinalTarget: true);
+                if (resolved is DirectoryInfo dirInfo && !string.IsNullOrWhiteSpace(dirInfo.FullName))
+                {
+                    normalizedCandidates.Add(dirInfo.FullName
+                        .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                }
+            }
+            catch
+            {
+                // 非対応パスや権限不足等は lexical チェックのみで判定
+            }
+
+            foreach (var candidate in normalizedCandidates)
+            {
+                // 1. ドライブのルートディレクトリ（C:\ など）
+                var root = Path.GetPathRoot(candidate);
+                if (string.Equals(root?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                                  candidate, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+
+                // 2. システム重大フォルダ（Windows / Program Files / System32 / ProfileRoot 等）
+                if (SystemCriticalFolders.Value.Contains(candidate))
+                    return true;
+            }
+            return false;
+        }
+        catch
+        {
             return true;
         }
     }
