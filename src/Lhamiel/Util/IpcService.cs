@@ -60,10 +60,12 @@ public static class IpcService
 
                 // FlushAsync でキャンセルトークンを伝搬させたうえで、
                 // WaitForPipeDrain でパイプ他端が受信完了するまで同期待機。
-                // ローカル Named Pipe なので WaitForPipeDrain は即時返ることが多く、
-                // ここでブロックしても実測影響は小さい。
+                // 通常はローカル Named Pipe なので即時返るが、対向側（既存インスタンス）が
+                // ハングしているケースに備えて Task.Run でバックグラウンドへオフロードする。
+                // SendArgsToExistingInstanceAsync は App.OnFrameworkInitializationCompleted 経由で
+                // UI スレッドの継続として走るため、同期ブロックすると UI フリーズに繋がる。
                 await client.FlushAsync(cancellationToken);
-                client.WaitForPipeDrain();
+                await Task.Run(client.WaitForPipeDrain, cancellationToken);
                 return true;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

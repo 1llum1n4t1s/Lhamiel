@@ -366,12 +366,9 @@ public static class ArchiveErrorHandler
     /// </remarks>
     private static bool IsCorruptedFileError(Exception ex)
     {
-        // 型ベース判定（最優先・ロケール完全非依存）
-        // SevenZipException は 7z.dll の HRESULT ベースエラーを包括するため、CorruptedFile として扱う。
-        // 厳密には UnsupportedFormat 等も含みうるが、そちらは AnalyzeError の上位分岐で先行して
-        // NotSupportedException ケースが拾うため、ここには到達しない。
-        if (ex is SevenZipException) return true;
-
+        // 注: SevenZipException は AnalyzeError の専用 case で先行処理されるため、
+        // ここには InvalidOperationException 系の例外しか流れてこない。
+        // メッセージキーワードベースで破損判定する。
         var message = ex.Message.ToLowerInvariant();
 
         // 英語キーワード（Cube.FileSystem.SevenZip / 7z.dll 由来のメッセージ）
