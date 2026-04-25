@@ -999,7 +999,11 @@ public static class ArchiveExtractor
                     // 「パスワードが違います」ではなく通常のキャンセル扱いにする。
                     // Volatile.Read で別スレッドの書き込みを確実に可視化する。
                     Logger.Log("パスワード入力がキャンセルされたため展開を中止します");
-                    throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"));
+                    // cancellationToken を OCE に紐付ける。CT が既にキャンセル済みの場合は
+                    // 呼び出し元の Task が TaskStatus.Canceled に正しく遷移する。
+                    // CT が未キャンセル（純粋にユーザーがダイアログ Cancel を押しただけ）でも
+                    // OCE.CancellationToken プロパティに記録されるため診断情報が向上する。
+                    throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"), cancellationToken);
                 }
 
                 // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）
