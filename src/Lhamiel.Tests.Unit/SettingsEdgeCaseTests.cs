@@ -126,14 +126,26 @@ public class SettingsEdgeCaseTests
     }
 
     [Theory]
-    [InlineData("release")]
-    [InlineData("prerelease")]
-    [InlineData("RELEASE")] // 大文字混ざりは許可（OrdinalIgnoreCase）だが値自体は元のまま
-    public void SanitizeAfterLoad_AllowListedUpdateChannel_Preserved(string channel)
+    [InlineData("release", "release")]
+    [InlineData("prerelease", "prerelease")]
+    [InlineData("RELEASE", "release")]      // 大文字混ざりは canonical ケースに正規化される
+    [InlineData("PreRelease", "prerelease")] // 同上
+    public void SanitizeAfterLoad_AllowListedUpdateChannel_NormalizedToCanonicalCase(string input, string expected)
     {
-        var settings = new Settings { UpdateChannel = channel };
+        var settings = new Settings { UpdateChannel = input };
         settings.SanitizeAfterLoad();
-        Assert.Equal(channel, settings.UpdateChannel);
+        Assert.Equal(expected, settings.UpdateChannel);
+    }
+
+    [Theory]
+    [InlineData("DARK", "Dark")]
+    [InlineData("light", "Light")]
+    [InlineData("system", "System")]
+    public void SanitizeAfterLoad_Theme_NormalizedToCanonicalCase(string input, string expected)
+    {
+        var settings = new Settings { Theme = input };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(expected, settings.Theme);
     }
 
     [Fact]

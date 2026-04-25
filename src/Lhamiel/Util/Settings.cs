@@ -272,24 +272,22 @@ public class Settings
     /// </summary>
     internal void SanitizeAfterLoad()
     {
-        // UpdateChannel の allow-list 化: 未知の値を渡されても Velopack に無効な channel を渡さない
-        if (!string.Equals(UpdateChannel, "release", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(UpdateChannel, "prerelease", StringComparison.OrdinalIgnoreCase))
-        {
-            UpdateChannel = "release";
-        }
+        // UpdateChannel の allow-list 化: 未知の値を渡されても Velopack に無効な channel を渡さない。
+        // case-insensitive で受理しつつ、下流（Velopack CLI 引数や URL パス）が
+        // case-sensitive 比較を行う可能性があるため canonical な小文字に正規化する。
+        UpdateChannel = string.Equals(UpdateChannel, "prerelease", StringComparison.OrdinalIgnoreCase)
+            ? "prerelease"
+            : "release";
 
-        // Theme の allow-list 化: タイポや未知のテーマが渡された場合に "System" フォールバック
-        if (!SupportedThemes.Contains(Theme, StringComparer.OrdinalIgnoreCase))
-        {
-            Theme = "System";
-        }
+        // Theme の allow-list 化 + canonical ケース正規化。
+        // App.axaml.cs の GetThemeVariant は "Light"/"Dark"/"System" の固定文字列で switch するため、
+        // "DARK" 等の入力が下流でサイレントにフォールバックしないよう SupportedThemes 側のケースに揃える。
+        Theme = Array.Find(SupportedThemes, t => string.Equals(t, Theme, StringComparison.OrdinalIgnoreCase))
+                ?? "System";
 
-        // CompressionFormat の allow-list 化
-        if (!SupportedCompressionFormats.Contains(CompressionFormat, StringComparer.OrdinalIgnoreCase))
-        {
-            CompressionFormat = "ZIP";
-        }
+        // CompressionFormat も同様に canonical ケース正規化。
+        CompressionFormat = Array.Find(SupportedCompressionFormats, f => string.Equals(f, CompressionFormat, StringComparison.OrdinalIgnoreCase))
+                            ?? "ZIP";
 
         // 出力先ディレクトリのパス妥当性チェック（存在確認 + 保護ディレクトリ除外）
         // 不正値はデスクトップにフォールバック

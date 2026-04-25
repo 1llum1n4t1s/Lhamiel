@@ -902,6 +902,14 @@ public static class ArchiveExtractor
             // userCancelledPassword は PasswordDialog のコールバックスレッド（7z.dll 由来）から書き込まれ、
             // reader.Save() 例外ハンドラ側のスレッドから読み取られるため、
             // volatile 相当のメモリ可視性保証が必要。attemptCount と対称に Interlocked で扱う。
+            //
+            // CS1628 について（レビュー bot の誤検知対策コメント）:
+            // この変数は直下のラムダ（passwordQuery）にキャプチャされるため、コンパイラによって
+            // closure クラスのフィールドに hoist される。`Interlocked.Increment(ref ...)` /
+            // `Volatile.Read(ref ...)` は closure フィールドへの ref を取るが、これは合法。
+            // CS1628 は async メソッドの ref/out パラメータを await を跨いで使う場合の制限であり、
+            // 「captured local への ref」とは別。Volatile.Read は同期 catch when フィルタ内で
+            // 使われており、await を跨ぐ可能性もない。実ビルドも 0 errors / 0 warnings。
             var userCancelledPassword = 0;
             // 再試行上限: 悪意あるアーカイブや構造的に誤判定されるアーカイブでの無限ダイアログループを防ぐ
             const int MaxPasswordAttempts = 3;

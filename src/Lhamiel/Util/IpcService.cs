@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
@@ -128,24 +129,35 @@ public static class IpcService
                 // PipeOptions.CurrentUserOnly で外部ユーザーの攻撃は防げるが、同一ユーザーの
                 // バグったプロセスや誤動作による大量送信でメモリ枯渇するのを防ぐため、
                 // 読み取りサイズに上限を設ける。コマンドライン引数の JSON は通常数 KB で収まる。
+                // 1MB は LOH（>= 85,000 bytes）に直接配置されるため、`new byte[]` ではなく
+                // ArrayPool 経由でレンタルし、断片化と GC 負荷を回避する。
                 const int MaxJsonBytes = 1 * 1024 * 1024;
-                var buffer = new byte[MaxJsonBytes];
-                var totalRead = 0;
-                while (totalRead < MaxJsonBytes)
+                var buffer = ArrayPool<byte>.Shared.Rent(MaxJsonBytes);
+                try
                 {
-                    var n = await server.ReadAsync(buffer.AsMemory(totalRead, MaxJsonBytes - totalRead), cancellationToken);
-                    if (n == 0) break; // EOF
-                    totalRead += n;
-                }
-                var json = Encoding.UTF8.GetString(buffer, 0, totalRead);
-
-                if (!string.IsNullOrWhiteSpace(json))
-                {
-                    var args = JsonSerializer.Deserialize(json, AppJsonContext.Default.StringArray);
-                    if (args != null)
+                    var totalRead = 0;
+                    while (totalRead < MaxJsonBytes)
                     {
-                        onArgsReceived(args);
+                        var n = await server.ReadAsync(buffer.AsMemory(totalRead, MaxJsonBytes - totalRead), cancellationToken);
+                        if (n == 0) break; // EOF
+                        totalRead += n;
                     }
+                    var json = Encoding.UTF8.GetString(buffer, 0, totalRead);
+
+                    if (!string.IsNullOrWhiteSpace(json))
+                    {
+                        var args = JsonSerializer.Deserialize(json, AppJsonContext.Default.StringArray);
+                        if (args != null)
+                        {
+                            onArgsReceived(args);
+                        }
+                    }
+                }
+                finally
+                {
+                    // clearArray:true → JSON にコマンドライン引数（パス等）が含まれるため
+                    // 次の Rent ユーザーが残骸を読まないよう確実にゼロクリア
+                    ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
                 }
 
                 // クライアントが切断されるのを待つか、サーバーを再作成するためにループを回す

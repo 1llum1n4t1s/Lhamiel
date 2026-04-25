@@ -139,6 +139,18 @@ public static class ArchiveErrorHandler
                 errorInfo.IsRecoverable = true;
                 break;
 
+            // 7z.dll 由来の HRESULT ベース例外。InvalidOperationException を継承していないため、
+            // 独立した分岐で破損として扱う必要がある（IsCorruptedFileError の SevenZipException 判定が
+            // ここに到達することで初めて意味を持つ）。EncryptionException は SevenZipException の
+            // 派生である可能性が高いため、必ず EncryptionException ケースの後ろに配置する。
+            case SevenZipException:
+                errorInfo.ErrorType = ArchiveErrorType.CorruptedFile;
+                errorInfo.Message = App.Text("ErrorHandler.Corrupted");
+                errorInfo.Details = GetCorruptionDetails(ex, archivePath);
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.CorruptedAction");
+                errorInfo.IsRecoverable = false;
+                break;
+
             case IOException ioEx:
                 if (IsDiskSpaceError(ioEx))
                 {

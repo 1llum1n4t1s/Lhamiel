@@ -33,14 +33,19 @@ public class ArchiveErrorHandlerTests
     }
 
     [Fact]
-    public void AnalyzeError_OperationCanceledException_ClassifiedAsCancellation()
+    public void AnalyzeError_OperationCanceledException_NotMisclassifiedAsEncrypted()
     {
         // パスワード入力キャンセル経路は ArchiveExtractor で OperationCanceledException に
-        // 変換されるため、ArchiveErrorHandler 側ではキャンセルとして扱われることを確認。
+        // 変換され、上位 ArchiveProcessor の when (ex is not OperationCanceledException) で
+        // AnalyzeError 経路から除外される。万一直接渡された場合も「パスワードが違います」
+        // と誤分類されないことが重要なので、明示的に検証する。
         var ex = new OperationCanceledException("user cancelled");
         var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\locked.zip", @"C:\out");
 
-        // EncryptedOrWrongPassword にはならない（キャンセルの伝播）
+        // 現状は switch の default 分岐に落ちて Unknown 分類される。
+        // 専用 ArchiveErrorType.Cancelled を導入する場合はここを更新する。
+        Assert.Equal(ArchiveErrorType.Unknown, info.ErrorType);
+        // 回帰防止: EncryptedOrWrongPassword 誤分類が再発しないことを明示
         Assert.NotEqual(ArchiveErrorType.EncryptedOrWrongPassword, info.ErrorType);
     }
 
