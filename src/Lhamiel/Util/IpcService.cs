@@ -36,8 +36,13 @@ public static class IpcService
     /// サーバー側リクエスト読み取りタイムアウト（ミリ秒）。
     /// クライアントが接続だけして送信せず居座るケースで、IPC サーバーが他の起動を
     /// 受け付けられなくなるのを防ぐ。
+    ///
+    /// 制約: 必ず ConnectTotalTimeoutMs より小さい値にすること。逆転すると、
+    /// 同一ユーザー権限のバグったプロセスが「接続だけして送らない」を高速ループした際、
+    /// 正規の 2 番目インスタンスが ConnectTotalTimeoutMs 内にサーバーに到達できず
+    /// 起動失敗する経路が成立する。
     /// </summary>
-    private const int RequestReadTimeoutMs = 3000;
+    private const int RequestReadTimeoutMs = 1500;
 
     /// <summary>
     /// 引数を既存のインスタンスに送信する。
