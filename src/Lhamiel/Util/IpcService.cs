@@ -51,10 +51,19 @@ public static class IpcService
 
     /// <summary>
     /// IPC リクエストの JSON 読み取り上限（バイト）。
-    /// 1MB だった旧設計は LOH 境界（85KB）超えで GC 圧迫の原因になっていたため、
-    /// Windows コマンドライン上限（~32KB）の 2 倍に縮小。SOH に収まる。
+    ///
+    /// 1MB に設定する根拠:
+    ///   - ユーザーが日本語等の非 ASCII パス（UTF-8 で 1 文字 3 バイト）を持つファイルを多数選んだ場合、
+    ///     JSON エスケープと UTF-8 expansion で数十〜数百 KB は容易に超える。例: 100 ファイル × 平均
+    ///     パス長 100 文字（日本語）→ 30KB 以上。エクスプローラから一括ドロップで 200 ファイル超える
+    ///     ケースもあり、64KB は実用上きつい。
+    ///   - LOH 境界（85KB）を超えるが、IPC 送信は「2 番目のインスタンス起動時のみ」=
+    ///     ユーザー操作起動の数百 ms に 1 回。ArrayPool が長期生存させて再利用するため、
+    ///     LOH コストは IPC 頻度を考えれば無視できる。
+    ///   - 一方、悪意ある同一ユーザープロセスからのメモリ枯渇 DoS には依然として上限としての意味があり、
+    ///     1MB を超える「巨大 JSON」は確実に弾けるので攻撃面の防御は維持される。
     /// </summary>
-    private const int MaxRequestJsonBytes = 64 * 1024;
+    private const int MaxRequestJsonBytes = 1024 * 1024;
 
     /// <summary>
     /// 引数を既存のインスタンスに送信する。
@@ -183,7 +192,8 @@ public static class IpcService
 
                 // PipeOptions.CurrentUserOnly で外部ユーザーの攻撃は防げるが、同一ユーザーの
                 // バグったプロセスや誤動作による大量送信でメモリ枯渇するのを防ぐため、
-                // クラスレベル定数 MaxRequestJsonBytes (64KB) で読み取りサイズに上限を設ける。
+                // クラスレベル定数 MaxRequestJsonBytes (1MB) で読み取りサイズに上限を設ける。
+                // ArrayPool 経由で長期生存・再利用される。
                 var buffer = ArrayPool<byte>.Shared.Rent(MaxRequestJsonBytes);
                 try
                 {
