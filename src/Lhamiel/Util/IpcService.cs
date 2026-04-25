@@ -150,11 +150,13 @@ public static class IpcService
                             if (n == 0) break; // EOF
                             totalRead += n;
                         }
-                        var json = Encoding.UTF8.GetString(buffer, 0, totalRead);
 
-                        if (!string.IsNullOrWhiteSpace(json))
+                        // ReadOnlySpan<byte> オーバーロードに直接渡すことで、
+                        // 最大 1MB に達しうる中間 string アロケーションを回避する。
+                        // System.Text.Json は UTF-8 バイト列を直接デシリアライズ可能。
+                        if (totalRead > 0)
                         {
-                            var args = JsonSerializer.Deserialize(json, AppJsonContext.Default.StringArray);
+                            var args = JsonSerializer.Deserialize(buffer.AsSpan(0, totalRead), AppJsonContext.Default.StringArray);
                             if (args != null)
                             {
                                 onArgsReceived(args);

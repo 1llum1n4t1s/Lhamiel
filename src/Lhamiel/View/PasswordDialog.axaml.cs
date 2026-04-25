@@ -87,12 +87,24 @@ public partial class PasswordDialog : Window
     /// <param name="archiveName">ユーザー表示用のアーカイブ名。</param>
     /// <param name="isRetry">直前の入力が間違っていて再試行する場合は true。</param>
     /// <param name="parentWindow">親ウィンドウ（null なら親なしで開く）。</param>
+    /// <param name="cancellationToken">展開処理のキャンセル要求と連動。発火時にダイアログを自動クローズしてユーザーがダイアログ前で操作不能にならないようにする。</param>
     /// <returns>入力されたパスワード。キャンセル時は null（AsyncPasswordQuery 側でキャンセル扱いになる）。</returns>
-    public static async Task<string?> ShowFromBackgroundAsync(string archiveName, bool isRetry, Window? parentWindow)
+    public static async Task<string?> ShowFromBackgroundAsync(string archiveName, bool isRetry, Window? parentWindow, CancellationToken cancellationToken = default)
     {
         return await Dispatcher.UIThread.InvokeAsync(async () =>
         {
             var dialog = new PasswordDialog(archiveName, isRetry);
+
+            // 展開キャンセル（DiskSpaceChecker / ユーザー Stop / タイムアウト等）が発生した場合に
+            // パスワード入力ダイアログが画面に残り続けないよう、CT 発火で UI スレッドへ Post して Close する。
+            using var ctReg = cancellationToken.Register(() =>
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (dialog.IsVisible) dialog.Close(false);
+                });
+            });
+
             bool ok;
             if (parentWindow != null)
             {

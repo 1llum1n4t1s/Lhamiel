@@ -926,7 +926,8 @@ public static class ArchiveExtractor
                     return string.Empty;
                 }
 
-                var pw = await View.PasswordDialog.ShowFromBackgroundAsync(archiveName, isRetry, parentWindow);
+                // cancellationToken を渡し、展開キャンセル時に PasswordDialog が画面に残らないようにする。
+                var pw = await View.PasswordDialog.ShowFromBackgroundAsync(archiveName, isRetry, parentWindow, cancellationToken);
                 if (pw is null)
                 {
                     System.Threading.Interlocked.Exchange(ref userCancelledPassword, 1);
