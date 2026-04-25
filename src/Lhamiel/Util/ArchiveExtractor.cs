@@ -360,6 +360,12 @@ public static class ArchiveExtractor
         if (string.IsNullOrEmpty(entryName)) return false;
 
         // Zip Slip ガード: パス区切り・絶対パス・UNC・ドライブレター・デバイスパスを拒否
+        // 先頭 `/` `\` チェックでカバーされる攻撃面:
+        //   - UNC パス: `\\server\share`、`\\?\C:\...`、`\\.\COM1` など先頭 `\\` 系は全て弾く
+        //   - 絶対パス先頭の `/`（POSIX 風）も弾く
+        // この後の Path.IsPathRooted で `C:\...` 等のドライブレター付き絶対パスを弾く。
+        // 順序が重要: 先頭文字チェックを先に行うことで、後の正規化で `\` が削られて
+        //            UNC が相対パスに化ける経路をブロックしている。
         if (entryName.StartsWith('/') || entryName.StartsWith('\\')) return false;
         if (Path.IsPathRooted(entryName)) return false;
 
@@ -899,15 +905,20 @@ public static class ArchiveExtractor
             // AsyncPasswordQuery の「UI スレッドから呼ぶな」制約に抵触しない。
             //
             // キャンセル追跡の必要性:
-            // ユーザーがダイアログで Cancel を押すと ShowFromBackgroundAsync は null を返す。
-            // 空文字で返しても 7z.dll は WrongPassword とみなし EncryptionException を投げるため、
-            // ここでユーザー意図によるキャンセルを記録し、Save() 後に OperationCanceledException に
-            // 変換する（「パスワードが違います」という誤解を招く通知を回避）。
+            // パスワード取得が中止される条件は 2 つ:
+            //   (1) ユーザーがダイアログで Cancel を押す → ShowFromBackgroundAsync が null
+            //   (2) 再試行上限（MaxPasswordAttempts）を超過 → 自動キャンセル扱い
+            // どちらも空文字を 7z.dll に返すため EncryptionException が投げられる。
+            // 「パスワードが違います」という誤解を招く通知を回避するため、
+            // 上記いずれかが発生したことをフラグ追跡し、Save() 後に
+            // OperationCanceledException に変換する。
             var archiveName = Path.GetFileName(archivePath);
             var attemptCount = 0;
-            // userCancelledPassword は PasswordDialog のコールバックスレッド（7z.dll 由来）から書き込まれ、
+            // passwordAcquisitionCancelled は PasswordDialog のコールバックスレッド（7z.dll 由来）から書き込まれ、
             // reader.Save() 例外ハンドラ側のスレッドから読み取られるため、
             // volatile 相当のメモリ可視性保証が必要。attemptCount と対称に Interlocked で扱う。
+            // 命名: 「ユーザーキャンセル」だけでなく「再試行上限超過」も 1 で表す（パスワード取得が中止された
+            //       原因を問わず追跡）。旧名 userCancelledPassword は前者だけを示唆するため改名。
             //
             // CS1628 について（レビュー bot の誤検知対策コメント）:
             // この変数は直下のラムダ（passwordQuery）にキャプチャされるため、コンパイラによって
@@ -916,7 +927,7 @@ public static class ArchiveExtractor
             // CS1628 は async メソッドの ref/out パラメータを await を跨いで使う場合の制限であり、
             // 「captured local への ref」とは別。Volatile.Read は同期 catch when フィルタ内で
             // 使われており、await を跨ぐ可能性もない。実ビルドも 0 errors / 0 warnings。
-            var userCancelledPassword = 0;
+            var passwordAcquisitionCancelled = 0;
             // 再試行上限: 悪意あるアーカイブや構造的に誤判定されるアーカイブでの無限ダイアログループを防ぐ
             const int MaxPasswordAttempts = 3;
             var passwordQuery = new AsyncPasswordQuery(async _ =>
@@ -928,7 +939,7 @@ public static class ArchiveExtractor
                 if (currentAttempt > MaxPasswordAttempts)
                 {
                     Logger.Log($"パスワード入力上限（{MaxPasswordAttempts}回）を超えたため展開を中止します", LogLevel.Warning);
-                    System.Threading.Interlocked.Exchange(ref userCancelledPassword, 1);
+                    System.Threading.Interlocked.Exchange(ref passwordAcquisitionCancelled, 1);
                     return string.Empty;
                 }
 
@@ -936,7 +947,7 @@ public static class ArchiveExtractor
                 var pw = await View.PasswordDialog.ShowFromBackgroundAsync(archiveName, isRetry, parentWindow, cancellationToken);
                 if (pw is null)
                 {
-                    System.Threading.Interlocked.Exchange(ref userCancelledPassword, 1);
+                    System.Threading.Interlocked.Exchange(ref passwordAcquisitionCancelled, 1);
                     // 空文字を返すと AsyncPasswordQuery 側で Cancel=true にマップされる
                     return string.Empty;
                 }
@@ -998,7 +1009,7 @@ public static class ArchiveExtractor
                 {
                     reader.Save(tempOutputPath, progress);
                 }
-                catch (EncryptionException) when (System.Threading.Volatile.Read(ref userCancelledPassword) == 1)
+                catch (EncryptionException) when (System.Threading.Volatile.Read(ref passwordAcquisitionCancelled) == 1)
                 {
                     // ユーザーがパスワードダイアログで Cancel を押した結果、または再試行上限超過で
                     // 自動キャンセルされた結果としての EncryptionException。

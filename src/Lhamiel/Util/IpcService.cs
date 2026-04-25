@@ -45,6 +45,13 @@ public static class IpcService
     private const int RequestReadTimeoutMs = 1500;
 
     /// <summary>
+    /// IPC リクエストの JSON 読み取り上限（バイト）。
+    /// 1MB だった旧設計は LOH 境界（85KB）超えで GC 圧迫の原因になっていたため、
+    /// Windows コマンドライン上限（~32KB）の 2 倍に縮小。SOH に収まる。
+    /// </summary>
+    private const int MaxRequestJsonBytes = 64 * 1024;
+
+    /// <summary>
     /// 引数を既存のインスタンスに送信する。
     /// 接続失敗時は少し待ってリトライする（サーバー側のパイプ再生成の隙間に落ちるのを避けるため）。
     /// </summary>
@@ -159,15 +166,8 @@ public static class IpcService
 
                 // PipeOptions.CurrentUserOnly で外部ユーザーの攻撃は防げるが、同一ユーザーの
                 // バグったプロセスや誤動作による大量送信でメモリ枯渇するのを防ぐため、
-                // 読み取りサイズに上限を設ける。
-                //
-                // 64KB は実用上十分: コマンドライン引数として渡される JSON は典型的に数 KB、
-                // 異常時でも数 10 KB に収まる。Windows のコマンドライン上限は約 32 KB であり、
-                // それを 2 倍カバーする 64KB なら正規利用は確実に通り、悪意ある巨大 JSON は弾ける。
-                // 旧 1MB 設計は LOH 境界（85KB）超えで GC 圧迫の原因になっていた。
-                // ArrayPool は要求サイズ以上のバッファを返すが、64KB なら SOH（gen0）に収まる。
-                const int MaxJsonBytes = 64 * 1024;
-                var buffer = ArrayPool<byte>.Shared.Rent(MaxJsonBytes);
+                // クラスレベル定数 MaxRequestJsonBytes (64KB) で読み取りサイズに上限を設ける。
+                var buffer = ArrayPool<byte>.Shared.Rent(MaxRequestJsonBytes);
                 try
                 {
                     // 個別リクエスト処理は専用 try/catch で囲む。
@@ -183,9 +183,9 @@ public static class IpcService
                     try
                     {
                         var totalRead = 0;
-                        while (totalRead < MaxJsonBytes)
+                        while (totalRead < MaxRequestJsonBytes)
                         {
-                            var n = await server.ReadAsync(buffer.AsMemory(totalRead, MaxJsonBytes - totalRead), readCts.Token);
+                            var n = await server.ReadAsync(buffer.AsMemory(totalRead, MaxRequestJsonBytes - totalRead), readCts.Token);
                             if (n == 0) break; // EOF
                             totalRead += n;
                         }
