@@ -268,11 +268,24 @@ public partial class App : Application
         try
         {
             var currentProcess = Process.GetCurrentProcess();
-            var otherProcess = Process.GetProcessesByName(currentProcess.ProcessName).FirstOrDefault(p => p.Id != currentProcess.Id);
+            var currentSessionId = currentProcess.SessionId;
+
+            // 重要: SessionId で同一セッションのプロセスに絞り込む。
+            // Mutex / IPC パイプはどちらも `Local\` / SessionId 付きでセッションスコープ化されているため、
+            // 「既存インスタンス」も同一セッション内のものに限定しないと、RDP + console で
+            // 別セッションの Lhamiel を選んでしまい SetForegroundWindow が空振り→そのまま終了
+            // という経路が成立する。
+            var otherProcess = Process.GetProcessesByName(currentProcess.ProcessName)
+                .FirstOrDefault(p =>
+                {
+                    if (p.Id == currentProcess.Id) return false;
+                    try { return p.SessionId == currentSessionId; }
+                    catch { return false; } // 権限不足等で SessionId 取得不能なプロセスは対象外
+                });
 
             if (otherProcess != null)
             {
-                Logger.Log($"既存インスタンスを見つけました。PID: {otherProcess.Id}");
+                Logger.Log($"既存インスタンスを見つけました。PID: {otherProcess.Id} (Session: {currentSessionId})");
 
                 // メインウィンドウをアクティブ化（NativeMethods を使用）
                 try
