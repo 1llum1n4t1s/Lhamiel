@@ -19,6 +19,11 @@ public partial class FileConflictDialog : Window
     private readonly string[] _columnNames;
     private readonly bool _isTwoPane;
 
+    // ダイアログ Close 時にアイコン遅延ロードを停止するためのソース。
+    // ユーザーが大量衝突 (例: 数千件) のダイアログを即座に閉じた場合、
+    // バックグラウンドの SHGetFileInfo 呼び出しが続いて無駄なリソースを消費するのを防ぐ。
+    private readonly CancellationTokenSource _iconLoadCts = new();
+
     public FileConflictDialog() : this([], true) { }
 
     /// <param name="conflictGroups">競合グループ</param>
@@ -138,18 +143,27 @@ public partial class FileConflictDialog : Window
         // ダイアログ表示後にアイコンをバックグラウンドでバッチロードする。
         // ハンドラを async void にすると例外がフレームワーク側で握り潰されるため
         // fire-and-forget + ContinueWith で例外をログに残す。
-        Opened += (_, _) => _ = LoadAllIconsAsync()
+        Opened += (_, _) => _ = LoadAllIconsAsync(_iconLoadCts.Token)
             .ContinueWith(
                 t => Logger.LogException("FileConflictDialog のアイコン遅延ロードに失敗", t.Exception!),
                 CancellationToken.None,
                 TaskContinuationOptions.OnlyOnFaulted,
                 TaskScheduler.Default);
+
+        // ダイアログが閉じられた時点でアイコンロードを打ち切り、CTS を破棄する。
+        // Closed は Window のライフサイクル末端で発火するため、ここで Cancel すれば
+        // バックグラウンドの Parallel.ForEachAsync ループが OperationCanceledException で抜ける。
+        Closed += (_, _) =>
+        {
+            _iconLoadCts.Cancel();
+            _iconLoadCts.Dispose();
+        };
     }
 
     /// <summary>
     /// 全セルのアイコンをバックグラウンドで取得する。
     /// </summary>
-    private async Task LoadAllIconsAsync()
+    private async Task LoadAllIconsAsync(CancellationToken cancellationToken)
     {
         // SelectMany で配列を行ごとに new するのを避け、単純な foreach で詰める。
         var cells = new List<ConflictCellViewModel>(_rows.Count * 2);
@@ -162,11 +176,23 @@ public partial class FileConflictDialog : Window
         // Parallel.ForEachAsync は内部で MaxDegreeOfParallelism を超えない範囲でしか
         // Task を生成しないため、全 cells 分の Task を事前にリスト化する必要がない。
         // SemaphoreSlim + Task.Run の自前実装より省メモリかつ簡潔。
-        var options = new ParallelOptions { MaxDegreeOfParallelism = ArchiveProgressHelper.IoBoundParallelism };
-        await Parallel.ForEachAsync(cells, options, async (cell, _) =>
+        var options = new ParallelOptions
         {
-            await cell.LoadIconAsync();
-        });
+            MaxDegreeOfParallelism = ArchiveProgressHelper.IoBoundParallelism,
+            CancellationToken = cancellationToken,
+        };
+        try
+        {
+            await Parallel.ForEachAsync(cells, options, async (cell, ct) =>
+            {
+                ct.ThrowIfCancellationRequested();
+                await cell.LoadIconAsync();
+            });
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // ダイアログ Close によるキャンセルは正常系。エラーログは出さない。
+        }
     }
 
     private void InitializeComponent() => AvaloniaXamlLoader.Load(this);

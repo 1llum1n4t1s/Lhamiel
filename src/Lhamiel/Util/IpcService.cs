@@ -135,22 +135,33 @@ public static class IpcService
                 var buffer = ArrayPool<byte>.Shared.Rent(MaxJsonBytes);
                 try
                 {
-                    var totalRead = 0;
-                    while (totalRead < MaxJsonBytes)
+                    // 個別リクエスト処理は専用 try/catch で囲む。
+                    // 不正な JSON / Deserialize 失敗 / onArgsReceived ハンドラ内例外などが
+                    // 外側 catch まで伝搬すると、構造的エラー（パイプ破損等）と同じく 100ms 待機経路に
+                    // 落ちて応答性が悪化するため、リクエスト単位で握って次接続待ちに進む。
+                    try
                     {
-                        var n = await server.ReadAsync(buffer.AsMemory(totalRead, MaxJsonBytes - totalRead), cancellationToken);
-                        if (n == 0) break; // EOF
-                        totalRead += n;
-                    }
-                    var json = Encoding.UTF8.GetString(buffer, 0, totalRead);
-
-                    if (!string.IsNullOrWhiteSpace(json))
-                    {
-                        var args = JsonSerializer.Deserialize(json, AppJsonContext.Default.StringArray);
-                        if (args != null)
+                        var totalRead = 0;
+                        while (totalRead < MaxJsonBytes)
                         {
-                            onArgsReceived(args);
+                            var n = await server.ReadAsync(buffer.AsMemory(totalRead, MaxJsonBytes - totalRead), cancellationToken);
+                            if (n == 0) break; // EOF
+                            totalRead += n;
                         }
+                        var json = Encoding.UTF8.GetString(buffer, 0, totalRead);
+
+                        if (!string.IsNullOrWhiteSpace(json))
+                        {
+                            var args = JsonSerializer.Deserialize(json, AppJsonContext.Default.StringArray);
+                            if (args != null)
+                            {
+                                onArgsReceived(args);
+                            }
+                        }
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        Logger.LogException("IPC リクエスト処理に失敗（次接続待ちに進む）", ex);
                     }
                 }
                 finally
