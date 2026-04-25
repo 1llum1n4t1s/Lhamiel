@@ -118,6 +118,18 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ## 更新履歴
 
+### v1.0.162 (2026-04-25)
+
+- **/rere 6 人分隊レビュー指摘 33 件を再適用 + 17 ラウンドのレビュー反映** — v1.0.161 ベースに対して PR #47 の 33 件を再提出（PR #48）し、CodeRabbit / Gemini / Codex の 17 ラウンド指摘を順次反映。主な変更:
+  - **セキュリティ**: `IsSystemCriticalDirectory` のサブディレクトリ未保護バグ修正（`C:\Windows\System32\drivers` 等が settings.json 改竄経由で素通りしていた経路を `StartsWith` ベース + Subdir/Exact 2 段分割で塞いだ）/ Mutex（`Local\` プレフィックス）+ IPC パイプ名（`_S<SessionId>` 付与）+ `ActivateExistingInstance` のセッションスコープ統一 / NTFS ADS（`:`）拒否 / `--format` 引数の allow-list 検証 / CRDebugger.Avalonia をリリースバイナリから除外
+  - **障害耐性**: Settings 破損時の段階的フォールバック（Move → Delete → 空 JSON 上書き）/ Logger 未初期化時のサイレント握りつぶし対策 / `PasswordDialog` の Cancel-前-Show Race 解消 / `FileConflictDialog` 二重 Closed 冪等化 / IPC タイムアウト逆転（`RequestReadTimeoutMs > ConnectTotalTimeoutMs`）解消
+  - **設定永続化**: 出力先設定の `Directory.Exists` チェックを撤去し、未接続 NAS / USB ドライブが Desktop へサイレントリセットされる経路を解消
+  - **CI**: `gh release create` に `--target ${{ github.sha }}` を明示（タグが既定ブランチ HEAD ではなく push 対象 commit に固定される）
+  - **パフォーマンス**: `PathValidator` の重複コードを `ResolveNormalizedCandidates` / `IsAnyCandidateProtected` に共通化 / IPC リクエストの `Span<byte>` 直接 Deserialize / `ArrayPool` 経由バッファ管理 / `Parallel.ForEachAsync` への移行
+  - **ドキュメント**: SETTINGS_SCHEMA.md / CLAUDE.md / AGENTS.md の整合性回復、サイレントスキップ xUnit を `Assert.SkipUnless` 化
+- **テストカバレッジ強化** — `IsSystemCriticalDirectory` 直接テスト 11 件、Theme 正規化テスト 3 件、UpdateChannel canonical テスト 1 件等を追加し 555 → 568 件
+- **総コミット数**: PR #48 で 17 ラウンドにわたる修正を 28 ファイル / +1713 / -264 行で squash merge
+
 ### v1.0.161 (2026-04-25)
 
 - **v1.0.160 を取り下げ、v1.0.159 の状態で再リリース** — v1.0.160 で取り込んだ修正に不具合が確認されたため、当該変更を revert し、v1.0.159 と同等のコード状態に戻したうえで再リリース。v1.0.160 の GitHub Releases / タグは削除済み
