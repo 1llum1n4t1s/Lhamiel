@@ -95,27 +95,11 @@ public static class Logger
 
         Log("Logger initialized with SuperLightLogger (File Target)", LogLevel.Debug);
 
-        // ファイル I/O を含むクリーンアップ処理は起動クリティカルパスから外す。
-        // Task.Run で非同期化して、%LocalAppData% が OneDrive 同期や
-        // Defender スキャンで遅い環境でも起動を止めない。
-        var logDirectory = config.LogDirectory;
-        var filePrefix = config.FilePrefix;
-        var retentionDays = config.RetentionDays;
-        _ = Task.Run(() =>
-        {
-            try
-            {
-                // 過去のバグで作成された不要な "0" ファイルを削除
-                CleanupStaleFile(Path.Combine(logDirectory, "0"));
+        // 過去のバグで作成された不要な "0" ファイルを削除
+        CleanupStaleFile(Path.Combine(config.LogDirectory, "0"));
 
-                // 保持期間を超えた古いログファイルを削除
-                CleanupOldLogFiles(logDirectory, filePrefix, retentionDays);
-            }
-            catch
-            {
-                // ベストエフォート: 起動パスを絶対に止めない
-            }
-        });
+        // 保持期間を超えた古いログファイルを削除
+        CleanupOldLogFiles(config.LogDirectory, config.FilePrefix, config.RetentionDays);
     }
 
     /// <summary>

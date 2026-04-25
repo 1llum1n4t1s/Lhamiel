@@ -7,7 +7,48 @@ namespace Lhamiel.Util;
 /// </summary>
 public static class ArchiveProcessor
 {
-    // 進捗ディスパッチ系のヘルパは ArchiveProgressHelper.cs に分離。
+    /// <summary>
+    /// ProgressInfo を ProgressWindow にディスパッチする共通ヘルパー。
+    /// 不確定進捗はマーキー表示、確定進捗はパーセンテージ更新。
+    /// </summary>
+    private static void DispatchProgress(ProgressWindow? progressWindow, ProgressInfo info)
+    {
+        if (info.IsIndeterminate)
+            Dispatcher.UIThread.Post(() => progressWindow?.SetIndeterminate(info.Status));
+        else
+            Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage));
+    }
+
+    /// <summary>
+    /// 並列処理時の進捗マッピングを作成する。
+    /// 完了済み件数をベースラインとし、処理中の個別進捗を加算して全体進捗を計算する。
+    /// </summary>
+    private static IProgress<ProgressInfo> CreateMappedProgress(
+        int totalCount, object lockObject, Func<int> getCompletedCount, ProgressWindow? progressWindow, ProgressThrottler? sharedThrottler = null)
+    {
+        if (totalCount == 1)
+            return new Progress<ProgressInfo>(info => DispatchProgress(progressWindow, info));
+
+        // 並列処理時は共有スロットラーで全タスク横断のUIスレッド負荷を軽減
+        var throttler = sharedThrottler ?? new ProgressThrottler();
+
+        return new Progress<ProgressInfo>(info =>
+        {
+            if (info.IsIndeterminate)
+            {
+                Dispatcher.UIThread.Post(() => progressWindow?.SetIndeterminate(info.Status));
+                return;
+            }
+            int baseline;
+            lock (lockObject)
+            {
+                baseline = getCompletedCount();
+            }
+            var overallProgress = (int)((baseline + info.Percentage / 100.0) / totalCount * 100);
+            if (throttler.ShouldReport(overallProgress))
+                Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(overallProgress));
+        });
+    }
 
     /// <summary>
     /// アーカイブファイルの展開処理を実行
@@ -21,7 +62,7 @@ public static class ArchiveProcessor
     /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <param name="settingsSnapshot">設定のスナップショット（バッチ処理時に呼び出し側で 1 回だけ取得して渡すと、各ファイルごとのロック競合＆アロケを削減できる）</param>
-    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, ProgressWindow? progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true, Settings? settingsSnapshot = null)
+    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true, Settings? settingsSnapshot = null)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}");
 
@@ -45,7 +86,7 @@ public static class ArchiveProcessor
                 if (progress == null && progressWindow != null)
                 {
                     progress = new Progress<ProgressInfo>(info =>
-                        ArchiveProgressHelper.DispatchProgress(progressWindow, info));
+                        DispatchProgress(progressWindow, info));
                 }
 
                 // ファイル拡張子の確認（ArchiveExtractor.SupportedExtensions を参照して重複管理を回避）
@@ -142,15 +183,12 @@ public static class ArchiveProcessor
                     }
 
                     // 一時フォルダ方式（上書き確認あり）or 直接展開
-                    // structureInfo.TotalUncompressedSize は GetArchiveStructureInfo で計算済み。
-                    // ExtractArchiveAsync 側で再度 reader を開いて Items を走査するのを避ける。
                     await ArchiveExtractor.ExtractArchiveAsync(filePath, outputPath,
                         progress,
                         progressWindow,
                         cancellationToken,
                         overwriteCheckPaths,
-                        progressWindow,
-                        structureInfo.TotalUncompressedSize);
+                        progressWindow);
 
                     if (closeWindowOnCompletion)
                     {
@@ -188,7 +226,7 @@ public static class ArchiveProcessor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <returns>成功したアーカイブのソースパス、展開先パス、構造情報のリスト。すべて失敗した場合は空のリスト</returns>
-    public static async Task<List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, ProgressWindow? progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    public static async Task<List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>> ExtractArchivesAsync(string[] filePaths, string outputDir, bool outputToSameDirectory, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
         var results = new List<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)>();
         try
@@ -199,7 +237,7 @@ public static class ArchiveProcessor
             var lockObject = new object();
 
             // ディスクI/O負荷を考慮し、並列数をCPUコア数ではなく制限
-            var maxDegreeOfParallelism = ArchiveProgressHelper.IoBoundParallelism;
+            var maxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount / 2, 2, 4);
             using var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
 
             Logger.Log($"複数ファイル展開開始: {totalCount}個のファイル、最大並列度={maxDegreeOfParallelism}");
@@ -221,7 +259,7 @@ public static class ArchiveProcessor
                     acquired = true;
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var mappedProgress = ArchiveProgressHelper.CreateMappedProgress(
+                    var mappedProgress = CreateMappedProgress(
                         totalCount, lockObject, () => successCount + failedFiles.Count, progressWindow, sharedThrottler);
 
                     var extractResult = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false, settingsSnapshot: sharedSettings);
@@ -332,12 +370,8 @@ public static class ArchiveProcessor
             return false;
         }
 
-        // ProgressWindow のキャンセルと呼び出し元のキャンセルを両方尊重するためリンクする。
-        // 旧実装は progressWindow!=null のとき引数の cancellationToken を無視していた。
-        using var linkedCts = progressWindow != null
-            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, progressWindow.GetCancellationToken())
-            : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var actualCancellationToken = linkedCts.Token;
+        // ProgressWindow からキャンセルトークンを取得（UIスレッドで事前に取得）
+        var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
 
         // 重い処理全体を Task.Run でバックグラウンドへ移動
         return await Task.Run(async () =>
@@ -417,7 +451,7 @@ public static class ArchiveProcessor
                 // ラップと無駄なアロケ・同期コンテキスト転送を避ける。null のときだけ
                 // progressWindow への DispatchProgress 用ラッパを 1 個だけ作る。
                 IProgress<ProgressInfo> compressionProgress = progressReporter
-                    ?? new Progress<ProgressInfo>(info => ArchiveProgressHelper.DispatchProgress(progressWindow, info));
+                    ?? new Progress<ProgressInfo>(info => DispatchProgress(progressWindow, info));
 
                 // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示。
                 // 設定は処理開始時点でスナップショット化し、以降の処理全体で一貫性を保つ。
@@ -631,7 +665,7 @@ public static class ArchiveProcessor
                     acquired = true;
                     actualCancellationToken.ThrowIfCancellationRequested();
 
-                    var innerProgress = ArchiveProgressHelper.CreateMappedProgress(
+                    var innerProgress = CreateMappedProgress(
                         totalCount, lockObject, () => successCount + failedPaths.Count, progressWindow, sharedThrottler);
 
                     // 事前計算された出力パスを使用して圧縮処理を実行（共有スナップショットを再利用）

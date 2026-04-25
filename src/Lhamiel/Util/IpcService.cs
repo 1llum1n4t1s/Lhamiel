@@ -57,11 +57,7 @@ public static class IpcService
 
                 await client.WriteAsync(buffer, cancellationToken);
 
-                // FlushAsync でキャンセルトークンを伝搬させたうえで、
-                // WaitForPipeDrain でパイプ他端が受信完了するまで同期待機。
-                // ローカル Named Pipe なので WaitForPipeDrain は即時返ることが多く、
-                // ここでブロックしても実測影響は小さい。
-                await client.FlushAsync(cancellationToken);
+                // 書き込み完了を確実にする
                 client.WaitForPipeDrain();
                 return true;
             }
@@ -125,26 +121,17 @@ public static class IpcService
                 // 接続を待機
                 await server.WaitForConnectionAsync(cancellationToken);
 
-                // PipeOptions.CurrentUserOnly で外部ユーザーの攻撃は防げるが、同一ユーザーの
-                // バグったプロセスや誤動作による大量送信でメモリ枯渇するのを防ぐため、
-                // 読み取りサイズに上限を設ける。コマンドライン引数の JSON は通常数 KB で収まる。
-                const int MaxJsonBytes = 1 * 1024 * 1024;
-                var buffer = new byte[MaxJsonBytes];
-                var totalRead = 0;
-                while (totalRead < MaxJsonBytes)
+                using (var reader = new StreamReader(server, Encoding.UTF8, leaveOpen: true))
                 {
-                    var n = await server.ReadAsync(buffer.AsMemory(totalRead, MaxJsonBytes - totalRead), cancellationToken);
-                    if (n == 0) break; // EOF
-                    totalRead += n;
-                }
-                var json = Encoding.UTF8.GetString(buffer, 0, totalRead);
+                    var json = await reader.ReadToEndAsync(cancellationToken);
 
-                if (!string.IsNullOrWhiteSpace(json))
-                {
-                    var args = JsonSerializer.Deserialize(json, AppJsonContext.Default.StringArray);
-                    if (args != null)
+                    if (!string.IsNullOrWhiteSpace(json))
                     {
-                        onArgsReceived(args);
+                        var args = JsonSerializer.Deserialize(json, AppJsonContext.Default.StringArray);
+                        if (args != null)
+                        {
+                            onArgsReceived(args);
+                        }
                     }
                 }
 

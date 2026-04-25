@@ -47,15 +47,9 @@ public static class DiskSpaceChecker
         try
         {
             using var reader = new ArchiveReader(archivePath);
-            // item.Length の型に依存せず必ず long 加算するためキャストを明示。
-            // 2GB 超の展開時に int Sum でのオーバーフローを防ぐ。
-            long total = 0;
-            foreach (var item in reader.Items)
-            {
-                if (item.IsDirectory) continue;
-                total += (long)item.Length;
-            }
-            return total;
+            return reader.Items
+                .Where(item => !item.IsDirectory)
+                .Sum(item => item.Length);
         }
         catch (Exception ex)
         {

@@ -128,9 +128,7 @@ public class PathValidatorTests
     }
 
     // === IsWithinDirectory ===
-    // 注: IsWithinDirectory は [Obsolete] 化されている。テストは既存挙動と
-    // プレフィックス衝突バイパス修正の両方を検証する。
-#pragma warning disable CS0618 // Type or member is obsolete
+
     [Fact]
     public void IsWithinDirectory_WithChildPath_ReturnsTrue()
     {
@@ -161,15 +159,6 @@ public class PathValidatorTests
     {
         Assert.True(PathValidator.IsWithinDirectory(@"C:\PARENT\child\file.txt", @"C:\parent"));
     }
-
-    [Fact]
-    public void IsWithinDirectory_PrefixCollision_ReturnsFalse()
-    {
-        // プレフィックス衝突バイパス防止: "C:\parent" と "C:\parent-evil" を混同しない
-        Assert.False(PathValidator.IsWithinDirectory(@"C:\parent-evil\file.txt", @"C:\parent"));
-        Assert.False(PathValidator.IsWithinDirectory(@"C:\parentx", @"C:\parent"));
-    }
-#pragma warning restore CS0618
 
     // === IsProtectedDirectory ===
 

@@ -65,7 +65,6 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 | `FileConflictDialog.axaml` | ファイル衝突解決。展開時（2ペイン比較）と圧縮時（グリッドリスト）の両モード |
 | `ErrorRecoveryDialog.axaml` | エラー発生時のリトライ/スキップ選択 |
 | `DiskSpaceDialog.axaml` | ディスク容量不足時の一時停止・再開/キャンセル |
-| `PasswordDialog.axaml` | パスワード保護アーカイブの入力ダイアログ。誤入力時は再試行表示、最大 3 回で自動キャンセル |
 
 ### ViewModel Layer
 
@@ -101,12 +100,6 @@ D&D → MainWindowViewModel.ProcessDroppedPathsAsync
     → 既存ファイルあり？ → ExtractViaTempFolderAsync:
         一時フォルダに展開 → 衝突検出 → FileConflictDialog → 選択的移動
       既存ファイルなし？ → ExtractArchive（直接展開）
-        └─ 暗号化エントリ検出時:
-           ArchiveReader が ICryptoGetTextPassword コールバック発火
-             → AsyncPasswordQuery → PasswordDialog.ShowFromBackgroundAsync
-               → OK: パスワードを 7z.dll に返却 / NG: 次回再試行（最大 3 回）
-               → Cancel or 上限超過: userCancelledPassword=1 → EncryptionException を
-                 OperationCanceledException に変換して上位へ伝搬
 ```
 
 ### 圧縮フロー

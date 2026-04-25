@@ -80,7 +80,7 @@ public partial class App : Application
         InitializeComponent();
 
         // SettingsManager を先に初期化（コンストラクタ内で Logger.Initialize も実行される）
-        var settings = SettingsManager.Instance.CreateSnapshot();
+        var settings = SettingsManager.Instance.Current;
 
         // テーマ設定を適用
         RequestedThemeVariant = GetThemeVariant(settings.Theme);
@@ -113,10 +113,8 @@ public partial class App : Application
             // メソッド冒頭でコマンドライン引数を一度取得
             var startupArgs = Environment.GetCommandLineArgs().Skip(1).ToArray();
 
-            // メインウィンドウの多重起動チェック。
-            // Local\ プレフィックスでセッションローカルに限定し、別セッション/別ユーザーによる
-            // Mutex 先取りでのサービス妨害（DoS）を防ぐ。
-            const string mutexName = @"Local\Lhamiel_MainWindow_SingleInstance";
+            // メインウィンドウの多重起動チェック
+            const string mutexName = "Lhamiel_MainWindow_SingleInstance";
 
             try
             {
@@ -163,14 +161,7 @@ public partial class App : Application
 
             // 初回起動時は IPC サーバーを開始して後続インスタンスからの引数を待機
             _ipcCts = new CancellationTokenSource();
-            // fire-and-forget で捨てた Task が予期せぬ例外で黙って停止すると
-            // シングルインスタンス引継ぎが機能しなくなるため、ContinueWith でログ出力
-            _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token)
-                .ContinueWith(
-                    t => Logger.LogException("IPCサーバーが予期せず停止しました", t.Exception!),
-                    CancellationToken.None,
-                    TaskContinuationOptions.OnlyOnFaulted,
-                    TaskScheduler.Default);
+            _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token);
 
             // 前回の実行で残存した一時ディレクトリを掃除する（OneDrive 同期フォルダや中断時対策）
             _ = Task.Run(() => Util.TempCleanup.CleanupOrphanedTempDirectories());
@@ -331,7 +322,7 @@ public partial class App : Application
 
         if (validPaths.Count == 0) return;
 
-        var settings = SettingsManager.Instance.CreateSnapshot();
+        var settings = SettingsManager.Instance.Current;
 
         // すべてアーカイブで圧縮形式未指定なら個別展開
         if (compressionFormat == "default" && ArchiveExtractor.AreAllSupportedArchives(validPaths))
@@ -484,7 +475,7 @@ public partial class App : Application
             }
 
             // 設定を読み込み
-            var settings = SettingsManager.Instance.CreateSnapshot();
+            var settings = SettingsManager.Instance.Current;
 
             // ファイルかフォルダかを判定して適切な処理を実行
             if (File.Exists(path))
@@ -778,51 +769,20 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 既にロード済みのロケール辞書をキャッシュ。同じロケールへの再切替時にディスク I/O と
-    /// XAML パースを回避する。
-    /// </summary>
-    private readonly Dictionary<string, IResourceProvider> _localeCache = new(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>現在アクティブなロケールキー。</summary>
-    private string? _activeLocaleKey;
-
-    /// <summary>
-    /// 選択ロケールのみオンデマンドで読み込み、<see cref="MergedDictionaries"/> に挿入する。
-    /// 前回ロード済みの辞書はプロセス内でキャッシュして再パースを避ける。
+    /// ロケールを実際に適用する（インスタンスメソッド。コンストラクタからも安全に呼べる）
     /// </summary>
     /// <param name="localeKey">ロケールキー（"ja_JP", "en_US" など）</param>
     private void ApplyLocale(string localeKey)
     {
-        if (string.IsNullOrEmpty(localeKey)) return;
-        if (string.Equals(_activeLocaleKey, localeKey, StringComparison.OrdinalIgnoreCase)) return;
-
-        IResourceProvider? targetLocale;
-        if (!_localeCache.TryGetValue(localeKey, out targetLocale))
-        {
-            try
-            {
-                var uri = new Uri($"avares://Lhamiel/Resources/Locales/{localeKey}.axaml");
-                if (AvaloniaXamlLoader.Load(uri) is not IResourceProvider loaded)
-                {
-                    Util.Logger.Log($"ロケール辞書のロードに失敗（IResourceProvider にキャストできない）: {localeKey}", Util.LogLevel.Warning);
-                    return;
-                }
-                targetLocale = loaded;
-                _localeCache[localeKey] = targetLocale;
-            }
-            catch (Exception ex)
-            {
-                Util.Logger.LogException($"ロケール辞書のロードに失敗: {localeKey}", ex);
-                return;
-            }
-        }
+        if (Resources[localeKey] is not IResourceProvider targetLocale ||
+            targetLocale == _activeLocale)
+            return;
 
         if (_activeLocale != null)
             Resources.MergedDictionaries.Remove(_activeLocale);
 
         Resources.MergedDictionaries.Add(targetLocale);
         _activeLocale = targetLocale;
-        _activeLocaleKey = localeKey;
     }
 
     /// <summary>
