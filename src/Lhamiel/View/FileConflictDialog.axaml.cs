@@ -153,10 +153,20 @@ public partial class FileConflictDialog : Window
         // ダイアログが閉じられた時点でアイコンロードを打ち切り、CTS を破棄する。
         // Closed は Window のライフサイクル末端で発火するため、ここで Cancel すれば
         // バックグラウンドの Parallel.ForEachAsync ループが OperationCanceledException で抜ける。
+        //
+        // 冪等化: Avalonia 12 で Window.Close() が複数回呼ばれた場合（OverwriteAll → Close、
+        // 同時に何かが Close 呼ぶ等）に Closed が 2 回発火する経路で、2 回目の Cancel/Dispose が
+        // ObjectDisposedException を投げる懸念がある。例外を握って黙らせる。
         Closed += (_, _) =>
         {
-            _iconLoadCts.Cancel();
-            _iconLoadCts.Dispose();
+            try
+            {
+                if (!_iconLoadCts.IsCancellationRequested)
+                    _iconLoadCts.Cancel();
+            }
+            catch (ObjectDisposedException) { /* 二重 Closed の 2 回目: 既に Dispose 済み */ }
+            try { _iconLoadCts.Dispose(); }
+            catch (ObjectDisposedException) { /* 同上 */ }
         };
     }
 

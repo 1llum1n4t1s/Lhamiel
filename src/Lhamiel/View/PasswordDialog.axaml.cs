@@ -93,6 +93,12 @@ public partial class PasswordDialog : Window
     {
         return await Dispatcher.UIThread.InvokeAsync(async () =>
         {
+            // 早期キャンセル: ShowDialog 開始前に既に CT がキャンセル済みの場合、
+            // Register コールバックが「dialog.IsVisible = false（まだ表示前）」のため Close をスキップ
+            // → ShowDialog でダイアログが表示 → 永続的に閉じられず UI フリーズ、
+            // という Race パスを塞ぐため、最初に IsCancellationRequested を見て即抜ける。
+            if (cancellationToken.IsCancellationRequested) return null;
+
             var dialog = new PasswordDialog(archiveName, isRetry);
 
             // 展開キャンセル（DiskSpaceChecker / ユーザー Stop / タイムアウト等）が発生した場合に
@@ -104,6 +110,12 @@ public partial class PasswordDialog : Window
                     if (dialog.IsVisible) dialog.Close(false);
                 });
             });
+
+            // Register 直後にもう一度確認: Register が同期コールバックを発火する仕様により、
+            // 上の Register 中に CT が発火した場合の Close Post は走るが、
+            // dialog がまだ表示前なら IsVisible=false で空振りする。
+            // ShowDialog を呼ぶ前にここで再度ガード。
+            if (cancellationToken.IsCancellationRequested) return null;
 
             bool ok;
             if (parentWindow != null)
