@@ -175,14 +175,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.version.outputs.tag }}
           VERSION: ${{ needs.version.outputs.version }}
+          # --target を指定しないと gh CLI はタグを既定ブランチ (main) HEAD に作成する。
+          # 本ワークフローは release/** ブランチへの push をトリガーにしており、リリースバイナリは
+          # release/x.y.z 上の commit からビルドされるため、tag が main を指すと
+          # 「配信バイナリの commit と git tag が乖離」してロールバック / bisect / SBUM 突合が壊れる。
+          # --generate-notes の範囲もズレるため、必ず push 対象の commit を target に固定する。
+          TARGET_SHA: ${{ github.sha }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "既存 publish 済みリリース $TAG が存在 → アーティファクトを --clobber で更新"
             gh release upload "$TAG" packages/* --clobber
           else
-            echo "新規 draft リリース $TAG を作成"
+            echo "新規 draft リリース $TAG を作成 (target=$TARGET_SHA)"
             gh release create "$TAG" \
               --draft \
+              --target "$TARGET_SHA" \
               -t "Lhamiel $VERSION" \
               --generate-notes
             gh release upload "$TAG" packages/*

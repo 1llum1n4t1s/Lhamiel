@@ -149,12 +149,18 @@ public class SettingsEdgeCaseTests
     }
 
     [Fact]
-    public void SanitizeAfterLoad_NonExistentOutputDirectory_FallsBackToDesktop()
+    public void SanitizeAfterLoad_UnmountedDriveOutputDirectory_PreservedNotOverwritten()
     {
-        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-        var settings = new Settings { ExtractionOutputDirectory = @"Z:\NonExistent\Path\xyz_not_real" };
+        // 回帰防止: ユーザーが NAS / USB / リムーバブルドライブ等を出力先に設定しており、
+        // 起動時にそのドライブが未接続でも、設定値はサニタイズで上書きされず保持されること。
+        // 旧実装は Directory.Exists で false → Desktop に強制リセットしていたが、
+        // その後 AutoSave で settings.json も上書きされて永続化破壊（ドライブ再接続後も
+        // 元の設定が失われる）の経路があった。
+        // 構文妥当性のみ検証し、Directory.Exists は実書き込み時に行う設計に変更。
+        var path = @"Z:\NonExistent\Path\xyz_not_real";
+        var settings = new Settings { ExtractionOutputDirectory = path };
         settings.SanitizeAfterLoad();
-        Assert.Equal(desktop, settings.ExtractionOutputDirectory);
+        Assert.Equal(path, settings.ExtractionOutputDirectory);
     }
 
     [Fact]

@@ -355,7 +355,17 @@ public class Settings
         if (string.IsNullOrWhiteSpace(path)) return false;
         try
         {
-            if (!Directory.Exists(path)) return false;
+            // 構文妥当性チェック: 不正文字や malformed なパスは Path.GetFullPath が例外を投げる。
+            // 注意: ここで Directory.Exists は呼ばない。
+            //   ユーザーが NAS / USB / リムーバブルメディアを出力先に設定しているケースで、
+            //   起動時にドライブが未接続だと Directory.Exists が false を返し、SanitizeAfterLoad が
+            //   サイレントに Desktop へ書き換える経路があった。その後 AutoSave 経由で settings.json も
+            //   更新されると、ドライブを再接続しても元の設定が失われる「永続化破壊」を引き起こす。
+            //   実際にディスクに書き込む段階（ArchiveExtractor / ArchiveCompressor）で
+            //   Directory.CreateDirectory + 失敗時のフォールバック UI を出す経路があるため、
+            //   起動時の sanitize では構文と保護判定のみに限定する。
+            _ = Path.GetFullPath(path);
+
             // 注意: IsProtectedDirectory ではなく IsSystemCriticalDirectory を使う。
             // 前者は Desktop / Documents / Downloads などの一般的な出力先までブロックし、
             // ユーザーが選択した出力先設定を起動毎に Desktop へ書き換えてしまう
