@@ -232,7 +232,9 @@ public class Settings
                     // デフォルトに戻す。ユーザーが気付けるよう警告ログも残す。
                     // Logger は Initialize 前に呼ばれる可能性があるので null チェックは Logger 側で行う。
                     var backupPath = $"{SettingsFilePath}.corrupt_{DateTime.Now:yyyyMMddHHmmss}.bak";
-                    try { File.Copy(SettingsFilePath, backupPath, overwrite: true); } catch { /* ベストエフォート */ }
+                    // File.Copy ではなく Move でパスから取り除く。Copy 残しだと次回起動時にも
+                    // 同じパースエラーが起きて .corrupt_*.bak が無限に増殖する。
+                    try { File.Move(SettingsFilePath, backupPath, overwrite: true); } catch { /* ベストエフォート */ }
                     Debug.WriteLine($"設定ファイルの解析に失敗しました（デフォルトに戻します）: {ex.Message}");
                     try
                     {
