@@ -10,9 +10,14 @@ namespace Lhamiel.Util;
 public static class IpcService
 {
     /// <summary>
-    /// パイプ名（アプリケーションごとに一意）
+    /// パイプ名（アプリ × セッションごとに一意）。
+    /// SessionId を含めることで、同一ユーザーが console + RDP の複数セッションで同時起動した際に
+    /// 各セッションが独自の IPC エンドポイントを持ち、引数 handoff が別セッションへ流れる事故を防ぐ。
+    /// Mutex 側も <c>Local\</c> プレフィックスでセッションスコープ化されているので、Mutex と
+    /// IPC のスコープを揃える狙いもある。
     /// </summary>
-    private const string PipeName = "Lhamiel_IpcPipe_SingleInstance";
+    private static readonly string PipeName =
+        $"Lhamiel_IpcPipe_S{System.Diagnostics.Process.GetCurrentProcess().SessionId}";
 
     /// <summary>
     /// クライアント接続の総タイムアウト（ミリ秒）。
@@ -81,6 +86,18 @@ public static class IpcService
 
                 var json = JsonSerializer.Serialize(args, AppJsonContext.Default.StringArray);
                 var buffer = Encoding.UTF8.GetBytes(json);
+
+                // 事前 size チェック: サーバー側 MaxRequestJsonBytes を超えると
+                // truncate された JSON でサーバーが Deserialize 失敗 → リクエスト破棄となる。
+                // クライアント側で先に拒否することで、送信成功を返した後に handoff が消える事故を防ぐ。
+                if (buffer.Length > MaxRequestJsonBytes)
+                {
+                    Logger.Log(
+                        $"IPC 送信ペイロードが上限 {MaxRequestJsonBytes} バイトを超過 ({buffer.Length} bytes)。" +
+                        "サーバー側でも破棄されるため送信せずに失敗扱いとします。",
+                        LogLevel.Warning);
+                    return false;
+                }
 
                 await client.WriteAsync(buffer, cancellationToken);
 
@@ -190,10 +207,30 @@ public static class IpcService
                             totalRead += n;
                         }
 
-                        // ReadOnlySpan<byte> オーバーロードに直接渡すことで、
-                        // 最大 1MB に達しうる中間 string アロケーションを回避する。
+                        // オーバーフロー検知:
+                        // 上限に到達してループを抜けた場合、まだ送信側にデータが残っている可能性がある。
+                        // そのまま Deserialize すると JSON 末尾が切れて JsonException → 接続切り直し
+                        // となるが、送信側は WriteAsync 成功で true を返しているため引数 handoff が
+                        // サイレントに失われる。プローブ読み取り 1 バイトで残データの有無を判定し、
+                        // オーバーフロー時は明示的に警告ログを出してリクエストを破棄する。
+                        var overflowed = false;
+                        if (totalRead == MaxRequestJsonBytes)
+                        {
+                            var probeBuffer = new byte[1];
+                            var probeRead = await server.ReadAsync(probeBuffer, readCts.Token);
+                            if (probeRead > 0)
+                            {
+                                overflowed = true;
+                                Logger.Log(
+                                    $"IPC リクエストが上限 {MaxRequestJsonBytes} バイトを超過したためリクエストを破棄します。" +
+                                    "クライアント側でも事前 size チェックを行い handoff を諦める設計になっています。",
+                                    LogLevel.Warning);
+                            }
+                        }
+
+                        // ReadOnlySpan<byte> オーバーロードに直接渡すことで、中間 string アロケーションを回避する。
                         // System.Text.Json は UTF-8 バイト列を直接デシリアライズ可能。
-                        if (totalRead > 0)
+                        if (!overflowed && totalRead > 0)
                         {
                             var args = JsonSerializer.Deserialize(buffer.AsSpan(0, totalRead), AppJsonContext.Default.StringArray);
                             if (args != null)
