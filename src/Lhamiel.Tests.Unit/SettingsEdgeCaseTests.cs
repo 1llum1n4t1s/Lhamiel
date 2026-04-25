@@ -32,7 +32,7 @@ public class SettingsEdgeCaseTests
         Assert.Equal(fresh.LogRetentionDays, reset.LogRetentionDays);
         Assert.Equal(fresh.ExtractionOutputToSameDirectory, reset.ExtractionOutputToSameDirectory);
         Assert.Equal(fresh.CompressionOutputToSameDirectory, reset.CompressionOutputToSameDirectory);
-        // v1.0.160: ResetToDefaults の漏れ修正を検証
+        // v1.0.160 で導入 → 同 ver 取り下げ → 再リリースで再導入: ResetToDefaults の漏れ修正を検証
         Assert.Equal(fresh.CreateArchiveNameFolder, reset.CreateArchiveNameFolder);
         Assert.Equal(fresh.DirectoryStructureMode, reset.DirectoryStructureMode);
     }
@@ -115,7 +115,7 @@ public class SettingsEdgeCaseTests
         Assert.Equal("", settings.Locale);
     }
 
-    // === SanitizeAfterLoad（v1.0.160 で追加） ===
+    // === SanitizeAfterLoad（v1.0.160 で追加 → 同 ver 取り下げ → 再リリースで再導入） ===
 
     [Fact]
     public void SanitizeAfterLoad_UnknownUpdateChannel_FallsBackToRelease()
