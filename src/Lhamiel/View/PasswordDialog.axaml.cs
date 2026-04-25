@@ -4,8 +4,6 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Lhamiel.Util;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 namespace Lhamiel.View;
 
@@ -14,25 +12,22 @@ namespace Lhamiel.View;
 /// 7z.dll の ICryptoGetTextPassword コールバックから呼ばれる
 /// <see cref="Cube.FileSystem.SevenZip.AsyncPasswordQuery"/> のハンドラとして使う。
 /// </summary>
-public partial class PasswordDialog : Window, INotifyPropertyChanged
+/// <remarks>
+/// <para>
+/// ダイアログは 1 回表示するだけでプロパティが変化しないため、<see cref="INotifyPropertyChanged"/> を
+/// 明示実装せずコンストラクタ初期化 → <c>DataContext = this</c> の compiled binding に任せる。
+/// Avalonia 12 の <see cref="Window"/> 既定の INPC 機能と二重にイベントを持つ構造を避ける。
+/// </para>
+/// </remarks>
+public partial class PasswordDialog : Window
 {
     private TextBox? _passwordBox;
-    private string _archiveName = string.Empty;
-    private bool _isRetry;
 
-    /// <summary>アーカイブ名（バインディング用）</summary>
-    public string ArchiveName
-    {
-        get => _archiveName;
-        set { _archiveName = value; OnPropertyChanged(); }
-    }
+    /// <summary>アーカイブ名（バインディング用、コンストラクタで決定し以後不変）</summary>
+    public string ArchiveName { get; }
 
-    /// <summary>リトライ時（前回のパスワードが間違っていた場合）に true（バインディング用）</summary>
-    public bool IsRetry
-    {
-        get => _isRetry;
-        set { _isRetry = value; OnPropertyChanged(); }
-    }
+    /// <summary>リトライ時（前回のパスワードが間違っていた場合）に true（バインディング用、以後不変）</summary>
+    public bool IsRetry { get; }
 
     /// <summary>入力されたパスワード。キャンセル時は null。</summary>
     public string? Password { get; private set; }
@@ -59,12 +54,17 @@ public partial class PasswordDialog : Window, INotifyPropertyChanged
     private void OkButton_Click(object? sender, RoutedEventArgs e)
     {
         Password = _passwordBox?.Text ?? string.Empty;
+        // TextBox の内部参照を切り、ダイアログ閉じた後にコントロール側に平文が残り続けるのを防ぐ。
+        if (_passwordBox != null)
+            _passwordBox.Text = string.Empty;
         Close(true);
     }
 
     private void CancelButton_Click(object? sender, RoutedEventArgs e)
     {
         Password = null;
+        if (_passwordBox != null)
+            _passwordBox.Text = string.Empty;
         Close(false);
     }
 
@@ -76,10 +76,6 @@ public partial class PasswordDialog : Window, INotifyPropertyChanged
             e.Handled = true;
         }
     }
-
-    public new event PropertyChangedEventHandler? PropertyChanged;
-    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
     // ── Static helper ──
 
@@ -110,7 +106,9 @@ public partial class PasswordDialog : Window, INotifyPropertyChanged
                 ok = await tcs.Task;
             }
             if (!ok) return null;
-            Logger.Log($"パスワード入力ダイアログ完了: archive={archiveName}, retry={isRetry}");
+            // パスワード関連のログは Debug レベルに固定し、リリースビルドでは
+            // アーカイブ名・再試行回数・試行タイミングのいずれもログファイルに残さない。
+            Logger.Log($"パスワード入力ダイアログ完了: retry={isRetry}", LogLevel.Debug);
             return dialog.Password;
         });
     }

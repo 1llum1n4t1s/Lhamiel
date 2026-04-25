@@ -346,14 +346,38 @@ public static class ArchiveErrorHandler
     /// <summary>
     /// 破損ファイルエラーかどうかを判定
     /// </summary>
+    /// <remarks>
+    /// 7z.dll / Cube.FileSystem.SevenZip は英語メッセージを返すことが多いが、.NET 標準の
+    /// <see cref="InvalidOperationException"/> や <see cref="IOException"/> を経由する場合、
+    /// 日本語 OS 環境では CLR が例外メッセージを翻訳するため、英語キーワードだけではヒット漏れが起きる。
+    /// ロケール非依存の型チェックを優先し、メッセージは英語・日本語両方のキーワードでフォールバック判定する。
+    /// </remarks>
     private static bool IsCorruptedFileError(Exception ex)
     {
+        // 型ベース判定（最優先・ロケール完全非依存）
+        // SevenZipException は 7z.dll の HRESULT ベースエラーを包括するため、CorruptedFile として扱う。
+        // 厳密には UnsupportedFormat 等も含みうるが、そちらは AnalyzeError の上位分岐で先行して
+        // NotSupportedException ケースが拾うため、ここには到達しない。
+        if (ex is SevenZipException) return true;
+
         var message = ex.Message.ToLowerInvariant();
-        return message.Contains("corrupt") ||
-               message.Contains("damaged") ||
-               message.Contains("invalid") ||
-               message.Contains("crc") ||
-               message.Contains("checksum");
+
+        // 英語キーワード（Cube.FileSystem.SevenZip / 7z.dll 由来のメッセージ）
+        if (message.Contains("corrupt") ||
+            message.Contains("damaged") ||
+            message.Contains("invalid") ||
+            message.Contains("crc") ||
+            message.Contains("checksum"))
+            return true;
+
+        // 日本語キーワード（日本語 OS で CLR が例外を翻訳したケース）
+        if (message.Contains("破損") ||
+            message.Contains("壊れ") ||
+            message.Contains("無効") ||
+            message.Contains("チェックサム"))
+            return true;
+
+        return false;
     }
 
     /// <summary>

@@ -125,6 +125,12 @@ public class Settings
         [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
 
     /// <summary>
+    /// サポートされているテーマ一覧。UI および <see cref="SanitizeAfterLoad"/> で使用。
+    /// マジック文字列の散在を避けるためここに集約する。
+    /// </summary>
+    public static readonly string[] SupportedThemes = ["System", "Dark", "Light"];
+
+    /// <summary>
     /// サポートされている圧縮形式の一覧
     /// </summary>
     public static readonly string[] SupportedCompressionFormats = ["ZIP", "7z", "TAR"];
@@ -164,10 +170,18 @@ public class Settings
     /// 呼び出し元は処理開始時に1回だけ呼び出し、その後はスナップショットを使うことで
     /// UI スレッド側の設定変更との race を回避する。
     /// </summary>
+    /// <remarks>
+    /// ⚠️ 重要: <see cref="MemberwiseClone"/> は参照型フィールドを「参照のみ」コピーするため、
+    /// 新しく <see cref="List{T}"/> / <see cref="Dictionary{TKey,TValue}"/> / その他 mutable コレクションを
+    /// 追加した場合は、必ず下記に明示的な深コピーを追加すること。漏れるとバックグラウンド処理中に
+    /// UI スレッド側の変更を拾ってしまい、<c>InvalidOperationException</c>（列挙中変更）の race が
+    /// 発生する。値型・不変型（<see cref="string"/> / <see cref="int"/> / <see cref="bool"/> / enum）は
+    /// <see cref="MemberwiseClone"/> で安全にコピーされるので追記不要。
+    /// </remarks>
     public Settings Snapshot()
     {
         var copy = (Settings)MemberwiseClone();
-        // List は参照型なので明示コピーする
+        // 参照型コレクションは明示的に深コピー（新しく追加した場合は下に追記すること）
         copy.ExcludedFilePatterns = ExcludedFilePatterns is null ? [] : [.. ExcludedFilePatterns];
         return copy;
     }
@@ -207,8 +221,36 @@ public class Settings
             if (File.Exists(SettingsFilePath))
             {
                 var json = File.ReadAllText(SettingsFilePath);
-                var settings = JsonSerializer.Deserialize(json, AppJsonContext.Default.Settings);
-                return settings ?? new Settings();
+                Settings? settings;
+                try
+                {
+                    settings = JsonSerializer.Deserialize(json, AppJsonContext.Default.Settings);
+                }
+                catch (JsonException ex)
+                {
+                    // JSON スキーマ不整合時はサイレントに全デフォルト化せず、破損ファイルを退避してから
+                    // デフォルトに戻す。ユーザーが気付けるよう警告ログも残す。
+                    // Logger は Initialize 前に呼ばれる可能性があるので null チェックは Logger 側で行う。
+                    var backupPath = $"{SettingsFilePath}.corrupt_{DateTime.Now:yyyyMMddHHmmss}.bak";
+                    try { File.Copy(SettingsFilePath, backupPath, overwrite: true); } catch { /* ベストエフォート */ }
+                    Debug.WriteLine($"設定ファイルの解析に失敗しました（デフォルトに戻します）: {ex.Message}");
+                    try
+                    {
+                        Logger.Log(
+                            $"settings.json の解析に失敗したためデフォルトに戻しました。破損ファイルは {backupPath} に退避済みです。理由: {ex.Message}",
+                            LogLevel.Warning);
+                    }
+                    catch { /* Logger 未初期化のケース */ }
+                    settings = null;
+                }
+
+                if (settings != null)
+                {
+                    settings.SanitizeAfterLoad();
+                    return settings;
+                }
+
+                return new Settings();
             }
 
             var defaultSettings = new Settings();
@@ -222,6 +264,52 @@ public class Settings
         }
 
         return new Settings();
+    }
+
+    /// <summary>
+    /// Load 直後に不正値をデフォルトに戻すサニタイズ処理。
+    /// 外部から書き換えられ得る settings.json に対する軽量防御として機能する。
+    /// </summary>
+    internal void SanitizeAfterLoad()
+    {
+        // UpdateChannel の allow-list 化: 未知の値を渡されても Velopack に無効な channel を渡さない
+        if (!string.Equals(UpdateChannel, "release", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(UpdateChannel, "prerelease", StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateChannel = "release";
+        }
+
+        // Theme の allow-list 化: タイポや未知のテーマが渡された場合に "System" フォールバック
+        if (!SupportedThemes.Contains(Theme, StringComparer.OrdinalIgnoreCase))
+        {
+            Theme = "System";
+        }
+
+        // CompressionFormat の allow-list 化
+        if (!SupportedCompressionFormats.Contains(CompressionFormat, StringComparer.OrdinalIgnoreCase))
+        {
+            CompressionFormat = "ZIP";
+        }
+
+        // 出力先ディレクトリのパス妥当性チェック（存在確認 + 保護ディレクトリ除外）
+        // 不正値はデスクトップにフォールバック
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        if (!IsUsableOutputDirectory(ExtractionOutputDirectory))
+            ExtractionOutputDirectory = desktop;
+        if (!IsUsableOutputDirectory(CompressionOutputDirectory))
+            CompressionOutputDirectory = desktop;
+    }
+
+    private static bool IsUsableOutputDirectory(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return false;
+        try
+        {
+            if (!Directory.Exists(path)) return false;
+            if (PathValidator.IsProtectedDirectory(path)) return false;
+        }
+        catch { return false; }
+        return true;
     }
 
     /// <summary>
@@ -253,6 +341,8 @@ public class Settings
         CompressionOutputToSameDirectory = false;
         OpenExtractionOutputFolder = true;
         OpenCompressionOutputFolder = true;
+        CreateArchiveNameFolder = true;
+        DirectoryStructureMode = DirectoryStructureMode.IncludeRoot;
         UpdateChannel = "release";
         LogMaxSizeMB = 10;
         LogRetentionDays = 7;
@@ -261,5 +351,6 @@ public class Settings
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
         ExcludedFilePatterns = [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
+        // NOTE: 新しいプロパティを追加したら必ずここにも追加すること（リセット漏れ防止）
     }
 }
