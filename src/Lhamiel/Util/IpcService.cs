@@ -26,6 +26,20 @@ public static class IpcService
     private const int ConnectAttemptTimeoutMs = 500;
 
     /// <summary>
+    /// パイプ排出待ち（WaitForPipeDrain）のタイムアウト（ミリ秒）。
+    /// 受信側（既存インスタンス）がハングしている場合に第 2 インスタンスの起動 UI が
+    /// 無期限ブロックされるのを防ぐ。ローカル Named Pipe の drain は通常即時完了する。
+    /// </summary>
+    private const int PipeDrainTimeoutMs = 1000;
+
+    /// <summary>
+    /// サーバー側リクエスト読み取りタイムアウト（ミリ秒）。
+    /// クライアントが接続だけして送信せず居座るケースで、IPC サーバーが他の起動を
+    /// 受け付けられなくなるのを防ぐ。
+    /// </summary>
+    private const int RequestReadTimeoutMs = 3000;
+
+    /// <summary>
     /// 引数を既存のインスタンスに送信する。
     /// 接続失敗時は少し待ってリトライする（サーバー側のパイプ再生成の隙間に落ちるのを避けるため）。
     /// </summary>
@@ -61,11 +75,21 @@ public static class IpcService
                 // FlushAsync でキャンセルトークンを伝搬させたうえで、
                 // WaitForPipeDrain でパイプ他端が受信完了するまで同期待機。
                 // 通常はローカル Named Pipe なので即時返るが、対向側（既存インスタンス）が
-                // ハングしているケースに備えて Task.Run でバックグラウンドへオフロードする。
-                // SendArgsToExistingInstanceAsync は App.OnFrameworkInitializationCompleted 経由で
-                // UI スレッドの継続として走るため、同期ブロックすると UI フリーズに繋がる。
+                // ハングしているケースに備えて Task.Run でバックグラウンドへオフロード + WaitAsync で
+                // PipeDrainTimeoutMs の上限を設ける。タイムアウトしても送信自体は完了済みなので
+                // 起動を継続して問題ない（既存インスタンスのフォアグラウンド化は失敗扱い）。
                 await client.FlushAsync(cancellationToken);
-                await Task.Run(client.WaitForPipeDrain, cancellationToken);
+                try
+                {
+                    await Task.Run(client.WaitForPipeDrain, cancellationToken)
+                        .WaitAsync(TimeSpan.FromMilliseconds(PipeDrainTimeoutMs), cancellationToken);
+                }
+                catch (TimeoutException)
+                {
+                    Logger.Log(
+                        $"IPC WaitForPipeDrain が {PipeDrainTimeoutMs}ms でタイムアウト（受信側ハング？）。送信は完了済みのため起動継続。",
+                        LogLevel.Warning);
+                }
                 return true;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -141,12 +165,18 @@ public static class IpcService
                     // 不正な JSON / Deserialize 失敗 / onArgsReceived ハンドラ内例外などが
                     // 外側 catch まで伝搬すると、構造的エラー（パイプ破損等）と同じく 100ms 待機経路に
                     // 落ちて応答性が悪化するため、リクエスト単位で握って次接続待ちに進む。
+                    //
+                    // 読み取りタイムアウト: クライアントが接続だけして送信しない（ハング / 悪意）
+                    // ケースに備え、外側 cancellationToken に RequestReadTimeoutMs を上乗せした
+                    // linked CTS を ReadAsync に渡す。タイムアウトしたリクエストは握って次接続へ進む。
+                    using var readCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    readCts.CancelAfter(RequestReadTimeoutMs);
                     try
                     {
                         var totalRead = 0;
                         while (totalRead < MaxJsonBytes)
                         {
-                            var n = await server.ReadAsync(buffer.AsMemory(totalRead, MaxJsonBytes - totalRead), cancellationToken);
+                            var n = await server.ReadAsync(buffer.AsMemory(totalRead, MaxJsonBytes - totalRead), readCts.Token);
                             if (n == 0) break; // EOF
                             totalRead += n;
                         }
@@ -162,6 +192,16 @@ public static class IpcService
                                 onArgsReceived(args);
                             }
                         }
+                    }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        // readCts のタイムアウト発火（外側 cancellationToken は未キャンセル）。
+                        // 「クライアントが接続だけして送信しないハング」シナリオなので、
+                        // 握って次接続待ちに進む。外側 cancellationToken のキャンセルは握らずに
+                        // 外側 catch (OperationCanceledException) → break 経路に通す。
+                        Logger.Log(
+                            $"IPC リクエスト読み取りが {RequestReadTimeoutMs}ms でタイムアウト（送信なし）。次接続待ちに進む。",
+                            LogLevel.Warning);
                     }
                     catch (Exception ex) when (ex is not OperationCanceledException)
                     {
