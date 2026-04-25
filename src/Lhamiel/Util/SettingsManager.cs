@@ -74,7 +74,25 @@ public sealed class SettingsManager
         }
         catch (Exception ex)
         {
+            // 重要: Settings.Load 失敗時、Logger.Initialize がまだ実行されていない可能性があるため
+            // Logger.LogException がサイレントに握りつぶされる経路がある。
+            // 起動失敗の詳細をどこにも残せず再現困難になる事態を避けるため、
+            // 緊急 Logger 初期化（デフォルト構成）を試みてからログ出力する。
+            try
+            {
+                Logger.Initialize(new LoggerConfig
+                {
+                    LogDirectory = Settings.AppDataDirectory,
+                    FilePrefix = "Lhamiel",
+                });
+            }
+            catch (Exception initEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"緊急 Logger 初期化にも失敗: {initEx.Message}");
+            }
             Logger.LogException("設定の読み込みに失敗しました。デフォルト設定を使用します", ex);
+            // Logger も使えない最終フォールバック: Debug.WriteLine だけは残す
+            System.Diagnostics.Debug.WriteLine($"Settings.Load 失敗: {ex}");
             _settings = new Settings();
         }
     }

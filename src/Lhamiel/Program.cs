@@ -47,6 +47,21 @@ internal class Program
     /// </summary>
     private static void RunSilentUpdateCheck()
     {
+        // --update-check 経路は App コンストラクタを通らないため Logger.Initialize されておらず、
+        // Logger.Log がすべて _logger == null ガードでサイレント握りつぶしされる経路があった。
+        // ここで最小限の Logger 初期化を行い、サイレント更新チェックの動作ログを残せるようにする。
+        try
+        {
+            Logger.Initialize(new LoggerConfig
+            {
+                LogDirectory = Settings.AppDataDirectory,
+                FilePrefix = "Lhamiel",
+            });
+        }
+        catch (Exception initEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"--update-check モードでの Logger 初期化に失敗: {initEx.Message}");
+        }
         try
         {
             Logger.Log("サイレント更新チェックを開始します。");
