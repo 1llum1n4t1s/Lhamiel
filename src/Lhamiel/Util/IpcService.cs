@@ -159,10 +159,14 @@ public static class IpcService
 
                 // PipeOptions.CurrentUserOnly で外部ユーザーの攻撃は防げるが、同一ユーザーの
                 // バグったプロセスや誤動作による大量送信でメモリ枯渇するのを防ぐため、
-                // 読み取りサイズに上限を設ける。コマンドライン引数の JSON は通常数 KB で収まる。
-                // 1MB は LOH（>= 85,000 bytes）に直接配置されるため、`new byte[]` ではなく
-                // ArrayPool 経由でレンタルし、断片化と GC 負荷を回避する。
-                const int MaxJsonBytes = 1 * 1024 * 1024;
+                // 読み取りサイズに上限を設ける。
+                //
+                // 64KB は実用上十分: コマンドライン引数として渡される JSON は典型的に数 KB、
+                // 異常時でも数 10 KB に収まる。Windows のコマンドライン上限は約 32 KB であり、
+                // それを 2 倍カバーする 64KB なら正規利用は確実に通り、悪意ある巨大 JSON は弾ける。
+                // 旧 1MB 設計は LOH 境界（85KB）超えで GC 圧迫の原因になっていた。
+                // ArrayPool は要求サイズ以上のバッファを返すが、64KB なら SOH（gen0）に収まる。
+                const int MaxJsonBytes = 64 * 1024;
                 var buffer = ArrayPool<byte>.Shared.Rent(MaxJsonBytes);
                 try
                 {

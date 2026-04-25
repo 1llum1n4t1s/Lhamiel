@@ -359,9 +359,15 @@ public static class ArchiveExtractor
         safeFullPath = string.Empty;
         if (string.IsNullOrEmpty(entryName)) return false;
 
-        // Zip Slip ガード: パス区切り・絶対パス・UNC・ドライブレターを拒否
+        // Zip Slip ガード: パス区切り・絶対パス・UNC・ドライブレター・デバイスパスを拒否
         if (entryName.StartsWith('/') || entryName.StartsWith('\\')) return false;
         if (Path.IsPathRooted(entryName)) return false;
+
+        // NTFS 代替データストリーム (ADS) 拒否: `file.txt:hidden:$DATA` のように `:` を含むエントリ名は
+        // Windows で ADS として書き込まれ、検索やウイルス対策が見落とす隠しファイルが作成される。
+        // 7z.dll が `:` を含むエントリ名を返すアーカイブが実在しうるため、明示的に拒否する。
+        // ドライブレター（`C:`）は既に Path.IsPathRooted で弾かれているのでここに到達しない。
+        if (entryName.Contains(':')) return false;
 
         // `/` と `\` の両方を Path.DirectorySeparatorChar に統一する。
         // Linux/macOS では `\` がファイル名として正当なため Path.GetFullPath が

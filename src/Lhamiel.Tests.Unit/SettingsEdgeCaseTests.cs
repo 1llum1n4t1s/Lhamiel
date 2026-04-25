@@ -174,8 +174,7 @@ public class SettingsEdgeCaseTests
         // PathValidator.IsProtectedDirectory は Desktop を保護対象に含むが、
         // SanitizeAfterLoad は IsSystemCriticalDirectory（より厳格）を使う設計。
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-        if (!Directory.Exists(desktop))
-            return; // テスト環境に Desktop が無いプラットフォーム（CI 等）はスキップ
+        Assert.SkipUnless(Directory.Exists(desktop), "テスト環境に Desktop フォルダが存在しないためスキップ");
         var settings = new Settings { ExtractionOutputDirectory = desktop };
         settings.SanitizeAfterLoad();
         Assert.Equal(desktop, settings.ExtractionOutputDirectory);
@@ -188,8 +187,7 @@ public class SettingsEdgeCaseTests
         // 起動時に Desktop へフォールバックすることを保証する。
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-        if (!Directory.Exists(windows))
-            return;
+        Assert.SkipUnless(Directory.Exists(windows), "テスト環境に Windows フォルダが存在しないためスキップ");
         var settings = new Settings { ExtractionOutputDirectory = windows };
         settings.SanitizeAfterLoad();
         Assert.Equal(desktop, settings.ExtractionOutputDirectory);

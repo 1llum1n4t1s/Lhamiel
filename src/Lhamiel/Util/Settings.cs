@@ -136,6 +136,12 @@ public class Settings
     public static readonly string[] SupportedCompressionFormats = ["ZIP", "7z", "TAR"];
 
     /// <summary>
+    /// サポートされている自動更新チャンネルの一覧（canonical な小文字形）。
+    /// 将来 stable / beta / canary 等を追加する場合はここに足すだけで SanitizeAfterLoad が追従する。
+    /// </summary>
+    public static readonly string[] SupportedUpdateChannels = ["release", "prerelease"];
+
+    /// <summary>
     /// サポートされている展開形式の一覧
     /// </summary>
     public static readonly string[] SupportedExtractionFormats = ["ZIP", "7z", "TAR", "GZ", "BZ2", "LZMA", "XZ", "RAR", "LZH", "CAB", "ARJ", "Z"];
@@ -320,9 +326,10 @@ public class Settings
         // UpdateChannel の allow-list 化: 未知の値を渡されても Velopack に無効な channel を渡さない。
         // case-insensitive で受理しつつ、下流（Velopack CLI 引数や URL パス）が
         // case-sensitive 比較を行う可能性があるため canonical な小文字に正規化する。
-        UpdateChannel = string.Equals(UpdateChannel, "prerelease", StringComparison.OrdinalIgnoreCase)
-            ? "prerelease"
-            : "release";
+        // SupportedThemes / SupportedCompressionFormats と同じ Array.Find パターンに統一。
+        UpdateChannel = Array.Find(SupportedUpdateChannels,
+                            c => string.Equals(c, UpdateChannel, StringComparison.OrdinalIgnoreCase))
+                        ?? "release";
 
         // Theme の allow-list 化 + canonical ケース正規化。
         // App.axaml.cs の GetThemeVariant は "Light"/"Dark"/"System" の固定文字列で switch するため、

@@ -298,10 +298,21 @@ public partial class App : Application
     /// <summary>
     /// コマンドライン引数を解析して圧縮形式とファイルパスのリストを返す
     /// </summary>
+    /// <remarks>
+    /// `--format` 引数値は <see cref="Settings.SupportedCompressionFormats"/> の allow-list で
+    /// 検証する。未知の文字列を渡されても下流の Logger.Log にそのまま到達してログインジェクション
+    /// （改行混入による SIEM 誤検知等）に繋がる経路を塞ぐ。allow-list 外は "default" にフォールバック。
+    /// </remarks>
     private static (string compressionFormat, string[] filePaths) ParseCommandLineArgs(string[] args)
     {
         if (args.Length >= 2 && args[0] == "--format")
-            return (args[1], args[2..]);
+        {
+            var requestedFormat = args[1];
+            // case-insensitive で allow-list と照合し、canonical なケースに正規化
+            var canonical = Array.Find(Settings.SupportedCompressionFormats,
+                f => string.Equals(f, requestedFormat, StringComparison.OrdinalIgnoreCase));
+            return (canonical ?? "default", args[2..]);
+        }
         return ("default", args.Where(a => !a.StartsWith("--")).ToArray());
     }
 

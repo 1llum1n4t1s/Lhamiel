@@ -359,10 +359,12 @@ public static class ArchiveErrorHandler
     /// 破損ファイルエラーかどうかを判定
     /// </summary>
     /// <remarks>
-    /// 7z.dll / Cube.FileSystem.SevenZip は英語メッセージを返すことが多いが、.NET 標準の
-    /// <see cref="InvalidOperationException"/> や <see cref="IOException"/> を経由する場合、
+    /// 呼び出し元: <see cref="AnalyzeError"/> の <c>case InvalidOperationException</c> 分岐のみ。
+    /// <see cref="IOException"/> 経路は L154 の専用 case で先行処理されるため、ここには到達しない。
+    /// <see cref="SevenZipException"/> も L146 の専用 case で先行処理されるため、ここには到達しない。
+    ///
     /// 日本語 OS 環境では CLR が例外メッセージを翻訳するため、英語キーワードだけではヒット漏れが起きる。
-    /// ロケール非依存の型チェックを優先し、メッセージは英語・日本語両方のキーワードでフォールバック判定する。
+    /// メッセージは英語・日本語両方のキーワードでフォールバック判定する。
     /// </remarks>
     private static bool IsCorruptedFileError(Exception ex)
     {
