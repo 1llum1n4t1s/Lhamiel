@@ -142,6 +142,13 @@ public static class ArchiveExtractor
         /// null の場合は現在の設定値が使われる（下位互換）。
         /// </summary>
         public bool? CapturedCreateArchiveNameFolder { get; init; }
+
+        /// <summary>
+        /// アーカイブ内の非圧縮サイズ合計（バイト）。<see cref="GetArchiveStructureInfo"/> が
+        /// reader.Items を走査するついでに計算するため、別途 <c>DiskSpaceChecker.GetArchiveUncompressedSize</c>
+        /// を呼ぶ必要はない。-1 の場合は未計算（取得失敗または旧経路）。
+        /// </summary>
+        public long TotalUncompressedSize { get; init; } = -1;
     }
 
     /// <summary>
@@ -181,7 +188,8 @@ public static class ArchiveExtractor
             return new ArchiveStructureInfo
             {
                 ShouldSkipFolderCreation = shouldSkipFolderCreation,
-                SingleRootItemName = singleRootItemName
+                SingleRootItemName = singleRootItemName,
+                TotalUncompressedSize = structure.TotalUncompressedSize
             };
         }
         catch (Exception ex)
@@ -206,6 +214,10 @@ public static class ArchiveExtractor
         /// </summary>
         public HashSet<string> RootFiles { get; } = new(StringComparer.OrdinalIgnoreCase);
 
+        /// <summary>
+        /// 非圧縮サイズ合計（バイト）。reader.Items のループで同時集計する。
+        /// </summary>
+        public long TotalUncompressedSize { get; set; }
     }
 
     private const string TempDirPrefix = "Lhamiel_";
@@ -262,6 +274,11 @@ public static class ArchiveExtractor
 
         foreach (var item in reader.Items)
         {
+            // 非圧縮サイズの集計はディレクトリエントリを除外して 1 度のループで完結させる。
+            // (long) キャストで item.Length が int の場合のオーバーフローも防ぐ。
+            if (!item.IsDirectory)
+                structure.TotalUncompressedSize += (long)item.Length;
+
             var path = item.FullName.AsSpan();
 
             // 最初のセグメント（ルート名）を切り出す（配列アロケーション不要）
@@ -342,9 +359,21 @@ public static class ArchiveExtractor
         safeFullPath = string.Empty;
         if (string.IsNullOrEmpty(entryName)) return false;
 
-        // Zip Slip ガード: パス区切り・絶対パス・UNC・ドライブレターを拒否
+        // Zip Slip ガード: パス区切り・絶対パス・UNC・ドライブレター・デバイスパスを拒否
+        // 先頭 `/` `\` チェックでカバーされる攻撃面:
+        //   - UNC パス: `\\server\share`、`\\?\C:\...`、`\\.\COM1` など先頭 `\\` 系は全て弾く
+        //   - 絶対パス先頭の `/`（POSIX 風）も弾く
+        // この後の Path.IsPathRooted で `C:\...` 等のドライブレター付き絶対パスを弾く。
+        // 順序が重要: 先頭文字チェックを先に行うことで、後の正規化で `\` が削られて
+        //            UNC が相対パスに化ける経路をブロックしている。
         if (entryName.StartsWith('/') || entryName.StartsWith('\\')) return false;
         if (Path.IsPathRooted(entryName)) return false;
+
+        // NTFS 代替データストリーム (ADS) 拒否: `file.txt:hidden:$DATA` のように `:` を含むエントリ名は
+        // Windows で ADS として書き込まれ、検索やウイルス対策が見落とす隠しファイルが作成される。
+        // 7z.dll が `:` を含むエントリ名を返すアーカイブが実在しうるため、明示的に拒否する。
+        // ドライブレター（`C:`）は既に Path.IsPathRooted で弾かれているのでここに到達しない。
+        if (entryName.Contains(':')) return false;
 
         // `/` と `\` の両方を Path.DirectorySeparatorChar に統一する。
         // Linux/macOS では `\` がファイル名として正当なため Path.GetFullPath が
@@ -457,13 +486,19 @@ public static class ArchiveExtractor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null, long precomputedUncompressedSize = -1)
     {
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}");
         cancellationToken.ThrowIfCancellationRequested();
 
-        // 展開前のディスク容量チェック（アーカイブのメタデータ上の非圧縮サイズ）
-        var requiredSize = DiskSpaceChecker.GetArchiveUncompressedSize(archivePath);
+        // 展開前のディスク容量チェック（アーカイブのメタデータ上の非圧縮サイズ）。
+        // GetArchiveStructureInfo で既に reader.Items を 1 周しており、その時点で集計済みの
+        // サイズを引き回すことで「同じアーカイブを 2 回開いて Items 列挙」を回避する（#10 軽量統合）。
+        // 旧経路や呼び出し元が事前計算していない場合（precomputedUncompressedSize < 0）は
+        // 従来通り DiskSpaceChecker 側で再計算する（後方互換）。
+        var requiredSize = precomputedUncompressedSize >= 0
+            ? precomputedUncompressedSize
+            : DiskSpaceChecker.GetArchiveUncompressedSize(archivePath);
         if (requiredSize > 0)
         {
             var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(
@@ -870,20 +905,49 @@ public static class ArchiveExtractor
             // AsyncPasswordQuery の「UI スレッドから呼ぶな」制約に抵触しない。
             //
             // キャンセル追跡の必要性:
-            // ユーザーがダイアログで Cancel を押すと ShowFromBackgroundAsync は null を返す。
-            // 空文字で返しても 7z.dll は WrongPassword とみなし EncryptionException を投げるため、
-            // ここでユーザー意図によるキャンセルを記録し、Save() 後に OperationCanceledException に
-            // 変換する（「パスワードが違います」という誤解を招く通知を回避）。
+            // パスワード取得が中止される条件は 2 つ:
+            //   (1) ユーザーがダイアログで Cancel を押す → ShowFromBackgroundAsync が null
+            //   (2) 再試行上限（MaxPasswordAttempts）を超過 → 自動キャンセル扱い
+            // どちらも空文字を 7z.dll に返すため EncryptionException が投げられる。
+            // 「パスワードが違います」という誤解を招く通知を回避するため、
+            // 上記いずれかが発生したことをフラグ追跡し、Save() 後に
+            // OperationCanceledException に変換する。
             var archiveName = Path.GetFileName(archivePath);
             var attemptCount = 0;
-            var userCancelledPassword = false;
+            // passwordAcquisitionCancelled は PasswordDialog のコールバックスレッド（7z.dll 由来）から書き込まれ、
+            // reader.Save() 例外ハンドラ側のスレッドから読み取られるため、
+            // volatile 相当のメモリ可視性保証が必要。attemptCount と対称に Interlocked で扱う。
+            // 命名: 「ユーザーキャンセル」だけでなく「再試行上限超過」も 1 で表す（パスワード取得が中止された
+            //       原因を問わず追跡）。旧名 userCancelledPassword は前者だけを示唆するため改名。
+            //
+            // CS1628 について（レビュー bot の誤検知対策コメント）:
+            // この変数は直下のラムダ（passwordQuery）にキャプチャされるため、コンパイラによって
+            // closure クラスのフィールドに hoist される。`Interlocked.Increment(ref ...)` /
+            // `Volatile.Read(ref ...)` は closure フィールドへの ref を取るが、これは合法。
+            // CS1628 は async メソッドの ref/out パラメータを await を跨いで使う場合の制限であり、
+            // 「captured local への ref」とは別。Volatile.Read は同期 catch when フィルタ内で
+            // 使われており、await を跨ぐ可能性もない。実ビルドも 0 errors / 0 warnings。
+            var passwordAcquisitionCancelled = 0;
+            // 再試行上限: 悪意あるアーカイブや構造的に誤判定されるアーカイブでの無限ダイアログループを防ぐ
+            const int MaxPasswordAttempts = 3;
             var passwordQuery = new AsyncPasswordQuery(async _ =>
             {
-                var isRetry = System.Threading.Interlocked.Increment(ref attemptCount) > 1;
-                var pw = await View.PasswordDialog.ShowFromBackgroundAsync(archiveName, isRetry, parentWindow);
+                var currentAttempt = System.Threading.Interlocked.Increment(ref attemptCount);
+                var isRetry = currentAttempt > 1;
+
+                // 上限を超えたら自動キャンセル扱い（null 返しと同じ経路）
+                if (currentAttempt > MaxPasswordAttempts)
+                {
+                    Logger.Log($"パスワード入力上限（{MaxPasswordAttempts}回）を超えたため展開を中止します", LogLevel.Warning);
+                    System.Threading.Interlocked.Exchange(ref passwordAcquisitionCancelled, 1);
+                    return string.Empty;
+                }
+
+                // cancellationToken を渡し、展開キャンセル時に PasswordDialog が画面に残らないようにする。
+                var pw = await View.PasswordDialog.ShowFromBackgroundAsync(archiveName, isRetry, parentWindow, cancellationToken);
                 if (pw is null)
                 {
-                    userCancelledPassword = true;
+                    System.Threading.Interlocked.Exchange(ref passwordAcquisitionCancelled, 1);
                     // 空文字を返すと AsyncPasswordQuery 側で Cancel=true にマップされる
                     return string.Empty;
                 }
@@ -945,12 +1009,18 @@ public static class ArchiveExtractor
                 {
                     reader.Save(tempOutputPath, progress);
                 }
-                catch (EncryptionException) when (userCancelledPassword)
+                catch (EncryptionException) when (System.Threading.Volatile.Read(ref passwordAcquisitionCancelled) == 1)
                 {
-                    // ユーザーがパスワードダイアログで Cancel を押した結果としての EncryptionException。
+                    // ユーザーがパスワードダイアログで Cancel を押した結果、または再試行上限超過で
+                    // 自動キャンセルされた結果としての EncryptionException。
                     // 「パスワードが違います」ではなく通常のキャンセル扱いにする。
+                    // Volatile.Read で別スレッドの書き込みを確実に可視化する。
                     Logger.Log("パスワード入力がキャンセルされたため展開を中止します");
-                    throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"));
+                    // cancellationToken を OCE に紐付ける。CT が既にキャンセル済みの場合は
+                    // 呼び出し元の Task が TaskStatus.Canceled に正しく遷移する。
+                    // CT が未キャンセル（純粋にユーザーがダイアログ Cancel を押しただけ）でも
+                    // OCE.CancellationToken プロパティに記録されるため診断情報が向上する。
+                    throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"), cancellationToken);
                 }
 
                 // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）

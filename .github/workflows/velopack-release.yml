@@ -87,7 +87,9 @@ jobs:
           Write-Host "README.txt generated"
 
       - name: Velopack CLI をインストール
-        run: dotnet tool install --global vpk
+        # サプライチェーン攻撃防止のため NuGet パッケージ側の Velopack と
+        # 同一バージョンに固定する（バージョン未指定だと最新版取得でリスクあり）
+        run: dotnet tool install --global vpk --version 0.0.1369-g1d5c984
 
       - name: Velopack パッケージを作成
         shell: pwsh
@@ -123,16 +125,32 @@ jobs:
         # actions/checkout@v4.2.2
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      - name: 既存リリースを削除
+      # /rere #26: 旧実装は「既存リリース削除 → 再作成」だったため、
+      # マルチアーティファクト（x64 + ARM64）配信中に失敗するとユーザーから
+      # アクセス可能な状態で「タグ消失 / 部分パッケージ」になる経路があった。
+      # draft 方式に変更し、すべてのアップロード完了後にのみ publish する。
+      # 既存リリース（publish 済み）は残してロールバック可能性を保つ。
+      - name: 失敗残存 draft をクリーンアップ（同タグ再実行時の冪等性）
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.version.outputs.tag }}
         run: |
-          if gh release view "$TAG" > /dev/null 2>&1; then
-            echo "既存リリース $TAG を削除..."
+          # 既存タグが draft の場合のみ削除する。publish 済みは保持。
+          # --cleanup-tag を付けないと git tag が残り、後続の `gh release create` が
+          # stale tag（前回失敗時の古いコミット）を流用してしまうため、必ずタグごと削除する。
+          if gh release view "$TAG" --json isDraft -q '.isDraft' 2>/dev/null | grep -q '^true$'; then
+            echo "既存 draft $TAG を削除して再作成（タグごと削除）..."
             gh release delete "$TAG" --yes --cleanup-tag
           else
-            echo "既存リリースなし: $TAG"
+            echo "既存 draft なし、または既に publish 済み: $TAG"
+            # publish 済みでない（リリース無し）かつ git tag だけ残っているケース
+            # （`gh release create` の途中失敗等）でも stale tag を流用しないよう削除
+            if ! gh release view "$TAG" >/dev/null 2>&1; then
+              if gh api "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}" >/dev/null 2>&1; then
+                echo "リリース未作成だが孤立タグ $TAG が残存 → 削除"
+                gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/${TAG}"
+              fi
+            fi
           fi
 
       - name: Velopack 成果物をダウンロード
@@ -148,13 +166,39 @@ jobs:
           echo "パッケージ一覧:"
           ls -lh packages/
 
-      - name: リリースを作成
+      # publish 済みリリース存在ケース（同 release/x.y.z ブランチへの再 push 時のホットフィックス用途）
+      # は --clobber でアーティファクトを直接置換するため、x64 と arm64 の同期ウィンドウ内で部分配信される
+      # 可能性が残る。draft 経路ほどの安全性は保証されないが、新規リリース時は draft 経路に乗るため
+      # 通常運用ではこの分岐に入らない。
+      - name: draft リリースを作成しアップロード
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.version.outputs.tag }}
           VERSION: ${{ needs.version.outputs.version }}
+          # --target を指定しないと gh CLI はタグを既定ブランチ (main) HEAD に作成する。
+          # 本ワークフローは release/** ブランチへの push をトリガーにしており、リリースバイナリは
+          # release/x.y.z 上の commit からビルドされるため、tag が main を指すと
+          # 「配信バイナリの commit と git tag が乖離」してロールバック / bisect / SBUM 突合が壊れる。
+          # --generate-notes の範囲もズレるため、必ず push 対象の commit を target に固定する。
+          TARGET_SHA: ${{ github.sha }}
         run: |
-          gh release create "$TAG" \
-            -t "Lhamiel $VERSION" \
-            --generate-notes
-          gh release upload "$TAG" packages/*
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "既存 publish 済みリリース $TAG が存在 → アーティファクトを --clobber で更新"
+            gh release upload "$TAG" packages/* --clobber
+          else
+            echo "新規 draft リリース $TAG を作成 (target=$TARGET_SHA)"
+            gh release create "$TAG" \
+              --draft \
+              --target "$TARGET_SHA" \
+              -t "Lhamiel $VERSION" \
+              --generate-notes
+            gh release upload "$TAG" packages/*
+          fi
+
+      - name: 全アップロード完了後に draft を公開
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          # publish 済みの場合は no-op、draft の場合のみ公開状態に切替（idempotent）
+          gh release edit "$TAG" --draft=false

@@ -11,7 +11,13 @@ public class SettingsEdgeCaseTests
     public void NewSettings_AndResetToDefaults_ProduceSameValues()
     {
         var fresh = new Settings();
-        var reset = new Settings { CompressionFormat = "7z", Theme = "Dark" };
+        var reset = new Settings
+        {
+            CompressionFormat = "7z",
+            Theme = "Dark",
+            CreateArchiveNameFolder = false,
+            DirectoryStructureMode = DirectoryStructureMode.Flat,
+        };
         reset.ResetToDefaults();
 
         Assert.Equal(fresh.CompressionFormat, reset.CompressionFormat);
@@ -26,6 +32,9 @@ public class SettingsEdgeCaseTests
         Assert.Equal(fresh.LogRetentionDays, reset.LogRetentionDays);
         Assert.Equal(fresh.ExtractionOutputToSameDirectory, reset.ExtractionOutputToSameDirectory);
         Assert.Equal(fresh.CompressionOutputToSameDirectory, reset.CompressionOutputToSameDirectory);
+        // v1.0.160 で導入 → 同 ver 取り下げ → 再リリースで再導入: ResetToDefaults の漏れ修正を検証
+        Assert.Equal(fresh.CreateArchiveNameFolder, reset.CreateArchiveNameFolder);
+        Assert.Equal(fresh.DirectoryStructureMode, reset.DirectoryStructureMode);
     }
 
     [Fact]
@@ -104,5 +113,125 @@ public class SettingsEdgeCaseTests
         var settings = new Settings { Locale = "ja_JP" };
         settings.ResetToDefaults();
         Assert.Equal("", settings.Locale);
+    }
+
+    // === SanitizeAfterLoad（v1.0.160 で追加 → 同 ver 取り下げ → 再リリースで再導入） ===
+
+    [Fact]
+    public void SanitizeAfterLoad_UnknownUpdateChannel_FallsBackToRelease()
+    {
+        var settings = new Settings { UpdateChannel = "../../../evil" };
+        settings.SanitizeAfterLoad();
+        Assert.Equal("release", settings.UpdateChannel);
+    }
+
+    [Theory]
+    [InlineData("release", "release")]
+    [InlineData("prerelease", "prerelease")]
+    [InlineData("RELEASE", "release")]      // 大文字混ざりは canonical ケースに正規化される
+    [InlineData("PreRelease", "prerelease")] // 同上
+    public void SanitizeAfterLoad_AllowListedUpdateChannel_NormalizedToCanonicalCase(string input, string expected)
+    {
+        var settings = new Settings { UpdateChannel = input };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(expected, settings.UpdateChannel);
+    }
+
+    [Theory]
+    [InlineData("DARK", "Dark")]
+    [InlineData("light", "Light")]
+    [InlineData("system", "System")]
+    public void SanitizeAfterLoad_Theme_NormalizedToCanonicalCase(string input, string expected)
+    {
+        var settings = new Settings { Theme = input };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(expected, settings.Theme);
+    }
+
+    [Fact]
+    public void SanitizeAfterLoad_UnmountedDriveOutputDirectory_PreservedNotOverwritten()
+    {
+        // 回帰防止: ユーザーが NAS / USB / リムーバブルドライブ等を出力先に設定しており、
+        // 起動時にそのドライブが未接続でも、設定値はサニタイズで上書きされず保持されること。
+        // 旧実装は Directory.Exists で false → Desktop に強制リセットしていたが、
+        // その後 AutoSave で settings.json も上書きされて永続化破壊（ドライブ再接続後も
+        // 元の設定が失われる）の経路があった。
+        // 構文妥当性のみ検証し、Directory.Exists は実書き込み時に行う設計に変更。
+        var path = @"Z:\NonExistent\Path\xyz_not_real";
+        var settings = new Settings { ExtractionOutputDirectory = path };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(path, settings.ExtractionOutputDirectory);
+    }
+
+    [Fact]
+    public void SanitizeAfterLoad_EmptyOutputDirectory_FallsBackToDesktop()
+    {
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        var settings = new Settings { CompressionOutputDirectory = "" };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(desktop, settings.CompressionOutputDirectory);
+    }
+
+    [Fact]
+    public void SanitizeAfterLoad_DesktopAsOutputDirectory_PreservedNotOverwritten()
+    {
+        // ユーザーが意図的に出力先として選んだ Desktop が、起動のたびに
+        // SanitizeAfterLoad でリセットされない（= 設定の永続化が壊れない）ことを保証する。
+        // PathValidator.IsProtectedDirectory は Desktop を保護対象に含むが、
+        // SanitizeAfterLoad は IsSystemCriticalDirectory（より厳格）を使う設計。
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        Assert.SkipUnless(Directory.Exists(desktop), "テスト環境に Desktop フォルダが存在しないためスキップ");
+        var settings = new Settings { ExtractionOutputDirectory = desktop };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(desktop, settings.ExtractionOutputDirectory);
+    }
+
+    [Fact]
+    public void SanitizeAfterLoad_SystemCriticalDirectory_FallsBackToDesktop()
+    {
+        // 改竄耐性: settings.json を書き換えて Windows / Program Files を出力先にされても
+        // 起動時に Desktop へフォールバックすることを保証する。
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        Assert.SkipUnless(Directory.Exists(windows), "テスト環境に Windows フォルダが存在しないためスキップ");
+        var settings = new Settings { ExtractionOutputDirectory = windows };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(desktop, settings.ExtractionOutputDirectory);
+    }
+
+    [Fact]
+    public void SanitizeAfterLoad_UnknownTheme_FallsBackToSystem()
+    {
+        var settings = new Settings { Theme = "HackerGreen" };
+        settings.SanitizeAfterLoad();
+        Assert.Equal("System", settings.Theme);
+    }
+
+    [Theory]
+    [InlineData("System")]
+    [InlineData("Dark")]
+    [InlineData("Light")]
+    public void SanitizeAfterLoad_SupportedTheme_Preserved(string theme)
+    {
+        var settings = new Settings { Theme = theme };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(theme, settings.Theme);
+    }
+
+    [Fact]
+    public void SanitizeAfterLoad_UnknownCompressionFormat_FallsBackToZip()
+    {
+        var settings = new Settings { CompressionFormat = "RAR" }; // Lhamiel は RAR を圧縮できない
+        settings.SanitizeAfterLoad();
+        Assert.Equal("ZIP", settings.CompressionFormat);
+    }
+
+    [Fact]
+    public void SupportedThemes_ContainsAllThreeValues()
+    {
+        Assert.Contains("System", Settings.SupportedThemes);
+        Assert.Contains("Dark", Settings.SupportedThemes);
+        Assert.Contains("Light", Settings.SupportedThemes);
+        Assert.Equal(3, Settings.SupportedThemes.Length);
     }
 }

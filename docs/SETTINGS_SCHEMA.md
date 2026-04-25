@@ -22,9 +22,11 @@
   "OpenCompressionOutputFolder": true,
   "CompressMultipleAsOne": true,
   "DirectoryStructureMode": "IncludeRoot",
-  "ExcludedFilePatterns": [".DS_Store", "Thumbs.db", "__MACOSX"],
+  "ExcludedFilePatterns": [".DS_Store", "Thumbs.db", "desktop.ini", "__MACOSX"],
   "ZipCompressionLevel": 5,
   "SevenZipCompressionLevel": 5,
+  "LogMaxSizeMB": 10,
+  "LogRetentionDays": 7,
   "UpdateChannel": "release"
 }
 ```
@@ -61,7 +63,14 @@
 | `DirectoryStructureMode` | string | `"IncludeRoot"` | ディレクトリ構造モード（下記参照） |
 | `ZipCompressionLevel` | int | `5` | ZIP圧縮レベル（0-9） |
 | `SevenZipCompressionLevel` | int | `5` | 7z圧縮レベル（0-9） |
-| `ExcludedFilePatterns` | string[] | システムファイル | 圧縮時に除外するパターン |
+| `ExcludedFilePatterns` | string[] | システムファイル | 圧縮時に除外するパス/ファイル名（**glob 非対応、パスセグメント完全一致のみ**。例: `.DS_Store`、`__MACOSX`） |
+
+### ログ設定
+
+| プロパティ | 型 | デフォルト | 説明 |
+|-----------|------|----------|------|
+| `LogMaxSizeMB` | int | `10` | ログファイル 1 つあたりの最大サイズ (MB) |
+| `LogRetentionDays` | int | `7` | この日数より古いログファイルは起動時に自動削除 |
 
 ### 自動更新設定
 
@@ -69,9 +78,9 @@
 
 | プロパティ | 型 | デフォルト | 説明 |
 |-----------|------|----------|------|
-| `UpdateRepoOwner` | string | `"1llum1n4t1s"` | **設定不可（固定）**。書き換え検知時は警告ログを出してデフォルトへ戻す |
-| `UpdateRepoName` | string | `"Lhamiel"` | **設定不可（固定）**。書き換え検知時は警告ログを出してデフォルトへ戻す |
-| `UpdateChannel` | string | `"release"` | 更新チャンネル（`"release"` / `"prerelease"`） |
+| `UpdateRepoOwner` | string | `"1llum1n4t1s"` | **設定不可（固定）**。`[JsonIgnore]` により `settings.json` の読み書き対象外。記述しても反映されない |
+| `UpdateRepoName` | string | `"Lhamiel"` | **設定不可（固定）**。`[JsonIgnore]` により `settings.json` の読み書き対象外。記述しても反映されない |
+| `UpdateChannel` | string | `"release"` | 更新チャンネル（`"release"` / `"prerelease"`）。case-insensitive で受理し、canonical な小文字（`release` / `prerelease`）に正規化される。未知の値は `release` にサイレントフォールバック |
 
 ## DirectoryStructureMode
 
@@ -86,6 +95,21 @@
 ## 設定のリセット
 
 `settings.json` を削除してアプリを再起動するとデフォルト設定が復元される。
+
+## 破損検知時の挙動
+
+> **📝 履歴注記**: この機能は v1.0.160 で実装されたが、同バージョン取り下げ後に v1.0.161 で v1.0.159 状態へロールバックされ、その後再リリースで再導入された経緯がある。
+
+`settings.json` が JSON として解析不能になった場合、Lhamiel は以下の順で処理する：
+
+1. 破損ファイルを `settings.json.corrupt_<YYYYMMDDHHmmss>.bak` に **`File.Move`** で退避（次回起動で同じパースエラーが再発しないようパスから取り除く）
+2. Move が失敗した場合（OneDrive 同期中・ウイルス対策ロック中等）は `File.Delete` → 空 JSON `{}` 上書きの順でフォールバック
+3. デフォルト設定を使用して起動
+4. `Lhamiel_yyyyMMdd.log` に警告ログを出力
+
+また、`ExtractionOutputDirectory` / `CompressionOutputDirectory` が存在しないパスや**システム重大ディレクトリ**（Windows / Program Files / Program Files (x86) / System32 / ドライブルート / プロファイル根 `C:\Users\<user>`）を指している場合は、起動時に自動的にデスクトップへフォールバックする。
+
+> **🛡️ 設計メモ**: `Desktop` / `Documents` / `Downloads` / `Music` / `Pictures` / `Videos` などの一般的なユーザーコンテンツフォルダは出力先として **正当な選択肢** として扱われ、サニタイズで除去されない（`PathValidator.IsSystemCriticalDirectory` がこれらを除外している）。
 
 ## 関連ファイル
 

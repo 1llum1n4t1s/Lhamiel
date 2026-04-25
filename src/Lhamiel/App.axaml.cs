@@ -80,7 +80,7 @@ public partial class App : Application
         InitializeComponent();
 
         // SettingsManager を先に初期化（コンストラクタ内で Logger.Initialize も実行される）
-        var settings = SettingsManager.Instance.Current;
+        var settings = SettingsManager.Instance.CreateSnapshot();
 
         // テーマ設定を適用
         RequestedThemeVariant = GetThemeVariant(settings.Theme);
@@ -113,8 +113,10 @@ public partial class App : Application
             // メソッド冒頭でコマンドライン引数を一度取得
             var startupArgs = Environment.GetCommandLineArgs().Skip(1).ToArray();
 
-            // メインウィンドウの多重起動チェック
-            const string mutexName = "Lhamiel_MainWindow_SingleInstance";
+            // メインウィンドウの多重起動チェック。
+            // Local\ プレフィックスでセッションローカルに限定し、別セッション/別ユーザーによる
+            // Mutex 先取りでのサービス妨害（DoS）を防ぐ。
+            const string mutexName = @"Local\Lhamiel_MainWindow_SingleInstance";
 
             try
             {
@@ -161,7 +163,14 @@ public partial class App : Application
 
             // 初回起動時は IPC サーバーを開始して後続インスタンスからの引数を待機
             _ipcCts = new CancellationTokenSource();
-            _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token);
+            // fire-and-forget で捨てた Task が予期せぬ例外で黙って停止すると
+            // シングルインスタンス引継ぎが機能しなくなるため、ContinueWith でログ出力
+            _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token)
+                .ContinueWith(
+                    t => Logger.LogException("IPCサーバーが予期せず停止しました", t.Exception!),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted,
+                    TaskScheduler.Default);
 
             // 前回の実行で残存した一時ディレクトリを掃除する（OneDrive 同期フォルダや中断時対策）
             _ = Task.Run(() => Util.TempCleanup.CleanupOrphanedTempDirectories());
@@ -259,11 +268,24 @@ public partial class App : Application
         try
         {
             var currentProcess = Process.GetCurrentProcess();
-            var otherProcess = Process.GetProcessesByName(currentProcess.ProcessName).FirstOrDefault(p => p.Id != currentProcess.Id);
+            var currentSessionId = currentProcess.SessionId;
+
+            // 重要: SessionId で同一セッションのプロセスに絞り込む。
+            // Mutex / IPC パイプはどちらも `Local\` / SessionId 付きでセッションスコープ化されているため、
+            // 「既存インスタンス」も同一セッション内のものに限定しないと、RDP + console で
+            // 別セッションの Lhamiel を選んでしまい SetForegroundWindow が空振り→そのまま終了
+            // という経路が成立する。
+            var otherProcess = Process.GetProcessesByName(currentProcess.ProcessName)
+                .FirstOrDefault(p =>
+                {
+                    if (p.Id == currentProcess.Id) return false;
+                    try { return p.SessionId == currentSessionId; }
+                    catch { return false; } // 権限不足等で SessionId 取得不能なプロセスは対象外
+                });
 
             if (otherProcess != null)
             {
-                Logger.Log($"既存インスタンスを見つけました。PID: {otherProcess.Id}");
+                Logger.Log($"既存インスタンスを見つけました。PID: {otherProcess.Id} (Session: {currentSessionId})");
 
                 // メインウィンドウをアクティブ化（NativeMethods を使用）
                 try
@@ -289,10 +311,21 @@ public partial class App : Application
     /// <summary>
     /// コマンドライン引数を解析して圧縮形式とファイルパスのリストを返す
     /// </summary>
+    /// <remarks>
+    /// `--format` 引数値は <see cref="Settings.SupportedCompressionFormats"/> の allow-list で
+    /// 検証する。未知の文字列を渡されても下流の Logger.Log にそのまま到達してログインジェクション
+    /// （改行混入による SIEM 誤検知等）に繋がる経路を塞ぐ。allow-list 外は "default" にフォールバック。
+    /// </remarks>
     private static (string compressionFormat, string[] filePaths) ParseCommandLineArgs(string[] args)
     {
         if (args.Length >= 2 && args[0] == "--format")
-            return (args[1], args[2..]);
+        {
+            var requestedFormat = args[1];
+            // case-insensitive で allow-list と照合し、canonical なケースに正規化
+            var canonical = Array.Find(Settings.SupportedCompressionFormats,
+                f => string.Equals(f, requestedFormat, StringComparison.OrdinalIgnoreCase));
+            return (canonical ?? "default", args[2..]);
+        }
         return ("default", args.Where(a => !a.StartsWith("--")).ToArray());
     }
 
@@ -322,7 +355,7 @@ public partial class App : Application
 
         if (validPaths.Count == 0) return;
 
-        var settings = SettingsManager.Instance.Current;
+        var settings = SettingsManager.Instance.CreateSnapshot();
 
         // すべてアーカイブで圧縮形式未指定なら個別展開
         if (compressionFormat == "default" && ArchiveExtractor.AreAllSupportedArchives(validPaths))
@@ -475,7 +508,7 @@ public partial class App : Application
             }
 
             // 設定を読み込み
-            var settings = SettingsManager.Instance.Current;
+            var settings = SettingsManager.Instance.CreateSnapshot();
 
             // ファイルかフォルダかを判定して適切な処理を実行
             if (File.Exists(path))
@@ -769,20 +802,51 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// ロケールを実際に適用する（インスタンスメソッド。コンストラクタからも安全に呼べる）
+    /// 既にロード済みのロケール辞書をキャッシュ。同じロケールへの再切替時にディスク I/O と
+    /// XAML パースを回避する。
+    /// </summary>
+    private readonly Dictionary<string, IResourceProvider> _localeCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>現在アクティブなロケールキー。</summary>
+    private string? _activeLocaleKey;
+
+    /// <summary>
+    /// 選択ロケールのみオンデマンドで読み込み、<see cref="MergedDictionaries"/> に挿入する。
+    /// 前回ロード済みの辞書はプロセス内でキャッシュして再パースを避ける。
     /// </summary>
     /// <param name="localeKey">ロケールキー（"ja_JP", "en_US" など）</param>
     private void ApplyLocale(string localeKey)
     {
-        if (Resources[localeKey] is not IResourceProvider targetLocale ||
-            targetLocale == _activeLocale)
-            return;
+        if (string.IsNullOrEmpty(localeKey)) return;
+        if (string.Equals(_activeLocaleKey, localeKey, StringComparison.OrdinalIgnoreCase)) return;
+
+        IResourceProvider? targetLocale;
+        if (!_localeCache.TryGetValue(localeKey, out targetLocale))
+        {
+            try
+            {
+                var uri = new Uri($"avares://Lhamiel/Resources/Locales/{localeKey}.axaml");
+                if (AvaloniaXamlLoader.Load(uri) is not IResourceProvider loaded)
+                {
+                    Util.Logger.Log($"ロケール辞書のロードに失敗（IResourceProvider にキャストできない）: {localeKey}", Util.LogLevel.Warning);
+                    return;
+                }
+                targetLocale = loaded;
+                _localeCache[localeKey] = targetLocale;
+            }
+            catch (Exception ex)
+            {
+                Util.Logger.LogException($"ロケール辞書のロードに失敗: {localeKey}", ex);
+                return;
+            }
+        }
 
         if (_activeLocale != null)
             Resources.MergedDictionaries.Remove(_activeLocale);
 
         Resources.MergedDictionaries.Add(targetLocale);
         _activeLocale = targetLocale;
+        _activeLocaleKey = localeKey;
     }
 
     /// <summary>

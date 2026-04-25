@@ -19,6 +19,11 @@ public partial class FileConflictDialog : Window
     private readonly string[] _columnNames;
     private readonly bool _isTwoPane;
 
+    // ダイアログ Close 時にアイコン遅延ロードを停止するためのソース。
+    // ユーザーが大量衝突 (例: 数千件) のダイアログを即座に閉じた場合、
+    // バックグラウンドの SHGetFileInfo 呼び出しが続いて無駄なリソースを消費するのを防ぐ。
+    private readonly CancellationTokenSource _iconLoadCts = new();
+
     public FileConflictDialog() : this([], true) { }
 
     /// <param name="conflictGroups">競合グループ</param>
@@ -133,6 +138,70 @@ public partial class FileConflictDialog : Window
             var identicalCount = CountIdenticalFiles(conflictGroups);
             skipCheckBox.Content = App.Text("Conflict.SkipIdentical", identicalCount);
             skipCheckBox.IsCheckedChanged += (_, _) => ApplySkipIdentical(skipCheckBox.IsChecked == true);
+        }
+
+        // ダイアログ表示後にアイコンをバックグラウンドでバッチロードする。
+        // ハンドラを async void にすると例外がフレームワーク側で握り潰されるため
+        // fire-and-forget + ContinueWith で例外をログに残す。
+        Opened += (_, _) => _ = LoadAllIconsAsync(_iconLoadCts.Token)
+            .ContinueWith(
+                t => Logger.LogException("FileConflictDialog のアイコン遅延ロードに失敗", t.Exception!),
+                CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default);
+
+        // ダイアログが閉じられた時点でアイコンロードを打ち切り、CTS を破棄する。
+        // Closed は Window のライフサイクル末端で発火するため、ここで Cancel すれば
+        // バックグラウンドの Parallel.ForEachAsync ループが OperationCanceledException で抜ける。
+        //
+        // 冪等化: Avalonia 12 で Window.Close() が複数回呼ばれた場合（OverwriteAll → Close、
+        // 同時に何かが Close 呼ぶ等）に Closed が 2 回発火する経路で、2 回目の Cancel/Dispose が
+        // ObjectDisposedException を投げる懸念がある。例外を握って黙らせる。
+        Closed += (_, _) =>
+        {
+            try
+            {
+                if (!_iconLoadCts.IsCancellationRequested)
+                    _iconLoadCts.Cancel();
+            }
+            catch (ObjectDisposedException) { /* 二重 Closed の 2 回目: 既に Dispose 済み */ }
+            try { _iconLoadCts.Dispose(); }
+            catch (ObjectDisposedException) { /* 同上 */ }
+        };
+    }
+
+    /// <summary>
+    /// 全セルのアイコンをバックグラウンドで取得する。
+    /// </summary>
+    private async Task LoadAllIconsAsync(CancellationToken cancellationToken)
+    {
+        // SelectMany で配列を行ごとに new するのを避け、単純な foreach で詰める。
+        var cells = new List<ConflictCellViewModel>(_rows.Count * 2);
+        foreach (var row in _rows)
+        {
+            if (row.Left != null) cells.Add(row.Left);
+            if (row.Right != null) cells.Add(row.Right);
+        }
+
+        // Parallel.ForEachAsync は内部で MaxDegreeOfParallelism を超えない範囲でしか
+        // Task を生成しないため、全 cells 分の Task を事前にリスト化する必要がない。
+        // SemaphoreSlim + Task.Run の自前実装より省メモリかつ簡潔。
+        var options = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = ArchiveProgressHelper.IoBoundParallelism,
+            CancellationToken = cancellationToken,
+        };
+        try
+        {
+            await Parallel.ForEachAsync(cells, options, async (cell, ct) =>
+            {
+                ct.ThrowIfCancellationRequested();
+                await cell.LoadIconAsync();
+            });
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // ダイアログ Close によるキャンセルは正常系。エラーログは出さない。
         }
     }
 
@@ -294,9 +363,15 @@ public partial class FileConflictDialog : Window
     /// </summary>
     private void ApplySkipIdentical(bool skip)
     {
+        // visibleCount を foreach 中に積算して二重走査（O(2N) → O(N)）を避ける
+        var visibleCount = 0;
         foreach (var row in _rows)
         {
-            if (row.Left == null || row.Right == null) continue;
+            if (row.Left == null || row.Right == null)
+            {
+                if (row.IsVisible) visibleCount++;
+                continue;
+            }
 
             if (AreEntriesIdentical(row.Left.Entry, row.Right.Entry))
             {
@@ -308,10 +383,11 @@ public partial class FileConflictDialog : Window
                     row.Right.IsSelected = false;
                 }
             }
+
+            if (row.IsVisible) visibleCount++;
         }
 
         // ヘッダーの件数を更新（表示中の行数 = 衝突ファイル数）
-        var visibleCount = _rows.Count(r => r.IsVisible);
         var headerText = this.FindControl<TextBlock>("HeaderText");
         if (headerText != null)
         {
@@ -485,16 +561,12 @@ public class ConflictRowViewModel : ObservableObject
 /// <summary>
 /// 左右いずれかのセル（1つのファイルバージョン）。
 /// </summary>
-public class ConflictCellViewModel : ObservableObject
+public partial class ConflictCellViewModel : ObservableObject
 {
     public FileConflictEntry Entry { get; }
 
+    [ObservableProperty]
     private bool _isSelected;
-    public bool IsSelected
-    {
-        get => _isSelected;
-        set => SetProperty(ref _isSelected, value);
-    }
 
     public string FileSizeDisplay => Entry.FileSizeDisplay;
     public string LastModifiedDisplay => Entry.LastModified.ToString("yyyy/MM/dd HH:mm");
@@ -503,18 +575,47 @@ public class ConflictCellViewModel : ObservableObject
     public string DateAndSizeDisplay => $"{LastModifiedDisplay}  {FileSizeDisplay}";
 
     /// <summary>
-    /// OS から取得したファイルアイコン
+    /// OS から取得したファイルアイコン。
+    /// SHGetFileInfo を UI スレッドで一括同期取得すると、衝突件数 N に比例してダイアログ表示が
+    /// ブロックされる（500 件で 500ms〜2.5s）。初期値 null とし、<see cref="LoadIconAsync"/> で
+    /// バックグラウンドロード完了後にバインディング通知する。
     /// </summary>
-    public Bitmap? Icon { get; }
+    [ObservableProperty]
+    private Bitmap? _icon;
 
     public ConflictCellViewModel(FileConflictEntry entry)
     {
         Entry = entry;
-        // 実在する画像・動画ファイルはサムネイル優先、それ以外はアイコン
-        var isRealFile = (File.Exists(entry.FullPath) || Directory.Exists(entry.FullPath))
-            && !ArchiveExtractor.IsSupportedArchiveType(entry.FullPath);
-        Icon = isRealFile
-            ? FileIconHelper.GetThumbnailOrIcon(entry.FullPath)
-            : FileIconHelper.GetFileIcon(Path.GetFileName(entry.RelativePath));
+        // Icon は遅延ロード。コンストラクタでは null のまま返し、後段で LoadIconAsync を呼ぶ。
+    }
+
+    /// <summary>
+    /// バックグラウンドスレッドでアイコンを取得し、<see cref="Icon"/> プロパティに反映する。
+    /// </summary>
+    /// <remarks>
+    /// Avalonia の binding インフラは <see cref="System.ComponentModel.INotifyPropertyChanged"/>
+    /// 由来の通知を受けるとき内部で UI スレッドにマーシャリングするため、
+    /// バックグラウンドからの直接代入で問題ない。
+    /// <see cref="FileIconHelper"/> 側は内部でスレッドセーフキャッシュを持つ。
+    /// </remarks>
+    public async Task LoadIconAsync()
+    {
+        if (Icon != null) return;
+        var entry = Entry;
+        Icon = await Task.Run(() =>
+        {
+            try
+            {
+                var isRealFile = (File.Exists(entry.FullPath) || Directory.Exists(entry.FullPath))
+                    && !ArchiveExtractor.IsSupportedArchiveType(entry.FullPath);
+                return isRealFile
+                    ? FileIconHelper.GetThumbnailOrIcon(entry.FullPath)
+                    : FileIconHelper.GetFileIcon(Path.GetFileName(entry.RelativePath));
+            }
+            catch
+            {
+                return null;
+            }
+        });
     }
 }

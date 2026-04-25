@@ -139,6 +139,18 @@ public static class ArchiveErrorHandler
                 errorInfo.IsRecoverable = true;
                 break;
 
+            // 7z.dll 由来の HRESULT ベース例外。InvalidOperationException を継承していないため、
+            // 独立した分岐で破損として扱う必要がある（IsCorruptedFileError の SevenZipException 判定が
+            // ここに到達することで初めて意味を持つ）。EncryptionException は SevenZipException の
+            // 派生である可能性が高いため、必ず EncryptionException ケースの後ろに配置する。
+            case SevenZipException:
+                errorInfo.ErrorType = ArchiveErrorType.CorruptedFile;
+                errorInfo.Message = App.Text("ErrorHandler.Corrupted");
+                errorInfo.Details = GetCorruptionDetails(ex, archivePath);
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.CorruptedAction");
+                errorInfo.IsRecoverable = false;
+                break;
+
             case IOException ioEx:
                 if (IsDiskSpaceError(ioEx))
                 {
@@ -346,14 +358,37 @@ public static class ArchiveErrorHandler
     /// <summary>
     /// 破損ファイルエラーかどうかを判定
     /// </summary>
+    /// <remarks>
+    /// 呼び出し元: <see cref="AnalyzeError"/> の <c>case InvalidOperationException</c> 分岐のみ。
+    /// <see cref="IOException"/> 経路は L154 の専用 case で先行処理されるため、ここには到達しない。
+    /// <see cref="SevenZipException"/> も L146 の専用 case で先行処理されるため、ここには到達しない。
+    ///
+    /// 日本語 OS 環境では CLR が例外メッセージを翻訳するため、英語キーワードだけではヒット漏れが起きる。
+    /// メッセージは英語・日本語両方のキーワードでフォールバック判定する。
+    /// </remarks>
     private static bool IsCorruptedFileError(Exception ex)
     {
+        // 注: SevenZipException は AnalyzeError の専用 case で先行処理されるため、
+        // ここには InvalidOperationException 系の例外しか流れてこない。
+        // メッセージキーワードベースで破損判定する。
         var message = ex.Message.ToLowerInvariant();
-        return message.Contains("corrupt") ||
-               message.Contains("damaged") ||
-               message.Contains("invalid") ||
-               message.Contains("crc") ||
-               message.Contains("checksum");
+
+        // 英語キーワード（Cube.FileSystem.SevenZip / 7z.dll 由来のメッセージ）
+        if (message.Contains("corrupt") ||
+            message.Contains("damaged") ||
+            message.Contains("invalid") ||
+            message.Contains("crc") ||
+            message.Contains("checksum"))
+            return true;
+
+        // 日本語キーワード（日本語 OS で CLR が例外を翻訳したケース）
+        if (message.Contains("破損") ||
+            message.Contains("壊れ") ||
+            message.Contains("無効") ||
+            message.Contains("チェックサム"))
+            return true;
+
+        return false;
     }
 
     /// <summary>

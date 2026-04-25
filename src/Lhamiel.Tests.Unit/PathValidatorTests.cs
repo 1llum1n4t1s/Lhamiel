@@ -128,7 +128,9 @@ public class PathValidatorTests
     }
 
     // === IsWithinDirectory ===
-
+    // 注: IsWithinDirectory は [Obsolete] 化されている。テストは既存挙動と
+    // プレフィックス衝突バイパス修正の両方を検証する。
+#pragma warning disable CS0618 // Type or member is obsolete
     [Fact]
     public void IsWithinDirectory_WithChildPath_ReturnsTrue()
     {
@@ -159,6 +161,15 @@ public class PathValidatorTests
     {
         Assert.True(PathValidator.IsWithinDirectory(@"C:\PARENT\child\file.txt", @"C:\parent"));
     }
+
+    [Fact]
+    public void IsWithinDirectory_PrefixCollision_ReturnsFalse()
+    {
+        // プレフィックス衝突バイパス防止: "C:\parent" と "C:\parent-evil" を混同しない
+        Assert.False(PathValidator.IsWithinDirectory(@"C:\parent-evil\file.txt", @"C:\parent"));
+        Assert.False(PathValidator.IsWithinDirectory(@"C:\parentx", @"C:\parent"));
+    }
+#pragma warning restore CS0618
 
     // === IsProtectedDirectory ===
 
@@ -212,6 +223,99 @@ public class PathValidatorTests
             // 末尾にセパレータをつけても検出すること
             Assert.True(PathValidator.IsProtectedDirectory(desktop + @"\"));
         }
+    }
+
+    // === IsSystemCriticalDirectory（直接テスト） ===
+    // 旧来は Settings.SanitizeAfterLoad 経由の間接テストしかなく、
+    // ProgramFiles / System32 / プロファイル根の網羅性が確認できない構造だった。
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void IsSystemCriticalDirectory_WithNullOrEmpty_ReturnsTrue(string? path)
+    {
+        Assert.True(PathValidator.IsSystemCriticalDirectory(path!));
+    }
+
+    [Theory]
+    [InlineData(@"C:\")]
+    [InlineData(@"D:\")]
+    public void IsSystemCriticalDirectory_WithDriveRoot_ReturnsTrue(string path)
+    {
+        Assert.True(PathValidator.IsSystemCriticalDirectory(path));
+    }
+
+    [Fact]
+    public void IsSystemCriticalDirectory_WithWindowsFolder_ReturnsTrue()
+    {
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        Assert.SkipWhen(string.IsNullOrEmpty(windows), "Windows フォルダが解決できないためスキップ");
+        Assert.True(PathValidator.IsSystemCriticalDirectory(windows));
+    }
+
+    [Fact]
+    public void IsSystemCriticalDirectory_WithProgramFiles_ReturnsTrue()
+    {
+        var pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        Assert.SkipWhen(string.IsNullOrEmpty(pf), "ProgramFiles フォルダが解決できないためスキップ");
+        Assert.True(PathValidator.IsSystemCriticalDirectory(pf));
+    }
+
+    [Fact]
+    public void IsSystemCriticalDirectory_WithSystem32_ReturnsTrue()
+    {
+        var sys = Environment.GetFolderPath(Environment.SpecialFolder.System);
+        Assert.SkipWhen(string.IsNullOrEmpty(sys), "System32 フォルダが解決できないためスキップ");
+        Assert.True(PathValidator.IsSystemCriticalDirectory(sys));
+    }
+
+    [Fact]
+    public void IsSystemCriticalDirectory_WithUserProfileRoot_ReturnsTrue()
+    {
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        Assert.SkipWhen(string.IsNullOrEmpty(profile), "UserProfile フォルダが解決できないためスキップ");
+        Assert.True(PathValidator.IsSystemCriticalDirectory(profile));
+    }
+
+    [Fact]
+    public void IsSystemCriticalDirectory_WithSystemSubdirectory_ReturnsTrue()
+    {
+        // 回帰防止: Windows/System32/drivers 等のサブディレクトリも保護対象であること。
+        // 旧実装では HashSet.Contains の完全一致のみで判定しており、
+        // settings.json 改竄経由で `C:\Windows\System32\drivers` を出力先に設定する
+        // 経路が通り抜けていた（PR #48 round 10 で StartsWith ベースに修正）。
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        Assert.SkipWhen(string.IsNullOrEmpty(windows), "Windows フォルダが解決できないためスキップ");
+        var system32Drivers = Path.Combine(windows, "System32", "drivers");
+        Assert.True(PathValidator.IsSystemCriticalDirectory(system32Drivers));
+    }
+
+    [Fact]
+    public void IsSystemCriticalDirectory_WithDesktop_ReturnsFalse()
+    {
+        // ユーザーコンテンツフォルダは「正当な出力先」として許可されること。
+        // IsProtectedDirectory（再帰削除拒否用）とは振る舞いが異なる。
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        Assert.SkipWhen(string.IsNullOrEmpty(desktop), "Desktop フォルダが解決できないためスキップ");
+        Assert.False(PathValidator.IsSystemCriticalDirectory(desktop));
+    }
+
+    [Fact]
+    public void IsSystemCriticalDirectory_WithDownloads_ReturnsFalse()
+    {
+        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        Assert.SkipWhen(string.IsNullOrEmpty(profile), "UserProfile フォルダが解決できないためスキップ");
+        var downloads = Path.Combine(profile, "Downloads");
+        Assert.SkipUnless(Directory.Exists(downloads), "Downloads フォルダが存在しないためスキップ");
+        Assert.False(PathValidator.IsSystemCriticalDirectory(downloads));
+    }
+
+    [Fact]
+    public void IsSystemCriticalDirectory_WithTempSubfolder_ReturnsFalse()
+    {
+        var tempPath = Path.Combine(Path.GetTempPath(), "MyExtraction");
+        Assert.False(PathValidator.IsSystemCriticalDirectory(tempPath));
     }
 
     // === ValidatePathLength edge cases ===

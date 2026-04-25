@@ -1,16 +1,11 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents (Claude Code, Codex, etc.) working in this repository.
+The content mirrors CLAUDE.md — keep them in sync when updating project-wide conventions.
 
 ## Project Overview
 
 Lhamiel is a Windows archive compression/decompression desktop app built with **Avalonia 12** (not WPF) and **.NET 10.0**. The UI language is Japanese.
-
-> **⚠️ Windows Only**: Avalonia 12 はクロスプラットフォームフレームワークだが、本プロジェクトは
-> `FolderOpener` (explorer.exe)、`NativeLibraryManager` (LoadLibraryW)、`IpcService` (Named Pipe +
-> `PipeOptions.CurrentUserOnly`)、`FileIconHelper` (`SHGetFileInfo`)、`ShellLinkNative` (COM) など
-> Windows 固有 API に広範に依存している。Linux / macOS 対応は現時点で想定していない。他 OS 対応を
-> 検討する場合は Util 層の P/Invoke 依存の棚卸しが前提条件となる。
 
 ## Build & Development Commands
 

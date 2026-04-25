@@ -58,19 +58,29 @@ public static class PathValidator
     }
 
     /// <summary>
-    /// ファイルパスが指定された基準ディレクトリ内にあるかどうかを検証する
+    /// ファイルパスが指定された基準ディレクトリ内にあるかどうかを検証する。
+    /// Zip Slip ガードは <c>ArchiveExtractor.TryResolveSafeEntryPathFromNormalized</c> を使うこと。
+    /// 本メソッドは末尾セパレータを強制付与してプレフィックス衝突（例: C:\Users\Bob と C:\Users\Bob-evil）
+    /// によるバイパスを防ぐ。
     /// </summary>
     /// <param name="filePath">検証するファイルパス</param>
     /// <param name="baseDirectory">基準ディレクトリ</param>
-    /// <returns>基準ディレクトリ内にある場合はtrue</returns>
+    /// <returns>基準ディレクトリ内またはパスが完全に一致する場合は true</returns>
+    [Obsolete("新規コードでは ArchiveExtractor.TryResolveSafeEntryPathFromNormalized を使うこと。本メソッドは将来削除予定。")]
     public static bool IsWithinDirectory(string filePath, string baseDirectory)
     {
         try
         {
             var fullFilePath = Path.GetFullPath(filePath);
-            var fullBasePath = Path.GetFullPath(baseDirectory);
+            var fullBasePath = Path.GetFullPath(baseDirectory)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
-            return fullFilePath.StartsWith(fullBasePath, StringComparison.OrdinalIgnoreCase);
+            // 完全一致はベース自身を指しているので true
+            if (string.Equals(fullFilePath, fullBasePath, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            var prefixWithSeparator = fullBasePath + Path.DirectorySeparatorChar;
+            return fullFilePath.StartsWith(prefixWithSeparator, StringComparison.OrdinalIgnoreCase);
         }
         catch
         {
@@ -222,8 +232,20 @@ public static class PathValidator
     /// </summary>
     /// <param name="path">検証するパス</param>
     /// <returns>保護されている場合はtrue</returns>
-    // 保護フォルダのキャッシュ（初回アクセス時に構築）
+    // 保護フォルダのキャッシュ（初回アクセス時に構築）。
+    // 「上書き／削除のターゲットとしてその shell folder 自身を指定された場合」に
+    // 再帰削除を拒否するためのもの。エクスプローラの Desktop / Documents / Downloads 等を
+    // 出力先として選ぶこと自体は許可する（中にサブフォルダを作って展開するのは安全）。
     private static readonly Lazy<HashSet<string>> ProtectedFolders = new(BuildProtectedFolders);
+
+    // システム重大ディレクトリのキャッシュ（同上）。
+    // こちらは「設定値として保存することすら許可しない」レベルの強い制限で、
+    // 主に settings.json 改竄耐性のための判定に使う。
+    // Subdir 版: そのフォルダ自身 + 配下サブディレクトリすべてを禁止（Windows / ProgramFiles / System32 等）
+    // Exact 版: そのフォルダ自身のみ禁止（UserProfile = C:\Users\<user> 直下。
+    //          サブの Desktop / Documents / Downloads は正当な出力先として許可するため）
+    private static readonly Lazy<HashSet<string>> SystemCriticalSubdirFolders = new(BuildSystemCriticalSubdirFolders);
+    private static readonly Lazy<HashSet<string>> SystemCriticalExactFolders = new(BuildSystemCriticalExactFolders);
 
     private static HashSet<string> BuildProtectedFolders()
     {
@@ -260,55 +282,175 @@ public static class PathValidator
         return folders;
     }
 
+    private static HashSet<string> BuildSystemCriticalSubdirFolders()
+    {
+        // 出力先として「絶対に保存させてはいけない」OS / プログラム本体ディレクトリ。
+        // ここに含めたフォルダは「自身 + サブディレクトリすべて」が禁止される。
+        // 例: Windows を含めると C:\Windows\System32\drivers も禁止される。
+        var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var systemFolders = new[]
+        {
+            Environment.SpecialFolder.Windows,
+            Environment.SpecialFolder.ProgramFiles,
+            Environment.SpecialFolder.ProgramFilesX86,
+            Environment.SpecialFolder.System,
+            Environment.SpecialFolder.CommonDocuments,
+        };
+
+        foreach (var sf in systemFolders)
+        {
+            var p = Environment.GetFolderPath(sf);
+            if (!string.IsNullOrEmpty(p))
+                folders.Add(Path.GetFullPath(p).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        }
+
+        return folders;
+    }
+
+    private static HashSet<string> BuildSystemCriticalExactFolders()
+    {
+        // 「そのフォルダ自身を出力先にすることは禁止だが、サブは許可」の対象。
+        // UserProfile (C:\Users\<user>) はこれ。サブにある Desktop / Documents / Downloads /
+        // Music / Pictures / Videos は正当な出力先として許可するため、サブまで禁止してはいけない。
+        var folders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var exactFolders = new[]
+        {
+            Environment.SpecialFolder.UserProfile, // C:\Users\<user> ルートのみ
+        };
+
+        foreach (var sf in exactFolders)
+        {
+            var p = Environment.GetFolderPath(sf);
+            if (!string.IsNullOrEmpty(p))
+                folders.Add(Path.GetFullPath(p).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        }
+
+        return folders;
+    }
+
+    /// <summary>
+    /// パスをレキシカル正規化（Path.GetFullPath）し、可能ならシンボリックリンク/ジャンクションの
+    /// 実体解決（Directory.ResolveLinkTarget）も加えた候補集合を返す。
+    /// `mklink /J fake desktop` 経由での保護チェック回避を防ぐため、両方を保護判定対象にする。
+    /// IsProtectedDirectory / IsSystemCriticalDirectory 双方で同じ正規化を行うため、ここに集約。
+    /// 過去はそれぞれが同一ロジックをコピーしており、片方だけ修正するセキュリティ不整合の温床だった。
+    /// </summary>
+    private static HashSet<string> ResolveNormalizedCandidates(string path)
+    {
+        var normalizedCandidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var lexical = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        normalizedCandidates.Add(lexical);
+
+        try
+        {
+            // symlink/junction の最終ターゲットをプラットフォーム既定の上限まで追跡する。
+            // .NET のドキュメント上、深さ上限は Windows が 63、Unix が 40。
+            // ループ・壊れたリンク・非リンクは null を返す（IOException になるケースは catch 側で握る）。
+            var resolved = Directory.ResolveLinkTarget(lexical, returnFinalTarget: true);
+            if (resolved is DirectoryInfo dirInfo && !string.IsNullOrWhiteSpace(dirInfo.FullName))
+            {
+                normalizedCandidates.Add(dirInfo.FullName
+                    .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            }
+        }
+        catch
+        {
+            // 非対応パスや権限不足等は lexical チェックのみで判定
+        }
+
+        return normalizedCandidates;
+    }
+
+    /// <summary>
+    /// 候補パス集合を、保護フォルダ集合に対して「ドライブルート単独 / 完全一致 / サブディレクトリ」で照合する。
+    /// </summary>
+    /// <param name="candidates">ResolveNormalizedCandidates が返す候補集合</param>
+    /// <param name="protectedSet">保護対象フォルダ集合（完全一致候補）</param>
+    /// <param name="matchSubdirectories">true なら `&lt;protectedFolder&gt;\subdir` も保護対象として true を返す</param>
+    private static bool IsAnyCandidateProtected(
+        HashSet<string> candidates,
+        HashSet<string> protectedSet,
+        bool matchSubdirectories)
+    {
+        foreach (var candidate in candidates)
+        {
+            // 1. ドライブのルートディレクトリチェック（C:\ 等の単独）
+            var root = Path.GetPathRoot(candidate);
+            if (string.Equals(root?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                              candidate, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // 2. 完全一致
+            if (protectedSet.Contains(candidate))
+                return true;
+
+            // 3. サブディレクトリ一致（IsSystemCriticalDirectory のみ有効化）
+            //    `C:\Windows\System32\drivers` 等を保護するため `<protected>\` で始まるパスもブロック。
+            //    一般保護（IsProtectedDirectory）は Desktop/Documents 等が含まれており、
+            //    サブディレクトリ展開は正常系として許可されるべきなので false で運用。
+            if (matchSubdirectories)
+            {
+                foreach (var protectedFolder in protectedSet)
+                {
+                    if (candidate.StartsWith(protectedFolder + Path.DirectorySeparatorChar,
+                                             StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     public static bool IsProtectedDirectory(string path)
     {
         try
         {
             if (string.IsNullOrWhiteSpace(path)) return true;
-
-            // レキシカル正規化（Path.GetFullPath）と、可能ならシンボリックリンク/ジャンクションの
-            // 実体解決（Directory.ResolveLinkTarget）の両方でチェックすることで、
-            // `mklink /J fake desktop` 経由での保護チェック回避を防ぐ。
-            var normalizedCandidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var lexical = Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            normalizedCandidates.Add(lexical);
-
-            try
-            {
-                // symlink/junction の最終ターゲットをプラットフォーム既定の上限まで追跡する。
-                // .NET のドキュメント上、深さ上限は Windows が 63、Unix が 40。
-                // ループ・壊れたリンク・非リンクは null を返す（IOException になるケースは catch 側で握る）。
-                var resolved = Directory.ResolveLinkTarget(lexical, returnFinalTarget: true);
-                if (resolved is DirectoryInfo dirInfo && !string.IsNullOrWhiteSpace(dirInfo.FullName))
-                {
-                    normalizedCandidates.Add(dirInfo.FullName
-                        .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-                }
-            }
-            catch
-            {
-                // 非対応パスや権限不足等は lexical チェックのみで判定
-            }
-
-            foreach (var candidate in normalizedCandidates)
-            {
-                // 1. ドライブのルートディレクトリをチェック
-                var root = Path.GetPathRoot(candidate);
-                if (string.Equals(root?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
-                                  candidate, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-
-                // 2. 特殊なフォルダ（シェルフォルダ）をチェック
-                if (ProtectedFolders.Value.Contains(candidate))
-                    return true;
-            }
-            return false;
+            var candidates = ResolveNormalizedCandidates(path);
+            // 一般保護: Desktop / Documents 等の上書き・削除を拒否する目的。
+            // サブディレクトリは「正常な展開先」として許可（matchSubdirectories=false）。
+            return IsAnyCandidateProtected(candidates, ProtectedFolders.Value, matchSubdirectories: false);
         }
         catch
         {
             // エラーが発生した場合は安全のために保護されているとみなす
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// 「設定値として保存させない」レベルの強い保護判定。
+    /// IsProtectedDirectory より範囲を狭め、Desktop / Documents / Downloads などの
+    /// 一般的なユーザーコンテンツフォルダは許可する（出力先として正当な選択肢のため）。
+    /// 主に settings.json 改竄耐性として、Windows / Program Files / System32 /
+    /// ドライブルート / プロファイル根のような OS 構造を出力先設定として防ぐ用途。
+    /// シンボリックリンク追跡は IsProtectedDirectory と同じ ResolveNormalizedCandidates を共有する。
+    ///
+    /// IsProtectedDirectory との差: サブディレクトリ一致を有効化している。
+    /// `C:\Windows\System32\drivers` のような OS 内部パスを設定値として禁止するため。
+    /// </summary>
+    public static bool IsSystemCriticalDirectory(string path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path)) return true;
+            var candidates = ResolveNormalizedCandidates(path);
+            // 1. サブディレクトリも禁止する強保護: Windows / Program Files / System32 等。
+            //    `C:\Windows\System32\drivers` のような OS 内部パスも遮断する。
+            if (IsAnyCandidateProtected(candidates, SystemCriticalSubdirFolders.Value, matchSubdirectories: true))
+                return true;
+            // 2. 完全一致のみ禁止: UserProfile 根（C:\Users\<user>）。
+            //    サブの Desktop / Documents / Downloads は正当な出力先として許可するため、サブまでは禁止しない。
+            if (IsAnyCandidateProtected(candidates, SystemCriticalExactFolders.Value, matchSubdirectories: false))
+                return true;
+            return false;
+        }
+        catch
+        {
             return true;
         }
     }
