@@ -801,18 +801,13 @@ public partial class App : Application
             app.ApplyLocale(localeKey);
     }
 
-    /// <summary>
-    /// 既にロード済みのロケール辞書をキャッシュ。同じロケールへの再切替時にディスク I/O と
-    /// XAML パースを回避する。
-    /// </summary>
-    private readonly Dictionary<string, IResourceProvider> _localeCache = new(StringComparer.OrdinalIgnoreCase);
-
     /// <summary>現在アクティブなロケールキー。</summary>
     private string? _activeLocaleKey;
 
     /// <summary>
-    /// 選択ロケールのみオンデマンドで読み込み、<see cref="MergedDictionaries"/> に挿入する。
-    /// 前回ロード済みの辞書はプロセス内でキャッシュして再パースを避ける。
+    /// 選択ロケールのみ <see cref="MergedDictionaries"/> に挿入する。
+    /// 辞書自体は App.axaml の ResourceInclude で登録し、Native AOT / compiled XAML でも
+    /// ビルド成果物に含まれるようにする。
     /// </summary>
     /// <param name="localeKey">ロケールキー（"ja_JP", "en_US" など）</param>
     private void ApplyLocale(string localeKey)
@@ -820,25 +815,10 @@ public partial class App : Application
         if (string.IsNullOrEmpty(localeKey)) return;
         if (string.Equals(_activeLocaleKey, localeKey, StringComparison.OrdinalIgnoreCase)) return;
 
-        IResourceProvider? targetLocale;
-        if (!_localeCache.TryGetValue(localeKey, out targetLocale))
+        if (Resources[localeKey] is not IResourceProvider targetLocale)
         {
-            try
-            {
-                var uri = new Uri($"avares://Lhamiel/Resources/Locales/{localeKey}.axaml");
-                if (AvaloniaXamlLoader.Load(uri) is not IResourceProvider loaded)
-                {
-                    Util.Logger.Log($"ロケール辞書のロードに失敗（IResourceProvider にキャストできない）: {localeKey}", Util.LogLevel.Warning);
-                    return;
-                }
-                targetLocale = loaded;
-                _localeCache[localeKey] = targetLocale;
-            }
-            catch (Exception ex)
-            {
-                Util.Logger.LogException($"ロケール辞書のロードに失敗: {localeKey}", ex);
-                return;
-            }
+            Util.Logger.Log($"未登録のロケールが指定されました: {localeKey}", Util.LogLevel.Warning);
+            return;
         }
 
         if (_activeLocale != null)

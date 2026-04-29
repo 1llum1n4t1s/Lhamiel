@@ -118,6 +118,12 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ## 更新履歴
 
+### v1.0.163 (2026-04-29)
+
+- **ロケール辞書のロード方式を ResourceInclude 静的登録に戻す** — v1.0.162 までの「選択ロケールのみ `AvaloniaXamlLoader.Load` でオンデマンドロード」方式は Native AOT / compiled XAML 環境で辞書がビルド成果物に含まれない問題があったため、17 言語すべてを `App.axaml` の `ResourceInclude` として静的登録する方式に戻した。`MergedDictionaries` への投入は引き続き選択ロケールのみで、複数言語のキーが同時に有効化されることはない
+- **`_localeCache` 撤去** — 上記方式変更に伴い `App.axaml.cs` のオンデマンドキャッシュ用 `Dictionary<string, IResourceProvider>` および try/catch 付きランタイムロード処理を削除。`Resources[localeKey]` 参照のみのシンプルな実装に
+- **依存パッケージ更新** — `Microsoft.DotNet.ILCompiler` / `Microsoft.NET.ILLink.Tasks` を 10.0.6 → 10.0.7 に更新（Native AOT ツールチェーン）
+
 ### v1.0.162 (2026-04-25)
 
 - **/rere 6 人分隊レビュー指摘 33 件を再適用 + 17 ラウンドのレビュー反映** — v1.0.161 ベースに対して PR #47 の 33 件を再提出（PR #48）し、CodeRabbit / Gemini / Codex の 17 ラウンド指摘を順次反映。主な変更:
