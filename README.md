@@ -118,6 +118,11 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ## 更新履歴
 
+### v1.0.164 (2026-04-29)
+
+- **依存パッケージ更新** — Avalonia 12.0.1 → 12.0.2（バグ修正パッチ：OneWay バインディング修正、TabControl 高速切替クラッシュ修正等）、MessageBox.Avalonia 3.3.1.1 → 12.0.0（Avalonia 12 対応版、API 互換）、Microsoft.NET.Test.Sdk 18.4.0 → 18.5.1
+- **確認ダイアログのデザイン統一** — サポートページ遷移時の確認ダイアログを `MessageBox.Avalonia` の既定デザインから、他のダイアログと同じアクリル背景のカスタムデザイン (`ConfirmDialog`) に統一
+
 ### v1.0.163 (2026-04-29)
 
 - **ロケール辞書のロード方式を ResourceInclude 静的登録に戻す** — v1.0.162 までの「選択ロケールのみ `AvaloniaXamlLoader.Load` でオンデマンドロード」方式は Native AOT / compiled XAML 環境で辞書がビルド成果物に含まれない問題があったため、17 言語すべてを `App.axaml` の `ResourceInclude` として静的登録する方式に戻した。`MergedDictionaries` への投入は引き続き選択ロケールのみで、複数言語のキーが同時に有効化されることはない

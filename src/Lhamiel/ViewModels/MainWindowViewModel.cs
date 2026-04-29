@@ -743,9 +743,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private async Task OpenFeedbackLinkAsync()
     {
         const string url = "https://github.com/1llum1n4t1s/Lhamiel/issues";
-        var confirmed = await MessageService.ShowYesNoQuestionAsync(
+        var window = await MessageService.GetActiveWindowAsync();
+        var dialog = new View.ConfirmDialog(
             App.Text("Version.Feedback.Confirm"),
             App.Text("Version.Feedback.ConfirmTitle"));
+        var confirmed = window != null
+            ? await dialog.ShowDialog<bool>(window)
+            : false;
         if (!confirmed) return;
 
         try

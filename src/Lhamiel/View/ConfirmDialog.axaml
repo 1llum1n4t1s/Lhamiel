@@ -1,0 +1,59 @@
+<Window
+    x:Class="Lhamiel.View.ConfirmDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:view="using:Lhamiel.View"
+    Width="420"
+    SizeToContent="Height"
+    x:DataType="view:ConfirmDialog"
+    Background="Transparent"
+    CanResize="False"
+    ExtendClientAreaTitleBarHeightHint="32"
+    ExtendClientAreaToDecorationsHint="True"
+    TransparencyLevelHint="AcrylicBlur"
+    WindowStartupLocation="CenterOwner">
+    <Panel>
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial
+                    BackgroundSource="Digger"
+                    MaterialOpacity="0.65"
+                    TintColor="{DynamicResource Color.Window}"
+                    TintOpacity="0.8" />
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+        <Grid Margin="28,44,28,20" RowDefinitions="Auto,Auto">
+
+            <!--  メッセージ  -->
+            <TextBlock
+                x:Name="MessageText"
+                Grid.Row="0"
+                Margin="0,0,0,20"
+                FontSize="14"
+                Foreground="{DynamicResource Brush.FG1}"
+                TextWrapping="Wrap" />
+
+            <!--  ボタン  -->
+            <StackPanel
+                Grid.Row="1"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal"
+                Spacing="10">
+                <Button
+                    x:Name="YesButton"
+                    MinWidth="100"
+                    Padding="16,8"
+                    Click="YesButton_Click"
+                    Content="{DynamicResource Text.Button.Yes}"
+                    IsDefault="True" />
+                <Button
+                    x:Name="NoButton"
+                    MinWidth="100"
+                    Padding="16,8"
+                    Click="NoButton_Click"
+                    Content="{DynamicResource Text.Button.No}"
+                    IsCancel="True" />
+            </StackPanel>
+        </Grid>
+    </Panel>
+</Window>
