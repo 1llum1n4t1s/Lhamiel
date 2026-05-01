@@ -163,13 +163,21 @@ public static class ArchiveProcessor
             {
                 Logger.LogException($"展開処理でエラーが発生: {filePath}", ex);
                 var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, filePath, outputPath ?? string.Empty);
-                Dispatcher.UIThread.Post(() =>
-                    _ = MessageService.ShowError($"{errorInfo.Message}\n\n{App.Text("Dialog.Details")}{errorInfo.Details}", App.Text("Error.ExtractionTitle")));
+                // 進捗ウィンドウを先に閉じてからダイアログを表示。Post + 破棄では進捗ウィンドウの
+                // クローズ遷移と競合し、ダイアログが背面に隠れる/表示されないことがあるため、
+                // ここで明示的に閉じてから await し、ダイアログの表示完了を待ってから return する。
+                if (closeWindowOnCompletion)
+                {
+                    progressWindow?.CloseSafe();
+                }
+                await MessageService.ShowError(
+                    $"{errorInfo.Message}\n\n{App.Text("Dialog.Details")}{errorInfo.Details}",
+                    App.Text("Error.ExtractionTitle"));
                 return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
             }
             finally
             {
-                // 例外発生時にも確実にクリーンアップ
+                // 例外発生時にも確実にクリーンアップ（catch 内で既に閉じていれば CloseSafe が no-op）
                 if (closeWindowOnCompletion)
                 {
                     progressWindow?.CloseSafe();
@@ -470,8 +478,12 @@ public static class ArchiveProcessor
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 Logger.LogException($"圧縮処理でエラーが発生: {sourcePath}", ex);
-                Dispatcher.UIThread.Post(() =>
-                    _ = MessageService.ShowError(App.Text("Error.DuringCompression", ex.Message)));
+                // 進捗ウィンドウを先に閉じてから await でダイアログ表示完了を待つ（背面隠れ防止）
+                if (progressReporter == null && closeWindowOnCompletion)
+                {
+                    progressWindow?.CloseSafe();
+                }
+                await MessageService.ShowError(App.Text("Error.DuringCompression", ex.Message));
                 return false;
             }
             finally
@@ -853,8 +865,12 @@ public static class ArchiveProcessor
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 Logger.LogException("まとめ圧縮でエラーが発生", ex);
-                Dispatcher.UIThread.Post(() =>
-                    _ = MessageService.ShowError(App.Text("Error.DuringCompression", ex.Message)));
+                // 進捗ウィンドウを先に閉じてから await でダイアログ表示完了を待つ
+                if (closeWindowOnCompletion)
+                {
+                    progressWindow?.CloseSafe();
+                }
+                await MessageService.ShowError(App.Text("Error.DuringCompression", ex.Message));
                 return false;
             }
             finally

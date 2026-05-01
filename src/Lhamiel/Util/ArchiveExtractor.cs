@@ -237,10 +237,46 @@ public static class ArchiveExtractor
     /// </summary>
     private static void MoveDirectoryContents(string sourceDir, string destDir)
     {
-        foreach (var dir in Directory.EnumerateDirectories(sourceDir))
-            Directory.Move(dir, Path.Combine(destDir, Path.GetFileName(dir)));
-        foreach (var file in Directory.EnumerateFiles(sourceDir))
-            File.Move(file, Path.Combine(destDir, Path.GetFileName(file)));
+        // ライブ列挙だと親ディレクトリのハンドルを保持したまま子を移動するため、
+        // AV/EDR フィルタドライバが過敏な環境で稀に AccessDenied を誘発する。
+        // 先に配列化して列挙ハンドルを閉じてから移動する。
+        var dirs = Directory.GetDirectories(sourceDir);
+        var files = Directory.GetFiles(sourceDir);
+        foreach (var dir in dirs)
+            MoveWithRetry(() => Directory.Move(dir, Path.Combine(destDir, Path.GetFileName(dir))), dir);
+        foreach (var file in files)
+            MoveWithRetry(() => File.Move(file, Path.Combine(destDir, Path.GetFileName(file))), file);
+    }
+
+    /// <summary>
+    /// 移動操作をリトライ付きで実行する。AV/EDR/Search Indexer による一時的な
+    /// ロックで MoveFileEx が ACCESS_DENIED / SHARING_VIOLATION を返すケースに備える。
+    /// </summary>
+    /// <remarks>
+    /// バックオフは 50ms, 100ms, 200ms, 400ms, 800ms（最大合計 1.55s 待機）。
+    /// 同期 API のため Thread.Sleep を使うが、呼び出し元は Task.Run 配下で
+    /// UI スレッドではないことを前提とする。
+    /// </remarks>
+    private static void MoveWithRetry(Action moveAction, string sourcePath)
+    {
+        const int MaxAttempts = 6;
+        var delayMs = 50;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                moveAction();
+                if (attempt > 1)
+                    Logger.Log($"移動成功（リトライ {attempt - 1} 回）: {sourcePath}");
+                return;
+            }
+            catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException) && attempt < MaxAttempts)
+            {
+                Logger.Log($"移動が一時的に失敗（試行 {attempt}/{MaxAttempts}）: {sourcePath}: {ex.Message}。{delayMs}ms 待機して再試行", LogLevel.Warning);
+                Thread.Sleep(delayMs);
+                delayMs *= 2;
+            }
+        }
     }
 
     /// <summary>
@@ -805,7 +841,7 @@ public static class ArchiveExtractor
                 }
                 try
                 {
-                    File.Move(sourceFile, destFile, overwrite: true);
+                    MoveWithRetry(() => File.Move(sourceFile, destFile, overwrite: true), sourceFile);
                 }
                 catch
                 {
@@ -1209,11 +1245,11 @@ public static class ArchiveExtractor
         if (isDirectory)
         {
             RemoveReadOnlyAttributes(path);
-            Directory.Move(path, backupPath);
+            MoveWithRetry(() => Directory.Move(path, backupPath), path);
         }
         else
         {
-            File.Move(path, backupPath);
+            MoveWithRetry(() => File.Move(path, backupPath), path);
         }
         backupPaths.Add(backupPath);
         return true;
