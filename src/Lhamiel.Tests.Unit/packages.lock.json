@@ -29,9 +29,9 @@
       },
       "Tmds.DBus.Protocol": {
         "type": "Direct",
-        "requested": "[0.92.0, )",
-        "resolved": "0.92.0",
-        "contentHash": "h7IMakm0PF2jxiagoysoAjrzzLQ0UBdnSXQL5kb17YW0Fvyo12Tg96A99QkzwktWRrd7H+Uw9EzjasNLUfGYlA=="
+        "requested": "[0.93.0, )",
+        "resolved": "0.93.0",
+        "contentHash": "KDshXiWIfl26HUUN9Yv6CbAluEld8ZTrH+CJuCfLdBV/nXuhuEkcJrdcgApd5vCIkhxvOluJu9Qp7hn90hHcXQ=="
       },
       "xunit.runner.visualstudio": {
         "type": "Direct",
@@ -511,7 +511,7 @@
           "CommunityToolkit.Mvvm": "[8.4.2, )",
           "MessageBox.Avalonia": "[12.0.0, )",
           "SuperLightLogger": "[1.0.6, )",
-          "Tmds.DBus.Protocol": "[0.92.0, )",
+          "Tmds.DBus.Protocol": "[0.93.0, )",
           "Velopack": "[0.0.1369-g1d5c984, )"
         }
       }

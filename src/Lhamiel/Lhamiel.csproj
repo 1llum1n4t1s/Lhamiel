@@ -55,7 +55,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.73" />
     <PackageReference Include="SuperLightLogger" Version="1.0.6" />
-    <PackageReference Include="Tmds.DBus.Protocol" Version="0.92.0" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.93.0" />
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
     <PackageReference Include="Velopack" Version="0.0.1369-g1d5c984" />
   </ItemGroup>
