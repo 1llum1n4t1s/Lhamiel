@@ -9,7 +9,7 @@ namespace Lhamiel.Util;
 /// </summary>
 internal static partial class CrashHandler
 {
-    internal static readonly string DumpDirectory =
+    internal static string DumpDirectory { get; set; } =
         Path.Combine(Settings.AppDataDirectory, "dumps");
 
     internal static int MaxDumpFiles { get; set; } = 5;

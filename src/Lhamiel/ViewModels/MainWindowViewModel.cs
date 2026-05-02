@@ -113,6 +113,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _ = ExecuteAutoSaveAsync(token);
     }
 
+    /// <summary>
+    /// 保留中の debounce 付き自動保存をキャンセルして即時保存する。
+    /// アプリ終了時に呼び出して設定ロストを防ぐ。
+    /// </summary>
+    internal void FlushPendingAutoSave()
+    {
+        _autoSaveCts?.Cancel();
+        _autoSaveCts?.Dispose();
+        _autoSaveCts = null;
+        try
+        {
+            ExecuteAutoSaveAsync(CancellationToken.None).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("終了時の設定フラッシュに失敗", ex);
+        }
+    }
+
     private async Task ExecuteAutoSaveAsync(CancellationToken token)
     {
         try

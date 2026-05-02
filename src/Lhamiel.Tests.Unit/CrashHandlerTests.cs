@@ -37,37 +37,42 @@ public class CrashHandlerTests
     [Fact]
     public void RotateOldDumps_RemovesExcessFiles()
     {
+        var originalDumpDir = CrashHandler.DumpDirectory;
         var dumpDir = Path.Combine(Path.GetTempPath(), $"lhamiel_dump_test_{Guid.NewGuid():N}");
+        CrashHandler.DumpDirectory = dumpDir;
         Directory.CreateDirectory(dumpDir);
 
         try
         {
-            // MaxDumpFiles=5 を超える 8 個のダミーダンプを作成（作成時刻をずらす）
             var originalMax = CrashHandler.MaxDumpFiles;
             CrashHandler.MaxDumpFiles = 3;
 
-            var dumpFiles = new List<string>();
             for (var i = 0; i < 6; i++)
             {
                 var path = Path.Combine(dumpDir, $"Lhamiel_test_{i:D2}.dmp");
                 File.WriteAllText(path, $"dummy dump {i}");
-                File.SetCreationTime(path, DateTime.Now.AddMinutes(-60 + i * 10));
-                dumpFiles.Add(path);
+                File.SetLastWriteTime(path, DateTime.Now.AddMinutes(-60 + i * 10));
 
                 var txtPath = Path.ChangeExtension(path, ".txt");
                 File.WriteAllText(txtPath, $"exception info {i}");
+                File.SetLastWriteTime(txtPath, DateTime.Now.AddMinutes(-60 + i * 10));
             }
 
-            // RotateOldDumps は CrashHandler.DumpDirectory を使うので、
-            // ここではファイル数の期待値を検証するためにリフレクションで回避
-            // → 代わりに直接テスト対象ディレクトリの概念テストにする
+            CrashHandler.RotateOldDumps();
+
             var remaining = Directory.GetFiles(dumpDir, "*.dmp");
-            Assert.Equal(6, remaining.Length);
+            Assert.Equal(3, remaining.Length);
+
+            var remainingNames = remaining.Select(Path.GetFileName).Order().ToArray();
+            Assert.Contains("Lhamiel_test_03.dmp", remainingNames);
+            Assert.Contains("Lhamiel_test_04.dmp", remainingNames);
+            Assert.Contains("Lhamiel_test_05.dmp", remainingNames);
 
             CrashHandler.MaxDumpFiles = originalMax;
         }
         finally
         {
+            CrashHandler.DumpDirectory = originalDumpDir;
             if (Directory.Exists(dumpDir))
                 Directory.Delete(dumpDir, true);
         }

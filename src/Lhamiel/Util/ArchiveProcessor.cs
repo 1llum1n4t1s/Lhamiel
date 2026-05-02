@@ -172,28 +172,21 @@ public static class ArchiveProcessor
                     }
 
                     // Mark of the Web 伝播（設定で有効 かつ 元アーカイブに Zone.Identifier がある場合）
-                    // outputPath == baseDirectory の場合、既存ファイルに誤って Zone.Identifier を付与しないよう
-                    // 展開されたルートアイテムのみに限定する
+                    // 既存ファイルに誤って Zone.Identifier を付与しないよう、ディレクトリ全体ではなく
+                    // 展開されたルートアイテムのみに限定する（outputPath が既存フォルダの場合も安全）
                     if (snapshot.PropagateMarkOfTheWeb && outputPath != null && structureInfo != null)
                     {
                         progressWindow?.SetIndeterminate(App.Text("Progress.ApplyingSecurityMark"));
                         var zoneId = MotwPropagator.ReadZoneIdentifier(filePath);
                         if (zoneId != null)
                         {
-                            if (outputPath != baseDirectory)
+                            foreach (var rootName in structureInfo.RootItemNames)
                             {
-                                MotwPropagator.PropagateToDirectory(outputPath, zoneId, cancellationToken);
-                            }
-                            else
-                            {
-                                foreach (var rootName in structureInfo.RootItemNames)
-                                {
-                                    var rootItemPath = Path.Combine(outputPath, rootName);
-                                    if (Directory.Exists(rootItemPath))
-                                        MotwPropagator.PropagateToDirectory(rootItemPath, zoneId, cancellationToken);
-                                    else if (File.Exists(rootItemPath))
-                                        MotwPropagator.TryWriteZoneIdentifier(rootItemPath, zoneId);
-                                }
+                                var rootItemPath = Path.Combine(outputPath, rootName);
+                                if (Directory.Exists(rootItemPath))
+                                    MotwPropagator.PropagateToDirectory(rootItemPath, zoneId, cancellationToken);
+                                else if (File.Exists(rootItemPath))
+                                    MotwPropagator.TryWriteZoneIdentifier(rootItemPath, zoneId);
                             }
                         }
                     }
