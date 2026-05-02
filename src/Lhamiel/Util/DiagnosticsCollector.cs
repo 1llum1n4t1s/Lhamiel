@@ -189,7 +189,7 @@ internal static partial class DiagnosticsCollector
         return SensitivePatternRegex().IsMatch(propertyName);
     }
 
-    [GeneratedRegex(@"(?i)(token|secret|password|key|credential|apikey|api_key)", RegexOptions.Compiled)]
+    [GeneratedRegex(@"(?i)(token|secret|password|key|credential|apikey|api_key)")]
     private static partial Regex SensitivePatternRegex();
 
     private static void CollectLogs(string tempDir)
