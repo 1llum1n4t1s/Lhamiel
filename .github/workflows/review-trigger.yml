@@ -1,7 +1,7 @@
 name: Trigger AI Reviews
 
-# PR への push のたびに CodeRabbit / Codex のレビューを自動でリクエストする。
-# @coderabbitai review / @codex review のメンションコメントを bot として
+# PR への push のたびに Codex のレビューを自動でリクエストする。
+# @codex review のメンションコメントを bot として
 # 投稿するだけで Claude 自体を GitHub Actions 上では動かさないため、CLAUDE_CODE_OAUTH_TOKEN や
 # ANTHROPIC_API_KEY は不要。Claude 対応はローカル環境の Claude Code で行う想定。
 #
@@ -60,8 +60,7 @@ jobs:
             // 積まれて bot 側のレート制限や通知過多を起こすのを防ぐ。
             // HTML コメント形式の marker で「どの bot 用にトリガーしたか」を記録する。
             const commands = [
-              { key: 'coderabbitai', body: '@coderabbitai review' },
-              { key: 'codex',        body: '@codex review' },
+              { key: 'codex', body: '@codex review' },
             ];
 
             const existingComments = await github.paginate(
