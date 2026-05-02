@@ -103,6 +103,10 @@ internal static class LockedFileRetryPolicy
     private const int HR_ERROR_FILE_EXISTS = unchecked((int)0x80070050);
     private const int HR_ERROR_ALREADY_EXISTS = unchecked((int)0x800700B7);
     private const int HR_ERROR_FILENAME_EXCED_RANGE = unchecked((int)0x800700CE);
+    private const int HR_ERROR_CRC = unchecked((int)0x80070017);
+    private const int HR_ERROR_INVALID_DATA = unchecked((int)0x8007000D);
+    private const int HR_ERROR_BAD_FORMAT = unchecked((int)0x8007000B);
+    private const int HR_ERROR_FILE_CORRUPT = unchecked((int)0x80070570);
 
     private static bool IsTransientLockError(Exception ex)
     {
@@ -115,7 +119,8 @@ internal static class LockedFileRetryPolicy
         // リトライしても解決しない永続的エラーを除外
         if (ex.HResult is HR_ERROR_DISK_FULL or HR_ERROR_HANDLE_DISK_FULL or HR_ERROR_FILENAME_EXCED_RANGE
             or HR_ERROR_FILE_NOT_FOUND or HR_ERROR_PATH_NOT_FOUND
-            or HR_ERROR_FILE_EXISTS or HR_ERROR_ALREADY_EXISTS)
+            or HR_ERROR_FILE_EXISTS or HR_ERROR_ALREADY_EXISTS
+            or HR_ERROR_CRC or HR_ERROR_INVALID_DATA or HR_ERROR_BAD_FORMAT or HR_ERROR_FILE_CORRUPT)
             return false;
 
         // IOException: ファイルシステムドライバーによっては標準 HResult 以外の

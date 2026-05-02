@@ -41,10 +41,9 @@ internal static partial class DiagnosticsCollector
                     () => Task.Run(() => File.Move(tempZip, outputPath, overwrite: true), cancellationToken),
                     outputPath, cancellationToken: cancellationToken);
             }
-            catch
+            finally
             {
-                try { File.Delete(tempZip); } catch { /* ベストエフォート */ }
-                throw;
+                try { if (File.Exists(tempZip)) File.Delete(tempZip); } catch { /* ベストエフォート */ }
             }
 
             Logger.Log($"診断 ZIP を作成しました: {outputPath}");
