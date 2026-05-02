@@ -110,7 +110,7 @@ public static class ArchiveCompressor
             cancellationToken.ThrowIfCancellationRequested();
 
             // 解決済みリストが渡された場合はそのまま使用、なければスキャン
-            var filesToCompress = resolvedFiles ?? await ScanSourceFiles(sourceList, excludedPatternSet, cancellationToken, settings.DirectoryStructureMode);
+            var filesToCompress = resolvedFiles ?? await ScanSourceFiles(sourceList, excludedPatternSet, cancellationToken, settings.DirectoryStructureMode, settings.NormalizeUnicodeFileNames);
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
@@ -205,11 +205,11 @@ public static class ArchiveCompressor
     /// </summary>
     public static async Task<List<(string fullPath, string relativePath)>> ScanSourceFiles(
         List<string> sourceList, HashSet<string> excludedPatternSet, CancellationToken cancellationToken = default,
-        DirectoryStructureMode? dirModeOverride = null)
+        DirectoryStructureMode? dirModeOverride = null, bool? normalizeUnicodeOverride = null)
     {
         var filesToCompress = new List<(string fullPath, string relativePath)>();
         var dirMode = dirModeOverride ?? SettingsManager.Instance.Current.DirectoryStructureMode;
-        var normalizeUnicode = SettingsManager.Instance.NormalizeUnicodeFileNames;
+        var normalizeUnicode = normalizeUnicodeOverride ?? SettingsManager.Instance.NormalizeUnicodeFileNames;
 
         foreach (var sourcePath in sourceList)
         {

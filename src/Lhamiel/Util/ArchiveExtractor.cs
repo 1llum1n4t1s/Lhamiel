@@ -149,6 +149,11 @@ public static class ArchiveExtractor
         /// を呼ぶ必要はない。-1 の場合は未計算（取得失敗または旧経路）。
         /// </summary>
         public long TotalUncompressedSize { get; init; } = -1;
+
+        /// <summary>
+        /// ルートレベルの全アイテム名。MotW 伝播で multi-root アーカイブの各アイテムに個別適用するために使用。
+        /// </summary>
+        public IReadOnlyList<string> RootItemNames { get; init; } = [];
     }
 
     /// <summary>
@@ -189,7 +194,8 @@ public static class ArchiveExtractor
             {
                 ShouldSkipFolderCreation = shouldSkipFolderCreation,
                 SingleRootItemName = singleRootItemName,
-                TotalUncompressedSize = structure.TotalUncompressedSize
+                TotalUncompressedSize = structure.TotalUncompressedSize,
+                RootItemNames = [.. allRootItems]
             };
         }
         catch (Exception ex)

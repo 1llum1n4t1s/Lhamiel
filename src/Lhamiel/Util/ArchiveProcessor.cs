@@ -181,13 +181,16 @@ public static class ArchiveProcessor
                             {
                                 MotwPropagator.PropagateToDirectory(outputPath, zoneId, cancellationToken);
                             }
-                            else if (structureInfo.SingleRootItemName != null)
+                            else
                             {
-                                var rootItemPath = Path.Combine(outputPath, structureInfo.SingleRootItemName);
-                                if (Directory.Exists(rootItemPath))
-                                    MotwPropagator.PropagateToDirectory(rootItemPath, zoneId, cancellationToken);
-                                else if (File.Exists(rootItemPath))
-                                    MotwPropagator.TryWriteZoneIdentifier(rootItemPath, zoneId);
+                                foreach (var rootName in structureInfo.RootItemNames)
+                                {
+                                    var rootItemPath = Path.Combine(outputPath, rootName);
+                                    if (Directory.Exists(rootItemPath))
+                                        MotwPropagator.PropagateToDirectory(rootItemPath, zoneId, cancellationToken);
+                                    else if (File.Exists(rootItemPath))
+                                        MotwPropagator.TryWriteZoneIdentifier(rootItemPath, zoneId);
+                                }
                             }
                         }
                     }
@@ -477,7 +480,8 @@ public static class ArchiveProcessor
                     var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
                         [sourcePath],
                         new HashSet<string>(settings.ExcludedFilePatterns ?? [], StringComparer.OrdinalIgnoreCase),
-                        actualCancellationToken);
+                        actualCancellationToken,
+                        normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames);
 
                     var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);
                     if (conflicts.Count > 0)
@@ -838,7 +842,8 @@ public static class ArchiveProcessor
                     settings.ExcludedFilePatterns ?? [],
                     StringComparer.OrdinalIgnoreCase);
                 var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
-                    sourcePaths.ToList(), excludedPatternSet, actualCancellationToken);
+                    sourcePaths.ToList(), excludedPatternSet, actualCancellationToken,
+                    normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames);
 
                 // 衝突検出
                 var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);
