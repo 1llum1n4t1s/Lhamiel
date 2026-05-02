@@ -467,12 +467,16 @@ public static class PathValidator
     /// </summary>
     internal static string EnsureLongPathPrefix(string path)
     {
-        if (string.IsNullOrEmpty(path) || path.Length < MaxPathLength)
+        if (string.IsNullOrEmpty(path))
             return path;
 
         // \\?\ プレフィックスは絶対パスにのみ有効。相対パスが渡された場合は絶対パスに変換。
         string fullPath;
         try { fullPath = Path.GetFullPath(path); } catch { return path; }
+
+        // 解決後のフルパス長で判定（入力が相対パスの場合、解決後に長くなりうる）
+        if (fullPath.Length < MaxPathLength)
+            return path;
 
         if (fullPath.StartsWith(LongPathPrefix, StringComparison.Ordinal))
             return fullPath;
