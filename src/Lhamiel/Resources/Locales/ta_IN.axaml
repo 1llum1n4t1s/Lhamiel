@@ -102,6 +102,8 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">கோப்புகள் நகர்த்தப்படுகின்றன...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">பிரித்தெடுத்தல்</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">சுருக்குதல்</x:String>
+  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">ஒருமைப்பாடு சரிபார்ப்பு...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">பாதுகாப்பு அடையாளம் செலுத்துகிறது...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">பிழைத் தகவல்</x:String>
@@ -133,6 +135,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">ஆதரிக்கப்படாத கோப்பு வடிவம்.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">ஆதரிக்கப்படாத சுருக்க வடிவம்.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">பிரித்தெடுக்கும் போது பிழை ஏற்பட்டது.\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">CRC ஒருமைப்பாடு சரிபார்ப்பு தோல்வி: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">சுருக்கும் போது பிழை ஏற்பட்டது.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">செயலாக்கத்தின் போது பிழை ஏற்பட்டது.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">வெளியீடு '{0}' பயன்பாட்டில் உள்ளது அல்லது அணுகல் மறுக்கப்பட்டது.</x:String>

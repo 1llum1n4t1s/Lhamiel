@@ -17,6 +17,8 @@ internal class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        CrashHandler.Register();
+
         VelopackApp.Build()
             .OnAfterInstallFastCallback(v => StartupRegistration.Register())
             .OnAfterUpdateFastCallback(v => StartupRegistration.Register())

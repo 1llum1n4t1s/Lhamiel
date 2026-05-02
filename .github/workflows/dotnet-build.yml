@@ -37,10 +37,14 @@ jobs:
       # 7z.dll は 1llum1n4t1s.Sevenzip NuGet パッケージに同梱済み。
       # dotnet test が実行時に NuGet キャッシュから解決する。
 
-      - name: テスト実行
-        # continue-on-error は付けない（テスト失敗を CI で検知するため）。
-        # テスト結果アーティファクトは下の `if: always()` で確実にアップロードされる。
-        run: dotnet test Lhamiel.slnx --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+      - name: テスト実行（カバレッジ付き）
+        run: >-
+          dotnet test Lhamiel.slnx
+          --configuration Release
+          --verbosity normal
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+          --settings src/Lhamiel.Tests.Unit/coverlet.runsettings
 
       - name: テスト結果をアップロード
         # actions/upload-artifact@v4.4.3
@@ -50,3 +54,12 @@ jobs:
           name: test-results-Release
           path: '**/TestResults/*.trx'
           retention-days: 1
+
+      - name: カバレッジレポートをアップロード
+        # actions/upload-artifact@v4.4.3
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+        if: always()
+        with:
+          name: coverage-report
+          path: '**/TestResults/**/coverage.cobertura.xml'
+          retention-days: 7

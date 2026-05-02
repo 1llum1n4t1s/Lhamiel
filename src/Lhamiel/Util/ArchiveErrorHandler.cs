@@ -139,10 +139,8 @@ public static class ArchiveErrorHandler
                 errorInfo.IsRecoverable = true;
                 break;
 
-            // 7z.dll 由来の HRESULT ベース例外。InvalidOperationException を継承していないため、
-            // 独立した分岐で破損として扱う必要がある（IsCorruptedFileError の SevenZipException 判定が
-            // ここに到達することで初めて意味を持つ）。EncryptionException は SevenZipException の
-            // 派生である可能性が高いため、必ず EncryptionException ケースの後ろに配置する。
+            // 7z.dll 由来の HRESULT ベース例外。EncryptionException は SevenZipException の
+            // 派生であるため、必ず EncryptionException ケースの後ろに配置する。
             case SevenZipException:
                 errorInfo.ErrorType = ArchiveErrorType.CorruptedFile;
                 errorInfo.Message = App.Text("ErrorHandler.Corrupted");
@@ -339,6 +337,13 @@ public static class ArchiveErrorHandler
     private const int HR_ERROR_SHARING_VIOLATION = unchecked((int)0x80070020); // ERROR_SHARING_VIOLATION
     private const int HR_ERROR_LOCK_VIOLATION = unchecked((int)0x80070021);   // ERROR_LOCK_VIOLATION
 
+    // 破損系 HResult（7z.dll / Windows が返す CRC・データ不正エラー）
+    private const int HR_ERROR_CRC = unchecked((int)0x80070017);             // ERROR_CRC
+    private const int HR_ERROR_INVALID_DATA = unchecked((int)0x8007000D);    // ERROR_INVALID_DATA
+    private const int HR_ERROR_BAD_FORMAT = unchecked((int)0x8007000B);      // ERROR_BAD_FORMAT
+    private const int HR_ERROR_FILE_CORRUPT = unchecked((int)0x80070570);    // ERROR_FILE_CORRUPT
+    private const int HR_ERROR_DISK_CORRUPT = unchecked((int)0x80070571);    // ERROR_DISK_CORRUPT
+
     /// <summary>
     /// ディスク容量エラーかどうかを判定（HResultベースでOSロケール非依存）
     /// </summary>
@@ -356,24 +361,26 @@ public static class ArchiveErrorHandler
     }
 
     /// <summary>
-    /// 破損ファイルエラーかどうかを判定
+    /// HResult が破損系エラーかどうかを判定（OSロケール非依存）
     /// </summary>
-    /// <remarks>
-    /// 呼び出し元: <see cref="AnalyzeError"/> の <c>case InvalidOperationException</c> 分岐のみ。
-    /// <see cref="IOException"/> 経路は L154 の専用 case で先行処理されるため、ここには到達しない。
-    /// <see cref="SevenZipException"/> も L146 の専用 case で先行処理されるため、ここには到達しない。
-    ///
-    /// 日本語 OS 環境では CLR が例外メッセージを翻訳するため、英語キーワードだけではヒット漏れが起きる。
-    /// メッセージは英語・日本語両方のキーワードでフォールバック判定する。
-    /// </remarks>
+    internal static bool IsCorruptedHResult(int hResult)
+    {
+        return hResult is HR_ERROR_CRC or HR_ERROR_INVALID_DATA or HR_ERROR_BAD_FORMAT
+            or HR_ERROR_FILE_CORRUPT or HR_ERROR_DISK_CORRUPT;
+    }
+
+    /// <summary>
+    /// 破損ファイルエラーかどうかを二段判定: ① HResult → ② メッセージキーワード
+    /// </summary>
     private static bool IsCorruptedFileError(Exception ex)
     {
-        // 注: SevenZipException は AnalyzeError の専用 case で先行処理されるため、
-        // ここには InvalidOperationException 系の例外しか流れてこない。
-        // メッセージキーワードベースで破損判定する。
+        // ① HResult ベース判定（OSロケール非依存で正確）
+        if (IsCorruptedHResult(ex.HResult))
+            return true;
+
+        // ② フォールバック: メッセージキーワード走査
         var message = ex.Message.ToLowerInvariant();
 
-        // 英語キーワード（Cube.FileSystem.SevenZip / 7z.dll 由来のメッセージ）
         if (message.Contains("corrupt") ||
             message.Contains("damaged") ||
             message.Contains("invalid") ||
@@ -381,7 +388,6 @@ public static class ArchiveErrorHandler
             message.Contains("checksum"))
             return true;
 
-        // 日本語キーワード（日本語 OS で CLR が例外を翻訳したケース）
         if (message.Contains("破損") ||
             message.Contains("壊れ") ||
             message.Contains("無効") ||

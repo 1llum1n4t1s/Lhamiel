@@ -102,6 +102,8 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Memindahkan file...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Mengekstrak</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Mengompresi</x:String>
+  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Memverifikasi integritas...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Menerapkan tanda keamanan...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informasi Kesalahan</x:String>
@@ -133,6 +135,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Format berkas tidak didukung.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Format kompresi tidak didukung.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Terjadi kesalahan saat ekstraksi.\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Verifikasi integritas CRC gagal: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Terjadi kesalahan saat kompresi.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Terjadi kesalahan saat pemrosesan.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Keluaran '{0}' sedang digunakan atau akses ditolak.</x:String>

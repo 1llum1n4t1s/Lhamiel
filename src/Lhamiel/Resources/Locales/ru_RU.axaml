@@ -102,6 +102,8 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Перемещение файлов...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Извлечение</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Сжатие</x:String>
+  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Проверка целостности...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Применение метки безопасности...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Информация об ошибке</x:String>
@@ -133,6 +135,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Неподдерживаемый формат файла.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Неподдерживаемый формат сжатия.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Произошла ошибка при распаковке.\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Ошибка проверки целостности CRC: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Произошла ошибка при сжатии.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Произошла ошибка при обработке.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Файл «{0}» используется или доступ запрещён.</x:String>

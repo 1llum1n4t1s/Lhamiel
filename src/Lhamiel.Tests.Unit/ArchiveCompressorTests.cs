@@ -121,7 +121,7 @@ public class ArchiveCompressorTests
         Assert.DoesNotContain(".ZIP", result);
     }
 
-    // === SupportedCompressionFormats ===
+    // === WritableFormats ===
 
     [Theory]
     [InlineData("zip")]
@@ -130,18 +130,18 @@ public class ArchiveCompressorTests
     [InlineData("gz")]
     [InlineData("bz2")]
     [InlineData("xz")]
-    public void SupportedCompressionFormats_ContainsExpected(string format)
+    public void WritableFormats_ContainsExpected(string format)
     {
-        Assert.Contains(format, ArchiveCompressor.SupportedCompressionFormats);
+        Assert.Contains(format, ArchiveCompressor.WritableFormats);
     }
 
     [Theory]
     [InlineData("ZIP")]
     [InlineData("7Z")]
     [InlineData("TAR")]
-    public void SupportedCompressionFormats_IsCaseInsensitive(string format)
+    public void WritableFormats_IsCaseInsensitive(string format)
     {
-        Assert.Contains(format, ArchiveCompressor.SupportedCompressionFormats);
+        Assert.Contains(format, ArchiveCompressor.WritableFormats);
     }
 
     [Theory]
@@ -150,9 +150,9 @@ public class ArchiveCompressorTests
     [InlineData("cab")]
     [InlineData("arj")]
     [InlineData("")]
-    public void SupportedCompressionFormats_DoesNotContainUnsupported(string format)
+    public void WritableFormats_DoesNotContainUnsupported(string format)
     {
-        Assert.DoesNotContain(format, ArchiveCompressor.SupportedCompressionFormats);
+        Assert.DoesNotContain(format, ArchiveCompressor.WritableFormats);
     }
 
     // === ShouldExcludeFile ===

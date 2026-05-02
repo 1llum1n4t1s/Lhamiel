@@ -149,6 +149,11 @@ public static class ArchiveExtractor
         /// を呼ぶ必要はない。-1 の場合は未計算（取得失敗または旧経路）。
         /// </summary>
         public long TotalUncompressedSize { get; init; } = -1;
+
+        /// <summary>
+        /// ルートレベルの全アイテム名。MotW 伝播で multi-root アーカイブの各アイテムに個別適用するために使用。
+        /// </summary>
+        public IReadOnlyList<string> RootItemNames { get; init; } = [];
     }
 
     /// <summary>
@@ -189,7 +194,8 @@ public static class ArchiveExtractor
             {
                 ShouldSkipFolderCreation = shouldSkipFolderCreation,
                 SingleRootItemName = singleRootItemName,
-                TotalUncompressedSize = structure.TotalUncompressedSize
+                TotalUncompressedSize = structure.TotalUncompressedSize,
+                RootItemNames = [.. allRootItems]
             };
         }
         catch (Exception ex)
@@ -245,37 +251,37 @@ public static class ArchiveExtractor
         foreach (var dir in dirs)
             MoveWithRetry(() => Directory.Move(dir, Path.Combine(destDir, Path.GetFileName(dir))), dir);
         foreach (var file in files)
-            MoveWithRetry(() => File.Move(file, Path.Combine(destDir, Path.GetFileName(file))), file);
+            MoveWithRetry(() => File.Move(file, Path.Combine(destDir, Path.GetFileName(file)), overwrite: true), file);
     }
 
-    /// <summary>
-    /// 移動操作をリトライ付きで実行する。AV/EDR/Search Indexer による一時的な
-    /// ロックで MoveFileEx が ACCESS_DENIED / SHARING_VIOLATION を返すケースに備える。
-    /// </summary>
-    /// <remarks>
-    /// バックオフは 50ms, 100ms, 200ms, 400ms, 800ms（最大合計 1.55s 待機）。
-    /// 同期 API のため Thread.Sleep を使うが、呼び出し元は Task.Run 配下で
-    /// UI スレッドではないことを前提とする。
-    /// </remarks>
     private static void MoveWithRetry(Action moveAction, string sourcePath)
+        => LockedFileRetryPolicy.Execute(moveAction, sourcePath);
+
+    /// <summary>
+    /// 個別エントリの展開を試行する（一時ディレクトリからの移動/コピー）。
+    /// 指数バックオフ付きリトライで一時的なロック等に対応する。
+    /// 全リトライ失敗時は false を返し、<paramref name="skipRelativePaths"/> に追加する。
+    /// </summary>
+    internal static async Task<(bool success, Exception? lastError)> TryExtractEntryAsync(
+        string tempPath, string outputPath, string relativePath, bool isDirectory,
+        HashSet<string>? skipRelativePaths = null,
+        int maxRetries = 3, CancellationToken cancellationToken = default)
     {
-        const int MaxAttempts = 6;
-        var delayMs = 50;
-        for (var attempt = 1; ; attempt++)
+        try
         {
-            try
-            {
-                moveAction();
-                if (attempt > 1)
-                    Logger.Log($"移動成功（リトライ {attempt - 1} 回）: {sourcePath}");
-                return;
-            }
-            catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException) && attempt < MaxAttempts)
-            {
-                Logger.Log($"移動が一時的に失敗（試行 {attempt}/{MaxAttempts}）: {sourcePath}: {ex.Message}。{delayMs}ms 待機して再試行", LogLevel.Warning);
-                Thread.Sleep(delayMs);
-                delayMs *= 2;
-            }
+            await LockedFileRetryPolicy.ExecuteAsync(
+                () => Task.Run(
+                    () => FileOperations.CopyExtractedItem(tempPath, outputPath, relativePath, isDirectory, overwrite: true),
+                    cancellationToken),
+                relativePath, maxAttempts: maxRetries, initialDelayMs: 200, cancellationToken: cancellationToken);
+            return (true, null);
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Logger.Log($"エントリ展開が全リトライ失敗: {relativePath} - {ex.Message}", LogLevel.Error);
+            skipRelativePaths?.Add(relativePath);
+            return (false, ex);
         }
     }
 
@@ -390,7 +396,8 @@ public static class ArchiveExtractor
     /// <param name="normalizedBase">末尾セパレータ付きの絶対パス（<see cref="NormalizeBaseDirectory"/> の戻り値）</param>
     /// <param name="entryName">アーカイブ内のエントリ名（攻撃者制御）</param>
     /// <param name="safeFullPath">境界内に収まる結合済み絶対パス</param>
-    internal static bool TryResolveSafeEntryPathFromNormalized(string normalizedBase, string entryName, out string safeFullPath)
+    /// <param name="normalizeUnicode">NFC 正規化を適用するか（呼び出し元の設定スナップショットから渡す）</param>
+    internal static bool TryResolveSafeEntryPathFromNormalized(string normalizedBase, string entryName, out string safeFullPath, bool normalizeUnicode = true)
     {
         safeFullPath = string.Empty;
         if (string.IsNullOrEmpty(entryName)) return false;
@@ -418,6 +425,11 @@ public static class ArchiveExtractor
         var normalized = entryName
             .Replace('\\', Path.DirectorySeparatorChar)
             .Replace('/', Path.DirectorySeparatorChar);
+
+        // Unicode NFC 正規化: macOS HFS+ は NFD でファイル名を保存するため、
+        // macOS 作成アーカイブの NFD エントリ名を NTFS 向けに NFC 変換する。
+        if (normalizeUnicode && !normalized.IsNormalized(System.Text.NormalizationForm.FormC))
+            normalized = normalized.Normalize(System.Text.NormalizationForm.FormC);
 
         try
         {
@@ -448,7 +460,7 @@ public static class ArchiveExtractor
     /// <param name="archivePath">アーカイブファイルのパス</param>
     /// <param name="outputPath">展開先ディレクトリのパス</param>
     /// <returns>衝突するファイルの競合グループリスト。衝突がなければ空リスト</returns>
-    public static List<Models.FileConflictGroup> DetectExtractionConflicts(string archivePath, string outputPath)
+    public static List<Models.FileConflictGroup> DetectExtractionConflicts(string archivePath, string outputPath, bool normalizeUnicode = true)
     {
         var conflicts = new List<Models.FileConflictGroup>();
 
@@ -470,7 +482,7 @@ public static class ArchiveExtractor
                 if (ContainsIgnoredDirectory(relativePath)) continue;
 
                 // Zip Slip ガード: outputPath 境界外に出るエントリ（`..` / 絶対パス / UNC）はスキップ
-                if (!TryResolveSafeEntryPathFromNormalized(normalizedOutputBase, relativePath, out var destFilePath))
+                if (!TryResolveSafeEntryPathFromNormalized(normalizedOutputBase, relativePath, out var destFilePath, normalizeUnicode))
                 {
                     Logger.Log($"展開衝突検出で境界外パスを検出しスキップ: {relativePath}", LogLevel.Warning);
                     continue;
@@ -522,7 +534,7 @@ public static class ArchiveExtractor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null, long precomputedUncompressedSize = -1)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null, long precomputedUncompressedSize = -1, bool normalizeUnicode = true)
     {
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}");
         cancellationToken.ThrowIfCancellationRequested();
@@ -565,7 +577,7 @@ public static class ArchiveExtractor
         if (hasExistingFiles && parentWindow != null)
         {
             // 一時フォルダ方式: 一時展開 → 衝突検出 → ダイアログ → 移動
-            await ExtractViaTempFolderAsync(archivePath, outputPath, progress, parentWindow, cancellationToken, progressWindow);
+            await ExtractViaTempFolderAsync(archivePath, outputPath, progress, parentWindow, cancellationToken, progressWindow, normalizeUnicode);
         }
         else
         {
@@ -575,7 +587,7 @@ public static class ArchiveExtractor
                 var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
                 try
                 {
-                    await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, false, cancellationToken, overwriteCheckPaths, null);
+                    await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, false, cancellationToken, overwriteCheckPaths, null, normalizeUnicode);
                 }
                 finally
                 {
@@ -589,7 +601,7 @@ public static class ArchiveExtractor
     /// 一時フォルダ方式で展開する。
     /// ①一時フォルダに全展開 → ②衝突検出 → ③ダイアログ表示 → ④選択結果に基づいて移動
     /// </summary>
-    private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, View.ProgressWindow? progressWindow)
+    private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, View.ProgressWindow? progressWindow, bool normalizeUnicode = true)
     {
         // 一時フォルダを出力先ディレクトリ直下に作成（同一ドライブでFile.Moveが高速、かつ書き込み権限が確実）
         // outputPathがファイルの場合は親ディレクトリを使用
@@ -607,7 +619,7 @@ public static class ArchiveExtractor
                 var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
                 try
                 {
-                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, null, null);
+                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, null, null, normalizeUnicode);
                 }
                 finally
                 {
@@ -864,7 +876,7 @@ public static class ArchiveExtractor
     /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
-    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null)
+    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null, bool normalizeUnicode = true)
     {
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}");
 
@@ -882,7 +894,7 @@ public static class ArchiveExtractor
         {
             if (!overwriteConfirmed)
             {
-                var conflicts = DetectExtractionConflicts(archivePath, outputPath);
+                var conflicts = DetectExtractionConflicts(archivePath, outputPath, normalizeUnicode);
                 if (conflicts.Count > 0)
                 {
                     Logger.Log($"ExtractArchive内でファイル衝突を検出: {conflicts.Count}件");
@@ -1012,7 +1024,7 @@ public static class ArchiveExtractor
                     // エントリ名を仕込んだ場合、`ContainsIgnoredDirectory` が先頭の `__MACOSX` を
                     // 検出して無視判定を下すと、本来境界外へ書き込まれるエントリの検証が
                     // スキップされてしまう。フィルタリングより前にセキュリティ境界を確定させる。
-                    if (!TryResolveSafeEntryPathFromNormalized(normalizedTempBase, entryName, out _))
+                    if (!TryResolveSafeEntryPathFromNormalized(normalizedTempBase, entryName, out _, normalizeUnicode))
                     {
                         Logger.Log($"危険なエントリ名を検出しアーカイブ展開を中止: {entryName}", LogLevel.Warning);
                         throw new InvalidOperationException(
@@ -1082,7 +1094,7 @@ public static class ArchiveExtractor
                 var normalizedSkipBase = NormalizeBaseDirectory(tempOutputPath);
                 foreach (var relativePath in skipRelativePaths)
                 {
-                    if (!TryResolveSafeEntryPathFromNormalized(normalizedSkipBase, relativePath, out var tempFilePath))
+                    if (!TryResolveSafeEntryPathFromNormalized(normalizedSkipBase, relativePath, out var tempFilePath, normalizeUnicode))
                     {
                         Logger.Log($"スキップ対象の境界外パスを拒否: {relativePath}", LogLevel.Warning);
                         continue;

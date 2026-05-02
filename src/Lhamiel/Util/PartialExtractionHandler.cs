@@ -4,19 +4,10 @@ namespace Lhamiel.Util;
 
 /// <summary>
 /// 部分的な展開失敗時の処理を管理するクラス。
+/// 個別エントリの展開ロジックは <see cref="ArchiveExtractor.TryExtractEntryAsync"/> に委譲し、
+/// 本クラスはエラー処理フローの調整と結果集約を担う薄アダプター。
 /// </summary>
-/// <remarks>
-/// <b>既知の設計上の制限（/rere P1 #25）</b>:
-/// 通常展開フロー（<see cref="ArchiveExtractor.ExtractArchive"/>）とは独立した実装で、
-/// 以下の不一致がある。
-/// <list type="bullet">
-///   <item><description>展開先の既存ファイルに対する衝突検出（<see cref="View.FileConflictDialog"/>）を行わない</description></item>
-///   <item><description>一時展開が部分的に失敗した場合、未展開ファイルも「破損」として報告してしまう</description></item>
-/// </list>
-/// 将来的には主フローの <c>skipRelativePaths</c> ベースの実装に統合し、本クラスを廃止する予定。
-/// 現状では <c>enablePartialExtraction=true</c> のエラー回復ダイアログ経由でのみ利用される
-/// 低頻度のコードパスなので、互換性維持のため残している。
-/// </remarks>
+[Obsolete("主フローの ArchiveExtractor.TryExtractEntryAsync + skipRelativePaths に統合予定")]
 public class PartialExtractionHandler
 {
     /// <summary>
@@ -174,92 +165,73 @@ public class PartialExtractionHandler
                     var progress = items.Count == 0 ? 100 : (int)((double)(i + 1) / items.Count * 100);
                     progressCallback?.Invoke(progress, App.Text("Extraction.Progress", fullName));
 
-                    try
+                    // ArchiveExtractor.TryExtractEntryAsync に委譲（リトライ 1 回で初回試行）
+                    var (copied, copyError) = await ArchiveExtractor.TryExtractEntryAsync(
+                        tempPath, outputPath, fullName, item.IsDirectory,
+                        maxRetries: 1, cancellationToken: cancellationToken);
+
+                    if (copied)
                     {
-                        await Task.Run(() => FileOperations.CopyExtractedItem(tempPath, outputPath, fullName, item.IsDirectory), cancellationToken);
                         result.SuccessFiles.Add(fullName);
                         result.SuccessCount++;
-
                         Logger.Log($"ファイル展開成功: {fullName}", LogLevel.Debug);
+                        continue;
                     }
-                    catch (Exception ex)
+
+                    // コピー固有のエラーを優先し、なければ初期展開例外、最後にフォールバック
+                    var error = copyError ?? extractionException ?? new IOException(App.Text("Error.ExtractedFileNotFound"));
+                    var analyzed = ArchiveErrorHandler.AnalyzeError(error, archivePath, outputPath);
+                    var failedFile = new FailedFileInfo
                     {
-                        var error = ex is FileNotFoundException && extractionException != null ? extractionException : ex;
-                        var analyzed = ArchiveErrorHandler.AnalyzeError(error, archivePath, outputPath);
-                        var failedFile = new FailedFileInfo
-                        {
-                            FilePath = fullName,
-                            ErrorMessage = error.Message,
-                            ErrorType = analyzed.ErrorType,
-                            IsRecoverable = analyzed.IsRecoverable
-                        };
+                        FilePath = fullName,
+                        ErrorMessage = error.Message,
+                        ErrorType = analyzed.ErrorType,
+                        IsRecoverable = analyzed.IsRecoverable
+                    };
 
-                        result.FailedFiles.Add(failedFile);
-                        result.FailureCount++;
+                    result.FailedFiles.Add(failedFile);
+                    result.FailureCount++;
+                    Logger.Log($"ファイル展開失敗: {fullName}, エラー: {error.Message}", LogLevel.Error);
 
-                        Logger.Log($"ファイル展開失敗: {fullName}, エラー: {error.Message}", LogLevel.Error);
+                    var handlingOption = await DetermineErrorHandlingAsync(failedFile, errorHandling, userChoiceCallback);
 
-                        // エラー処理オプションに基づいて処理を決定
-                        var handlingOption = await DetermineErrorHandlingAsync(failedFile, errorHandling, userChoiceCallback);
+                    switch (handlingOption)
+                    {
+                        case ErrorHandlingOption.StopOnError:
+                            Logger.Log("エラーで停止", LogLevel.Error);
+                            result.IsSuccess = false;
+                            return result;
 
-                        switch (handlingOption)
-                        {
-                            case ErrorHandlingOption.StopOnError:
-                                Logger.Log("エラーで停止", LogLevel.Error);
-                                result.IsSuccess = false;
-                                return result;
+                        case ErrorHandlingOption.SkipOnError:
+                            result.SkippedFiles.Add(fullName);
+                            result.SkippedCount++;
+                            Logger.Log($"ファイルをスキップ: {fullName}", LogLevel.Warning);
+                            break;
 
-                            case ErrorHandlingOption.SkipOnError:
+                        case ErrorHandlingOption.AutoRetry:
+                            if ((await ArchiveExtractor.TryExtractEntryAsync(
+                                tempPath, outputPath, fullName, item.IsDirectory,
+                                maxRetries: 3, cancellationToken: cancellationToken)).success)
+                            {
+                                result.SuccessFiles.Add(fullName);
+                                result.SuccessCount++;
+                                result.FailedFiles.RemoveAt(result.FailedFiles.Count - 1);
+                                result.FailureCount--;
+                                Logger.Log($"リトライ成功: {fullName}");
+                            }
+                            else
+                            {
                                 result.SkippedFiles.Add(fullName);
                                 result.SkippedCount++;
-                                Logger.Log($"ファイルをスキップ: {fullName}", LogLevel.Warning);
-                                break;
-
-                            case ErrorHandlingOption.AutoRetry:
-                                // リトライを試行
-                                if (await RetryExtraction(tempPath, outputPath, fullName, item.IsDirectory, 3))
-                                {
-                                    result.SuccessFiles.Add(fullName);
-                                    result.SuccessCount++;
-                                    result.FailedFiles.RemoveAt(result.FailedFiles.Count - 1);
-                                    result.FailureCount--;
-                                    Logger.Log($"リトライ成功: {fullName}");
-                                }
-                                else
-                                {
-                                    result.SkippedFiles.Add(fullName);
-                                    result.SkippedCount++;
-                                    Logger.Log($"リトライ失敗、スキップ: {fullName}", LogLevel.Warning);
-                                }
-                                break;
-                        }
+                                Logger.Log($"リトライ失敗、スキップ: {fullName}", LogLevel.Warning);
+                            }
+                            break;
                     }
                 }
             }
             catch (OperationCanceledException)
             {
-                Logger.Log($"部分展開処理がキャンセルされました。出力先をクリーンアップします: {outputPath}");
-                try
-                {
-                    // 保護されたディレクトリ（デスクトップなど）は絶対に削除しない
-                    if (PathValidator.IsProtectedDirectory(outputPath))
-                    {
-                        Logger.Log($"クリーンアップをスキップ: 保護されたディレクトリです: {outputPath}", LogLevel.Warning);
-                        throw;
-                    }
-
-                    if (Directory.Exists(outputPath))
-                    {
-                        // 読み取り専用属性などを解除してから削除
-                        ArchiveExtractor.RemoveReadOnlyAttributes(outputPath);
-                        Directory.Delete(outputPath, true);
-                        Logger.Log($"キャンセルされた展開先を削除しました: {outputPath}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"キャンセル時のクリーンアップに失敗しました: {outputPath}, {ex.Message}", LogLevel.Warning);
-                }
+                Logger.Log($"部分展開処理がキャンセルされました: {outputPath}（一時フォルダのみクリーンアップ、出力先は保持）");
                 throw;
             }
             finally
@@ -323,35 +295,9 @@ public class PartialExtractionHandler
         return defaultOption;
     }
 
-    /// <summary>
-    /// 展開のリトライを実行
-    /// </summary>
+    [Obsolete("ArchiveExtractor.TryExtractEntryAsync に統合済み")]
     private static async Task<bool> RetryExtraction(string tempPath, string outputPath, string fullName, bool isDirectory, int maxRetries)
-    {
-        for (var attempt = 1; attempt <= maxRetries; attempt++)
-        {
-            try
-            {
-                Logger.Log($"リトライ試行 {attempt}/{maxRetries}: {fullName}");
-
-                // 少し待機してからリトライ
-                await Task.Delay(1000 * attempt);
-
-                await Task.Run(() => FileOperations.CopyExtractedItem(tempPath, outputPath, fullName, isDirectory));
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Logger.Log($"リトライ {attempt} 失敗: {ex.Message}");
-                if (attempt == maxRetries)
-                {
-                    return false;
-                }
-            }
-        }
-
-        return false;
-    }
+        => (await ArchiveExtractor.TryExtractEntryAsync(tempPath, outputPath, fullName, isDirectory, maxRetries: maxRetries)).success;
 
     /// <summary>
     /// 展開結果のサマリーを生成

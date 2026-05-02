@@ -733,6 +733,13 @@ public partial class App : Application
     {
         Logger.Log("アプリケーション終了");
 
+        // debounce 中の設定保存をフラッシュ（設定変更直後の終了でもロストしない）
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } mainWindow }
+            && mainWindow.DataContext is ViewModels.MainWindowViewModel vm)
+        {
+            vm.FlushPendingAutoSave();
+        }
+
         // CTS の安全な破棄（ObjectDisposedException を無視）
         TryCancelAndDispose(_ipcCts);
 

@@ -102,6 +102,8 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Dateien werden verschoben...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Entpacken</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Komprimieren</x:String>
+  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Integrität wird überprüft...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Sicherheitsmarkierung wird angewendet...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Fehlerinformationen</x:String>
@@ -133,6 +135,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Nicht unterstütztes Dateiformat.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Nicht unterstütztes Komprimierungsformat.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Beim Entpacken ist ein Fehler aufgetreten.\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">CRC-Integritätsprüfung fehlgeschlagen: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Beim Komprimieren ist ein Fehler aufgetreten.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Bei der Verarbeitung ist ein Fehler aufgetreten.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Die Ausgabe '{0}' wird verwendet oder der Zugriff wurde verweigert.</x:String>

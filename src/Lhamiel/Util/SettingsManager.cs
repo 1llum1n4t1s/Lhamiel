@@ -32,6 +32,9 @@ public sealed class SettingsManager
     /// </summary>
     public Settings Current => _settings;
 
+    /// <summary>Unicode NFC 正規化が有効かどうか（Current のショートカット）。</summary>
+    public bool NormalizeUnicodeFileNames => _settings.NormalizeUnicodeFileNames;
+
     /// <summary>
     /// 現在の設定の浅いコピー（スナップショット）を作成する。
     /// 並列処理中に UI スレッドから設定変更が起きても、スナップショットは影響を受けない。

@@ -9,6 +9,7 @@
     <UseWPF>false</UseWPF>
     <UseWindowsForms>false</UseWindowsForms>
     <ApplicationIcon>icon\app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <SatelliteResourceLanguages>ja</SatelliteResourceLanguages>
     <Optimize>true</Optimize>
     <DebugType>portable</DebugType>

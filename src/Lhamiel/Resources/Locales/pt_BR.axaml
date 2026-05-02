@@ -102,6 +102,8 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Movendo arquivos...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Extraindo</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Comprimindo</x:String>
+  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Verificando integridade...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Aplicando marca de segurança...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informações do Erro</x:String>
@@ -133,6 +135,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Formato de arquivo não suportado.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Formato de compressão não suportado.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Ocorreu um erro durante a extração.\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Falha na verificação de integridade CRC: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Ocorreu um erro durante a compressão.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Ocorreu um erro durante o processamento.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">A saída '{0}' está em uso ou o acesso foi negado.</x:String>

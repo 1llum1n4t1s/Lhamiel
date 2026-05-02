@@ -237,6 +237,7 @@ public class DirectPathCompressionAdversarialTests
             // 即座にキャンセル
             cts.CancelAfter(TimeSpan.FromMilliseconds(10));
 
+            var wasCancelled = false;
             try
             {
                 await ArchiveCompressor.CompressFilesAsync(files, archivePath, Format.Zip,
@@ -244,11 +245,13 @@ public class DirectPathCompressionAdversarialTests
             }
             catch (OperationCanceledException)
             {
-                // 期待通り
+                wasCancelled = true;
             }
 
-            // キャンセル後にアーカイブ出力が残っていないこと
-            Assert.False(File.Exists(archivePath), "キャンセル後に不完全なアーカイブが残っている");
+            // キャンセルが間に合った場合のみ: 不完全なアーカイブが残っていないこと
+            // キャンセル前に圧縮が完了した場合は完全なアーカイブが残るのが正しい挙動
+            if (wasCancelled)
+                Assert.False(File.Exists(archivePath), "キャンセル後に不完全なアーカイブが残っている");
         });
         AssertNoLeakedTempDirs(snapshot);
     }

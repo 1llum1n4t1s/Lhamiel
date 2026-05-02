@@ -172,6 +172,22 @@ public class Settings
     public int SevenZipCompressionLevel { get; set; } = 5; // Normal
 
     /// <summary>
+    /// 展開後にアーカイブの CRC 整合性検証を実行するかどうか
+    /// </summary>
+    public bool VerifyAfterExtraction { get; set; } = true;
+
+    /// <summary>
+    /// ファイル名の Unicode 正規化 (NFC) を有効にするかどうか。
+    /// macOS HFS+ は NFD を使用するため、macOS 作成アーカイブの展開時に有効。
+    /// </summary>
+    public bool NormalizeUnicodeFileNames { get; set; } = true;
+
+    /// <summary>
+    /// 展開時に元アーカイブの Mark of the Web (Zone.Identifier) を展開先ファイルに伝播するかどうか。
+    /// </summary>
+    public bool PropagateMarkOfTheWeb { get; set; } = true;
+
+    /// <summary>
     /// 並列アクセスに対して安全なスナップショット（浅いコピー）を返す。
     /// 呼び出し元は処理開始時に1回だけ呼び出し、その後はスナップショットを使うことで
     /// UI スレッド側の設定変更との race を回避する。
@@ -234,57 +250,64 @@ public class Settings
                 }
                 catch (JsonException ex)
                 {
-                    // JSON スキーマ不整合時はサイレントに全デフォルト化せず、破損ファイルを退避してから
-                    // デフォルトに戻す。ユーザーが気付けるよう警告ログも残す。
-                    // Logger は Initialize 前に呼ばれる可能性があるので null チェックは Logger 側で行う。
-                    var backupPath = $"{SettingsFilePath}.corrupt_{DateTime.Now:yyyyMMddHHmmss}.bak";
-                    // File.Copy ではなく Move でパスから取り除く。Copy 残しだと次回起動時にも
-                    // 同じパースエラーが起きて .corrupt_*.bak が無限に増殖する。
-                    // Move 自体が失敗するケース（OneDrive 同期中・ウイルス対策ロック中等）に備え、
-                    // 段階的フォールバック（Move → Delete → 空 JSON 上書き）を実装する。
-                    // 最終フォールバックまで失敗するなら破損ファイルを抱えたまま起動するが、
-                    // settings = null フォールバックでデフォルト設定で動作はできる。
-                    var sanitizationSucceeded = false;
-                    try
+                    // 二段階デコード: JsonSerializer が失敗しても、JsonDocument で個別プロパティを
+                    // 救済できる可能性がある（1 プロパティの型不整合で全滅を防ぐ）。
+                    settings = TryRecoverFromJsonDocument(json);
+
+                    if (settings == null)
                     {
-                        File.Move(SettingsFilePath, backupPath, overwrite: true);
-                        sanitizationSucceeded = true;
-                    }
-                    catch (Exception moveEx)
-                    {
-                        Debug.WriteLine($"破損 settings.json の Move に失敗: {moveEx.Message}");
+                        // JsonDocument でも回収不能 → 破損ファイル退避して全デフォルト化
+                        var backupPath = $"{SettingsFilePath}.corrupt_{DateTime.Now:yyyyMMddHHmmss_fff}.bak";
+                        var sanitizationSucceeded = false;
                         try
                         {
-                            File.Delete(SettingsFilePath);
+                            File.Move(SettingsFilePath, backupPath, overwrite: true);
                             sanitizationSucceeded = true;
                         }
-                        catch (Exception deleteEx)
+                        catch (Exception moveEx)
                         {
-                            Debug.WriteLine($"破損 settings.json の Delete に失敗: {deleteEx.Message}");
+                            Debug.WriteLine($"破損 settings.json の Move に失敗: {moveEx.Message}");
                             try
                             {
-                                // 最終手段: 空 JSON で上書きして次回起動時に正常パースさせる
-                                File.WriteAllText(SettingsFilePath, "{}");
+                                File.Delete(SettingsFilePath);
                                 sanitizationSucceeded = true;
                             }
-                            catch (Exception writeEx)
+                            catch (Exception deleteEx)
                             {
-                                Debug.WriteLine($"破損 settings.json の空 JSON 上書きに失敗: {writeEx.Message}");
+                                Debug.WriteLine($"破損 settings.json の Delete に失敗: {deleteEx.Message}");
+                                try
+                                {
+                                    File.WriteAllText(SettingsFilePath, "{}");
+                                    sanitizationSucceeded = true;
+                                }
+                                catch (Exception writeEx)
+                                {
+                                    Debug.WriteLine($"破損 settings.json の空 JSON 上書きに失敗: {writeEx.Message}");
+                                }
                             }
                         }
+                        Debug.WriteLine($"設定ファイルの解析に失敗しました（デフォルトに戻します）: {ex.Message}");
+                        try
+                        {
+                            var statusMsg = sanitizationSucceeded
+                                ? $"破損ファイルは {backupPath} に退避（または空 JSON 化）済みです"
+                                : $"破損ファイルの退避に失敗しました（次回起動時も同じエラーが再発する可能性があります）";
+                            Logger.Log(
+                                $"settings.json の解析に失敗したためデフォルトに戻しました。{statusMsg}。理由: {ex.Message}",
+                                LogLevel.Warning);
+                        }
+                        catch { /* Logger 未初期化のケース */ }
                     }
-                    Debug.WriteLine($"設定ファイルの解析に失敗しました（デフォルトに戻します）: {ex.Message}");
-                    try
+                    else
                     {
-                        var statusMsg = sanitizationSucceeded
-                            ? $"破損ファイルは {backupPath} に退避（または空 JSON 化）済みです"
-                            : $"破損ファイルの退避に失敗しました（次回起動時も同じエラーが再発する可能性があります）";
-                        Logger.Log(
-                            $"settings.json の解析に失敗したためデフォルトに戻しました。{statusMsg}。理由: {ex.Message}",
-                            LogLevel.Warning);
+                        try
+                        {
+                            Logger.Log(
+                                $"settings.json の一部プロパティに不整合がありましたが、有効なプロパティは回収しました。理由: {ex.Message}",
+                                LogLevel.Warning);
+                        }
+                        catch { /* Logger 未初期化のケース */ }
                     }
-                    catch { /* Logger 未初期化のケース */ }
-                    settings = null;
                 }
 
                 if (settings != null)
@@ -416,6 +439,132 @@ public class Settings
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
         ExcludedFilePatterns = [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
+        VerifyAfterExtraction = true;
+        NormalizeUnicodeFileNames = true;
+        PropagateMarkOfTheWeb = true;
         // NOTE: 新しいプロパティを追加したら必ずここにも追加すること（リセット漏れ防止）
     }
+
+    /// <summary>
+    /// JsonSerializer が失敗した JSON から、JsonDocument で個別プロパティを回収する二段階デコード。
+    /// JSON 自体がパースできない（構文エラー）場合は null を返す。
+    /// プロパティ個別の型不整合はスキップしてデフォルト値を維持する。
+    /// </summary>
+    private static Settings? TryRecoverFromJsonDocument(string json)
+    {
+        JsonDocument doc;
+        try
+        {
+            doc = JsonDocument.Parse(json);
+        }
+        catch
+        {
+            return null;
+        }
+
+        using (doc)
+        {
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                return null;
+
+            var s = new Settings();
+            var root = doc.RootElement;
+            var recoveredCount = 0;
+
+            if (TryGetString(root, nameof(Theme), out var theme)) { s.Theme = theme!; recoveredCount++; }
+            if (TryGetString(root, nameof(Locale), out var locale)) { s.Locale = locale!; recoveredCount++; }
+            if (TryGetString(root, nameof(CompressionFormat), out var cf)) { s.CompressionFormat = cf!; recoveredCount++; }
+            if (TryGetString(root, nameof(ExtractionOutputDirectory), out var eod)) { s.ExtractionOutputDirectory = eod!; recoveredCount++; }
+            if (TryGetString(root, nameof(CompressionOutputDirectory), out var cod)) { s.CompressionOutputDirectory = cod!; recoveredCount++; }
+            // UpdateRepoOwner / UpdateRepoName は [JsonIgnore] ハードコード固定のため回収不要
+            if (TryGetString(root, nameof(UpdateChannel), out var uc)) { s.UpdateChannel = uc!; recoveredCount++; }
+
+            if (TryGetBool(root, nameof(ExtractionOutputToSameDirectory), out var eotsd)) { s.ExtractionOutputToSameDirectory = eotsd; recoveredCount++; }
+            if (TryGetBool(root, nameof(CompressionOutputToSameDirectory), out var cotsd)) { s.CompressionOutputToSameDirectory = cotsd; recoveredCount++; }
+            if (TryGetBool(root, nameof(OpenExtractionOutputFolder), out var oeof)) { s.OpenExtractionOutputFolder = oeof; recoveredCount++; }
+            if (TryGetBool(root, nameof(CreateArchiveNameFolder), out var canf)) { s.CreateArchiveNameFolder = canf; recoveredCount++; }
+            if (TryGetBool(root, nameof(OpenCompressionOutputFolder), out var ocof)) { s.OpenCompressionOutputFolder = ocof; recoveredCount++; }
+            if (TryGetBool(root, nameof(CompressMultipleAsOne), out var cmao)) { s.CompressMultipleAsOne = cmao; recoveredCount++; }
+            if (TryGetBool(root, nameof(VerifyAfterExtraction), out var vae)) { s.VerifyAfterExtraction = vae; recoveredCount++; }
+            if (TryGetBool(root, nameof(NormalizeUnicodeFileNames), out var nufn)) { s.NormalizeUnicodeFileNames = nufn; recoveredCount++; }
+            if (TryGetBool(root, nameof(PropagateMarkOfTheWeb), out var pmotw)) { s.PropagateMarkOfTheWeb = pmotw; recoveredCount++; }
+
+            if (TryGetInt(root, nameof(LogMaxSizeMB), out var lms)) { s.LogMaxSizeMB = lms; recoveredCount++; }
+            if (TryGetInt(root, nameof(LogRetentionDays), out var lrd)) { s.LogRetentionDays = lrd; recoveredCount++; }
+            if (TryGetInt(root, nameof(ZipCompressionLevel), out var zcl)) { s.ZipCompressionLevel = zcl; recoveredCount++; }
+            if (TryGetInt(root, nameof(SevenZipCompressionLevel), out var szcl)) { s.SevenZipCompressionLevel = szcl; recoveredCount++; }
+
+            if (TryGetEnum<DirectoryStructureMode>(root, nameof(DirectoryStructureMode), out var dsm))
+            {
+                s.DirectoryStructureMode = dsm;
+                recoveredCount++;
+            }
+
+            if (root.TryGetProperty(nameof(ExcludedFilePatterns), out var efpEl) && efpEl.ValueKind == JsonValueKind.Array)
+            {
+                try
+                {
+                    var list = new List<string>();
+                    foreach (var item in efpEl.EnumerateArray())
+                    {
+                        if (item.ValueKind == JsonValueKind.String)
+                            list.Add(item.GetString()!);
+                    }
+                    s.ExcludedFilePatterns = [.. list];
+                    recoveredCount++;
+                }
+                catch { /* 配列回収失敗 → デフォルト維持 */ }
+            }
+
+            Debug.WriteLine($"JsonDocument による個別プロパティ回収: {recoveredCount} 件");
+            return recoveredCount > 0 ? s : null;
+        }
+    }
+
+    private static bool TryGetString(JsonElement root, string name, out string? value)
+    {
+        value = null;
+        if (root.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.String)
+        {
+            value = el.GetString();
+            return true;
+        }
+        return false;
+    }
+
+    private static bool TryGetBool(JsonElement root, string name, out bool value)
+    {
+        value = default;
+        if (root.TryGetProperty(name, out var el) && el.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            value = el.GetBoolean();
+            return true;
+        }
+        return false;
+    }
+
+    private static bool TryGetInt(JsonElement root, string name, out int value)
+    {
+        value = default;
+        if (root.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out value))
+            return true;
+        return false;
+    }
+
+    private static bool TryGetEnum<T>(JsonElement root, string name, out T value) where T : struct, Enum
+    {
+        value = default;
+        if (root.TryGetProperty(name, out var el))
+        {
+            if (el.ValueKind == JsonValueKind.String && Enum.TryParse(el.GetString(), true, out value))
+                return true;
+            if (el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var intVal) && Enum.IsDefined(typeof(T), intVal))
+            {
+                value = (T)(object)intVal;
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

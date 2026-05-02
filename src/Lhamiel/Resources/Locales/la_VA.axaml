@@ -102,6 +102,8 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Fasciculi moventur...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Extractio</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Compressio</x:String>
+  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Integritas verificatur...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Signum securitatis applicatur...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informationes Erroris</x:String>
@@ -133,6 +135,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Forma fasciculi non sustinetur.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Forma compressionis non sustinetur.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Error accidit in extractione.\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Verificatio integritatis CRC defecit: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Error accidit in compressione.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Error accidit in processu.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Exitus '{0}' in usu est vel accessus negatur.</x:String>

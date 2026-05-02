@@ -102,6 +102,8 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">正在移动文件...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">解压中</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">压缩中</x:String>
+  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">正在验证完整性...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">正在应用安全标记...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">错误信息</x:String>
@@ -133,6 +135,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">不支持的文件格式。\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">不支持的压缩格式。\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">解压过程中发生错误。\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">CRC 完整性验证失败：{0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">压缩过程中发生错误。\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">处理过程中发生错误。\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">输出 '{0}' 正在使用中或访问被拒绝。</x:String>

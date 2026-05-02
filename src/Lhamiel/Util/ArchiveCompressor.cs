@@ -9,9 +9,9 @@ namespace Lhamiel.Util;
 public static class ArchiveCompressor
 {
     /// <summary>
-    /// ライブラリがサポートする圧縮可能な全形式（内部バリデーション用）
+    /// ライブラリが書き込み可能な全形式（Settings.SupportedCompressionFormats はUI選択肢のサブセット）
     /// </summary>
-    internal static readonly HashSet<string> SupportedCompressionFormats = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> WritableFormats = new(StringComparer.OrdinalIgnoreCase)
     {
         "zip", "7z", "tar", "gz", "bz2", "xz"
     };
@@ -110,7 +110,7 @@ public static class ArchiveCompressor
             cancellationToken.ThrowIfCancellationRequested();
 
             // 解決済みリストが渡された場合はそのまま使用、なければスキャン
-            var filesToCompress = resolvedFiles ?? await ScanSourceFiles(sourceList, excludedPatternSet, cancellationToken, settings.DirectoryStructureMode);
+            var filesToCompress = resolvedFiles ?? await ScanSourceFiles(sourceList, excludedPatternSet, cancellationToken, settings.DirectoryStructureMode, settings.NormalizeUnicodeFileNames);
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
@@ -205,10 +205,11 @@ public static class ArchiveCompressor
     /// </summary>
     public static async Task<List<(string fullPath, string relativePath)>> ScanSourceFiles(
         List<string> sourceList, HashSet<string> excludedPatternSet, CancellationToken cancellationToken = default,
-        DirectoryStructureMode? dirModeOverride = null)
+        DirectoryStructureMode? dirModeOverride = null, bool? normalizeUnicodeOverride = null)
     {
         var filesToCompress = new List<(string fullPath, string relativePath)>();
         var dirMode = dirModeOverride ?? SettingsManager.Instance.Current.DirectoryStructureMode;
+        var normalizeUnicode = normalizeUnicodeOverride ?? SettingsManager.Instance.NormalizeUnicodeFileNames;
 
         foreach (var sourcePath in sourceList)
         {
@@ -218,7 +219,7 @@ public static class ArchiveCompressor
             {
                 if (!ShouldExcludeFile(sourcePath, excludedPatternSet))
                 {
-                    filesToCompress.Add((sourcePath, Path.GetFileName(sourcePath)));
+                    filesToCompress.Add((sourcePath, NormalizeNfc(Path.GetFileName(sourcePath), normalizeUnicode)));
                 }
             }
             else if (Directory.Exists(sourcePath))
@@ -238,9 +239,11 @@ public static class ArchiveCompressor
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var relativePath = dirMode == DirectoryStructureMode.Flat
-                        ? Path.GetFileName(file)
-                        : Path.GetRelativePath(parentDir, file);
+                    var relativePath = NormalizeNfc(
+                        dirMode == DirectoryStructureMode.Flat
+                            ? Path.GetFileName(file)
+                            : Path.GetRelativePath(parentDir, file),
+                        normalizeUnicode);
                     filesToCompress.Add((file, relativePath));
 
                     // このファイルの全祖先ディレクトリを記録。
@@ -266,8 +269,7 @@ public static class ArchiveCompressor
                     var emptyDirs = CollectEmptyDirectories(sourcePath, excludedPatternSet, directoriesWithFiles);
                     foreach (var emptyDir in emptyDirs)
                     {
-                        var relativePath = Path.GetRelativePath(parentDir, emptyDir);
-                        // ディレクトリエントリは末尾に / を付与（アーカイブ仕様）
+                        var relativePath = NormalizeNfc(Path.GetRelativePath(parentDir, emptyDir), normalizeUnicode);
                         filesToCompress.Add((emptyDir, relativePath + "/"));
                     }
 
@@ -304,6 +306,13 @@ public static class ArchiveCompressor
     /// `("a|b","c")` がキー衝突してしまう。ValueTuple + <see cref="PathPairComparer"/>
     /// に置き換えて衝突を構造的に回避する。
     /// </remarks>
+    private static string NormalizeNfc(string path, bool enabled)
+    {
+        if (!enabled || path.IsNormalized(System.Text.NormalizationForm.FormC))
+            return path;
+        return path.Normalize(System.Text.NormalizationForm.FormC);
+    }
+
     private static List<(string fullPath, string relativePath)> DeduplicateByIdentity(
         List<(string fullPath, string relativePath)> files)
     {

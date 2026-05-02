@@ -75,4 +75,61 @@ public class ArchiveErrorHandlerTests
         var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\broken.zip", @"C:\out");
         Assert.Equal(ArchiveErrorType.CorruptedFile, info.ErrorType);
     }
+
+    // === IsCorruptedHResult ===
+
+    [Theory]
+    [InlineData(unchecked((int)0x80070017))] // ERROR_CRC
+    [InlineData(unchecked((int)0x8007000D))] // ERROR_INVALID_DATA
+    [InlineData(unchecked((int)0x8007000B))] // ERROR_BAD_FORMAT
+    [InlineData(unchecked((int)0x80070570))] // ERROR_FILE_CORRUPT
+    [InlineData(unchecked((int)0x80070571))] // ERROR_DISK_CORRUPT
+    public void IsCorruptedHResult_WithCorruptionHResult_ReturnsTrue(int hResult)
+    {
+        Assert.True(ArchiveErrorHandler.IsCorruptedHResult(hResult));
+    }
+
+    [Theory]
+    [InlineData(0)]                            // S_OK
+    [InlineData(unchecked((int)0x80070070))]   // ERROR_DISK_FULL
+    [InlineData(unchecked((int)0x80070020))]   // ERROR_SHARING_VIOLATION
+    [InlineData(unchecked((int)0x80004005))]   // E_FAIL
+    public void IsCorruptedHResult_WithNonCorruptionHResult_ReturnsFalse(int hResult)
+    {
+        Assert.False(ArchiveErrorHandler.IsCorruptedHResult(hResult));
+    }
+
+    [Fact]
+    public void AnalyzeError_InvalidOperationWithCrcHResult_ClassifiedAsCorruptedFile()
+    {
+        // メッセージに破損キーワードが無くても HResult で破損判定できる
+        var ex = new InvalidOperationException("Unknown error occurred.");
+        SetHResult(ex, unchecked((int)0x80070017)); // ERROR_CRC
+        var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\test.7z", @"C:\out");
+        Assert.Equal(ArchiveErrorType.CorruptedFile, info.ErrorType);
+    }
+
+    [Fact]
+    public void AnalyzeError_InvalidOperationWithFileCorruptHResult_ClassifiedAsCorruptedFile()
+    {
+        var ex = new InvalidOperationException("Some generic error.");
+        SetHResult(ex, unchecked((int)0x80070570)); // ERROR_FILE_CORRUPT
+        var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\test.zip", @"C:\out");
+        Assert.Equal(ArchiveErrorType.CorruptedFile, info.ErrorType);
+    }
+
+    [Fact]
+    public void AnalyzeError_InvalidOperationWithGenericHResultAndNoKeyword_NotClassifiedAsCorrupted()
+    {
+        // HResult もメッセージもヒットしない場合は Unknown
+        var ex = new InvalidOperationException("Something went wrong.");
+        SetHResult(ex, unchecked((int)0x80004005)); // E_FAIL
+        var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\test.zip", @"C:\out");
+        Assert.Equal(ArchiveErrorType.Unknown, info.ErrorType);
+    }
+
+    private static void SetHResult(Exception ex, int hResult)
+    {
+        ex.HResult = hResult;
+    }
 }
