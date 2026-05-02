@@ -40,7 +40,7 @@ internal static partial class CrashHandler
         {
             Directory.CreateDirectory(DumpDirectory);
 
-            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
             var dumpPath = Path.Combine(DumpDirectory, $"Lhamiel_{timestamp}.dmp");
 
             using var process = Process.GetCurrentProcess();

@@ -257,7 +257,7 @@ public class Settings
                     if (settings == null)
                     {
                         // JsonDocument でも回収不能 → 破損ファイル退避して全デフォルト化
-                        var backupPath = $"{SettingsFilePath}.corrupt_{DateTime.Now:yyyyMMddHHmmss}.bak";
+                        var backupPath = $"{SettingsFilePath}.corrupt_{DateTime.Now:yyyyMMddHHmmss_fff}.bak";
                         var sanitizationSucceeded = false;
                         try
                         {
