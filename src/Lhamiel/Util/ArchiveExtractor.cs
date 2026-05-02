@@ -267,36 +267,22 @@ public static class ArchiveExtractor
         HashSet<string>? skipRelativePaths = null,
         int maxRetries = 3, CancellationToken cancellationToken = default)
     {
-        Exception? lastException = null;
-        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        try
         {
-            try
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (attempt > 1)
-                    await Task.Delay(200 * (1 << (attempt - 1)), cancellationToken);
-
-                await Task.Run(() =>
-                    FileOperations.CopyExtractedItem(tempPath, outputPath, relativePath, isDirectory, overwrite: true),
-                    cancellationToken);
-                if (attempt > 1)
-                    Logger.Log($"エントリ展開リトライ成功（{attempt - 1} 回目）: {relativePath}");
-                return (true, null);
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception ex)
-            {
-                lastException = ex;
-                Logger.Log($"エントリ展開失敗（試行 {attempt}/{maxRetries}）: {relativePath} - {ex.Message}",
-                    attempt == maxRetries ? LogLevel.Error : LogLevel.Warning);
-                if (attempt == maxRetries)
-                {
-                    skipRelativePaths?.Add(relativePath);
-                    return (false, lastException);
-                }
-            }
+            await LockedFileRetryPolicy.ExecuteAsync(
+                () => Task.Run(
+                    () => FileOperations.CopyExtractedItem(tempPath, outputPath, relativePath, isDirectory, overwrite: true),
+                    cancellationToken),
+                relativePath, maxAttempts: maxRetries, initialDelayMs: 200, cancellationToken: cancellationToken);
+            return (true, null);
         }
-        return (false, lastException);
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Logger.Log($"エントリ展開が全リトライ失敗: {relativePath} - {ex.Message}", LogLevel.Error);
+            skipRelativePaths?.Add(relativePath);
+            return (false, ex);
+        }
     }
 
     /// <summary>

@@ -13,7 +13,7 @@ namespace Lhamiel.Util;
 /// </summary>
 internal static partial class DiagnosticsCollector
 {
-    private static readonly string[] SensitiveKeys = ["UpdateRepoOwner", "UpdateRepoName", "UpdateChannel"];
+    private static readonly string[] _sensitiveKeys = ["UpdateRepoOwner", "UpdateRepoName", "UpdateChannel"];
 
     /// <summary>
     /// 診断 ZIP を指定パスに作成する。
@@ -181,7 +181,7 @@ internal static partial class DiagnosticsCollector
 
     private static bool ShouldMask(string propertyName)
     {
-        foreach (var key in SensitiveKeys)
+        foreach (var key in _sensitiveKeys)
         {
             if (propertyName.Contains(key, StringComparison.OrdinalIgnoreCase))
                 return true;
