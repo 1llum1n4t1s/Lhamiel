@@ -124,7 +124,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _autoSaveCts = null;
         try
         {
-            ExecuteAutoSaveAsync(CancellationToken.None).GetAwaiter().GetResult();
+            ApplySettingsToManager();
+            _settingsManager.Save();
         }
         catch (Exception ex)
         {
@@ -132,28 +133,33 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    private void ApplySettingsToManager()
+    {
+        _settingsManager.Mutate(s =>
+        {
+            s.Theme = SelectedTheme;
+            s.Locale = SelectedLocale;
+            s.CompressionFormat = SelectedCompressionFormat ?? "ZIP";
+            s.ExtractionOutputDirectory = ExtractionOutputDirectory;
+            s.CompressionOutputDirectory = CompressionOutputDirectory;
+            s.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectory;
+            s.CompressionOutputToSameDirectory = CompressionOutputToSameDirectory;
+            s.OpenExtractionOutputFolder = OpenExtractionOutputFolder;
+            s.CreateArchiveNameFolder = CreateArchiveNameFolder;
+            s.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
+            s.CompressMultipleAsOne = CompressMultipleAsOne;
+            s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
+            s.ZipCompressionLevel = ZipCompressionLevel;
+            s.SevenZipCompressionLevel = SevenZipCompressionLevel;
+        });
+    }
+
     private async Task ExecuteAutoSaveAsync(CancellationToken token)
     {
         try
         {
-            await Task.Delay(300, token);
-            _settingsManager.Mutate(s =>
-            {
-                s.Theme = SelectedTheme;
-                s.Locale = SelectedLocale;
-                s.CompressionFormat = SelectedCompressionFormat ?? "ZIP";
-                s.ExtractionOutputDirectory = ExtractionOutputDirectory;
-                s.CompressionOutputDirectory = CompressionOutputDirectory;
-                s.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectory;
-                s.CompressionOutputToSameDirectory = CompressionOutputToSameDirectory;
-                s.OpenExtractionOutputFolder = OpenExtractionOutputFolder;
-                s.CreateArchiveNameFolder = CreateArchiveNameFolder;
-                s.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
-                s.CompressMultipleAsOne = CompressMultipleAsOne;
-                s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
-                s.ZipCompressionLevel = ZipCompressionLevel;
-                s.SevenZipCompressionLevel = SevenZipCompressionLevel;
-            });
+            await Task.Delay(300, token).ConfigureAwait(false);
+            ApplySettingsToManager();
             _settingsManager.Save();
         }
         catch (OperationCanceledException) { }

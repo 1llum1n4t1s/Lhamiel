@@ -183,6 +183,8 @@ public static class ArchiveProcessor
                         {
                             foreach (var rootName in structureInfo.RootItemNames)
                             {
+                                if (rootName is "." or "..")
+                                    continue;
                                 var rootItemPath = Path.Combine(outputPath, rootName);
                                 if (Directory.Exists(rootItemPath))
                                     MotwPropagator.PropagateToDirectory(rootItemPath, zoneId, cancellationToken);

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using Microsoft.Win32.SafeHandles;
 namespace Lhamiel.Util;
 
@@ -51,12 +52,23 @@ internal static partial class CrashHandler
             // フルヒープは巨大になるため、データセグメント + ハンドル情報に絞る
             const int dumpType = 0x01 | 0x04;
 
+            var exceptionPointers = Marshal.GetExceptionPointers();
+            var exceptionParam = IntPtr.Zero;
+            var exceptionInfo = default(MinidumpExceptionInformation);
+            if (exceptionPointers != IntPtr.Zero)
+            {
+                exceptionInfo.ThreadId = (uint)Environment.CurrentManagedThreadId;
+                exceptionInfo.ExceptionPointers = exceptionPointers;
+                exceptionInfo.ClientPointers = 0;
+                unsafe { exceptionParam = (IntPtr)(&exceptionInfo); }
+            }
+
             var success = MiniDumpWriteDump(
                 process.SafeHandle,
                 (uint)process.Id,
                 fs.SafeFileHandle,
                 dumpType,
-                IntPtr.Zero,
+                exceptionParam,
                 IntPtr.Zero,
                 IntPtr.Zero);
 
@@ -115,6 +127,14 @@ internal static partial class CrashHandler
         {
             Logger.Log($"ダンプローテーション失敗: {ex.Message}", LogLevel.Warning);
         }
+    }
+
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    private struct MinidumpExceptionInformation
+    {
+        public uint ThreadId;
+        public IntPtr ExceptionPointers;
+        public int ClientPointers;
     }
 
     [LibraryImport("dbghelp.dll", SetLastError = true)]
