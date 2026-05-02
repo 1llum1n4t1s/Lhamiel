@@ -245,15 +245,22 @@ internal static partial class DiagnosticsCollector
         {
             try
             {
-                File.Copy(fi.FullName, Path.Combine(dumpsDir, fi.Name));
+                CopyFileWithSharedRead(fi.FullName, Path.Combine(dumpsDir, fi.Name));
                 var txtPath = Path.ChangeExtension(fi.FullName, ".txt");
                 if (File.Exists(txtPath))
-                    File.Copy(txtPath, Path.Combine(dumpsDir, Path.GetFileName(txtPath)));
+                    CopyFileWithSharedRead(txtPath, Path.Combine(dumpsDir, Path.GetFileName(txtPath)));
             }
             catch (Exception ex)
             {
                 Logger.Log($"ダンプファイルコピーに失敗: {fi.Name} - {ex.Message}", LogLevel.Warning);
             }
         }
+    }
+
+    private static void CopyFileWithSharedRead(string sourcePath, string destPath)
+    {
+        using var src = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var dst = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        src.CopyTo(dst);
     }
 }
