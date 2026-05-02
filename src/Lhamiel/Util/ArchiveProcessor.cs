@@ -155,7 +155,8 @@ public static class ArchiveProcessor
                         cancellationToken,
                         overwriteCheckPaths,
                         progressWindow,
-                        structureInfo.TotalUncompressedSize);
+                        structureInfo.TotalUncompressedSize,
+                        snapshot.NormalizeUnicodeFileNames);
 
                     // 展開後 CRC 整合性検証（設定で有効な場合のみ）
                     if (snapshot.VerifyAfterExtraction)
@@ -334,7 +335,7 @@ public static class ArchiveProcessor
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数ファイル展開処理でエラーが発生", ex);
-            _ = UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.DuringExtraction", ex.Message)));
+            await UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.DuringExtraction", ex.Message)));
 
             // 例外発生時にも確実にクリーンアップ
             if (closeWindowOnCompletion)
@@ -761,7 +762,7 @@ public static class ArchiveProcessor
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数対象圧縮処理でエラーが発生", ex);
-            _ = UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message)));
+            await UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message)));
 
             // 例外発生時にも確実にクリーンアップ
             if (closeWindowOnCompletion)

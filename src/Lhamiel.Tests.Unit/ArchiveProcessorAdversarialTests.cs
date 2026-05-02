@@ -102,7 +102,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtractArchivesAsync_AllNonExistent_ShowsErrorsForEach()
+    public async Task ExtractArchivesAsync_AllNonExistent_ShowsErrorForEachFile()
     {
         var stub = (StubMessageService)ArchiveProcessor.MessageServiceImpl;
         var files = new[] { @"C:\fake1.zip", @"C:\fake2.7z", @"C:\fake3.tar" };
@@ -111,7 +111,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
             files, @"C:\temp", false, null,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.True(stub.Errors.Count >= 1);
+        Assert.Equal(files.Length, stub.Errors.Count);
     }
 
     // === CompressItemAsync 敵対的テスト ===
@@ -213,7 +213,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
     }
 
     [Fact]
-    public async Task CompressItemsAsync_MixedExistentNonExistent_HandlesGracefully()
+    public async Task CompressItemsAsync_AllNonExistent_ShowsErrorForEachPath()
     {
         var stub = (StubMessageService)ArchiveProcessor.MessageServiceImpl;
         var paths = new[] { @"C:\nonexist_a", @"C:\nonexist_b" };
@@ -222,6 +222,6 @@ public class ArchiveProcessorAdversarialTests : IDisposable
             paths, @"C:\temp", false, "zip", null,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.True(stub.Errors.Count >= 1);
+        Assert.Equal(paths.Length, stub.Errors.Count);
     }
 }

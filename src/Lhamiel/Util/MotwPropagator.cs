@@ -42,11 +42,20 @@ internal static class MotwPropagator
             return;
 
         var propagatedCount = 0;
-        foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*", SearchOption.AllDirectories))
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (TryWriteZoneIdentifier(filePath, zoneIdentifierContent))
-                propagatedCount++;
+            foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*",
+                new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (TryWriteZoneIdentifier(filePath, zoneIdentifierContent))
+                    propagatedCount++;
+            }
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            Logger.Log($"MotW 伝播の列挙中にエラー: {directoryPath} - {ex.Message}", LogLevel.Warning);
         }
 
         if (propagatedCount > 0)
