@@ -470,13 +470,17 @@ public static class PathValidator
         if (string.IsNullOrEmpty(path) || path.Length < MaxPathLength)
             return path;
 
-        if (path.StartsWith(LongPathPrefix, StringComparison.Ordinal))
-            return path;
+        // \\?\ プレフィックスは絶対パスにのみ有効。相対パスが渡された場合は絶対パスに変換。
+        string fullPath;
+        try { fullPath = Path.GetFullPath(path); } catch { return path; }
+
+        if (fullPath.StartsWith(LongPathPrefix, StringComparison.Ordinal))
+            return fullPath;
 
         // UNC パス: \\server\share → \\?\UNC\server\share
-        if (path.StartsWith(@"\\", StringComparison.Ordinal))
-            return UncLongPathPrefix + path[2..];
+        if (fullPath.StartsWith(@"\\", StringComparison.Ordinal))
+            return UncLongPathPrefix + fullPath[2..];
 
-        return LongPathPrefix + path;
+        return LongPathPrefix + fullPath;
     }
 }
