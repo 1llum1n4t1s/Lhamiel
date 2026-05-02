@@ -40,6 +40,16 @@ internal static class ArchiveIntegrityVerifier
                     hasEncryptedItems = reader.Items.Any(item => item.Encrypted);
                 }
                 catch (OperationCanceledException) { throw; }
+                catch (IOException ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    Logger.Log($"アーカイブヘッダー読み取り中に I/O エラー: {archivePath} - {ex.Message}", LogLevel.Warning);
+                    return new VerificationResult(false, ex.Message);
+                }
+                catch (UnauthorizedAccessException ex) when (!cancellationToken.IsCancellationRequested)
+                {
+                    Logger.Log($"アーカイブヘッダー読み取り中にアクセス拒否: {archivePath} - {ex.Message}", LogLevel.Warning);
+                    return new VerificationResult(false, ex.Message);
+                }
                 catch (Exception) when (!cancellationToken.IsCancellationRequested)
                 {
                     Logger.Log($"アーカイブヘッダー読み取り失敗（ヘッダー暗号化の可能性）のため CRC 検証をスキップ: {archivePath}");
