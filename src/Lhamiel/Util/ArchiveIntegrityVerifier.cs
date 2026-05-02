@@ -39,6 +39,7 @@ internal static class ArchiveIntegrityVerifier
                 {
                     hasEncryptedItems = reader.Items.Any(item => item.Encrypted);
                 }
+                catch (OperationCanceledException) { throw; }
                 catch (Exception) when (!cancellationToken.IsCancellationRequested)
                 {
                     Logger.Log($"アーカイブヘッダー読み取り失敗（ヘッダー暗号化の可能性）のため CRC 検証をスキップ: {archivePath}");

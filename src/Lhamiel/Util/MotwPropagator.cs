@@ -17,7 +17,7 @@ internal static class MotwPropagator
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             return null;
 
-        var adsPath = PathValidator.EnsureLongPathPrefix(archivePath + ZoneIdentifierSuffix);
+        var adsPath = PathValidator.EnsureLongPathPrefix(archivePath) + ZoneIdentifierSuffix;
         try
         {
             if (!File.Exists(adsPath))
@@ -69,7 +69,7 @@ internal static class MotwPropagator
     {
         try
         {
-            var adsPath = PathValidator.EnsureLongPathPrefix(filePath + ZoneIdentifierSuffix);
+            var adsPath = PathValidator.EnsureLongPathPrefix(filePath) + ZoneIdentifierSuffix;
             LockedFileRetryPolicy.Execute(() => File.WriteAllText(adsPath, zoneIdentifierContent), filePath);
             return true;
         }
