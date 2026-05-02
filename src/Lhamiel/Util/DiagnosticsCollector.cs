@@ -30,10 +30,17 @@ internal static partial class DiagnosticsCollector
             CollectLogs(tempDir);
             CollectDumps(tempDir);
 
-            if (File.Exists(outputPath))
-                File.Delete(outputPath);
-
-            await Task.Run(() => ZipFile.CreateFromDirectory(tempDir, outputPath, CompressionLevel.Optimal, false), cancellationToken);
+            var tempZip = outputPath + ".tmp";
+            try
+            {
+                await Task.Run(() => ZipFile.CreateFromDirectory(tempDir, tempZip, CompressionLevel.Optimal, false), cancellationToken);
+                File.Move(tempZip, outputPath, overwrite: true);
+            }
+            catch
+            {
+                try { File.Delete(tempZip); } catch { /* ベストエフォート */ }
+                throw;
+            }
 
             Logger.Log($"診断 ZIP を作成しました: {outputPath}");
             return outputPath;
@@ -154,6 +161,14 @@ internal static partial class DiagnosticsCollector
                     writer.WriteStringValue("***");
                 else
                     writer.WriteStringValue(str);
+                break;
+            case JsonValueKind.Number:
+            case JsonValueKind.True:
+            case JsonValueKind.False:
+                if (propertyName != null && ShouldMask(propertyName))
+                    writer.WriteStringValue("***");
+                else
+                    element.WriteTo(writer);
                 break;
             default:
                 element.WriteTo(writer);
