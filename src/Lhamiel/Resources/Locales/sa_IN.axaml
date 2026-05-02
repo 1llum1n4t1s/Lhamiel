@@ -102,6 +102,7 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">सञ्चिकाः स्थानान्तर्यन्ते...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">निष्कर्षणम्</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">संपीडनम्</x:String>
+  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">अखण्डतायाः सत्यापनम्...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">दोषसूचना</x:String>

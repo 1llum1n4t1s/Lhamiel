@@ -102,6 +102,7 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Dateien werden verschoben...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Entpacken</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Komprimieren</x:String>
+  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Integrität wird überprüft...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Fehlerinformationen</x:String>

@@ -102,6 +102,7 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">கோப்புகள் நகர்த்தப்படுகின்றன...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">பிரித்தெடுத்தல்</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">சுருக்குதல்</x:String>
+  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">ஒருமைப்பாடு சரிபார்ப்பு...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">பிழைத் தகவல்</x:String>

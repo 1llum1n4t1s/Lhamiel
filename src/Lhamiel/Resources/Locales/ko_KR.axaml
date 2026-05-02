@@ -102,6 +102,7 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">파일 이동 중...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">압축 해제 중</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">압축 중</x:String>
+  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">무결성 검증 중...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">오류 정보</x:String>

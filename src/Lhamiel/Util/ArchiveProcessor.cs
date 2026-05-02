@@ -1,4 +1,4 @@
-#pragma warning disable CS0618 // PartialExtractionHandler は [Obsolete] だが移行完了まで使用
+#pragma warning disable CS0618 // PartialExtractionHandler は [Obsolete] だが移行完了まで使用（参照が複数メソッドに分散するためファイルレベルで抑制）
 using Lhamiel.View;
 namespace Lhamiel.Util;
 
@@ -160,6 +160,7 @@ public static class ArchiveProcessor
                     // 展開後 CRC 整合性検証（設定で有効な場合のみ）
                     if (snapshot.VerifyAfterExtraction)
                     {
+                        progressWindow?.SetIndeterminate(App.Text("Progress.VerifyingIntegrity"));
                         var verification = await ArchiveIntegrityVerifier.VerifyArchiveAsync(filePath, cancellationToken);
                         if (!verification.IsValid)
                         {
@@ -172,7 +173,7 @@ public static class ArchiveProcessor
                     // Mark of the Web 伝播（設定で有効 かつ 元アーカイブに Zone.Identifier がある場合）
                     // outputPath == baseDirectory の場合、既存ファイルに誤って Zone.Identifier を付与しないよう
                     // 展開されたルートアイテムのみに限定する
-                    if (snapshot.PropagateMarkOfTheWeb && outputPath != null)
+                    if (snapshot.PropagateMarkOfTheWeb && outputPath != null && structureInfo != null)
                     {
                         var zoneId = MotwPropagator.ReadZoneIdentifier(filePath);
                         if (zoneId != null)
