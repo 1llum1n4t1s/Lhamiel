@@ -32,9 +32,20 @@ internal static class ArchiveIntegrityVerifier
                 cancellationToken.ThrowIfCancellationRequested();
                 using var reader = LockedFileRetryPolicy.Execute(() => new ArchiveReader(archivePath), archivePath);
 
-                // パスワード保護アーカイブはパスワードなしで Test() すると
-                // EncryptionException が発生するため、暗号化検出時はスキップ
-                if (reader.Items.Any(item => item.Encrypted))
+                // パスワード保護アーカイブはパスワードなしで Test() すると失敗するためスキップ。
+                // ヘッダー暗号化(-mhe=on)の場合は reader.Items 自体がアクセス不可。
+                bool hasEncryptedItems;
+                try
+                {
+                    hasEncryptedItems = reader.Items.Any(item => item.Encrypted);
+                }
+                catch (Exception) when (!cancellationToken.IsCancellationRequested)
+                {
+                    Logger.Log($"アーカイブヘッダー読み取り失敗（ヘッダー暗号化の可能性）のため CRC 検証をスキップ: {archivePath}");
+                    return new VerificationResult(true);
+                }
+
+                if (hasEncryptedItems)
                 {
                     Logger.Log($"パスワード保護アーカイブのため CRC 検証をスキップ: {archivePath}");
                     return new VerificationResult(true);
