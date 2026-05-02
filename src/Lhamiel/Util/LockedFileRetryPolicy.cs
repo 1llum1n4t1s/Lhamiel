@@ -101,6 +101,10 @@ internal static class LockedFileRetryPolicy
         if (ex.HResult is HR_ERROR_SHARING_VIOLATION or HR_ERROR_LOCK_VIOLATION)
             return true;
 
+        // IOException: ファイルシステムドライバーによっては標準 HResult 以外の
+        // ロック関連エラーを発行する場合がある。リトライ回数は制限されているため許容。
+        // UnauthorizedAccessException: AV ソフトが書き込み直後に一時的にアクセスを遮断する場合がある。
+        // 真の権限エラーでもリトライされるが、回数制限があるため実害は小さい。
         return ex is IOException or UnauthorizedAccessException;
     }
 }

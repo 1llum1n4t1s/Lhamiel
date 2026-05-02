@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -51,9 +52,9 @@ internal static partial class CrashHandler
             const int dumpType = 0x01 | 0x04;
 
             var success = MiniDumpWriteDump(
-                process.Handle,
+                process.SafeHandle,
                 (uint)process.Id,
-                fs.SafeFileHandle.DangerousGetHandle(),
+                fs.SafeFileHandle,
                 dumpType,
                 IntPtr.Zero,
                 IntPtr.Zero,
@@ -62,6 +63,8 @@ internal static partial class CrashHandler
             if (!success)
             {
                 Logger.Log($"MiniDumpWriteDump 失敗: Marshal.GetLastWin32Error={Marshal.GetLastWin32Error()}", LogLevel.Error);
+                fs.Dispose();
+                try { File.Delete(dumpPath); } catch { /* ベストエフォート */ }
                 return null;
             }
 
@@ -96,7 +99,7 @@ internal static partial class CrashHandler
         {
             var dumpFiles = Directory.GetFiles(DumpDirectory, "*.dmp")
                 .Select(f => new FileInfo(f))
-                .OrderByDescending(f => f.CreationTime)
+                .OrderByDescending(f => f.LastWriteTime)
                 .ToList();
 
             foreach (var old in dumpFiles.Skip(MaxDumpFiles))
@@ -117,9 +120,9 @@ internal static partial class CrashHandler
     [LibraryImport("dbghelp.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool MiniDumpWriteDump(
-        IntPtr hProcess,
+        SafeProcessHandle hProcess,
         uint processId,
-        IntPtr hFile,
+        SafeFileHandle hFile,
         int dumpType,
         IntPtr exceptionParam,
         IntPtr userStreamParam,

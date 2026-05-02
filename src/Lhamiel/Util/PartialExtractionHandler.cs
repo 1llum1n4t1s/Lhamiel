@@ -166,7 +166,7 @@ public class PartialExtractionHandler
                     progressCallback?.Invoke(progress, App.Text("Extraction.Progress", fullName));
 
                     // ArchiveExtractor.TryExtractEntryAsync に委譲（リトライ 1 回で初回試行）
-                    var copied = await ArchiveExtractor.TryExtractEntryAsync(
+                    var (copied, copyError) = await ArchiveExtractor.TryExtractEntryAsync(
                         tempPath, outputPath, fullName, item.IsDirectory,
                         maxRetries: 1, cancellationToken: cancellationToken);
 
@@ -178,8 +178,8 @@ public class PartialExtractionHandler
                         continue;
                     }
 
-                    // 初回失敗 — エラー情報を構築してユーザー判断を仰ぐ
-                    var error = extractionException ?? new IOException(App.Text("Error.ExtractedFileNotFound"));
+                    // コピー固有のエラーを優先し、なければ初期展開例外、最後にフォールバック
+                    var error = copyError ?? extractionException ?? new IOException(App.Text("Error.ExtractedFileNotFound"));
                     var analyzed = ArchiveErrorHandler.AnalyzeError(error, archivePath, outputPath);
                     var failedFile = new FailedFileInfo
                     {
@@ -209,9 +209,9 @@ public class PartialExtractionHandler
                             break;
 
                         case ErrorHandlingOption.AutoRetry:
-                            if (await ArchiveExtractor.TryExtractEntryAsync(
+                            if ((await ArchiveExtractor.TryExtractEntryAsync(
                                 tempPath, outputPath, fullName, item.IsDirectory,
-                                maxRetries: 3, cancellationToken: cancellationToken))
+                                maxRetries: 3, cancellationToken: cancellationToken)).success)
                             {
                                 result.SuccessFiles.Add(fullName);
                                 result.SuccessCount++;
@@ -296,8 +296,8 @@ public class PartialExtractionHandler
     }
 
     [Obsolete("ArchiveExtractor.TryExtractEntryAsync に統合済み")]
-    private static Task<bool> RetryExtraction(string tempPath, string outputPath, string fullName, bool isDirectory, int maxRetries)
-        => ArchiveExtractor.TryExtractEntryAsync(tempPath, outputPath, fullName, isDirectory, maxRetries: maxRetries);
+    private static async Task<bool> RetryExtraction(string tempPath, string outputPath, string fullName, bool isDirectory, int maxRetries)
+        => (await ArchiveExtractor.TryExtractEntryAsync(tempPath, outputPath, fullName, isDirectory, maxRetries: maxRetries)).success;
 
     /// <summary>
     /// 展開結果のサマリーを生成

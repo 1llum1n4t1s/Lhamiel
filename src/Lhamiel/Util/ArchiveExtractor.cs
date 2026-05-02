@@ -262,11 +262,12 @@ public static class ArchiveExtractor
     /// 指数バックオフ付きリトライで一時的なロック等に対応する。
     /// 全リトライ失敗時は false を返し、<paramref name="skipRelativePaths"/> に追加する。
     /// </summary>
-    internal static async Task<bool> TryExtractEntryAsync(
+    internal static async Task<(bool success, Exception? lastError)> TryExtractEntryAsync(
         string tempPath, string outputPath, string relativePath, bool isDirectory,
         HashSet<string>? skipRelativePaths = null,
         int maxRetries = 3, CancellationToken cancellationToken = default)
     {
+        Exception? lastException = null;
         for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
@@ -280,21 +281,22 @@ public static class ArchiveExtractor
                     cancellationToken);
                 if (attempt > 1)
                     Logger.Log($"エントリ��開リトライ成功（{attempt - 1} 回目）: {relativePath}");
-                return true;
+                return (true, null);
             }
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
+                lastException = ex;
                 Logger.Log($"エントリ展開失敗（試行 {attempt}/{maxRetries}）: {relativePath} - {ex.Message}",
                     attempt == maxRetries ? LogLevel.Error : LogLevel.Warning);
                 if (attempt == maxRetries)
                 {
                     skipRelativePaths?.Add(relativePath);
-                    return false;
+                    return (false, lastException);
                 }
             }
         }
-        return false;
+        return (false, lastException);
     }
 
     /// <summary>
