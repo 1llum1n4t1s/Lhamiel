@@ -1,4 +1,4 @@
-using Avalonia.Threading;
+#pragma warning disable CS0618 // PartialExtractionHandler は [Obsolete] だが移行完了まで使用
 using Lhamiel.View;
 namespace Lhamiel.Util;
 
@@ -8,6 +8,11 @@ namespace Lhamiel.Util;
 public static class ArchiveProcessor
 {
     // 進捗ディスパッチ系のヘルパは ArchiveProgressHelper.cs に分離。
+
+    // テスト可能化用の差し替えポイント（DI コンテナは導入せず internal static プロパティで差し替え）
+    internal static IMessageService MessageServiceImpl { get; set; } = new DefaultMessageService();
+    internal static IUiDispatcher UiDispatcherImpl { get; set; } = new DefaultUiDispatcher();
+    internal static IConflictDialogService ConflictDialogImpl { get; set; } = new DefaultConflictDialogService();
 
     /// <summary>
     /// アーカイブファイルの展開処理を実行
@@ -29,7 +34,7 @@ public static class ArchiveProcessor
         if (!File.Exists(filePath))
         {
             Logger.Log($"指定されたファイルが存在しません: {filePath}");
-            _ = MessageService.ShowError(App.Text("Error.FileNotFound", filePath));
+            _ = MessageServiceImpl.ShowError(App.Text("Error.FileNotFound", filePath));
             return (null, null);
         }
 
@@ -54,7 +59,7 @@ public static class ArchiveProcessor
                 if (!ArchiveExtractor.SupportedExtensions.Contains(extension))
                 {
                     Logger.Log($"サポートされていないファイル形式です: {extension}");
-                    Dispatcher.UIThread.Post(() => _ = MessageService.ShowError(App.Text("Error.UnsupportedFormat", extension)));
+                    UiDispatcherImpl.Post(() => _ = MessageServiceImpl.ShowError(App.Text("Error.UnsupportedFormat", extension)));
                     return (null, null);
                 }
 
@@ -110,7 +115,7 @@ public static class ArchiveProcessor
                         filePath,
                         outputPath,
                         PartialExtractionHandler.ErrorHandlingOption.AskUser,
-                        (percentage, _) => Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(percentage)),
+                        (percentage, _) => UiDispatcherImpl.Post(() => progressWindow?.UpdateProgress(percentage)),
                         failedFile => ShowErrorRecoveryDialogAsync(failedFile, progressWindow),
                         cancellationToken);
 
@@ -119,7 +124,7 @@ public static class ArchiveProcessor
                         var summary = PartialExtractionHandler.GenerateResultSummary(result);
                         Logger.Log($"部分展開完了:\n{summary}");
 
-                        Dispatcher.UIThread.Post(() =>
+                        UiDispatcherImpl.Post(() =>
                             progressWindow?.SetCompleted(App.Text("Progress.ExtractionComplete", result.SuccessCount, result.TotalFiles)));
 
                         if (closeWindowOnCompletion)
@@ -152,6 +157,26 @@ public static class ArchiveProcessor
                         progressWindow,
                         structureInfo.TotalUncompressedSize);
 
+                    // 展開後 CRC 整合性検証（設定で有効な場合のみ）
+                    if (snapshot.VerifyAfterExtraction)
+                    {
+                        var verification = await ArchiveIntegrityVerifier.VerifyArchiveAsync(filePath, cancellationToken);
+                        if (!verification.IsValid)
+                        {
+                            Logger.Log($"展開後 CRC 検証失敗: {filePath} - {verification.ErrorMessage}", LogLevel.Warning);
+                        }
+                    }
+
+                    // Mark of the Web 伝播（設定で有効 かつ 元アーカイブに Zone.Identifier がある場合）
+                    if (snapshot.PropagateMarkOfTheWeb && outputPath != null)
+                    {
+                        var zoneId = MotwPropagator.ReadZoneIdentifier(filePath);
+                        if (zoneId != null)
+                        {
+                            await Task.Run(() => MotwPropagator.PropagateToDirectory(outputPath, zoneId), cancellationToken);
+                        }
+                    }
+
                     if (closeWindowOnCompletion)
                     {
                         progressWindow?.CloseSafe();
@@ -170,7 +195,7 @@ public static class ArchiveProcessor
                 {
                     progressWindow?.CloseSafe();
                 }
-                await MessageService.ShowError(
+                await MessageServiceImpl.ShowError(
                     $"{errorInfo.Message}\n\n{App.Text("Dialog.Details")}{errorInfo.Details}",
                     App.Text("Error.ExtractionTitle"));
                 return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
@@ -255,7 +280,7 @@ public static class ArchiveProcessor
                         progressToReport = (int)((double)(successCount + failedFiles.Count) / totalCount * 100);
                     }
 
-                    Dispatcher.UIThread.Post(() =>
+                    UiDispatcherImpl.Post(() =>
                         progressWindow?.UpdateProgress(progressToReport));
                 }
                 catch (OperationCanceledException)
@@ -294,7 +319,7 @@ public static class ArchiveProcessor
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数ファイル展開処理でエラーが発生", ex);
-            _ = MessageService.ShowError(App.Text("Error.DuringExtraction", ex.Message));
+            _ = MessageServiceImpl.ShowError(App.Text("Error.DuringExtraction", ex.Message));
 
             // 例外発生時にも確実にクリーンアップ
             if (closeWindowOnCompletion)
@@ -328,15 +353,15 @@ public static class ArchiveProcessor
         if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
         {
             Logger.Log($"指定された対象が存在しません: {sourcePath}");
-            _ = MessageService.ShowError(App.Text("Error.FolderNotFound", sourcePath));
+            _ = MessageServiceImpl.ShowError(App.Text("Error.FolderNotFound", sourcePath));
             return false;
         }
 
         // 圧縮形式の確認
-        if (!ArchiveCompressor.SupportedCompressionFormats.Contains(format))
+        if (!ArchiveCompressor.WritableFormats.Contains(format))
         {
             Logger.Log($"サポートされていない圧縮形式です: {format}");
-            _ = MessageService.ShowError(App.Text("Error.UnsupportedCompression", format));
+            _ = MessageServiceImpl.ShowError(App.Text("Error.UnsupportedCompression", format));
             return false;
         }
 
@@ -363,7 +388,7 @@ public static class ArchiveProcessor
                 {
                     Logger.Log($"出力先が既に存在します: {outputPath}");
 
-                    var canOverwrite = await View.FileConflictDialog.CanOverwriteFromBackgroundAsync(sourcePath, outputPath, progressWindow);
+                    var canOverwrite = await ConflictDialogImpl.CanOverwriteFromBackgroundAsync(sourcePath, outputPath, progressWindow);
                     Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
 
                     if (!canOverwrite)
@@ -442,7 +467,7 @@ public static class ArchiveProcessor
                     var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);
                     if (conflicts.Count > 0)
                     {
-                        var (result, selectedFiles) = await View.FileConflictDialog.ShowFromBackgroundAsync(conflicts, progressWindow, isTwoPane: false);
+                        var (result, selectedFiles) = await ConflictDialogImpl.ShowFromBackgroundAsync(conflicts, progressWindow, isTwoPane: false);
                         if (result == Models.FileConflictResult.Cancel)
                             return false;
 
@@ -483,7 +508,7 @@ public static class ArchiveProcessor
                 {
                     progressWindow?.CloseSafe();
                 }
-                await MessageService.ShowError(App.Text("Error.DuringCompression", ex.Message));
+                await MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message));
                 return false;
             }
             finally
@@ -546,7 +571,7 @@ public static class ArchiveProcessor
         Logger.Log($"個別圧縮の出力パス衝突を検出: {conflictGroups.Count}グループ");
 
         // ダイアログ表示（圧縮時は縦1列モード）
-        var (result, selectedFiles) = await View.FileConflictDialog.ShowFromBackgroundAsync(dialogGroups, progressWindow, isTwoPane: false);
+        var (result, selectedFiles) = await ConflictDialogImpl.ShowFromBackgroundAsync(dialogGroups, progressWindow, isTwoPane: false);
         if (result == Models.FileConflictResult.Cancel)
             return ([], []);
 
@@ -606,10 +631,12 @@ public static class ArchiveProcessor
             var failedPaths = new List<string>();
             var lockObject = new object();
 
-            // ProgressWindow からキャンセルトークンを取得（nullの場合は渡されたトークンを使用）
-            var actualCancellationToken = progressWindow != null ? progressWindow.GetCancellationToken() : cancellationToken;
+            using var linkedCts = progressWindow != null
+                ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, progressWindow.GetCancellationToken())
+                : null;
+            var actualCancellationToken = linkedCts?.Token ?? cancellationToken;
 
-            var maxDegreeOfParallelism = 2;
+            var maxDegreeOfParallelism = ArchiveProgressHelper.IoBoundParallelism;
             using var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
 
             Logger.Log($"複数対象圧縮開始: {totalCount}個の対象、並列制限={maxDegreeOfParallelism}、形式={format}");
@@ -667,7 +694,7 @@ public static class ArchiveProcessor
                         completedProgress = (int)((double)(successCount + failedPaths.Count) / totalCount * 100);
                     }
 
-                    Dispatcher.UIThread.Post(() =>
+                    UiDispatcherImpl.Post(() =>
                         progressWindow?.UpdateProgress(completedProgress));
                 }
                 catch (OperationCanceledException)
@@ -718,7 +745,7 @@ public static class ArchiveProcessor
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数対象圧縮処理でエラーが発生", ex);
-            _ = MessageService.ShowError(App.Text("Error.DuringCompression", ex.Message));
+            _ = MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message));
 
             // 例外発生時にも確実にクリーンアップ
             if (closeWindowOnCompletion)
@@ -748,10 +775,10 @@ public static class ArchiveProcessor
         Logger.Log($"まとめ圧縮開始: {sourcePaths.Length}個の対象を1つのアーカイブに圧縮、形式={format}");
 
         // 圧縮形式の確認
-        if (!ArchiveCompressor.SupportedCompressionFormats.Contains(format))
+        if (!ArchiveCompressor.WritableFormats.Contains(format))
         {
             Logger.Log($"サポートされていない圧縮形式です: {format}");
-            _ = MessageService.ShowError(App.Text("Error.UnsupportedCompression", format));
+            _ = MessageServiceImpl.ShowError(App.Text("Error.UnsupportedCompression", format));
             return false;
         }
 
@@ -779,7 +806,7 @@ public static class ArchiveProcessor
                 // 出力先が既に存在する場合は上書き確認
                 if (File.Exists(outputPath))
                 {
-                    var canOverwrite = await View.FileConflictDialog.CanOverwriteFromBackgroundAsync(sourcePaths[0], outputPath, progressWindow);
+                    var canOverwrite = await ConflictDialogImpl.CanOverwriteFromBackgroundAsync(sourcePaths[0], outputPath, progressWindow);
                     if (!canOverwrite)
                     {
                         Logger.Log("ユーザーがまとめ圧縮をキャンセルしました");
@@ -807,7 +834,7 @@ public static class ArchiveProcessor
                     Logger.Log($"ファイル名の衝突を検出: {conflicts.Count}グループ");
 
                     // 競合ダイアログを表示
-                    var (result, selectedFiles) = await View.FileConflictDialog.ShowFromBackgroundAsync(conflicts, progressWindow, isTwoPane: false);
+                    var (result, selectedFiles) = await ConflictDialogImpl.ShowFromBackgroundAsync(conflicts, progressWindow, isTwoPane: false);
                     if (result == Models.FileConflictResult.Cancel)
                     {
                         Logger.Log("ユーザーが競合解決をキャンセルしました");
@@ -830,7 +857,7 @@ public static class ArchiveProcessor
 
                 IProgress<ProgressInfo> progress = new Progress<ProgressInfo>(info =>
                 {
-                    Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage));
+                    UiDispatcherImpl.Post(() => progressWindow?.UpdateProgress(info.Percentage));
                 });
 
                 // 圧縮前のディスク容量チェック
@@ -870,7 +897,7 @@ public static class ArchiveProcessor
                 {
                     progressWindow?.CloseSafe();
                 }
-                await MessageService.ShowError(App.Text("Error.DuringCompression", ex.Message));
+                await MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message));
                 return false;
             }
             finally
@@ -905,7 +932,7 @@ public static class ArchiveProcessor
 
             if (parentWindow != null)
             {
-                return await Dispatcher.UIThread.InvokeAsync(async () =>
+                return await UiDispatcherImpl.InvokeAsync(async () =>
                 {
                     var dialog = new ErrorRecoveryDialog(errorInfo);
                     var option = await dialog.ShowDialog<PartialExtractionHandler.ErrorHandlingOption?>(parentWindow);

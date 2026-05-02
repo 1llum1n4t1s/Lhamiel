@@ -248,35 +248,47 @@ public static class ArchiveExtractor
             MoveWithRetry(() => File.Move(file, Path.Combine(destDir, Path.GetFileName(file))), file);
     }
 
-    /// <summary>
-    /// 移動操作をリトライ付きで実行する。AV/EDR/Search Indexer による一時的な
-    /// ロックで MoveFileEx が ACCESS_DENIED / SHARING_VIOLATION を返すケースに備える。
-    /// </summary>
-    /// <remarks>
-    /// バックオフは 50ms, 100ms, 200ms, 400ms, 800ms（最大合計 1.55s 待機）。
-    /// 同期 API のため Thread.Sleep を使うが、呼び出し元は Task.Run 配下で
-    /// UI スレッドではないことを前提とする。
-    /// </remarks>
     private static void MoveWithRetry(Action moveAction, string sourcePath)
+        => LockedFileRetryPolicy.Execute(moveAction, sourcePath);
+
+    /// <summary>
+    /// 個別エントリの展開を試行する（一時ディレクトリからの移動/コピー）。
+    /// 指数バックオフ付きリトライで一時的なロック等に対応する。
+    /// 全リトライ失敗時は false を返し、<paramref name="skipRelativePaths"/> に追加する。
+    /// </summary>
+    internal static async Task<bool> TryExtractEntryAsync(
+        string tempPath, string outputPath, string relativePath, bool isDirectory,
+        HashSet<string>? skipRelativePaths = null,
+        int maxRetries = 3, CancellationToken cancellationToken = default)
     {
-        const int MaxAttempts = 6;
-        var delayMs = 50;
-        for (var attempt = 1; ; attempt++)
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
-                moveAction();
+                cancellationToken.ThrowIfCancellationRequested();
                 if (attempt > 1)
-                    Logger.Log($"移動成功（リトライ {attempt - 1} 回）: {sourcePath}");
-                return;
+                    await Task.Delay(200 * (1 << (attempt - 1)), cancellationToken);
+
+                await Task.Run(() =>
+                    FileOperations.CopyExtractedItem(tempPath, outputPath, relativePath, isDirectory, overwrite: true),
+                    cancellationToken);
+                if (attempt > 1)
+                    Logger.Log($"エントリ��開リトライ成功（{attempt - 1} 回目）: {relativePath}");
+                return true;
             }
-            catch (Exception ex) when ((ex is IOException or UnauthorizedAccessException) && attempt < MaxAttempts)
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
             {
-                Logger.Log($"移動が一時的に失敗（試行 {attempt}/{MaxAttempts}）: {sourcePath}: {ex.Message}。{delayMs}ms 待機して再試行", LogLevel.Warning);
-                Thread.Sleep(delayMs);
-                delayMs *= 2;
+                Logger.Log($"エントリ展開失敗（試行 {attempt}/{maxRetries}）: {relativePath} - {ex.Message}",
+                    attempt == maxRetries ? LogLevel.Error : LogLevel.Warning);
+                if (attempt == maxRetries)
+                {
+                    skipRelativePaths?.Add(relativePath);
+                    return false;
+                }
             }
         }
+        return false;
     }
 
     /// <summary>
@@ -418,6 +430,11 @@ public static class ArchiveExtractor
         var normalized = entryName
             .Replace('\\', Path.DirectorySeparatorChar)
             .Replace('/', Path.DirectorySeparatorChar);
+
+        // Unicode NFC 正規化: macOS HFS+ は NFD でファイル名を保存するため、
+        // macOS 作成アーカイブの NFD エントリ名を NTFS 向けに NFC 変換する。
+        if (SettingsManager.Instance.NormalizeUnicodeFileNames && !normalized.IsNormalized(System.Text.NormalizationForm.FormC))
+            normalized = normalized.Normalize(System.Text.NormalizationForm.FormC);
 
         try
         {

@@ -43,6 +43,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly Func<Task<string?>> _pickCompressionFolder;
     private readonly Action<ProgressWindow> _showProgressWindow;
     private bool _isLoading;
+    private CancellationTokenSource? _autoSaveCts;
 
     [ObservableProperty]
     private string _selectedTheme = "System";
@@ -99,15 +100,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private CompressionLevelItem? _selectedSevenZipLevel;
 
     /// <summary>
-    /// 設定値を即時保存する（ロード中は抑制）。
-    /// SettingsManager.Mutate / Save と同一ロック下で処理し、バックグラウンドの
-    /// CreateSnapshot と race しないようにする。
+    /// 設定値を 300ms デバウンス後に保存する（ロード中は抑制）。
+    /// 連続する UI 操作（スライダー等）のディスク I/O を束ねる。
     /// </summary>
     private void AutoSave()
     {
         if (_isLoading) return;
+        _autoSaveCts?.Cancel();
+        _autoSaveCts = new CancellationTokenSource();
+        var token = _autoSaveCts.Token;
+        _ = ExecuteAutoSaveAsync(token);
+    }
+
+    private async Task ExecuteAutoSaveAsync(CancellationToken token)
+    {
         try
         {
+            await Task.Delay(300, token);
             _settingsManager.Mutate(s =>
             {
                 s.Theme = SelectedTheme;
@@ -127,6 +136,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             });
             _settingsManager.Save();
         }
+        catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             Logger.LogException("設定の自動保存に失敗", ex);

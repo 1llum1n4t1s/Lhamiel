@@ -15,6 +15,7 @@ public partial class MainWindow : Window
 {
     private Border? _dropOverlay;
     private Border? _accentOverlay;
+    private bool _isProcessingDrop;
 
     private void InitializeComponent()
     {
@@ -117,6 +118,9 @@ public partial class MainWindow : Window
         if (_dropOverlay != null)
             _dropOverlay.IsVisible = false;
 
+        if (_isProcessingDrop)
+            return;
+
         if (!e.DataTransfer.Contains(DataFormat.File) || e.DataTransfer.TryGetFiles() is not { } files)
             return;
         var filePaths = new List<string>();
@@ -126,7 +130,17 @@ public partial class MainWindow : Window
                 filePaths.Add(path);
         }
         if (filePaths.Count > 0 && DataContext is MainWindowViewModel vm)
-            await vm.ProcessDroppedPathsAsync(filePaths);
+        {
+            _isProcessingDrop = true;
+            try
+            {
+                await vm.ProcessDroppedPathsAsync(filePaths);
+            }
+            finally
+            {
+                _isProcessingDrop = false;
+            }
+        }
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // PartialExtractionHandler は [Obsolete] だが移行完了まで使用
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;

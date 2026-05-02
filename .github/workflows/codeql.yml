@@ -1,0 +1,42 @@
+name: CodeQL 解析
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 3 * * 1'  # 毎週月曜 03:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: C# CodeQL 解析
+    runs-on: windows-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        # actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: .NET SDK をセットアップ
+        # actions/setup-dotnet@v4.3.1
+        uses: actions/setup-dotnet@3e891b0cb619bf60e2c25674b222b8940e2c1c25
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: CodeQL を初期化
+        # github/codeql-action/init@v4.35.3
+        uses: github/codeql-action/init@e46ed2cbd01164d986452f91f178727624ae40d7
+        with:
+          languages: csharp
+          build-mode: manual
+
+      - name: ビルド
+        run: dotnet build Lhamiel.slnx -c Release
+
+      - name: CodeQL 解析を実行
+        # github/codeql-action/analyze@v4.35.3
+        uses: github/codeql-action/analyze@e46ed2cbd01164d986452f91f178727624ae40d7
+        with:
+          category: /language:csharp

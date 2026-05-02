@@ -17,10 +17,11 @@ public static class PathValidator
     private static readonly HashSet<char> InvalidPathCharSet = new(Path.GetInvalidPathChars());
     private static readonly HashSet<char> InvalidFileNameCharSet = new(Path.GetInvalidFileNameChars());
 
-    // 最大パス長（Windowsのデフォルト制限）
     private const int MaxPathLength = 260;
     private const int MaxDirectoryLength = 248;
     private const int MaxFilenameLength = 255;
+    private const string LongPathPrefix = @"\\?\";
+    private const string UncLongPathPrefix = @"\\?\UNC\";
 
     /// <summary>
     /// ファイルパスが有効かどうかを検証する
@@ -453,5 +454,26 @@ public static class PathValidator
         {
             return true;
         }
+    }
+
+    /// <summary>
+    /// パスが MAX_PATH (260) を超える場合に長パスプレフィックス (<c>\\?\</c>) を付与する。
+    /// Windows 10 1607+ で <c>longPathAware</c> マニフェストが有効な場合、
+    /// .NET の File/Directory API は自動的に長パスを扱えるが、
+    /// P/Invoke や一部サードパーティライブラリ経由ではプレフィックスが必要になる場合がある。
+    /// </summary>
+    internal static string EnsureLongPathPrefix(string path)
+    {
+        if (string.IsNullOrEmpty(path) || path.Length < MaxPathLength)
+            return path;
+
+        if (path.StartsWith(LongPathPrefix, StringComparison.Ordinal))
+            return path;
+
+        // UNC パス: \\server\share → \\?\UNC\server\share
+        if (path.StartsWith(@"\\", StringComparison.Ordinal))
+            return UncLongPathPrefix + path[2..];
+
+        return LongPathPrefix + path;
     }
 }
