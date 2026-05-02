@@ -57,7 +57,7 @@ internal static partial class CrashHandler
             var exceptionInfo = default(MinidumpExceptionInformation);
             if (exceptionPointers != IntPtr.Zero)
             {
-                exceptionInfo.ThreadId = (uint)Environment.CurrentManagedThreadId;
+                exceptionInfo.ThreadId = GetCurrentThreadId();
                 exceptionInfo.ExceptionPointers = exceptionPointers;
                 exceptionInfo.ClientPointers = 0;
                 unsafe { exceptionParam = (IntPtr)(&exceptionInfo); }
@@ -147,4 +147,7 @@ internal static partial class CrashHandler
         IntPtr exceptionParam,
         IntPtr userStreamParam,
         IntPtr callbackParam);
+
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetCurrentThreadId();
 }

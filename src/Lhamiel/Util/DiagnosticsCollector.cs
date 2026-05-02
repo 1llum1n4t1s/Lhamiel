@@ -34,7 +34,7 @@ internal static partial class DiagnosticsCollector
             try
             {
                 await Task.Run(() => ZipFile.CreateFromDirectory(tempDir, tempZip, CompressionLevel.Optimal, false), cancellationToken);
-                File.Move(tempZip, outputPath, overwrite: true);
+                LockedFileRetryPolicy.Execute(() => File.Move(tempZip, outputPath, overwrite: true), outputPath);
             }
             catch
             {
