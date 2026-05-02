@@ -161,7 +161,7 @@ public static class ArchiveProcessor
                     // 展開後 CRC 整合性検証（設定で有効な場合のみ）
                     if (snapshot.VerifyAfterExtraction)
                     {
-                        progressWindow?.SetIndeterminate(App.Text("Progress.VerifyingIntegrity"));
+                        UiDispatcherImpl.Post(() => progressWindow?.SetIndeterminate(App.Text("Progress.VerifyingIntegrity")));
                         var verification = await ArchiveIntegrityVerifier.VerifyArchiveAsync(filePath, cancellationToken);
                         if (!verification.IsValid)
                         {
@@ -177,7 +177,7 @@ public static class ArchiveProcessor
                     // 展開されたルートアイテムのみに限定する（outputPath が既存フォルダの場合も安全）
                     if (snapshot.PropagateMarkOfTheWeb && outputPath != null && structureInfo != null)
                     {
-                        progressWindow?.SetIndeterminate(App.Text("Progress.ApplyingSecurityMark"));
+                        UiDispatcherImpl.Post(() => progressWindow?.SetIndeterminate(App.Text("Progress.ApplyingSecurityMark")));
                         var zoneId = MotwPropagator.ReadZoneIdentifier(filePath);
                         if (zoneId != null)
                         {

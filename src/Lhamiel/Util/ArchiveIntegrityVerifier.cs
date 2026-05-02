@@ -30,7 +30,7 @@ internal static class ArchiveIntegrityVerifier
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                using var reader = LockedFileRetryPolicy.Execute(() => new ArchiveReader(archivePath), archivePath);
+                using var reader = LockedFileRetryPolicy.Execute(() => new ArchiveReader(PathValidator.EnsureLongPathPrefix(archivePath)), archivePath);
 
                 // パスワード保護アーカイブはパスワードなしで Test() すると失敗するためスキップ。
                 // ヘッダー暗号化(-mhe=on)の場合は reader.Items 自体がアクセス不可。
