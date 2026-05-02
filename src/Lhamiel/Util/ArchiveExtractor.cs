@@ -251,7 +251,7 @@ public static class ArchiveExtractor
         foreach (var dir in dirs)
             MoveWithRetry(() => Directory.Move(dir, Path.Combine(destDir, Path.GetFileName(dir))), dir);
         foreach (var file in files)
-            MoveWithRetry(() => File.Move(file, Path.Combine(destDir, Path.GetFileName(file))), file);
+            MoveWithRetry(() => File.Move(file, Path.Combine(destDir, Path.GetFileName(file)), overwrite: true), file);
     }
 
     private static void MoveWithRetry(Action moveAction, string sourcePath)

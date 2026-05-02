@@ -129,7 +129,7 @@ internal static partial class CrashHandler
         }
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    [StructLayout(LayoutKind.Sequential)]
     private struct MinidumpExceptionInformation
     {
         public uint ThreadId;
