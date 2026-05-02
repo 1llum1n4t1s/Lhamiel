@@ -34,7 +34,7 @@ public static class ArchiveProcessor
         if (!File.Exists(filePath))
         {
             Logger.Log($"指定されたファイルが存在しません: {filePath}");
-            _ = MessageServiceImpl.ShowError(App.Text("Error.FileNotFound", filePath));
+            await MessageServiceImpl.ShowError(App.Text("Error.FileNotFound", filePath));
             return (null, null);
         }
 
@@ -59,7 +59,7 @@ public static class ArchiveProcessor
                 if (!ArchiveExtractor.SupportedExtensions.Contains(extension))
                 {
                     Logger.Log($"サポートされていないファイル形式です: {extension}");
-                    UiDispatcherImpl.Post(() => _ = MessageServiceImpl.ShowError(App.Text("Error.UnsupportedFormat", extension)));
+                    await UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.UnsupportedFormat", extension)));
                     return (null, null);
                 }
 
@@ -382,7 +382,7 @@ public static class ArchiveProcessor
         if (!File.Exists(sourcePath) && !Directory.Exists(sourcePath))
         {
             Logger.Log($"指定された対象が存在しません: {sourcePath}");
-            _ = MessageServiceImpl.ShowError(App.Text("Error.FolderNotFound", sourcePath));
+            await MessageServiceImpl.ShowError(App.Text("Error.FolderNotFound", sourcePath));
             return false;
         }
 
@@ -390,7 +390,7 @@ public static class ArchiveProcessor
         if (!ArchiveCompressor.WritableFormats.Contains(format))
         {
             Logger.Log($"サポートされていない圧縮形式です: {format}");
-            _ = MessageServiceImpl.ShowError(App.Text("Error.UnsupportedCompression", format));
+            await MessageServiceImpl.ShowError(App.Text("Error.UnsupportedCompression", format));
             return false;
         }
 
@@ -808,7 +808,7 @@ public static class ArchiveProcessor
         if (!ArchiveCompressor.WritableFormats.Contains(format))
         {
             Logger.Log($"サポートされていない圧縮形式です: {format}");
-            _ = MessageServiceImpl.ShowError(App.Text("Error.UnsupportedCompression", format));
+            await MessageServiceImpl.ShowError(App.Text("Error.UnsupportedCompression", format));
             return false;
         }
 
