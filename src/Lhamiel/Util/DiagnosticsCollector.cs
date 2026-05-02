@@ -27,8 +27,11 @@ internal static partial class DiagnosticsCollector
         {
             await CollectEnvironmentInfo(tempDir, cancellationToken);
             await CollectMaskedSettings(tempDir, cancellationToken);
-            CollectLogs(tempDir);
-            CollectDumps(tempDir);
+            await Task.Run(() =>
+            {
+                CollectLogs(tempDir);
+                CollectDumps(tempDir);
+            }, cancellationToken);
 
             var tempZip = outputPath + ".tmp";
             try

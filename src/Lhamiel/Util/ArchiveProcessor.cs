@@ -181,20 +181,27 @@ public static class ArchiveProcessor
                         var zoneId = MotwPropagator.ReadZoneIdentifier(filePath);
                         if (zoneId != null)
                         {
-                            var normalizedMotwBase = ArchiveExtractor.NormalizeBaseDirectory(outputPath);
-                            foreach (var rootName in structureInfo.RootItemNames)
+                            var capturedOutputPath = outputPath;
+                            var capturedRootNames = structureInfo.RootItemNames;
+                            var capturedNormalize = snapshot.NormalizeUnicodeFileNames;
+                            await Task.Run(() =>
                             {
-                                if (!ArchiveExtractor.TryResolveSafeEntryPathFromNormalized(
-                                        normalizedMotwBase, rootName, out var rootItemPath, snapshot.NormalizeUnicodeFileNames))
+                                var normalizedMotwBase = ArchiveExtractor.NormalizeBaseDirectory(capturedOutputPath);
+                                foreach (var rootName in capturedRootNames)
                                 {
-                                    Logger.Log($"MotW 伝播で境界外パスを検出しスキップ: {rootName}", LogLevel.Warning);
-                                    continue;
+                                    cancellationToken.ThrowIfCancellationRequested();
+                                    if (!ArchiveExtractor.TryResolveSafeEntryPathFromNormalized(
+                                            normalizedMotwBase, rootName, out var rootItemPath, capturedNormalize))
+                                    {
+                                        Logger.Log($"MotW 伝播で境界外パスを検出しスキップ: {rootName}", LogLevel.Warning);
+                                        continue;
+                                    }
+                                    if (Directory.Exists(rootItemPath))
+                                        MotwPropagator.PropagateToDirectory(rootItemPath, zoneId, cancellationToken);
+                                    else if (File.Exists(rootItemPath))
+                                        MotwPropagator.TryWriteZoneIdentifier(rootItemPath, zoneId);
                                 }
-                                if (Directory.Exists(rootItemPath))
-                                    MotwPropagator.PropagateToDirectory(rootItemPath, zoneId, cancellationToken);
-                                else if (File.Exists(rootItemPath))
-                                    MotwPropagator.TryWriteZoneIdentifier(rootItemPath, zoneId);
-                            }
+                            }, cancellationToken);
                         }
                     }
 
