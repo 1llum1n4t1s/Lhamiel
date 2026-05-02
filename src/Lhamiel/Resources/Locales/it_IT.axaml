@@ -103,6 +103,7 @@
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Estrazione</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Compressione</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Verifica integrità...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Applicazione del contrassegno di sicurezza...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informazioni sull'errore</x:String>

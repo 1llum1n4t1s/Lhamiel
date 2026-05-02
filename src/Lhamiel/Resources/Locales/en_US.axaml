@@ -100,6 +100,7 @@
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Extracting</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Compressing</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Verifying integrity...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Applying security mark...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Error Information</x:String>

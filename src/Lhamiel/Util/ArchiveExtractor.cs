@@ -410,7 +410,8 @@ public static class ArchiveExtractor
     /// <param name="normalizedBase">末尾セパレータ付きの絶対パス（<see cref="NormalizeBaseDirectory"/> の戻り値）</param>
     /// <param name="entryName">アーカイブ内のエントリ名（攻撃者制御）</param>
     /// <param name="safeFullPath">境界内に収まる結合済み絶対パス</param>
-    internal static bool TryResolveSafeEntryPathFromNormalized(string normalizedBase, string entryName, out string safeFullPath)
+    /// <param name="normalizeUnicode">NFC 正規化を適用するか（呼び出し元の設定スナップショットから渡す）</param>
+    internal static bool TryResolveSafeEntryPathFromNormalized(string normalizedBase, string entryName, out string safeFullPath, bool normalizeUnicode = true)
     {
         safeFullPath = string.Empty;
         if (string.IsNullOrEmpty(entryName)) return false;
@@ -441,7 +442,7 @@ public static class ArchiveExtractor
 
         // Unicode NFC 正規化: macOS HFS+ は NFD でファイル名を保存するため、
         // macOS 作成アーカイブの NFD エントリ名を NTFS 向けに NFC 変換する。
-        if (SettingsManager.Instance.NormalizeUnicodeFileNames && !normalized.IsNormalized(System.Text.NormalizationForm.FormC))
+        if (normalizeUnicode && !normalized.IsNormalized(System.Text.NormalizationForm.FormC))
             normalized = normalized.Normalize(System.Text.NormalizationForm.FormC);
 
         try

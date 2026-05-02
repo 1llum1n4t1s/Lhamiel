@@ -17,6 +17,7 @@ internal interface IMessageService
 internal interface IUiDispatcher
 {
     void Post(Action action);
+    Task InvokeAsync(Func<Task> callback);
     Task<T> InvokeAsync<T>(Func<Task<T>> callback);
 }
 
@@ -40,6 +41,7 @@ internal sealed class DefaultMessageService : IMessageService
 internal sealed class DefaultUiDispatcher : IUiDispatcher
 {
     public void Post(Action action) => Dispatcher.UIThread.Post(action);
+    public Task InvokeAsync(Func<Task> callback) => Dispatcher.UIThread.InvokeAsync(callback);
     public Task<T> InvokeAsync<T>(Func<Task<T>> callback) => Dispatcher.UIThread.InvokeAsync(callback);
 }
 

@@ -103,6 +103,7 @@
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">解壓縮中</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">壓縮中</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">正在驗證完整性...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">正在套用安全標記...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">錯誤資訊</x:String>

@@ -50,6 +50,7 @@ public class ArchiveProcessorTests : IDisposable
             PostCallCount++;
             action();
         }
+        public Task InvokeAsync(Func<Task> callback) => callback();
         public Task<T> InvokeAsync<T>(Func<Task<T>> callback) => callback();
     }
 

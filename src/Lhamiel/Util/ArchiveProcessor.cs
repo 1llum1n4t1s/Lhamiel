@@ -165,8 +165,9 @@ public static class ArchiveProcessor
                         if (!verification.IsValid)
                         {
                             Logger.Log($"展開後 CRC 検証失敗: {filePath} - {verification.ErrorMessage}", LogLevel.Warning);
-                            await MessageServiceImpl.ShowError(
-                                App.Text("Error.CrcVerificationFailed", Path.GetFileName(filePath), verification.ErrorMessage ?? ""));
+                            await UiDispatcherImpl.InvokeAsync(() =>
+                                MessageServiceImpl.ShowError(
+                                    App.Text("Error.CrcVerificationFailed", Path.GetFileName(filePath), verification.ErrorMessage ?? "")));
                         }
                     }
 
@@ -175,6 +176,7 @@ public static class ArchiveProcessor
                     // 展開されたルートアイテムのみに限定する
                     if (snapshot.PropagateMarkOfTheWeb && outputPath != null && structureInfo != null)
                     {
+                        progressWindow?.SetIndeterminate(App.Text("Progress.ApplyingSecurityMark"));
                         var zoneId = MotwPropagator.ReadZoneIdentifier(filePath);
                         if (zoneId != null)
                         {
@@ -214,9 +216,10 @@ public static class ArchiveProcessor
                 {
                     progressWindow?.CloseSafe();
                 }
-                await MessageServiceImpl.ShowError(
-                    $"{errorInfo.Message}\n\n{App.Text("Dialog.Details")}{errorInfo.Details}",
-                    App.Text("Error.ExtractionTitle"));
+                await UiDispatcherImpl.InvokeAsync(() =>
+                    MessageServiceImpl.ShowError(
+                        $"{errorInfo.Message}\n\n{App.Text("Dialog.Details")}{errorInfo.Details}",
+                        App.Text("Error.ExtractionTitle")));
                 return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
             }
             finally
@@ -338,7 +341,7 @@ public static class ArchiveProcessor
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数ファイル展開処理でエラーが発生", ex);
-            _ = MessageServiceImpl.ShowError(App.Text("Error.DuringExtraction", ex.Message));
+            _ = UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.DuringExtraction", ex.Message)));
 
             // 例外発生時にも確実にクリーンアップ
             if (closeWindowOnCompletion)
@@ -528,7 +531,7 @@ public static class ArchiveProcessor
                 {
                     progressWindow?.CloseSafe();
                 }
-                await MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message));
+                await UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message)));
                 return false;
             }
             finally
@@ -765,7 +768,7 @@ public static class ArchiveProcessor
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             Logger.LogException("複数対象圧縮処理でエラーが発生", ex);
-            _ = MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message));
+            _ = UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message)));
 
             // 例外発生時にも確実にクリーンアップ
             if (closeWindowOnCompletion)
@@ -918,7 +921,7 @@ public static class ArchiveProcessor
                 {
                     progressWindow?.CloseSafe();
                 }
-                await MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message));
+                await UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message)));
                 return false;
             }
             finally

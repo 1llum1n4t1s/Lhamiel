@@ -103,6 +103,7 @@
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">展開中</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">圧縮中</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">整合性を検証中...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">セキュリティマークを適用中...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">エラー情報</x:String>

@@ -41,6 +41,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
     private sealed class StubUiDispatcher : IUiDispatcher
     {
         public void Post(Action action) => action();
+        public Task InvokeAsync(Func<Task> callback) => callback();
         public Task<T> InvokeAsync<T>(Func<Task<T>> callback) => callback();
     }
 

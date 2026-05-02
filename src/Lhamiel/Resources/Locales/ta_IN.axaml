@@ -103,6 +103,7 @@
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">பிரித்தெடுத்தல்</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">சுருக்குதல்</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">ஒருமைப்பாடு சரிபார்ப்பு...</x:String>
+  <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">பாதுகாப்பு அடையாளம் செலுத்துகிறது...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">பிழைத் தகவல்</x:String>
