@@ -33,7 +33,7 @@ internal static partial class DiagnosticsCollector
                 CollectDumps(tempDir);
             }, cancellationToken);
 
-            var tempZip = outputPath + ".tmp";
+            var tempZip = outputPath + $".tmp_{Guid.NewGuid():N}";
             try
             {
                 await Task.Run(() => ZipFile.CreateFromDirectory(tempDir, tempZip, CompressionLevel.Optimal, false), cancellationToken);

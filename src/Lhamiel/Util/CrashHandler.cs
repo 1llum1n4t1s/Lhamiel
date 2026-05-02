@@ -116,11 +116,17 @@ internal static partial class CrashHandler
 
             foreach (var old in dumpFiles.Skip(MaxDumpFiles))
             {
-                old.Delete();
-                // 付随する .txt も削除
-                var companion = Path.ChangeExtension(old.FullName, ".txt");
-                if (File.Exists(companion))
-                    File.Delete(companion);
+                try
+                {
+                    old.Delete();
+                    var companion = Path.ChangeExtension(old.FullName, ".txt");
+                    if (File.Exists(companion))
+                        File.Delete(companion);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"ダンプローテーション中のファイル削除失敗: {old.Name} - {ex.Message}", LogLevel.Warning);
+                }
             }
         }
         catch (Exception ex)

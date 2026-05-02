@@ -45,7 +45,7 @@ internal static class MotwPropagator
         try
         {
             foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*",
-                new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true }))
+                new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint }))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 if (TryWriteZoneIdentifier(filePath, zoneIdentifierContent))
