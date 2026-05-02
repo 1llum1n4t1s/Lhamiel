@@ -2,6 +2,7 @@ using Lhamiel.Util;
 using Xunit;
 namespace Lhamiel.Tests.Unit;
 
+[Collection("CrashHandler")]
 public class CrashHandlerTests
 {
     [Fact]
