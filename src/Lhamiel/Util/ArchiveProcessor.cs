@@ -164,6 +164,8 @@ public static class ArchiveProcessor
                         if (!verification.IsValid)
                         {
                             Logger.Log($"展開後 CRC 検証失敗: {filePath} - {verification.ErrorMessage}", LogLevel.Warning);
+                            await MessageServiceImpl.ShowError(
+                                App.Text("Error.CrcVerificationFailed", Path.GetFileName(filePath), verification.ErrorMessage ?? ""));
                         }
                     }
 
@@ -173,7 +175,7 @@ public static class ArchiveProcessor
                         var zoneId = MotwPropagator.ReadZoneIdentifier(filePath);
                         if (zoneId != null)
                         {
-                            await Task.Run(() => MotwPropagator.PropagateToDirectory(outputPath, zoneId), cancellationToken);
+                            await Task.Run(() => MotwPropagator.PropagateToDirectory(outputPath, zoneId, cancellationToken), cancellationToken);
                         }
                     }
 

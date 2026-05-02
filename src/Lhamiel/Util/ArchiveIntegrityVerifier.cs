@@ -31,6 +31,15 @@ internal static class ArchiveIntegrityVerifier
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 using var reader = new ArchiveReader(archivePath);
+
+                // パスワード保護アーカイブはパスワードなしで Test() すると
+                // EncryptionException が発生するため、暗号化検出時はスキップ
+                if (reader.Items.Any(item => item.Encrypted))
+                {
+                    Logger.Log($"パスワード保護アーカイブのため CRC 検証をスキップ: {archivePath}");
+                    return new VerificationResult(true);
+                }
+
                 reader.Test();
                 return new VerificationResult(true);
             }

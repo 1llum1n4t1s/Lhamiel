@@ -133,6 +133,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">지원하지 않는 파일 형식입니다.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">지원하지 않는 압축 형식입니다.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">해제 중 오류가 발생했습니다.\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">CRC 무결성 검증 실패: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">압축 중 오류가 발생했습니다.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">처리 중 오류가 발생했습니다.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">출력 '{0}'이(가) 사용 중이거나 액세스가 거부되었습니다.</x:String>

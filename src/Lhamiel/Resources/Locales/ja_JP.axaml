@@ -133,6 +133,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">サポートされていないファイル形式です。\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">サポートされていない圧縮形式です。\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">展開中にエラーが発生しました。\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">CRC 整合性検証に失敗しました: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">圧縮中にエラーが発生しました。\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">処理中にエラーが発生しました。\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">出力先 '{0}' が使用中か、アクセス権限がありません。</x:String>

@@ -133,6 +133,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Непідтримуваний формат файлу.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Непідтримуваний формат стиснення.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Під час розпакування сталася помилка.\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Помилка перевірки цілісності CRC: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Під час стиснення сталася помилка.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Під час обробки сталася помилка.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Вихідний файл «{0}» використовується або доступ заборонено.</x:String>

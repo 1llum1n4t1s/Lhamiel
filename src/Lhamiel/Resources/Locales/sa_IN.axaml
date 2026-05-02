@@ -133,6 +133,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">असमर्थितं सञ्चिकाप्रारूपम्।\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">असमर्थितं सङ्कोचनप्रारूपम्।\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">निष्कर्षणे दोषः जातः।\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">CRC अखण्डतासत्यापनं विफलम्: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">सङ्कोचने दोषः जातः।\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">संसाधने दोषः जातः।\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">निर्गमः '{0}' उपयोगे अस्ति अथवा प्रवेशः निषिद्धः।</x:String>

@@ -36,7 +36,7 @@ internal static class MotwPropagator
     /// <summary>
     /// 展開先ディレクトリ内の全ファイルに Zone.Identifier を書き込む。
     /// </summary>
-    internal static void PropagateToDirectory(string directoryPath, string zoneIdentifierContent)
+    internal static void PropagateToDirectory(string directoryPath, string zoneIdentifierContent, CancellationToken cancellationToken = default)
     {
         if (!Directory.Exists(directoryPath))
             return;
@@ -44,6 +44,7 @@ internal static class MotwPropagator
         var propagatedCount = 0;
         foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*", SearchOption.AllDirectories))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             if (TryWriteZoneIdentifier(filePath, zoneIdentifierContent))
                 propagatedCount++;
         }
@@ -60,7 +61,7 @@ internal static class MotwPropagator
         try
         {
             var adsPath = filePath + ZoneIdentifierSuffix;
-            File.WriteAllText(adsPath, zoneIdentifierContent);
+            LockedFileRetryPolicy.Execute(() => File.WriteAllText(adsPath, zoneIdentifierContent), filePath);
             return true;
         }
         catch (Exception ex)

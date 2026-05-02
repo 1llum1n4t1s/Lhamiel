@@ -133,6 +133,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Formato de archivo no compatible.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Formato de compresión no compatible.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Se produjo un error durante la extracción.\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Error en la verificación de integridad CRC: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Se produjo un error durante la compresión.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Se produjo un error durante el procesamiento.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">El destino '{0}' está en uso o se denegó el acceso.</x:String>

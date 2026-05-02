@@ -130,6 +130,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Unsupported file format.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Unsupported compression format.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">An error occurred during extraction.\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">CRC integrity verification failed: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">An error occurred during compression.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">An error occurred during processing.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">The output '{0}' is in use or access is denied.</x:String>

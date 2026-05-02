@@ -133,6 +133,7 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Forma fasciculi non sustinetur.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Forma compressionis non sustinetur.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Error accidit in extractione.\n{0}</x:String>
+  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Verificatio integritatis CRC defecit: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Error accidit in compressione.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Error accidit in processu.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Exitus '{0}' in usu est vel accessus negatur.</x:String>
