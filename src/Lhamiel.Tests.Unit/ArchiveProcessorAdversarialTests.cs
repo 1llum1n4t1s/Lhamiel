@@ -172,9 +172,8 @@ public class ArchiveProcessorAdversarialTests : IDisposable
     // === CompressMergedAsync 敵対的テスト ===
 
     [Fact]
-    public async Task CompressMergedAsync_EmptyPaths_ShowsError()
+    public async Task CompressMergedAsync_EmptyPaths_ReturnsFalse()
     {
-        var stub = (StubMessageService)ArchiveProcessor.MessageServiceImpl;
         var result = await ArchiveProcessor.CompressMergedAsync(
             [], @"C:\temp", false, "zip", null,
             cancellationToken: TestContext.Current.CancellationToken);

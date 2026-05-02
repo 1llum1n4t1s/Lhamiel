@@ -15,7 +15,7 @@ public class UpdateCheckerTests
         var result = await UpdateChecker.CheckAndDownloadAsync(
             cancellationToken: TestContext.Current.CancellationToken);
 
-        // 開��環境ではインストールされていないため NotInstalled, NotConfigured, または Error
+        // 開発環境ではインストールされていないため NotInstalled, NotConfigured, または Error
         Assert.True(
             result.Result is UpdateChecker.UpdateResult.NotInstalled
                 or UpdateChecker.UpdateResult.NotConfigured

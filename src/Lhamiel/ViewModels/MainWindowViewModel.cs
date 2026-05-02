@@ -107,6 +107,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (_isLoading) return;
         _autoSaveCts?.Cancel();
+        _autoSaveCts?.Dispose();
         _autoSaveCts = new CancellationTokenSource();
         var token = _autoSaveCts.Token;
         _ = ExecuteAutoSaveAsync(token);

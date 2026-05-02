@@ -170,12 +170,25 @@ public static class ArchiveProcessor
                     }
 
                     // Mark of the Web 伝播（設定で有効 かつ 元アーカイブに Zone.Identifier がある場合）
+                    // outputPath == baseDirectory の場合、既存ファイルに誤って Zone.Identifier を付与しないよう
+                    // 展開されたルートアイテムのみに限定する
                     if (snapshot.PropagateMarkOfTheWeb && outputPath != null)
                     {
                         var zoneId = MotwPropagator.ReadZoneIdentifier(filePath);
                         if (zoneId != null)
                         {
-                            await Task.Run(() => MotwPropagator.PropagateToDirectory(outputPath, zoneId, cancellationToken), cancellationToken);
+                            if (outputPath != baseDirectory)
+                            {
+                                MotwPropagator.PropagateToDirectory(outputPath, zoneId, cancellationToken);
+                            }
+                            else if (structureInfo.SingleRootItemName != null)
+                            {
+                                var rootItemPath = Path.Combine(outputPath, structureInfo.SingleRootItemName);
+                                if (Directory.Exists(rootItemPath))
+                                    MotwPropagator.PropagateToDirectory(rootItemPath, zoneId, cancellationToken);
+                                else if (File.Exists(rootItemPath))
+                                    MotwPropagator.TryWriteZoneIdentifier(rootItemPath, zoneId);
+                            }
                         }
                     }
 

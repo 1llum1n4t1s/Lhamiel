@@ -96,6 +96,9 @@ public static class PathValidator
     {
         errorMessage = null;
 
+        if (path.StartsWith(@"\\?\", StringComparison.Ordinal))
+            return true;
+
         if (path.Length > MaxPathLength)
         {
             errorMessage = App.Text("Validation.PathTooLong", MaxPathLength, path.Length);

@@ -439,6 +439,9 @@ public class Settings
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
         ExcludedFilePatterns = [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
+        VerifyAfterExtraction = true;
+        NormalizeUnicodeFileNames = true;
+        PropagateMarkOfTheWeb = true;
         // NOTE: 新しいプロパティを追加したら必ずここにも追加すること（リセット漏れ防止）
     }
 

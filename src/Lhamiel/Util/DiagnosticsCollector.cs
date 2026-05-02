@@ -231,6 +231,9 @@ internal static partial class DiagnosticsCollector
             try
             {
                 File.Copy(fi.FullName, Path.Combine(dumpsDir, fi.Name));
+                var txtPath = Path.ChangeExtension(fi.FullName, ".txt");
+                if (File.Exists(txtPath))
+                    File.Copy(txtPath, Path.Combine(dumpsDir, Path.GetFileName(txtPath)));
             }
             catch (Exception ex)
             {

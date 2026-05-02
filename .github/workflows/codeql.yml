@@ -1,6 +1,8 @@
 name: CodeQL 解析
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
   schedule:
