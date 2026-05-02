@@ -215,9 +215,7 @@ internal static partial class DiagnosticsCollector
         {
             try
             {
-                using var src = new FileStream(fi.FullName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var dst = File.Create(Path.Combine(logsDir, fi.Name));
-                src.CopyTo(dst);
+                CopyFileWithSharedRead(fi.FullName, Path.Combine(logsDir, fi.Name));
             }
             catch (Exception ex)
             {
