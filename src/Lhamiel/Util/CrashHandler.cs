@@ -109,6 +109,9 @@ internal static partial class CrashHandler
     {
         try
         {
+            if (!Directory.Exists(DumpDirectory))
+                return;
+
             var dumpFiles = Directory.GetFiles(DumpDirectory, "*.dmp")
                 .Select(f => new FileInfo(f))
                 .OrderByDescending(f => f.LastWriteTime)

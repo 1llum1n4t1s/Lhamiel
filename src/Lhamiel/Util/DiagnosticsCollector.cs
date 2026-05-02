@@ -62,6 +62,8 @@ internal static partial class DiagnosticsCollector
     internal static string GetDefaultOutputPath()
     {
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        if (string.IsNullOrEmpty(desktop))
+            desktop = Path.GetTempPath();
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         return Path.Combine(desktop, $"Lhamiel_Diagnostics_{timestamp}.zip");
     }
