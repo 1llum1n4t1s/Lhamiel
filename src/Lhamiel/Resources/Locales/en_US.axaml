@@ -59,6 +59,14 @@
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Compression Level</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP Compression Level</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z Compression Level</x:String>
+  <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Include hidden/System files and folders</x:String>
+  <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Entries with Hidden or System attributes are also added to archives.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Compression Exclusion List</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">File or folder names in this list are skipped during compression.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">e.g. .git or node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">Add</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">Remove</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Reset Defaults</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">No Compression</x:String>

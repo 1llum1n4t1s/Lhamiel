@@ -62,6 +62,14 @@
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Tingkat Kompresi</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Tingkat Kompresi ZIP</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Tingkat Kompresi 7z</x:String>
+  <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Sertakan file dan folder tersembunyi/sistem</x:String>
+  <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Entri dengan atribut Hidden atau System juga ditambahkan ke arsip.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Daftar Pengecualian Kompresi</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Nama file atau folder dalam daftar ini dilewati saat kompresi.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">mis. .git atau node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">Tambah</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">Hapus</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Pulihkan Default</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Tanpa Kompresi</x:String>

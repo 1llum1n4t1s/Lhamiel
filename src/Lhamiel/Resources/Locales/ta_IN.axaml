@@ -62,6 +62,14 @@
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">சுருக்க நிலை</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP சுருக்க நிலை</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z சுருக்க நிலை</x:String>
+  <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">மறை/System கோப்புகள் மற்றும் கோப்புறைகளைச் சேர்க்கவும்</x:String>
+  <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden அல்லது System பண்புள்ள உருப்படிகளும் காப்பகத்தில் சேர்க்கப்படும்.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">சுருக்க விலக்கு பட்டியல்</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">இந்த பட்டியலில் உள்ள கோப்பு அல்லது கோப்புறை பெயர்கள் சுருக்கும்போது தவிர்க்கப்படும்.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">எ.கா. .git அல்லது node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">சேர்</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">அகற்று</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">இயல்புகளுக்கு மீட்டமை</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">சுருக்கமில்லை</x:String>

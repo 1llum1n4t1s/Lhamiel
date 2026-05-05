@@ -1,0 +1,4 @@
+# C# プロジェクト用: Avalonia UI MCP はプロジェクト単位で有効化する。
+[mcp_servers.avaloniaui-mcp]
+command = "ssh"
+args = ["vps", "docker", "run", "--rm", "-i", "ghcr.io/decriptor/avaloniaui.mcp:latest"]

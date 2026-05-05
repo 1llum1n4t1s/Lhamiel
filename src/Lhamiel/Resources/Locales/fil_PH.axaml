@@ -62,6 +62,14 @@
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Antas ng Compression</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Antas ng ZIP Compression</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Antas ng 7z Compression</x:String>
+  <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Isama ang hidden/System na file at folder</x:String>
+  <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Isinasama rin sa archive ang mga entry na may Hidden o System attribute.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Listahan ng Hindi Isasama sa Compression</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Nilalaktawan sa compression ang mga pangalan ng file o folder sa listahang ito.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">hal. .git o node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">Idagdag</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">Alisin</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Ibalik sa Default</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Walang Compression</x:String>

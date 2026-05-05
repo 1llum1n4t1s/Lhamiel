@@ -35,6 +35,7 @@ public class SettingsTests
         Assert.Equal(5, settings.SevenZipCompressionLevel);
         Assert.True(settings.OpenExtractionOutputFolder);
         Assert.True(settings.OpenCompressionOutputFolder);
+        Assert.True(settings.IncludeHiddenAndSystemEntries);
         Assert.Equal(10, settings.LogMaxSizeMB);
         Assert.Equal(7, settings.LogRetentionDays);
     }
@@ -98,6 +99,7 @@ public class SettingsTests
             CompressMultipleAsOne = true,
             ZipCompressionLevel = 9,
             SevenZipCompressionLevel = 0,
+            IncludeHiddenAndSystemEntries = false,
             OpenExtractionOutputFolder = false,
             OpenCompressionOutputFolder = false,
             LogMaxSizeMB = 50,
@@ -113,6 +115,7 @@ public class SettingsTests
         Assert.True(settings.CompressMultipleAsOne);
         Assert.Equal(5, settings.ZipCompressionLevel);
         Assert.Equal(5, settings.SevenZipCompressionLevel);
+        Assert.True(settings.IncludeHiddenAndSystemEntries);
         Assert.True(settings.OpenExtractionOutputFolder);
         Assert.True(settings.OpenCompressionOutputFolder);
         Assert.Equal(10, settings.LogMaxSizeMB);

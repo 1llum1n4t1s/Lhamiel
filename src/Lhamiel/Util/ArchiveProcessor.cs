@@ -492,7 +492,9 @@ public static class ArchiveProcessor
                         [sourcePath],
                         new HashSet<string>(settings.ExcludedFilePatterns ?? [], StringComparer.OrdinalIgnoreCase),
                         actualCancellationToken,
-                        normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames);
+                        dirModeOverride: settings.DirectoryStructureMode,
+                        normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames,
+                        includeHiddenAndSystemEntriesOverride: settings.IncludeHiddenAndSystemEntries);
 
                     var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);
                     if (conflicts.Count > 0)
@@ -854,7 +856,9 @@ public static class ArchiveProcessor
                     StringComparer.OrdinalIgnoreCase);
                 var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
                     sourcePaths.ToList(), excludedPatternSet, actualCancellationToken,
-                    normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames);
+                    dirModeOverride: settings.DirectoryStructureMode,
+                    normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames,
+                    includeHiddenAndSystemEntriesOverride: settings.IncludeHiddenAndSystemEntries);
 
                 // 衝突検出
                 var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);

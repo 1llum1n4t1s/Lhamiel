@@ -110,7 +110,13 @@ public static class ArchiveCompressor
             cancellationToken.ThrowIfCancellationRequested();
 
             // 解決済みリストが渡された場合はそのまま使用、なければスキャン
-            var filesToCompress = resolvedFiles ?? await ScanSourceFiles(sourceList, excludedPatternSet, cancellationToken, settings.DirectoryStructureMode, settings.NormalizeUnicodeFileNames);
+            var filesToCompress = resolvedFiles ?? await ScanSourceFiles(
+                sourceList,
+                excludedPatternSet,
+                cancellationToken,
+                settings.DirectoryStructureMode,
+                settings.NormalizeUnicodeFileNames,
+                settings.IncludeHiddenAndSystemEntries);
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
@@ -205,11 +211,14 @@ public static class ArchiveCompressor
     /// </summary>
     public static async Task<List<(string fullPath, string relativePath)>> ScanSourceFiles(
         List<string> sourceList, HashSet<string> excludedPatternSet, CancellationToken cancellationToken = default,
-        DirectoryStructureMode? dirModeOverride = null, bool? normalizeUnicodeOverride = null)
+        DirectoryStructureMode? dirModeOverride = null, bool? normalizeUnicodeOverride = null,
+        bool? includeHiddenAndSystemEntriesOverride = null)
     {
         var filesToCompress = new List<(string fullPath, string relativePath)>();
         var dirMode = dirModeOverride ?? SettingsManager.Instance.Current.DirectoryStructureMode;
         var normalizeUnicode = normalizeUnicodeOverride ?? SettingsManager.Instance.NormalizeUnicodeFileNames;
+        var includeHiddenAndSystemEntries = includeHiddenAndSystemEntriesOverride
+            ?? SettingsManager.Instance.Current.IncludeHiddenAndSystemEntries;
 
         foreach (var sourcePath in sourceList)
         {
@@ -226,7 +235,7 @@ public static class ArchiveCompressor
             {
                 Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
 
-                var files = GetFilesRecursively(sourcePath, excludedPatternSet);
+                var files = GetFilesRecursively(sourcePath, excludedPatternSet, includeHiddenAndSystemEntries);
                 var parentDir = dirMode == DirectoryStructureMode.IncludeRoot
                     ? (Path.GetDirectoryName(sourcePath) ?? "")
                     : sourcePath;
@@ -266,7 +275,7 @@ public static class ArchiveCompressor
                 // Flatモードでなければ空ディレクトリを収集してエントリに追加
                 if (dirMode != DirectoryStructureMode.Flat)
                 {
-                    var emptyDirs = CollectEmptyDirectories(sourcePath, excludedPatternSet, directoriesWithFiles);
+                    var emptyDirs = CollectEmptyDirectories(sourcePath, excludedPatternSet, directoriesWithFiles, includeHiddenAndSystemEntries);
                     foreach (var emptyDir in emptyDirs)
                     {
                         var relativePath = NormalizeNfc(Path.GetRelativePath(parentDir, emptyDir), normalizeUnicode);
@@ -690,16 +699,16 @@ public static class ArchiveCompressor
     /// <param name="excludedPatternSet">除外パターン</param>
     /// <param name="directoriesWithFiles">ファイルが存在するディレクトリのセット</param>
     /// <returns>空ディレクトリのパスリスト</returns>
-    private static List<string> CollectEmptyDirectories(string rootDir, HashSet<string> excludedPatternSet, HashSet<string> directoriesWithFiles)
+    private static List<string> CollectEmptyDirectories(
+        string rootDir,
+        HashSet<string> excludedPatternSet,
+        HashSet<string> directoriesWithFiles,
+        bool includeHiddenAndSystemEntries)
     {
         var emptyDirs = new List<string>();
         try
         {
-            var allDirs = Directory.EnumerateDirectories(rootDir, "*", new EnumerationOptions
-            {
-                RecurseSubdirectories = true,
-                IgnoreInaccessible = true
-            });
+            var allDirs = Directory.EnumerateDirectories(rootDir, "*", CreateRecursiveEnumerationOptions(includeHiddenAndSystemEntries));
 
             foreach (var dir in allDirs)
             {
@@ -725,7 +734,7 @@ public static class ArchiveCompressor
     /// <param name="directoryPath">ディレクトリパス</param>
     /// <param name="excludedPatternSet">除外パターンの HashSet</param>
     /// <returns>ファイルパスのリスト</returns>
-    private static IEnumerable<string> GetFilesRecursively(string directoryPath, HashSet<string> excludedPatternSet)
+    private static IEnumerable<string> GetFilesRecursively(string directoryPath, HashSet<string> excludedPatternSet, bool includeHiddenAndSystemEntries)
     {
         try
         {
@@ -736,11 +745,7 @@ public static class ArchiveCompressor
             }
 
             // Directory.EnumerateFiles を使用して効率的にファイルを取得
-            var enumerationOptions = new EnumerationOptions
-            {
-                RecurseSubdirectories = true,
-                IgnoreInaccessible = true // 権限エラーで止まらないようにする
-            };
+            var enumerationOptions = CreateRecursiveEnumerationOptions(includeHiddenAndSystemEntries);
 
             return Directory.EnumerateFiles(directoryPath, "*", enumerationOptions)
                 .Where(file => !ShouldExcludeFile(file, excludedPatternSet));
@@ -756,5 +761,14 @@ public static class ArchiveCompressor
             return [];
         }
     }
+
+    private static EnumerationOptions CreateRecursiveEnumerationOptions(bool includeHiddenAndSystemEntries) => new()
+    {
+        RecurseSubdirectories = true,
+        IgnoreInaccessible = true, // 権限エラーで止まらないようにする
+        AttributesToSkip = includeHiddenAndSystemEntries
+            ? 0
+            : FileAttributes.Hidden | FileAttributes.System
+    };
 
 }

@@ -118,11 +118,15 @@ public class Settings
     public DirectoryStructureMode DirectoryStructureMode { get; set; } = DirectoryStructureMode.IncludeRoot;
 
     /// <summary>
+    /// 圧縮時に隠し属性・システム属性のファイルやフォルダも含めるかどうか
+    /// </summary>
+    public bool IncludeHiddenAndSystemEntries { get; set; } = true;
+
+    /// <summary>
     /// 圧縮時に除外するファイル・フォルダのパターン。
     /// デフォルト値は ArchiveExtractor の無視リストから生成。
     /// </summary>
-    public List<string> ExcludedFilePatterns { get; set; } =
-        [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
+    public List<string> ExcludedFilePatterns { get; set; } = CreateDefaultExcludedFilePatterns();
 
     /// <summary>
     /// サポートされているテーマ一覧。UI および <see cref="SanitizeAfterLoad"/> で使用。
@@ -150,6 +154,12 @@ public class Settings
     /// 展開専用形式の一覧
     /// </summary>
     public static readonly string[] ExtractOnlyFormats = ["RAR", "ARJ", "Z"];
+
+    /// <summary>
+    /// 圧縮除外リストの既定値を作成する。
+    /// </summary>
+    public static List<string> CreateDefaultExcludedFilePatterns() =>
+        [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
 
     /// <summary>
     /// ログファイルの最大サイズ (MB)
@@ -364,6 +374,8 @@ public class Settings
         CompressionFormat = Array.Find(SupportedCompressionFormats, f => string.Equals(f, CompressionFormat, StringComparison.OrdinalIgnoreCase))
                             ?? "ZIP";
 
+        ExcludedFilePatterns = NormalizeExcludedFilePatterns(ExcludedFilePatterns ?? CreateDefaultExcludedFilePatterns());
+
         // 出力先ディレクトリのパス妥当性チェック（存在確認 + 保護ディレクトリ除外）
         // 不正値はデスクトップにフォールバック
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
@@ -400,6 +412,22 @@ public class Settings
         return true;
     }
 
+    internal static List<string> NormalizeExcludedFilePatterns(IEnumerable<string> patterns)
+    {
+        var result = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var pattern in patterns)
+        {
+            var normalized = pattern.Trim();
+            if (normalized.Length == 0)
+                continue;
+            if (seen.Add(normalized))
+                result.Add(normalized);
+        }
+
+        return result;
+    }
+
     /// <summary>
     /// 設定をファイルに保存するメソッド
     /// </summary>
@@ -431,6 +459,7 @@ public class Settings
         OpenCompressionOutputFolder = true;
         CreateArchiveNameFolder = true;
         DirectoryStructureMode = DirectoryStructureMode.IncludeRoot;
+        IncludeHiddenAndSystemEntries = true;
         UpdateChannel = "release";
         LogMaxSizeMB = 10;
         LogRetentionDays = 7;
@@ -438,7 +467,7 @@ public class Settings
         Locale = "";
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
-        ExcludedFilePatterns = [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
+        ExcludedFilePatterns = CreateDefaultExcludedFilePatterns();
         VerifyAfterExtraction = true;
         NormalizeUnicodeFileNames = true;
         PropagateMarkOfTheWeb = true;
@@ -485,6 +514,7 @@ public class Settings
             if (TryGetBool(root, nameof(CreateArchiveNameFolder), out var canf)) { s.CreateArchiveNameFolder = canf; recoveredCount++; }
             if (TryGetBool(root, nameof(OpenCompressionOutputFolder), out var ocof)) { s.OpenCompressionOutputFolder = ocof; recoveredCount++; }
             if (TryGetBool(root, nameof(CompressMultipleAsOne), out var cmao)) { s.CompressMultipleAsOne = cmao; recoveredCount++; }
+            if (TryGetBool(root, nameof(IncludeHiddenAndSystemEntries), out var ihase)) { s.IncludeHiddenAndSystemEntries = ihase; recoveredCount++; }
             if (TryGetBool(root, nameof(VerifyAfterExtraction), out var vae)) { s.VerifyAfterExtraction = vae; recoveredCount++; }
             if (TryGetBool(root, nameof(NormalizeUnicodeFileNames), out var nufn)) { s.NormalizeUnicodeFileNames = nufn; recoveredCount++; }
             if (TryGetBool(root, nameof(PropagateMarkOfTheWeb), out var pmotw)) { s.PropagateMarkOfTheWeb = pmotw; recoveredCount++; }

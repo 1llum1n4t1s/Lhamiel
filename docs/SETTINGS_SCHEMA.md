@@ -22,6 +22,7 @@
   "OpenCompressionOutputFolder": true,
   "CompressMultipleAsOne": true,
   "DirectoryStructureMode": "IncludeRoot",
+  "IncludeHiddenAndSystemEntries": true,
   "ExcludedFilePatterns": [".DS_Store", "Thumbs.db", "desktop.ini", "__MACOSX"],
   "ZipCompressionLevel": 5,
   "SevenZipCompressionLevel": 5,
@@ -61,9 +62,10 @@
 | `OpenCompressionOutputFolder` | bool | `true` | 圧縮後にフォルダを開く |
 | `CompressMultipleAsOne` | bool | `true` | 複数ファイルを1つのアーカイブにまとめる |
 | `DirectoryStructureMode` | string | `"IncludeRoot"` | ディレクトリ構造モード（下記参照） |
+| `IncludeHiddenAndSystemEntries` | bool | `true` | 圧縮時に Hidden/System 属性のファイル・フォルダも列挙対象に含める |
 | `ZipCompressionLevel` | int | `5` | ZIP圧縮レベル（0-9） |
 | `SevenZipCompressionLevel` | int | `5` | 7z圧縮レベル（0-9） |
-| `ExcludedFilePatterns` | string[] | システムファイル | 圧縮時に除外するパス/ファイル名（**glob 非対応、パスセグメント完全一致のみ**。例: `.DS_Store`、`__MACOSX`） |
+| `ExcludedFilePatterns` | string[] | システムファイル | 圧縮時に除外するファイル名・フォルダ名（**glob 非対応、パスセグメント完全一致のみ**。例: `.DS_Store`、`.git`、`__MACOSX`） |
 
 ### ログ設定
 

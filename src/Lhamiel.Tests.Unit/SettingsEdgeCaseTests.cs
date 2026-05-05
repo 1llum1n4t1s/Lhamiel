@@ -28,6 +28,7 @@ public class SettingsEdgeCaseTests
         Assert.Equal(fresh.SevenZipCompressionLevel, reset.SevenZipCompressionLevel);
         Assert.Equal(fresh.OpenExtractionOutputFolder, reset.OpenExtractionOutputFolder);
         Assert.Equal(fresh.OpenCompressionOutputFolder, reset.OpenCompressionOutputFolder);
+        Assert.Equal(fresh.IncludeHiddenAndSystemEntries, reset.IncludeHiddenAndSystemEntries);
         Assert.Equal(fresh.LogMaxSizeMB, reset.LogMaxSizeMB);
         Assert.Equal(fresh.LogRetentionDays, reset.LogRetentionDays);
         Assert.Equal(fresh.ExtractionOutputToSameDirectory, reset.ExtractionOutputToSameDirectory);
@@ -65,6 +66,14 @@ public class SettingsEdgeCaseTests
 
         Assert.DoesNotContain("custom_pattern", settings.ExcludedFilePatterns);
         Assert.Contains(".DS_Store", settings.ExcludedFilePatterns);
+    }
+
+    [Fact]
+    public void ExcludedFilePatterns_NormalizeTrimsAndDeduplicates()
+    {
+        var result = Settings.NormalizeExcludedFilePatterns([" .git ", ".GIT", "", "node_modules"]);
+
+        Assert.Equal([".git", "node_modules"], result);
     }
 
     [Fact]

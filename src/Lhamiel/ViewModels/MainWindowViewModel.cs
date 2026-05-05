@@ -82,6 +82,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _compressMultipleAsOne;
 
     [ObservableProperty]
+    private bool _includeHiddenAndSystemEntries = true;
+
+    [ObservableProperty]
     private int _selectedDirectoryStructureMode;
 
     [ObservableProperty]
@@ -98,6 +101,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private CompressionLevelItem? _selectedSevenZipLevel;
+
+    [ObservableProperty]
+    private string _newExcludedFilePattern = string.Empty;
+
+    [ObservableProperty]
+    private string? _selectedExcludedFilePattern;
 
     /// <summary>
     /// 設定値を 300ms デバウンス後に保存する（ロード中は抑制）。
@@ -148,9 +157,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.CreateArchiveNameFolder = CreateArchiveNameFolder;
             s.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
             s.CompressMultipleAsOne = CompressMultipleAsOne;
+            s.IncludeHiddenAndSystemEntries = IncludeHiddenAndSystemEntries;
             s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
             s.ZipCompressionLevel = ZipCompressionLevel;
             s.SevenZipCompressionLevel = SevenZipCompressionLevel;
+            s.ExcludedFilePatterns = Settings.NormalizeExcludedFilePatterns(CompressionExcludedFilePatterns);
         });
     }
 
@@ -199,6 +210,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnOpenCompressionOutputFolderChanged(bool value) => AutoSave();
 
     partial void OnCompressMultipleAsOneChanged(bool value) => AutoSave();
+
+    partial void OnIncludeHiddenAndSystemEntriesChanged(bool value) => AutoSave();
 
     partial void OnSelectedDirectoryStructureModeChanged(int value) => AutoSave();
 
@@ -315,6 +328,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public ObservableCollection<string> CompressionFormats { get; } = new(Settings.SupportedCompressionFormats);
 
     /// <summary>
+    /// 圧縮時に除外するファイル・フォルダ名の一覧
+    /// </summary>
+    public ObservableCollection<string> CompressionExcludedFilePatterns { get; } = [];
+
+    /// <summary>
     /// コンストラクタ
     /// </summary>
     public MainWindowViewModel(
@@ -359,10 +377,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CreateArchiveNameFolder = s.CreateArchiveNameFolder;
         OpenCompressionOutputFolder = s.OpenCompressionOutputFolder;
         CompressMultipleAsOne = s.CompressMultipleAsOne;
+        IncludeHiddenAndSystemEntries = s.IncludeHiddenAndSystemEntries;
         SelectedDirectoryStructureMode = (int)s.DirectoryStructureMode;
         SelectedLocale = string.IsNullOrEmpty(s.Locale) ? App.DetectDefaultLocale() : s.Locale;
         ZipCompressionLevel = s.ZipCompressionLevel;
         SevenZipCompressionLevel = s.SevenZipCompressionLevel;
+        LoadExcludedFilePatterns(s.ExcludedFilePatterns);
     }
 
     partial void OnExtractionOutputToSameDirectoryChanged(bool value)
@@ -403,6 +423,48 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var path = await _pickCompressionFolder();
         if (!string.IsNullOrEmpty(path))
             CompressionOutputDirectory = path;
+    }
+
+    [RelayCommand]
+    private void AddExcludedPattern()
+    {
+        var pattern = NewExcludedFilePattern.Trim();
+        if (pattern.Length == 0)
+            return;
+
+        if (!CompressionExcludedFilePatterns.Contains(pattern, StringComparer.OrdinalIgnoreCase))
+            CompressionExcludedFilePatterns.Add(pattern);
+
+        SelectedExcludedFilePattern = CompressionExcludedFilePatterns
+            .FirstOrDefault(p => string.Equals(p, pattern, StringComparison.OrdinalIgnoreCase));
+        NewExcludedFilePattern = string.Empty;
+        AutoSave();
+    }
+
+    [RelayCommand]
+    private void RemoveExcludedPattern()
+    {
+        if (SelectedExcludedFilePattern is null)
+            return;
+
+        CompressionExcludedFilePatterns.Remove(SelectedExcludedFilePattern);
+        SelectedExcludedFilePattern = null;
+        AutoSave();
+    }
+
+    [RelayCommand]
+    private void ResetExcludedPatterns()
+    {
+        LoadExcludedFilePatterns(Settings.CreateDefaultExcludedFilePatterns());
+        AutoSave();
+    }
+
+    private void LoadExcludedFilePatterns(IEnumerable<string>? patterns)
+    {
+        CompressionExcludedFilePatterns.Clear();
+        foreach (var pattern in Settings.NormalizeExcludedFilePatterns(patterns ?? Settings.CreateDefaultExcludedFilePatterns()))
+            CompressionExcludedFilePatterns.Add(pattern);
+        SelectedExcludedFilePattern = null;
     }
 
 

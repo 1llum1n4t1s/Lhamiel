@@ -298,4 +298,66 @@ public class ArchiveCompressorTests
                 Directory.Delete(testRoot, true);
         }
     }
+
+    [Fact]
+    public async Task ScanSourceFiles_IncludeHiddenAndSystemEntries_IncludesHiddenGitDirectory()
+    {
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testRoot, "Source");
+        var gitDirPath = Path.Combine(sourceDir, ".git");
+
+        try
+        {
+            var gitDir = Directory.CreateDirectory(gitDirPath);
+            File.WriteAllText(Path.Combine(gitDirPath, "config"), "repository");
+            gitDir.Attributes |= FileAttributes.Hidden;
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [sourceDir],
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                includeHiddenAndSystemEntriesOverride: true);
+
+            Assert.Contains(result, r => r.relativePath.Contains(".git") && r.relativePath.EndsWith("config"));
+        }
+        finally
+        {
+            if (Directory.Exists(gitDirPath))
+                new DirectoryInfo(gitDirPath).Attributes &= ~FileAttributes.Hidden;
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
+    public async Task ScanSourceFiles_ExcludeHiddenAndSystemEntries_SkipsHiddenGitDirectory()
+    {
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testRoot, "Source");
+        var gitDirPath = Path.Combine(sourceDir, ".git");
+
+        try
+        {
+            var gitDir = Directory.CreateDirectory(gitDirPath);
+            File.WriteAllText(Path.Combine(gitDirPath, "config"), "repository");
+            gitDir.Attributes |= FileAttributes.Hidden;
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [sourceDir],
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                includeHiddenAndSystemEntriesOverride: false);
+
+            Assert.DoesNotContain(result, r => r.relativePath.Contains(".git") || r.relativePath.EndsWith("config"));
+        }
+        finally
+        {
+            if (Directory.Exists(gitDirPath))
+                new DirectoryInfo(gitDirPath).Attributes &= ~FileAttributes.Hidden;
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
 }

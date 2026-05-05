@@ -244,6 +244,16 @@
                                         Text="{DynamicResource Text.Settings.Compression.MergeDescription}"
                                         TextWrapping="Wrap" />
 
+                                    <CheckBox
+                                        Content="{DynamicResource Text.Settings.Compression.IncludeHiddenAndSystem}"
+                                        IsChecked="{Binding IncludeHiddenAndSystemEntries}" />
+                                    <TextBlock
+                                        Margin="28,-4,0,0"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="{DynamicResource Text.Settings.Compression.IncludeHiddenAndSystemDescription}"
+                                        TextWrapping="Wrap" />
+
                                     <Separator Margin="0,4" />
 
                                     <RadioButton
@@ -308,6 +318,53 @@
                                         </ComboBox>
                                     </StackPanel>
                                 </Grid>
+                            </primitives:HeaderedContentControl>
+
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.ExcludedPatterns.Header}">
+                                <StackPanel Spacing="8">
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="{DynamicResource Text.Settings.ExcludedPatterns.Description}"
+                                        TextWrapping="Wrap" />
+
+                                    <ListBox
+                                        Height="220"
+                                        ItemsSource="{Binding CompressionExcludedFilePatterns}"
+                                        SelectedItem="{Binding SelectedExcludedFilePattern}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="sys:String">
+                                                <TextBlock Text="{Binding .}" />
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox
+                                            Grid.Column="0"
+                                            VerticalContentAlignment="Center"
+                                            PlaceholderText="{DynamicResource Text.Settings.ExcludedPatterns.Placeholder}"
+                                            Text="{Binding NewExcludedFilePattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        <Button
+                                            Grid.Column="1"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding AddExcludedPatternCommand}"
+                                            Content="{DynamicResource Text.Settings.ExcludedPatterns.Add}" />
+                                    </Grid>
+
+                                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
+                                        <Button
+                                            Command="{Binding RemoveExcludedPatternCommand}"
+                                            Content="{DynamicResource Text.Settings.ExcludedPatterns.Remove}" />
+                                        <Button
+                                            Command="{Binding ResetExcludedPatternsCommand}"
+                                            Content="{DynamicResource Text.Settings.ExcludedPatterns.Reset}" />
+                                    </StackPanel>
+                                </StackPanel>
                             </primitives:HeaderedContentControl>
                         </StackPanel>
                     </ScrollViewer>
