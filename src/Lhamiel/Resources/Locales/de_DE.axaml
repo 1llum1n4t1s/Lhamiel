@@ -175,6 +175,21 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Beim Suchen nach Updates ist ein Fehler aufgetreten.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Das Update-Repository ist nicht konfiguriert.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">In der Entwicklungsumgebung kann nicht nach Updates gesucht werden.</x:String>
+  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">Update-Prüfung läuft.</x:String>
+
+  <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
+  <x:String x:Key="Text.Close" xml:space="preserve">Schließen</x:String>
+  <x:String x:Key="Text.SelfUpdate.Title" xml:space="preserve">Software-Update</x:String>
+  <x:String x:Key="Text.SelfUpdate.Available" xml:space="preserve">Eine neue Version dieses Programms ist verfügbar: </x:String>
+  <x:String x:Key="Text.SelfUpdate.Checking" xml:space="preserve">Suche nach Updates…</x:String>
+  <x:String x:Key="Text.SelfUpdate.Error" xml:space="preserve">Suche nach Aktualisierungen fehlgeschlagen!</x:String>
+  <x:String x:Key="Text.SelfUpdate.DownloadAndInstall" xml:space="preserve">Herunterladen &amp; Installieren</x:String>
+  <x:String x:Key="Text.SelfUpdate.IgnoreThisVersion" xml:space="preserve">Diese Version überspringen</x:String>
+  <x:String x:Key="Text.SelfUpdate.UpToDate" xml:space="preserve">Momentan sind keine Aktualisierungen verfügbar.</x:String>
+  <x:String x:Key="Text.Settings.Update.Header" xml:space="preserve">Updates</x:String>
+  <x:String x:Key="Text.Settings.Update.Check4UpdatesOnStartup" xml:space="preserve">Beim Programmstart nach Aktualisierungen suchen</x:String>
+  <x:String x:Key="Text.Settings.Version.SkippedVersion" xml:space="preserve">Update-Benachrichtigungen für {0} werden übersprungen</x:String>
+  <x:String x:Key="Text.Settings.Version.ClearSkippedVersion" xml:space="preserve">Überspringen aufheben</x:String>
 
   <!-- Error Handler -->
   <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">Archivdatei nicht gefunden</x:String>

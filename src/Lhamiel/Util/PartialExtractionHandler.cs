@@ -295,10 +295,6 @@ public class PartialExtractionHandler
         return defaultOption;
     }
 
-    [Obsolete("ArchiveExtractor.TryExtractEntryAsync に統合済み")]
-    private static async Task<bool> RetryExtraction(string tempPath, string outputPath, string fullName, bool isDirectory, int maxRetries)
-        => (await ArchiveExtractor.TryExtractEntryAsync(tempPath, outputPath, fullName, isDirectory, maxRetries: maxRetries)).success;
-
     /// <summary>
     /// 展開結果のサマリーを生成
     /// </summary>

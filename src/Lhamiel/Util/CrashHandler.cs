@@ -48,9 +48,12 @@ internal static partial class CrashHandler
             using var process = Process.GetCurrentProcess();
             using var fs = new FileStream(dumpPath, FileMode.Create, FileAccess.Write, FileShare.None);
 
-            // MiniDumpWithDataSegs (0x01) + MiniDumpWithHandleData (0x04) = 0x05
-            // フルヒープは巨大になるため、データセグメント + ハンドル情報に絞る
-            const int dumpType = 0x01 | 0x04;
+            // MiniDumpNormal (0x00): スタック・レジスタ・実行コンテキストのみ。
+            // データセグメント (0x01) はグローバル変数 (Settings 含む) を含むため、
+            // 診断 ZIP でサポート担当に共有される可能性を考えるとプライバシー上不適切。
+            // ハンドルデータ (0x04) もファイルパス情報を含むため除外。
+            // 通常の例外解析にはスタック情報だけで十分。
+            const int dumpType = 0x00;
 
             var exceptionPointers = Marshal.GetExceptionPointers();
             var exceptionParam = IntPtr.Zero;

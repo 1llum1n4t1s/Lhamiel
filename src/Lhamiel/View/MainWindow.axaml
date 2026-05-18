@@ -107,6 +107,13 @@
                                 </ComboBox>
                             </primitives:HeaderedContentControl>
 
+                            <!--  アップデート確認  -->
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Update.Header}">
+                                <CheckBox
+                                    Content="{DynamicResource Text.Settings.Update.Check4UpdatesOnStartup}"
+                                    IsChecked="{Binding Check4UpdatesOnStartup}" />
+                            </primitives:HeaderedContentControl>
+
                             <!--  ショートカット作成  -->
                             <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Shortcut.Header}">
                                 <Button
@@ -506,16 +513,30 @@
                                         VerticalAlignment="Center"
                                         FontSize="13"
                                         Text="{Binding SevenZipVersionText}" />
-                                    <TextBlock
+                                    <Grid
                                         Grid.Row="2"
                                         Grid.Column="0"
                                         Grid.ColumnSpan="3"
-                                        Margin="0,6,0,0"
-                                        FontSize="12"
-                                        Foreground="{DynamicResource Brush.FG2}"
-                                        IsVisible="{Binding UpdateStatusText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                        Text="{Binding UpdateStatusText}"
-                                        TextWrapping="Wrap" />
+                                        Margin="0,8,0,0"
+                                        IsVisible="{Binding HasIgnoredUpdateTag}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock
+                                            Grid.Column="0"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            Foreground="{DynamicResource Brush.FG2}"
+                                            Text="{Binding IgnoredUpdateTagDisplay}"
+                                            TextWrapping="Wrap" />
+                                        <Button
+                                            Grid.Column="1"
+                                            Margin="8,0,0,0"
+                                            Command="{Binding ClearIgnoredUpdateTagCommand}"
+                                            Content="{DynamicResource Text.Settings.Version.ClearSkippedVersion}"
+                                            FontSize="12" />
+                                    </Grid>
                                 </Grid>
                             </Border>
 

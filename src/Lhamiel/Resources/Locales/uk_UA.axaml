@@ -175,6 +175,21 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Під час перевірки оновлень сталася помилка.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Репозиторій оновлень не налаштовано.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Неможливо перевірити оновлення в середовищі розробки.</x:String>
+  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">Перевірка оновлень триває.</x:String>
+
+  <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
+  <x:String x:Key="Text.Close" xml:space="preserve">Закрити</x:String>
+  <x:String x:Key="Text.SelfUpdate.Title" xml:space="preserve">Оновлення програми</x:String>
+  <x:String x:Key="Text.SelfUpdate.Available" xml:space="preserve">Доступна нова версія програми: </x:String>
+  <x:String x:Key="Text.SelfUpdate.Checking" xml:space="preserve">Перевірка оновлень…</x:String>
+  <x:String x:Key="Text.SelfUpdate.Error" xml:space="preserve">Не вдалося перевірити оновлення!</x:String>
+  <x:String x:Key="Text.SelfUpdate.DownloadAndInstall" xml:space="preserve">Завантажити та встановити</x:String>
+  <x:String x:Key="Text.SelfUpdate.IgnoreThisVersion" xml:space="preserve">Пропустити цю версію</x:String>
+  <x:String x:Key="Text.SelfUpdate.UpToDate" xml:space="preserve">У вас встановлена остання версія.</x:String>
+  <x:String x:Key="Text.Settings.Update.Header" xml:space="preserve">Оновлення</x:String>
+  <x:String x:Key="Text.Settings.Update.Check4UpdatesOnStartup" xml:space="preserve">Перевіряти оновлення при запуску</x:String>
+  <x:String x:Key="Text.Settings.Version.SkippedVersion" xml:space="preserve">Пропуск сповіщень про оновлення для {0}</x:String>
+  <x:String x:Key="Text.Settings.Version.ClearSkippedVersion" xml:space="preserve">Скасувати пропуск</x:String>
 
   <!-- Error Handler -->
   <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">Файл архіву не знайдено</x:String>

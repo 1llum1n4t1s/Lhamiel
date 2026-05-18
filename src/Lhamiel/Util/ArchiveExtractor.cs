@@ -487,10 +487,13 @@ public static class ArchiveExtractor
                     Logger.Log($"展開衝突検出で境界外パスを検出しスキップ: {relativePath}", LogLevel.Warning);
                     continue;
                 }
-                if (!File.Exists(destFilePath)) continue;
+                // FileInfo は遅延 stat で、Exists / Length / LastWriteTime は同一インスタンス内でキャッシュされる。
+                // 旧実装の File.Exists + new FileInfo で 2 回 stat していたのを 1 回にまとめる。
+                // 数千ファイルのアーカイブで I/O コール数を半減できる。
+                var destInfo = new FileInfo(destFilePath);
+                if (!destInfo.Exists) continue;
 
                 // 衝突発見: 左=アーカイブ内ファイル（ソース）、右=既存ファイル（宛先）
-                var destInfo = new FileInfo(destFilePath);
                 var archiveEntry = new Models.FileConflictEntry(
                     archivePath, relativePath, item.Length, item.LastWriteTime);
                 var existingEntry = new Models.FileConflictEntry(

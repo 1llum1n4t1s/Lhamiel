@@ -23,7 +23,7 @@ Lhamiel（ラミエル）は、Windows向けの使いやすいアーカイブ管
 - **テーマ切替** — ダーク / ライト / システム追従の3モード対応（アクリルブラー背景）
 - **17言語対応** — 日本語・英語をはじめ17言語のUIローカライズに対応
 - **ネイティブ AOT ビルド** — .NET ランタイム不要で起動が速く、Windows x64 / ARM64 の両方に対応
-- **自動更新** — Velopack による差分アップデートで、新バージョン公開時にアプリ起動時へ自動適用
+- **自動更新** — Velopack による差分アップデート。メイン画面起動時に GitHub Releases を自動チェックし、新バージョンが見つかれば `VelopackUpdateDialog.Avalonia` のダイアログで案内（「ダウンロード＆インストール」「このバージョンをスキップ」を選択可能）。手動チェックは「バージョン」タブの「アップデート確認」ボタンから実行可能
 
 ## インストール方法
 
@@ -66,11 +66,11 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 | タブ | 内容 |
 |------|------|
-| **全般** | テーマ切替、言語選択、デフォルト圧縮形式、ショートカット作成 |
+| **全般** | テーマ切替、言語選択、デフォルト圧縮形式、起動時にアップデートを確認 ON/OFF、ショートカット作成 |
 | **展開** | 展開先ディレクトリ指定（同一階層 / 固定ディレクトリ）、展開後にフォルダを開く、アーカイブ名フォルダ作成ON/OFF |
 | **圧縮** | 圧縮先ディレクトリ指定、圧縮後にフォルダを開く、まとめ圧縮、ディレクトリ構造モード、ZIP / 7z の圧縮レベル、Hidden/System 属性の対象化、除外リスト管理 |
 | **関連付け** | ダブルクリックで Lhamiel を開く拡張子の選択（一括選択 / 一括解除に対応） |
-| **バージョン** | バージョン情報・7-Zip ライブラリバージョン表示、アップデートチェック、ご意見・ご要望リンク、ライセンス表示 |
+| **バージョン** | バージョン情報・7-Zip ライブラリバージョン表示、アップデートチェック（VelopackUpdateDialog 経由）、スキップしたバージョンの取り消し、ご意見・ご要望リンク、ライセンス表示 |
 
 ## 対応形式
 
@@ -117,8 +117,24 @@ Windows の「設定」→「アプリ」→「インストールされている
 - **「パスワードが必要、または不一致です」と表示される** — パスワード保護アーカイブです。入力ダイアログに正しいパスワードを入力してください。キャンセルすると展開は中止されます
 - **関連付けが効かない** — 他のソフトが優先されている場合があります。「関連付け」タブで再設定するか、Windows の「既定のアプリ」を確認してください
 - **ログファイルの場所** — `%LocalAppData%\Lhamiel\Lhamiel_yyyyMMdd.log`（ローリング保存、既定で 7 日間保持）
+- **クラッシュダンプの場所** — `%LocalAppData%\Lhamiel\dumps\*.dmp`（未処理例外時に自動生成、最新 5 件まで保持）。サポート問い合わせ時に診断 ZIP に含まれる
+- **診断情報の取得方法** — サポート問い合わせの際は「バージョン」設定タブの「診断 ZIP を出力」ボタンを使用してください。マスク済み設定・ログ・環境情報・MiniDump がまとめて ZIP 化されます
+- **一時ファイルの自動削除** — アプリ起動時に `%TEMP%\Lhamiel_Temp_*` の 30 分以上前の残骸を自動で掃除します（前回クラッシュ時の中間ファイル等）
+- **自動更新が失敗する場合** — Velopack 自動更新が動かない場合は、[GitHub Releases](https://github.com/1llum1n4t1s/Lhamiel/releases) から最新の `Lhamiel-win-Setup.exe` を手動ダウンロードして上書きインストールしてください
+- **アップデートダイアログが起動毎に出る** — 「このバージョンをスキップ」を押すと該当タグが `settings.json` の `IgnoreUpdateTag` に保存され、次回以降の自動チェックではダイアログを表示しません。完全に無効化したい場合は「全般」設定の「起動時にアップデートを確認」を OFF にしてください
+- **スキップしたバージョンを取り消したい** — 「バージョン」設定タブにスキップ中のバージョン情報と「スキップを取り消す」ボタンが表示されます。ボタンを押すと即座に取り消され、次回起動時から再びアップデート通知が出ます
+- **手動でアップデートを確認したい** — 「バージョン」設定タブの「アップデート確認」ボタンを押すと、`VelopackUpdateDialog` ダイアログが開いて最新バージョンを確認できます（手動チェックは「このバージョンをスキップ」を無視して常に最新を表示します）
 
 ## 更新履歴
+
+### v1.0.167 (2026-05-18)
+
+- **「アップデート確認」ボタンのサイレント failure を修正** — リポジトリ未設定 / 開発実行 (`IsInstalled=false`) / 既に確認中の 3 経路で UI フィードバックがなく「ボタンを押しても何も起きない」状態だったのを、それぞれメッセージダイアログで明示するよう修正。17 ロケールに `Text.Update.AlreadyChecking` を追加
+- **プライバシー強化** — MiniDump の tier を `MiniDumpWithDataSegs + MiniDumpWithHandleData` (0x05) から `MiniDumpNormal` (0x00) に削減し、診断 ZIP 経由でグローバル変数 (Settings 内容) やファイルハンドル情報が漏れる経路を遮断。`PasswordDialog` も取得直後にダイアログ側 Password 参照を即クリア
+- **信頼性向上** — `Logger._logger` 未初期化時の `LogException` で `%LocalAppData%\Lhamiel\Lhamiel_emergency.log` への直書きフォールバックを追加。Avalonia 起動失敗時にも例外情報を残せるように。`DiagnosticsCollector` も Logger 非同期クリーンアップとの race で `FileNotFoundException` / `DirectoryNotFoundException` が出ても警告を出さず無視する
+- **パフォーマンス** — `MotwPropagator.PropagateToDirectory` を `Parallel.ForEach` で並列化 (CPU 数上限、最大 8)。`ArchiveExtractor.DetectExtractionConflicts` の stat 重複 (`File.Exists` + `new FileInfo`) を 1 回にまとめて I/O 半減。`IpcService` の固定 50ms リトライを指数バックオフ (50ms → 400ms) に変更
+- **保守性** — `PartialExtractionHandler` の未使用 `[Obsolete] RetryExtraction` 削除。`AppPathResolverTests` を Windows 専用テスト 3 件に再構成。`IpcServiceTests` に `[Collection("Sequential")]` を付与してパイプ名衝突による flaky を解消
+- **ドキュメント** — `SETTINGS_SCHEMA.md` に `Check4UpdatesOnStartup` / `IgnoreUpdateTag` を追加。`ARCHITECTURE.md` の Infrastructure / Utility レイヤー一覧を最新化
 
 ### v1.0.166 (2026-05-05)
 

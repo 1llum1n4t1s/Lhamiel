@@ -175,6 +175,21 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">May naganap na error habang tinitingnan ang mga update.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Hindi naka-configure ang update repository.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Hindi makapag-check ng mga update sa development environment.</x:String>
+  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">Sinusuri ang mga update.</x:String>
+
+  <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
+  <x:String x:Key="Text.Close" xml:space="preserve">Isara</x:String>
+  <x:String x:Key="Text.SelfUpdate.Title" xml:space="preserve">Update ng Software</x:String>
+  <x:String x:Key="Text.SelfUpdate.Available" xml:space="preserve">May bagong bersyon ng software na ito: </x:String>
+  <x:String x:Key="Text.SelfUpdate.Checking" xml:space="preserve">Naghahanap ng mga update…</x:String>
+  <x:String x:Key="Text.SelfUpdate.Error" xml:space="preserve">Nabigo ang pagsuri ng mga update!</x:String>
+  <x:String x:Key="Text.SelfUpdate.DownloadAndInstall" xml:space="preserve">I-download &amp; I-install</x:String>
+  <x:String x:Key="Text.SelfUpdate.IgnoreThisVersion" xml:space="preserve">Laktawan ang Bersyon na Ito</x:String>
+  <x:String x:Key="Text.SelfUpdate.UpToDate" xml:space="preserve">Kasalukuyang walang mga update na magagamit.</x:String>
+  <x:String x:Key="Text.Settings.Update.Header" xml:space="preserve">Mga Update</x:String>
+  <x:String x:Key="Text.Settings.Update.Check4UpdatesOnStartup" xml:space="preserve">Suriin kung may update sa pagsisimula</x:String>
+  <x:String x:Key="Text.Settings.Version.SkippedVersion" xml:space="preserve">Nilalaktawan ang mga abiso ng update para sa {0}</x:String>
+  <x:String x:Key="Text.Settings.Version.ClearSkippedVersion" xml:space="preserve">Tanggalin ang paglaktaw</x:String>
 
   <!-- Error Handler -->
   <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">Hindi natagpuan ang archive file</x:String>

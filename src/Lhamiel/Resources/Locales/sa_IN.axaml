@@ -175,6 +175,21 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">नवीकरणपरीक्षणे दोषः जातः।</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">नवीकरणभाण्डागारं विन्यस्तं नास्ति।</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">विकासपरिवेशे नवीकरणं परीक्षितुं न शक्यते।</x:String>
+  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">नवीकरणस्य परीक्षा प्रचलति।</x:String>
+
+  <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
+  <x:String x:Key="Text.Close" xml:space="preserve">पिदधातु</x:String>
+  <x:String x:Key="Text.SelfUpdate.Title" xml:space="preserve">तन्त्रांशाद्यतनम्</x:String>
+  <x:String x:Key="Text.SelfUpdate.Available" xml:space="preserve">अस्य तन्त्रांशस्य नवीनसंस्करणम् उपलभ्यते: </x:String>
+  <x:String x:Key="Text.SelfUpdate.Checking" xml:space="preserve">नवीनीकरणानि अन्विष्यन्ते…</x:String>
+  <x:String x:Key="Text.SelfUpdate.Error" xml:space="preserve">अद्यतनपरीक्षणं विफलम्!</x:String>
+  <x:String x:Key="Text.SelfUpdate.DownloadAndInstall" xml:space="preserve">अवतारयतु तथा संस्थापयतु</x:String>
+  <x:String x:Key="Text.SelfUpdate.IgnoreThisVersion" xml:space="preserve">एतत् संस्करणं लङ्घयतु</x:String>
+  <x:String x:Key="Text.SelfUpdate.UpToDate" xml:space="preserve">सम्प्रति कोऽपि अद्यतनं नोपलभ्यते।</x:String>
+  <x:String x:Key="Text.Settings.Update.Header" xml:space="preserve">अद्यतनानि</x:String>
+  <x:String x:Key="Text.Settings.Update.Check4UpdatesOnStartup" xml:space="preserve">प्रारम्भे अद्यतनं परीक्षतु</x:String>
+  <x:String x:Key="Text.Settings.Version.SkippedVersion" xml:space="preserve">{0} इत्यस्य अद्यतनसूचनाः उल्लङ्घ्यन्ते</x:String>
+  <x:String x:Key="Text.Settings.Version.ClearSkippedVersion" xml:space="preserve">उल्लङ्घनं निरस्यतु</x:String>
 
   <!-- Error Handler -->
   <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">संग्रहसञ्चिका न प्राप्ता</x:String>

@@ -175,6 +175,21 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">업데이트 확인 중 오류가 발생했습니다.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">업데이트 저장소가 구성되지 않았습니다.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">개발 환경에서는 업데이트를 확인할 수 없습니다.</x:String>
+  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">업데이트를 확인하는 중입니다.</x:String>
+
+  <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
+  <x:String x:Key="Text.Close" xml:space="preserve">닫기</x:String>
+  <x:String x:Key="Text.SelfUpdate.Title" xml:space="preserve">소프트웨어 업데이트</x:String>
+  <x:String x:Key="Text.SelfUpdate.Available" xml:space="preserve">이 소프트웨어의 새 버전을 사용할 수 있습니다: </x:String>
+  <x:String x:Key="Text.SelfUpdate.Checking" xml:space="preserve">업데이트 확인 중…</x:String>
+  <x:String x:Key="Text.SelfUpdate.Error" xml:space="preserve">업데이트 확인 실패!</x:String>
+  <x:String x:Key="Text.SelfUpdate.DownloadAndInstall" xml:space="preserve">다운로드 및 설치</x:String>
+  <x:String x:Key="Text.SelfUpdate.IgnoreThisVersion" xml:space="preserve">이 버전 건너뛰기</x:String>
+  <x:String x:Key="Text.SelfUpdate.UpToDate" xml:space="preserve">현재 사용 가능한 업데이트가 없습니다.</x:String>
+  <x:String x:Key="Text.Settings.Update.Header" xml:space="preserve">업데이트</x:String>
+  <x:String x:Key="Text.Settings.Update.Check4UpdatesOnStartup" xml:space="preserve">시작 시 업데이트 확인</x:String>
+  <x:String x:Key="Text.Settings.Version.SkippedVersion" xml:space="preserve">{0}의 업데이트 알림을 건너뛰고 있습니다</x:String>
+  <x:String x:Key="Text.Settings.Version.ClearSkippedVersion" xml:space="preserve">건너뛰기 취소</x:String>
 
   <!-- Error Handler -->
   <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">아카이브 파일을 찾을 수 없습니다</x:String>

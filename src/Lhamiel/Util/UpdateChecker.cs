@@ -44,6 +44,40 @@ public static class UpdateChecker
     public record CheckResult(UpdateResult Result, UpdateInfo? Info, UpdateManager? Manager, string Message);
 
     /// <summary>
+    /// <see cref="Settings"/> から <see cref="UpdateManager"/> を組み立てる共通ファクトリ。
+    /// サイレント経路（<see cref="CheckAndDownloadAsync"/>）と UI 経路（<c>App.Check4Update</c>）から呼ばれる。
+    /// <para>
+    /// 戻り値は <c>(mgr, repoUrl, channel)</c> のタプル。<see cref="Settings.UpdateRepoOwner"/> /
+    /// <see cref="Settings.UpdateRepoName"/> が未設定の場合は <c>null</c> を返す（呼び出し元が
+    /// <c>NotConfigured</c> や早期 return を判断）。
+    /// </para>
+    /// <para>
+    /// <see cref="Settings.UpdateRepoOwner"/> / <see cref="Settings.UpdateRepoName"/> は
+    /// <c>[JsonIgnore]</c> でハードコード固定されているため、現実には null/空にはならないが、
+    /// 防御として allow-list ガードを残す。
+    /// </para>
+    /// </summary>
+    /// <param name="settings">Settings インスタンス（呼び出し元で snapshot 推奨）</param>
+    /// <returns>UpdateManager とリポジトリ情報。未設定時は null</returns>
+    internal static (UpdateManager Manager, string RepoUrl, string Channel)? TryBuildUpdateManager(Settings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        var repoOwner = settings.UpdateRepoOwner;
+        var repoName = settings.UpdateRepoName;
+        if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName))
+            return null;
+
+        var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "release" : settings.UpdateChannel;
+        var repoUrl = $"https://github.com/{repoOwner}/{repoName}";
+        var isPrerelease = channel.Equals("prerelease", StringComparison.OrdinalIgnoreCase);
+        // GithubSource の第 2 引数 = AccessToken。public repo を前提に空文字列で構築する
+        // (将来 private repo に切り替える場合は Settings に AccessToken を追加し、ここで参照する)。
+        var source = new GithubSource(repoUrl, string.Empty, isPrerelease);
+        return (new UpdateManager(source), repoUrl, channel);
+    }
+
+    /// <summary>
     /// 更新を確認し、利用可能であればダウンロードまで行う。
     /// 適用は呼び出し元で行う（サイレント版は ApplyUpdatesAndExit、UI版は ApplyUpdatesAndRestart）。
     /// </summary>
@@ -55,20 +89,13 @@ public static class UpdateChecker
         try
         {
             var settings = SettingsManager.Instance.Current;
-            var repoOwner = settings.UpdateRepoOwner;
-            var repoName = settings.UpdateRepoName;
-            var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "release" : settings.UpdateChannel;
-
-            if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName))
+            var build = TryBuildUpdateManager(settings);
+            if (build is null)
             {
                 Logger.Log("更新元リポジトリが未設定のため更新チェックをスキップします。");
                 return new CheckResult(UpdateResult.NotConfigured, null, null, App.Text("Update.RepoNotConfigured"));
             }
-
-            var repoUrl = $"https://github.com/{repoOwner}/{repoName}";
-            var isPrerelease = channel.Equals("prerelease", StringComparison.OrdinalIgnoreCase);
-            var source = new GithubSource(repoUrl, string.Empty, isPrerelease);
-            var updateManager = new UpdateManager(source);
+            var (updateManager, repoUrl, channel) = build.Value;
 
             if (!updateManager.IsInstalled)
             {

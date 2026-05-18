@@ -175,6 +175,21 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Une erreur est survenue lors de la vérification des mises à jour.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Le dépôt de mises à jour n'est pas configuré.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Impossible de vérifier les mises à jour dans l'environnement de développement.</x:String>
+  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">Vérification des mises à jour en cours.</x:String>
+
+  <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
+  <x:String x:Key="Text.Close" xml:space="preserve">Fermer</x:String>
+  <x:String x:Key="Text.SelfUpdate.Title" xml:space="preserve">Mise à jour du logiciel</x:String>
+  <x:String x:Key="Text.SelfUpdate.Available" xml:space="preserve">Une nouvelle version du logiciel est disponible : </x:String>
+  <x:String x:Key="Text.SelfUpdate.Checking" xml:space="preserve">Recherche de mises à jour…</x:String>
+  <x:String x:Key="Text.SelfUpdate.Error" xml:space="preserve">La vérification de mise à jour à échouée !</x:String>
+  <x:String x:Key="Text.SelfUpdate.DownloadAndInstall" xml:space="preserve">Télécharger et installer</x:String>
+  <x:String x:Key="Text.SelfUpdate.IgnoreThisVersion" xml:space="preserve">Passer cette version</x:String>
+  <x:String x:Key="Text.SelfUpdate.UpToDate" xml:space="preserve">Il n'y a pas de mise à jour pour le moment.</x:String>
+  <x:String x:Key="Text.Settings.Update.Header" xml:space="preserve">Mises à jour</x:String>
+  <x:String x:Key="Text.Settings.Update.Check4UpdatesOnStartup" xml:space="preserve">Vérifier les mises à jour au démarrage</x:String>
+  <x:String x:Key="Text.Settings.Version.SkippedVersion" xml:space="preserve">Notifications de mise à jour ignorées pour {0}</x:String>
+  <x:String x:Key="Text.Settings.Version.ClearSkippedVersion" xml:space="preserve">Annuler l'ignorance</x:String>
 
   <!-- Error Handler -->
   <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">Fichier d'archive introuvable</x:String>

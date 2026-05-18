@@ -175,6 +175,21 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">檢查更新時發生錯誤。</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">未設定更新儲存庫。</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">無法在開發環境中檢查更新。</x:String>
+  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">正在檢查更新。</x:String>
+
+  <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
+  <x:String x:Key="Text.Close" xml:space="preserve">關閉</x:String>
+  <x:String x:Key="Text.SelfUpdate.Title" xml:space="preserve">軟體更新</x:String>
+  <x:String x:Key="Text.SelfUpdate.Available" xml:space="preserve">軟體有版本更新: </x:String>
+  <x:String x:Key="Text.SelfUpdate.Checking" xml:space="preserve">正在檢查更新…</x:String>
+  <x:String x:Key="Text.SelfUpdate.Error" xml:space="preserve">取得最新版本資訊失敗!</x:String>
+  <x:String x:Key="Text.SelfUpdate.DownloadAndInstall" xml:space="preserve">下載並安裝</x:String>
+  <x:String x:Key="Text.SelfUpdate.IgnoreThisVersion" xml:space="preserve">忽略此版本</x:String>
+  <x:String x:Key="Text.SelfUpdate.UpToDate" xml:space="preserve">目前已是最新版本。</x:String>
+  <x:String x:Key="Text.Settings.Update.Header" xml:space="preserve">軟體更新</x:String>
+  <x:String x:Key="Text.Settings.Update.Check4UpdatesOnStartup" xml:space="preserve">啟動時檢查軟體更新</x:String>
+  <x:String x:Key="Text.Settings.Version.SkippedVersion" xml:space="preserve">正在略過 {0} 的更新通知</x:String>
+  <x:String x:Key="Text.Settings.Version.ClearSkippedVersion" xml:space="preserve">取消略過</x:String>
 
   <!-- Error Handler -->
   <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">找不到壓縮檔</x:String>

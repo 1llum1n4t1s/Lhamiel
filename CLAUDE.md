@@ -1,7 +1,7 @@
-# AGENTS.md
+# CLAUDE.md
 
-This file provides guidance to coding agents (Codex, Claude Code, etc.) working in this repository.
-AGENTS.md is the canonical project-wide guidance file; keep it current when updating conventions.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+CLAUDE.md is the canonical project-wide guidance file; keep it current when updating conventions.
 
 ## Project Overview
 
@@ -98,7 +98,9 @@ Drag-and-drop drives the app:
 | `Settings` / `SettingsManager` | JSON config at `%LocalAppData%\Lhamiel\settings.json` with JsonDocument fallback recovery, compression scan settings, and exclusion patterns |
 | `PathValidator` | Path safety checks + `EnsureLongPathPrefix` for paths > 260 chars |
 | `NativeLibraryManager` | 7z.dll lifecycle management |
-| `UpdateChecker` | Velopack auto-update integration |
+| `UpdateChecker` | Velopack 自動更新の **`--update-check` サイレント CLI 経路** (Program.cs から `StartupRegistration` の HKCU\Run 登録経由で発火、UI 不要なバックグラウンド自動更新) |
+| `App.Check4Update` | Velopack 自動更新の **UI 経路**。`Settings.Check4UpdatesOnStartup=true` のときメイン画面起動直後 + 「アップデート確認」ボタンから手動起動。`VelopackUpdateDialog.UpdateDialogWindow` をオーナー付きで表示し、Velopack 0.0.1369-g1d5c984 と組み合わせて 30 秒タイムアウトで動作 |
+| `LhamielUpdateStrings` | `VelopackUpdateDialog.IUpdateDialogStrings` の Lhamiel 実装 (Models/)。`Text.SelfUpdate.*` / `Text.Close` を `App.Text()` 経由で動的解決 (シングルトン、`NotifyLocaleChanged()` でロケール切替即時反映) |
 | `IpcService` | Single-instance enforcement via Named Pipe (`PipeOptions.CurrentUserOnly`) |
 | `FolderOpener` | Opens explorer to extraction/compression output folder |
 
@@ -157,7 +159,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - **Native AOT** (`PublishAot=true`) — avoid reflection-heavy patterns
 - **7z.dll** — `1llum1n4t1s.Sevenzip` NuGet が同梱。`NativeLibraryManager` が起動時に `LoadLibrary` で固定
 - **Logger** — `SuperLightLogger` File Target, `%LocalAppData%\Lhamiel\Lhamiel_yyyyMMdd.log`
-- **Velopack** for auto-updates (`Program.cs` bootstrap)
+- **Velopack** 自動更新 — 2 系統: (1) `Program.cs --update-check` サイレント CLI 経路 (Windows ログイン時 `StartupRegistration` から発火、UI 無し)、(2) `App.Check4Update` UI 経路 (`VelopackUpdateDialog.Avalonia` 1.0.3 経由のダイアログ表示、`Settings.Check4UpdatesOnStartup=true` で起動時自動 + メニューから手動)
 - **AllowUnsafeBlocks** for P/Invoke (COM interop in `ShortcutCreator`, `FileIconHelper`, `CrashHandler`)
 - **Acrylic blur** — 全ダイアログで `ExperimentalAcrylicBorder` + `ExtendClientAreaToDecorationsHint`
 - Async/await + CancellationToken throughout all I/O operations

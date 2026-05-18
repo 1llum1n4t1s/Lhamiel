@@ -58,6 +58,28 @@ public sealed class SettingsManager
     }
 
     /// <summary>
+    /// 変更と保存を同一ロック下で連続実行する atomic 版。
+    /// <para>
+    /// 通常の <see cref="Mutate"/> + <see cref="Save"/> はロックが 2 回別々に取られるため、
+    /// その間に別 thread から <c>Mutate</c> + <c>Save</c> が割り込むと「メモリ更新済み・ディスク古い」
+    /// あるいはその逆の不整合が起き得る。Velopack の VersionIgnored ハンドラのように
+    /// 1 つのユーザー操作が「変更 → 永続化」を 1 アトミック単位で行いたい場合にこちらを使う。
+    /// </para>
+    /// </summary>
+    /// <param name="mutator">変更アクション</param>
+    /// <exception cref="InvalidOperationException">保存失敗時にスローされる（呼び出し元で UI 通知すること）。</exception>
+    public void MutateAndSave(Action<Settings> mutator)
+    {
+        ArgumentNullException.ThrowIfNull(mutator);
+        lock (_lock)
+        {
+            mutator(_settings);
+            _settings.Save();
+        }
+        Logger.Log("設定を変更し保存しました");
+    }
+
+    /// <summary>
     /// プライベートコンストラクタ
     /// </summary>
     private SettingsManager()

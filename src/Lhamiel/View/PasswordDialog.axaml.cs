@@ -29,8 +29,24 @@ public partial class PasswordDialog : Window
     /// <summary>リトライ時（前回のパスワードが間違っていた場合）に true（バインディング用、以後不変）</summary>
     public bool IsRetry { get; }
 
-    /// <summary>入力されたパスワード。キャンセル時は null。</summary>
+    /// <summary>
+    /// 入力されたパスワード。キャンセル時は null。
+    /// <see cref="ShowFromBackgroundAsync"/> で呼び出し側が取得した直後に <see cref="ClearPassword"/> でクリアされ、
+    /// ダイアログオブジェクトが GC されるまで平文文字列参照を保持し続けない設計。
+    /// </summary>
+    /// <remarks>
+    /// .NET 8+ の <see cref="System.Security.SecureString"/> は実装上保護が弱いため公式に非推奨。
+    /// 代わりに「ダイアログ寿命を最小化 + 取得直後にダイアログ側参照をクリア」で平文露出時間を絞る方針。
+    /// 7z.dll の callback は <see cref="string"/> を要求するため、最終境界での平文化は避けられない。
+    /// </remarks>
     public string? Password { get; private set; }
+
+    /// <summary>
+    /// ダイアログ内の Password 参照を null 化する。呼び出し側がパスワードを受け取った直後に呼ぶ。
+    /// 文字列内容自体は GC ヒープに残るが、ダイアログ instance が長く生存しても
+    /// パスワード参照を保持し続けないため、ダンプ・ヒープ解析時の露出表面積が縮む。
+    /// </summary>
+    public void ClearPassword() => Password = null;
 
     /// <summary>XAML プレビュー用のパラメータなしコンストラクタ。</summary>
     public PasswordDialog() : this(string.Empty, false) { }
@@ -133,7 +149,11 @@ public partial class PasswordDialog : Window
             // パスワード関連のログは Debug レベルに固定し、リリースビルドでは
             // アーカイブ名・再試行回数・試行タイミングのいずれもログファイルに残さない。
             Logger.Log($"パスワード入力ダイアログ完了: retry={isRetry}", LogLevel.Debug);
-            return dialog.Password;
+            // ダイアログオブジェクトが GC されるまでパスワード参照を保持し続けないよう、
+            // 取得直後に dialog 側参照をクリアする（呼び出し側の戻り値文字列とは別参照）。
+            var result = dialog.Password;
+            dialog.ClearPassword();
+            return result;
         });
     }
 }

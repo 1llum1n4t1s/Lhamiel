@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
-    <PackageReference Include="coverlet.collector" Version="10.0.0">
+    <PackageReference Include="coverlet.collector" Version="10.0.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

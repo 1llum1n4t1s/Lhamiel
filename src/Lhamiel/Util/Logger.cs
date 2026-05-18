@@ -215,7 +215,39 @@ public static class Logger
     /// <param name="exception">例外オブジェクト</param>
     public static void LogException(string message, Exception exception)
     {
-        _logger?.Error(message, exception);
+        if (_logger != null)
+        {
+            _logger.Error(message, exception);
+            return;
+        }
+
+        // Logger 初期化前 / 初期化失敗時の緊急フォールバック。
+        // Avalonia 起動失敗・LogManager.Configure 例外などでロガーが
+        // 立ち上がらないケースでも例外情報を失わないよう、直接ファイルに追記する。
+        WriteEmergencyLog(message, exception);
+    }
+
+    /// <summary>
+    /// _logger 未初期化時の緊急ログ書き込み。
+    /// %LocalAppData%\Lhamiel\Lhamiel_emergency.log に追記する。
+    /// </summary>
+    private static void WriteEmergencyLog(string message, Exception exception)
+    {
+        try
+        {
+            var logDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                _appName);
+            Directory.CreateDirectory(logDir);
+            var path = Path.Combine(logDir, $"{_appName}_emergency.log");
+            var line =
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [ERROR] {message}{Environment.NewLine}{exception}{Environment.NewLine}";
+            File.AppendAllText(path, line);
+        }
+        catch
+        {
+            // 最終フォールバック失敗時はもう諦める（ディスク満杯・権限不足など）。
+        }
     }
 
     /// <summary>

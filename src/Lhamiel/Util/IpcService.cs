@@ -80,6 +80,12 @@ public static class IpcService
     {
         var startedAt = Environment.TickCount64;
         var attempt = 0;
+        // 指数バックオフ: サーバー再生成中の競合や AV/EDR の一時干渉が連続するケースで
+        // 固定 50ms のスピンを避け、CPU と Named Pipe の競合を緩和する。
+        // 初回 50ms → 100ms → 200ms → 400ms (上限) で、合計 750ms 程度の窓内に収まる。
+        const int InitialRetryDelayMs = 50;
+        const int MaxRetryDelayMs = 400;
+        var retryDelayMs = InitialRetryDelayMs;
         while (!cancellationToken.IsCancellationRequested &&
                Environment.TickCount64 - startedAt < ConnectTotalTimeoutMs)
         {
@@ -138,9 +144,10 @@ public static class IpcService
             }
             catch (TimeoutException)
             {
-                // サーバー再生成の瞬間に落ちた可能性があるのでリトライ
-                try { await Task.Delay(50, cancellationToken); }
+                // サーバー再生成の瞬間に落ちた可能性があるのでリトライ（指数バックオフ）
+                try { await Task.Delay(retryDelayMs, cancellationToken); }
                 catch (OperationCanceledException) { return false; }
+                retryDelayMs = Math.Min(retryDelayMs * 2, MaxRetryDelayMs);
             }
             catch (IOException ex)
             {
@@ -149,8 +156,9 @@ public static class IpcService
                 // 旧実装は attempt < 5 の when ガードで 5 回目以降を generic catch に
                 // 落として即 false を返しており、実質 ~200ms で打ち切られていた。
                 Logger.Log($"IPC送信リトライ({attempt}回目): {ex.Message}");
-                try { await Task.Delay(50, cancellationToken); }
+                try { await Task.Delay(retryDelayMs, cancellationToken); }
                 catch (OperationCanceledException) { return false; }
+                retryDelayMs = Math.Min(retryDelayMs * 2, MaxRetryDelayMs);
             }
             catch (Exception ex)
             {

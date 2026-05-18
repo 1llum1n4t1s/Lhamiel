@@ -8,7 +8,13 @@ namespace Lhamiel.Tests.Unit;
 /// <summary>
 /// IpcService の Named Pipe 通信テスト。
 /// 実際のパイプを使った統合テストで、送受信の正常系・異常系を検証。
+/// <para>
+/// すべて同一 PipeName (Lhamiel_IpcPipe_S{SessionId}) を共有するため、並列実行すると
+/// NamedPipeServerStream(maxNumberOfServerInstances=1) で `All pipe instances are busy` が発生する。
+/// `[Collection("Sequential")]` で xUnit の並列実行を抑止して flaky を防止する。
+/// </para>
 /// </summary>
+[Collection("Sequential")]
 public class IpcServiceTests
 {
     private const int TestTimeoutMs = 10_000;

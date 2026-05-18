@@ -35,27 +35,51 @@ internal static class MotwPropagator
 
     /// <summary>
     /// 展開先ディレクトリ内の全ファイルに Zone.Identifier を書き込む。
+    /// 大量ファイル（数千〜数万）の展開で逐次実行すると遅いため、
+    /// ProcessorCount に応じた並列度で並列書き込みする。
     /// </summary>
     internal static void PropagateToDirectory(string directoryPath, string zoneIdentifierContent, CancellationToken cancellationToken = default)
     {
         if (!Directory.Exists(directoryPath))
             return;
 
-        var propagatedCount = 0;
+        List<string> files;
         try
         {
-            foreach (var filePath in Directory.EnumerateFiles(directoryPath, "*",
-                new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint }))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (TryWriteZoneIdentifier(filePath, zoneIdentifierContent))
-                    propagatedCount++;
-            }
+            files = [.. Directory.EnumerateFiles(directoryPath, "*",
+                new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint })];
         }
-        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             Logger.Log($"MotW 伝播の列挙中にエラー: {directoryPath} - {ex.Message}", LogLevel.Warning);
+            return;
+        }
+
+        if (files.Count == 0)
+            return;
+
+        // 並列度は ProcessorCount 上限。LockedFileRetryPolicy の Thread.Sleep が
+        // ThreadPool を食いつぶさないよう、過剰並列化は避ける。
+        var maxParallelism = Math.Max(1, Math.Min(Environment.ProcessorCount, 8));
+        var propagatedCount = 0;
+        var options = new ParallelOptions
+        {
+            CancellationToken = cancellationToken,
+            MaxDegreeOfParallelism = maxParallelism,
+        };
+
+        try
+        {
+            Parallel.ForEach(files, options, filePath =>
+            {
+                if (TryWriteZoneIdentifier(filePath, zoneIdentifierContent))
+                    Interlocked.Increment(ref propagatedCount);
+            });
+        }
+        catch (OperationCanceledException) { throw; }
+        catch (AggregateException aex) when (aex.InnerExceptions.All(e => e is OperationCanceledException))
+        {
+            throw new OperationCanceledException(cancellationToken);
         }
 
         if (propagatedCount > 0)

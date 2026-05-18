@@ -175,6 +175,21 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Si è verificato un errore durante il controllo degli aggiornamenti.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Il repository degli aggiornamenti non è configurato.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Impossibile verificare gli aggiornamenti nell'ambiente di sviluppo.</x:String>
+  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">Controllo aggiornamenti in corso.</x:String>
+
+  <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
+  <x:String x:Key="Text.Close" xml:space="preserve">Chiudi</x:String>
+  <x:String x:Key="Text.SelfUpdate.Title" xml:space="preserve">Aggiornamento Software</x:String>
+  <x:String x:Key="Text.SelfUpdate.Available" xml:space="preserve">È disponibile una nuova versione del software: </x:String>
+  <x:String x:Key="Text.SelfUpdate.Checking" xml:space="preserve">Verifica aggiornamenti…</x:String>
+  <x:String x:Key="Text.SelfUpdate.Error" xml:space="preserve">Errore durante il controllo degli aggiornamenti!</x:String>
+  <x:String x:Key="Text.SelfUpdate.DownloadAndInstall" xml:space="preserve">Scarica e installa</x:String>
+  <x:String x:Key="Text.SelfUpdate.IgnoreThisVersion" xml:space="preserve">Salta questa versione</x:String>
+  <x:String x:Key="Text.SelfUpdate.UpToDate" xml:space="preserve">Non ci sono aggiornamenti disponibili.</x:String>
+  <x:String x:Key="Text.Settings.Update.Header" xml:space="preserve">Aggiornamenti</x:String>
+  <x:String x:Key="Text.Settings.Update.Check4UpdatesOnStartup" xml:space="preserve">Controlla aggiornamenti all'avvio</x:String>
+  <x:String x:Key="Text.Settings.Version.SkippedVersion" xml:space="preserve">Notifiche di aggiornamento ignorate per {0}</x:String>
+  <x:String x:Key="Text.Settings.Version.ClearSkippedVersion" xml:space="preserve">Annulla esclusione</x:String>
 
   <!-- Error Handler -->
   <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">File di archivio non trovato</x:String>

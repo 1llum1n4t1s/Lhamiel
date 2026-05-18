@@ -84,6 +84,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _includeHiddenAndSystemEntries = true;
 
+    /// <summary>
+    /// メイン画面起動時に Velopack 自動更新チェックを走らせるかどうかの UI バインディング。
+    /// 「全般」タブのチェックボックスから ON/OFF を切り替える。
+    /// </summary>
+    [ObservableProperty]
+    private bool _check4UpdatesOnStartup = true;
+
     [ObservableProperty]
     private int _selectedDirectoryStructureMode;
 
@@ -158,6 +165,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
             s.CompressMultipleAsOne = CompressMultipleAsOne;
             s.IncludeHiddenAndSystemEntries = IncludeHiddenAndSystemEntries;
+            s.Check4UpdatesOnStartup = Check4UpdatesOnStartup;
             s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
             s.ZipCompressionLevel = ZipCompressionLevel;
             s.SevenZipCompressionLevel = SevenZipCompressionLevel;
@@ -212,6 +220,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnCompressMultipleAsOneChanged(bool value) => AutoSave();
 
     partial void OnIncludeHiddenAndSystemEntriesChanged(bool value) => AutoSave();
+
+    partial void OnCheck4UpdatesOnStartupChanged(bool value) => AutoSave();
 
     partial void OnSelectedDirectoryStructureModeChanged(int value) => AutoSave();
 
@@ -293,16 +303,28 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _licenseText = string.Empty;
 
     /// <summary>
-    /// 更新チェックの状態メッセージ
-    /// </summary>
-    [ObservableProperty]
-    private string _updateStatusText = string.Empty;
-
-    /// <summary>
-    /// 更新チェック中かどうか
+    /// 更新チェック中かどうか（ボタン無効化バインド用）
     /// </summary>
     [ObservableProperty]
     private bool _isCheckingUpdate;
+
+    /// <summary>
+    /// スキップ中の更新タグ（"v1.0.166" 等）。空文字列はスキップなしを示す。
+    /// バージョンタブの「スキップを取り消す」UI バインド用。Settings.IgnoreUpdateTag のミラー。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasIgnoredUpdateTag))]
+    [NotifyPropertyChangedFor(nameof(IgnoredUpdateTagDisplay))]
+    private string _ignoredUpdateTag = string.Empty;
+
+    /// <summary>「スキップ取り消し」UI 表示の可否（バインド用 derived プロパティ）。</summary>
+    public bool HasIgnoredUpdateTag => !string.IsNullOrEmpty(IgnoredUpdateTag);
+
+    /// <summary>「現在 vX.Y.Z をスキップ中」の表示文字列（ローカライズフォーマット適用済み）。</summary>
+    public string IgnoredUpdateTagDisplay =>
+        string.IsNullOrEmpty(IgnoredUpdateTag)
+            ? string.Empty
+            : App.Text("Settings.Version.SkippedVersion", IgnoredUpdateTag);
 
     /// <summary>
     /// テーマの選択肢（キー: 設定値、値: 表示名）
@@ -378,6 +400,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OpenCompressionOutputFolder = s.OpenCompressionOutputFolder;
         CompressMultipleAsOne = s.CompressMultipleAsOne;
         IncludeHiddenAndSystemEntries = s.IncludeHiddenAndSystemEntries;
+        Check4UpdatesOnStartup = s.Check4UpdatesOnStartup;
+        IgnoredUpdateTag = s.IgnoreUpdateTag ?? string.Empty;
         SelectedDirectoryStructureMode = (int)s.DirectoryStructureMode;
         SelectedLocale = string.IsNullOrEmpty(s.Locale) ? App.DetectDefaultLocale() : s.Locale;
         ZipCompressionLevel = s.ZipCompressionLevel;
@@ -775,54 +799,54 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// 最新バージョンの確認コマンド
+    /// 最新バージョンの確認コマンド。
+    /// VelopackUpdateDialog.Avalonia の手動チェック経路を <see cref="App.Check4Update(bool)"/> 経由で起動する。
+    /// 結果表示 (UpToDate / Available / Error / Checking) はダイアログ側で完結するため、
+    /// ViewModel 側でテキスト更新は不要（UI は <see cref="IsCheckingUpdate"/> でボタンの多重押下のみ防御する）。
     /// </summary>
     [RelayCommand]
-    private async Task CheckForUpdateAsync()
+    private Task CheckForUpdateAsync()
     {
-        if (IsCheckingUpdate) return;
+        if (IsCheckingUpdate) return Task.CompletedTask;
 
         IsCheckingUpdate = true;
-        UpdateStatusText = string.Empty;
-
         try
         {
-            var statusProgress = new Progress<string>(message => UpdateStatusText = message);
-            var result = await UpdateChecker.CheckAndDownloadAsync(statusProgress);
-
-            switch (result.Result)
-            {
-                case UpdateChecker.UpdateResult.Downloaded when result.Info != null && result.Manager != null:
-                    UpdateStatusText = App.Text("Update.Applying");
-                    // ApplyUpdatesAndRestart でアプリを再起動 → 通常起動フローでメイン画面が表示される
-                    result.Manager.ApplyUpdatesAndRestart(result.Info);
-                    break;
-
-                case UpdateChecker.UpdateResult.NoUpdate:
-                    UpdateStatusText = App.Text("Update.UpToDate");
-                    break;
-
-                case UpdateChecker.UpdateResult.NotInstalled:
-                    UpdateStatusText = App.Text("Update.DevEnvironment");
-                    break;
-
-                case UpdateChecker.UpdateResult.NotConfigured:
-                    UpdateStatusText = App.Text("Update.NoRepository");
-                    break;
-
-                default:
-                    UpdateStatusText = $"⚠ {result.Message}";
-                    break;
-            }
+            App.Check4Update(manually: true);
         }
         catch (Exception ex)
         {
             Logger.LogException("更新チェックコマンドでエラーが発生", ex);
-            UpdateStatusText = App.Text("Update.Error");
+            _ = MessageService.ShowError(App.Text("Update.Error"));
         }
         finally
         {
+            // ダイアログ自体は App.Check4Update 内部の Dispatcher.UIThread.InvokeAsync で
+            // 非同期に動くため、ボタンは即時に再有効化して良い（多重起動は App 側 Interlocked で防御済み）。
             IsCheckingUpdate = false;
+        }
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// 「このバージョンをスキップ」で保存された <see cref="Settings.IgnoreUpdateTag"/> を取り消すコマンド。
+    /// バージョンタブの「取り消し」ボタンから呼ばれる。誤クリックの復旧導線。
+    /// </summary>
+    [RelayCommand]
+    private void ClearIgnoredUpdateTag()
+    {
+        if (string.IsNullOrEmpty(IgnoredUpdateTag)) return;
+        try
+        {
+            _settingsManager.Mutate(s => s.IgnoreUpdateTag = "");
+            _settingsManager.Save();
+            IgnoredUpdateTag = "";
+            Logger.Log("IgnoreUpdateTag をユーザー操作によりクリアしました", LogLevel.Warning);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("IgnoreUpdateTag のクリアに失敗", ex);
+            _ = MessageService.ShowError(App.Text("Error.SaveSettingsFailed", ex.Message));
         }
     }
 

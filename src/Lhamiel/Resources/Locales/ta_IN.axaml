@@ -175,6 +175,21 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">புதுப்பிப்புகளைச் சரிபார்க்கும் போது பிழை ஏற்பட்டது.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">புதுப்பிப்பு களஞ்சியம் கட்டமைக்கப்படவில்லை.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">மேம்பாட்டு சூழலில் புதுப்பிப்புகளைச் சரிபார்க்க இயலாது.</x:String>
+  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">புதுப்பிப்பு சரிபார்ப்பு நடைபெறுகிறது.</x:String>
+
+  <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
+  <x:String x:Key="Text.Close" xml:space="preserve">மூடு</x:String>
+  <x:String x:Key="Text.SelfUpdate.Title" xml:space="preserve">மென்பொருள் புதுப்பி</x:String>
+  <x:String x:Key="Text.SelfUpdate.Available" xml:space="preserve">இந்த மென்பொருளின் புதிய பதிப்பு கிடைக்கிறது: </x:String>
+  <x:String x:Key="Text.SelfUpdate.Checking" xml:space="preserve">புதுப்பிப்புகளைச் சரிபார்க்கிறது…</x:String>
+  <x:String x:Key="Text.SelfUpdate.Error" xml:space="preserve">புதுப்பிப்புகளைச் சரிபார்க்க முடியவில்லை!</x:String>
+  <x:String x:Key="Text.SelfUpdate.DownloadAndInstall" xml:space="preserve">பதிவிறக்கி நிறுவு</x:String>
+  <x:String x:Key="Text.SelfUpdate.IgnoreThisVersion" xml:space="preserve">இந்தப் பதிப்பைத் தவிர்</x:String>
+  <x:String x:Key="Text.SelfUpdate.UpToDate" xml:space="preserve">தற்போது புதுப்பிப்புகள் எதுவும் கிடைக்கவில்லை.</x:String>
+  <x:String x:Key="Text.Settings.Update.Header" xml:space="preserve">புதுப்பிப்புகள்</x:String>
+  <x:String x:Key="Text.Settings.Update.Check4UpdatesOnStartup" xml:space="preserve">தொடக்கத்தில் புதுப்பிப்புகளைச் சரிபார்</x:String>
+  <x:String x:Key="Text.Settings.Version.SkippedVersion" xml:space="preserve">{0} இன் புதுப்பிப்பு அறிவிப்புகள் தவிர்க்கப்படுகின்றன</x:String>
+  <x:String x:Key="Text.Settings.Version.ClearSkippedVersion" xml:space="preserve">தவிர்ப்பை ரத்து செய்</x:String>
 
   <!-- Error Handler -->
   <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">காப்பகக் கோப்பு கிடைக்கவில்லை</x:String>

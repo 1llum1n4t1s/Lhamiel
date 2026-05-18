@@ -108,10 +108,10 @@ public class ProgressLogicTests
         Assert.True(p3 >= lastP, $"Success should be monotonic. Last: {lastP}, Current: {p3}");
     }
 
-    // ArchiveCompressor.cs 内のロジックを再現（Ice アプリケーションの実装パターンに準拠）
+    // ArchiveCompressor.cs / ArchiveExtractor.cs の進捗計算と同じ式
+    // (1llum1n4t1s.Sevenzip の Report.GetRatio() を信頼してパーセントに変換)
     private int GetPercentage(Report report)
     {
-        // ライブラリの GetRatio() と Report を信じる
         var ratio = report.GetRatio();
         var percentage = (int)(ratio * 100);
         return percentage;

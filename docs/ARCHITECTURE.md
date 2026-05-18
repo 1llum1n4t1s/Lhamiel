@@ -10,7 +10,7 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 - **UIフレームワーク**: Avalonia 12（AXAML、compiled bindings）
 - **圧縮ライブラリ**: 1llum1n4t1s.Sevenzip（7z.dll ラッパー）
 - **MVVM**: CommunityToolkit.Mvvm（`[ObservableProperty]` ソースジェネレーター）
-- **自動更新**: Velopack
+- **自動更新**: Velopack（2 系統運用: `Program.cs --update-check` サイレント CLI 経路 + `App.Check4Update` UI 経路（VelopackUpdateDialog.Avalonia ダイアログ））
 - **テーマ**: FluentTheme
 - **ビルド**: Native AOT 対応（`PublishAot=true`）
 
@@ -48,9 +48,17 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 │  - FileAssociation（レジストリ）    │
 │  - FileIconHelper（Shell API）      │
 │  - ShortcutCreator（COM）           │
+│  - StartupRegistration（HKCU\Run）  │
 │  - PathValidator                    │
 │  - NativeLibraryManager（7z.dll）   │
-│  - UpdateChecker（Velopack）        │
+│  - IpcService（Named Pipe）         │
+│  - MotwPropagator（Zone.Identifier）│
+│  - CrashHandler（MiniDump）         │
+│  - DiagnosticsCollector（support ZIP）│
+│  - TempCleanup（一時ファイル掃除）  │
+│  - UpdateChecker（Velopack サイレント）│
+│  - App.Check4Update（VelopackUpdateDialog UI）│
+│  - LhamielUpdateStrings（IUpdateDialogStrings）│
 └─────────────────────────────────────┘
 ```
 
@@ -81,7 +89,17 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 | `ArchiveErrorHandler` | エラー分類（Critical/Recoverable/Warning） |
 | `PartialExtractionHandler` | 破損アーカイブの選択的展開、エラーリトライ |
 | `DiskSpaceChecker` | 事前容量チェック + 定期監視（10秒間隔） |
-| `Settings` / `SettingsManager` | JSON設定。シングルトン管理 |
+| `Settings` / `SettingsManager` | JSON設定。シングルトン管理、`MutateAndSave` で atomic 更新（Round 3c で追加） |
+| `IpcService` | Named Pipe による二重起動引数の引き継ぎ。`PipeOptions.CurrentUserOnly` |
+| `MotwPropagator` | 展開後ファイルへ Zone.Identifier ADS 伝播 |
+| `CrashHandler` | 未処理例外時の MiniDump 生成 |
+| `DiagnosticsCollector` | サポート用 ZIP（masked settings / logs / dumps / env info） |
+| `TempCleanup` | 起動時に `%TEMP%\Lhamiel_Temp_*` の残骸を MinAge=30 分超で削除 |
+| `App.Check4Update` | Velopack 自動更新の UI 経路。`Settings.Check4UpdatesOnStartup=true` で起動時 + 「アップデート確認」ボタンから手動起動。`VelopackUpdateDialog.UpdateDialogWindow` 経由 |
+| `LhamielUpdateStrings` | `VelopackUpdateDialog.IUpdateDialogStrings` の Lhamiel 実装（シングルトン、`App.Text` 動的解決） |
+| `UpdateChecker` | Velopack 自動更新のサイレント CLI 経路 (`--update-check`)。`StartupRegistration` の HKCU\Run 経由で Windows ログイン時に起動 |
+
+詳細なクラス責務は [CLAUDE.md](../CLAUDE.md) の Key Util Classes 表を参照（こちらが single source of truth）。
 
 ## データフロー
 

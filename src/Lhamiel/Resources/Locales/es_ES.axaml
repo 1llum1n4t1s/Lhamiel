@@ -175,6 +175,21 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Se produjo un error al buscar actualizaciones.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">El repositorio de actualizaciones no está configurado.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">No se pueden buscar actualizaciones en el entorno de desarrollo.</x:String>
+  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">Verificación de actualizaciones en curso.</x:String>
+
+  <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
+  <x:String x:Key="Text.Close" xml:space="preserve">Cerrar</x:String>
+  <x:String x:Key="Text.SelfUpdate.Title" xml:space="preserve">Actualización de Software</x:String>
+  <x:String x:Key="Text.SelfUpdate.Available" xml:space="preserve">Nueva versión de este software disponible: </x:String>
+  <x:String x:Key="Text.SelfUpdate.Checking" xml:space="preserve">Buscando actualizaciones…</x:String>
+  <x:String x:Key="Text.SelfUpdate.Error" xml:space="preserve">¡Error al buscar actualizaciones!</x:String>
+  <x:String x:Key="Text.SelfUpdate.DownloadAndInstall" xml:space="preserve">Descargar e instalar</x:String>
+  <x:String x:Key="Text.SelfUpdate.IgnoreThisVersion" xml:space="preserve">Omitir Esta Versión</x:String>
+  <x:String x:Key="Text.SelfUpdate.UpToDate" xml:space="preserve">Actualmente no hay actualizaciones disponibles.</x:String>
+  <x:String x:Key="Text.Settings.Update.Header" xml:space="preserve">Actualizaciones</x:String>
+  <x:String x:Key="Text.Settings.Update.Check4UpdatesOnStartup" xml:space="preserve">Buscar actualizaciones al iniciar</x:String>
+  <x:String x:Key="Text.Settings.Version.SkippedVersion" xml:space="preserve">Omitiendo notificaciones de actualización para {0}</x:String>
+  <x:String x:Key="Text.Settings.Version.ClearSkippedVersion" xml:space="preserve">Cancelar omisión</x:String>
 
   <!-- Error Handler -->
   <x:String x:Key="Text.ErrorHandler.FileNotFound" xml:space="preserve">Archivo comprimido no encontrado</x:String>

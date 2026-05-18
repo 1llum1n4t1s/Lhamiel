@@ -13,7 +13,13 @@ namespace Lhamiel.Util;
 /// </summary>
 internal static partial class DiagnosticsCollector
 {
-    private static readonly string[] _sensitiveKeys = ["UpdateRepoOwner", "UpdateRepoName", "UpdateChannel"];
+    // マスク対象は「真の秘密 (API キー / トークン / パスワード / 個人情報)」のみに限定する。
+    // 以下は意図的にマスク対象から除外:
+    //   - UpdateRepoOwner / UpdateRepoName: Settings に [JsonIgnore] でハードコード固定、settings.json に出ない
+    //   - UpdateChannel: allow-list ("release" / "prerelease") の 2 択、公開情報
+    //   - IgnoreUpdateTag: GitHub Release タグ名 (公開情報、診断時にサポート担当に見せる方が有用)
+    // 新たに秘密情報を Settings に追加した場合はここに列挙すること。
+    private static readonly string[] _sensitiveKeys = [];
 
     /// <summary>
     /// 診断 ZIP を指定パスに作成する。
@@ -220,6 +226,15 @@ internal static partial class DiagnosticsCollector
             {
                 CopyFileWithSharedRead(fi.FullName, Path.Combine(logsDir, fi.Name));
             }
+            catch (FileNotFoundException)
+            {
+                // Logger.CleanupOldLogFiles の非同期タスクで削除された経路。
+                // ベストエフォート収集なので Warning に上げない。
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // 親ディレクトリごと消えた経路（手動クリーンアップ等）。
+            }
             catch (Exception ex)
             {
                 Logger.Log($"ログファイルコピーに失敗: {fi.Name} - {ex.Message}", LogLevel.Warning);
@@ -253,6 +268,14 @@ internal static partial class DiagnosticsCollector
                 var txtPath = Path.ChangeExtension(fi.FullName, ".txt");
                 if (File.Exists(txtPath))
                     CopyFileWithSharedRead(txtPath, Path.Combine(dumpsDir, Path.GetFileName(txtPath)));
+            }
+            catch (FileNotFoundException)
+            {
+                // CrashHandler のローテーション削除と被った経路。
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // ダンプディレクトリごと消えた経路。
             }
             catch (Exception ex)
             {

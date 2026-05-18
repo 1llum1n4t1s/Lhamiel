@@ -92,6 +92,21 @@ public class Settings
     public string UpdateChannel { get; set; } = "release";
 
     /// <summary>
+    /// メイン画面起動時に Velopack 自動更新チェックを走らせるかどうか。
+    /// VelopackUpdateDialog.Avalonia の <see cref="App.Check4Update(bool)"/> 自動チェック経路の ON/OFF を切り替える。
+    /// 設定 UI のチェックボックスからユーザーが変更できる。デフォルトは true（バックグラウンドで起動時に確認）。
+    /// </summary>
+    public bool Check4UpdatesOnStartup { get; set; } = true;
+
+    /// <summary>
+    /// ユーザーが「このバージョンをスキップ」を選択した Velopack リリースタグ名（例: "v1.0.166"）。
+    /// 自動更新チェック (manually=false) でこのタグ名と一致するリリースが見つかった場合はダイアログを開かない。
+    /// 手動チェック (manually=true) は無視タグを無視して常に最新を表示する。
+    /// 空文字列は「無視タグ未設定」を示す。
+    /// </summary>
+    public string IgnoreUpdateTag { get; set; } = "";
+
+    /// <summary>
     /// 展開完了後に展開先フォルダを開くかどうか
     /// </summary>
     public bool OpenExtractionOutputFolder { get; set; } = true;
@@ -376,6 +391,21 @@ public class Settings
 
         ExcludedFilePatterns = NormalizeExcludedFilePatterns(ExcludedFilePatterns ?? CreateDefaultExcludedFilePatterns());
 
+        // IgnoreUpdateTag は VelopackUpdateDialog の VersionIgnored イベント経由でユーザーが
+        // 「このバージョンをスキップ」を押した GitHub Release タグ名が保存される。
+        // settings.json 直接編集や JSON null (System.Text.Json が non-nullable string に null を代入する経路)、
+        // 攻撃者によるタグ名巨大化への自衛として、null → "" 正規化 + 長さ・制御文字 allow-list を適用する。
+        // Velopack のタグ正規化（"v" prefix と空白の自動正規化）と整合するよう、Trim のみ追加で 'v' prefix は触らない。
+        IgnoreUpdateTag ??= "";
+        if (IgnoreUpdateTag.Length > 0)
+        {
+            // 長さ 256 文字超 or 制御文字（\0〜\x1F）を含むタグは異常値として破棄
+            if (IgnoreUpdateTag.Length > 256 || IgnoreUpdateTag.AsSpan().IndexOfAnyInRange('\0', '\x1F') >= 0)
+                IgnoreUpdateTag = "";
+            else
+                IgnoreUpdateTag = IgnoreUpdateTag.Trim();
+        }
+
         // 出力先ディレクトリのパス妥当性チェック（存在確認 + 保護ディレクトリ除外）
         // 不正値はデスクトップにフォールバック
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
@@ -461,6 +491,8 @@ public class Settings
         DirectoryStructureMode = DirectoryStructureMode.IncludeRoot;
         IncludeHiddenAndSystemEntries = true;
         UpdateChannel = "release";
+        Check4UpdatesOnStartup = true;
+        IgnoreUpdateTag = "";
         LogMaxSizeMB = 10;
         LogRetentionDays = 7;
         CompressMultipleAsOne = true;
@@ -507,6 +539,8 @@ public class Settings
             if (TryGetString(root, nameof(CompressionOutputDirectory), out var cod)) { s.CompressionOutputDirectory = cod!; recoveredCount++; }
             // UpdateRepoOwner / UpdateRepoName は [JsonIgnore] ハードコード固定のため回収不要
             if (TryGetString(root, nameof(UpdateChannel), out var uc)) { s.UpdateChannel = uc!; recoveredCount++; }
+            if (TryGetString(root, nameof(IgnoreUpdateTag), out var iut)) { s.IgnoreUpdateTag = iut!; recoveredCount++; }
+            if (TryGetBool(root, nameof(Check4UpdatesOnStartup), out var c4uos)) { s.Check4UpdatesOnStartup = c4uos; recoveredCount++; }
 
             if (TryGetBool(root, nameof(ExtractionOutputToSameDirectory), out var eotsd)) { s.ExtractionOutputToSameDirectory = eotsd; recoveredCount++; }
             if (TryGetBool(root, nameof(CompressionOutputToSameDirectory), out var cotsd)) { s.CompressionOutputToSameDirectory = cotsd; recoveredCount++; }
