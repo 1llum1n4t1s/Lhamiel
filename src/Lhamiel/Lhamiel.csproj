@@ -17,6 +17,15 @@
     <!-- ネイティブAOT -->
     <PublishAot>true</PublishAot>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!--
+      IL3053 = "Assembly produced AOT analysis warnings"。Velopack 0.0.1369-g1d5c984 内部の
+      Velopack.Windows.ShellLink+CShellLink (COM interop) で ILC 10.0.8 が「Invalid IL or CLR
+      metadata」と判定し、Directory.Build.props の TreatWarningsAsErrors=true でビルドエラー化される。
+      該当 COM ctor は本アプリのコードパスでは呼ばれないため (TrimmerRootAssembly で Velopack を
+      root 化しているがランタイム到達経路は無い)、警告を抑制して publish を継続する。
+      Velopack 側で AOT 対応の修正が入ったら除去する。
+    -->
+    <NoWarn>$(NoWarn);IL3053</NoWarn>
     <!-- CLIから -p:RuntimeIdentifier=win-arm64 で切り替え可能 -->
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
