@@ -127,6 +127,14 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ## 更新履歴
 
+### v1.0.168 (2026-05-20)
+
+- **🚨 自動更新の配信元を GitHub Releases → Cloudflare R2 に切替** — `Settings.UpdateBaseUrl` (`https://lhamiel.1llum1n4t1.com`、`[JsonIgnore]` + getter-only ハードコード固定) を `Velopack.Sources.SimpleWebSource` 経由で取得。CI workflow (`velopack-release.yml`) を `gh release create/upload` から `wrangler r2 object put` + 配信確認 `curl --fail` に書き換え (`actions/setup-node@v6.4.0` / `wrangler@4.92.0` バージョン固定、workflow level `permissions: contents: read` に最小化)。⚠️ **v1.0.167 以下のユーザーは旧 `GithubSource` クライアントなので自動更新が届きません**。手動で本リリース版を再インストールしてください
+- **アップデート確認ボタンの自動無効化** — `App.UpdateCheckStateChanged` 静的イベントを追加し、`_isCheckingUpdate` フラグ遷移を `TryBeginUpdateCheck` / `EndUpdateCheck` ヘルパーで一元化。`MainWindowViewModel.IsCheckingUpdate` がイベントを購読することで、起動時自動チェック中も「アップデート確認」ボタンが disabled になる (並走実行を未然に防止)
+- **Velopack 重複ダイアログ撤去** — 17 ロケールから `Text.Update.AlreadyChecking` キーを削除、`App.Check4Update` の `MessageService.ShowInfo("AlreadyChecking")` 呼び出しを撤去 (Velopack 自身のプログレスダイアログと表示が重複していたため)
+- **テスト** — `SettingsTests` / `VelopackIntegrationAdversarialTests` を `UpdateBaseUrl` の JSON injection 防御 / 不変性テストに更新 (692/692 合格)
+- **ドキュメント** — `docs/SETTINGS_SCHEMA.md` / `docs/ARCHITECTURE.md` / `CLAUDE.md` を R2 配信元に追従
+
 ### v1.0.167 (2026-05-18)
 
 - **「アップデート確認」ボタンのサイレント failure を修正** — リポジトリ未設定 / 開発実行 (`IsInstalled=false`) / 既に確認中の 3 経路で UI フィードバックがなく「ボタンを押しても何も起きない」状態だったのを、それぞれメッセージダイアログで明示するよう修正。17 ロケールに `Text.Update.AlreadyChecking` を追加

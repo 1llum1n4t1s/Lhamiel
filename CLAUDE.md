@@ -95,11 +95,12 @@ Drag-and-drop drives the app:
 | `CrashHandler` | MiniDump P/Invoke for unhandled exceptions, dump rotation |
 | `DiagnosticsCollector` | Export support ZIP (logs, masked settings, environment info, dumps) |
 | `PartialExtractionHandler` | **[Obsolete]** — delegates to `ArchiveExtractor.TryExtractEntryAsync`. Types still used by ErrorRecoveryDialog |
-| `Settings` / `SettingsManager` | JSON config at `%LocalAppData%\Lhamiel\settings.json` with JsonDocument fallback recovery, compression scan settings, and exclusion patterns |
+| `Settings` / `SettingsManager` | JSON config at `%LocalAppData%\Lhamiel\settings.json` with JsonDocument fallback recovery, compression scan settings, and exclusion patterns。`UpdateBaseUrl` は `[JsonIgnore]` + getter-only でハードコード固定（`CanonicalUpdateBaseUrl`）、悪意ある第三者ホストへの誘導防御 |
 | `PathValidator` | Path safety checks + `EnsureLongPathPrefix` for paths > 260 chars |
 | `NativeLibraryManager` | 7z.dll lifecycle management |
-| `UpdateChecker` | Velopack 自動更新の **`--update-check` サイレント CLI 経路** (Program.cs から `StartupRegistration` の HKCU\Run 登録経由で発火、UI 不要なバックグラウンド自動更新) |
-| `App.Check4Update` | Velopack 自動更新の **UI 経路**。`Settings.Check4UpdatesOnStartup=true` のときメイン画面起動直後 + 「アップデート確認」ボタンから手動起動。`VelopackUpdateDialog.UpdateDialogWindow` をオーナー付きで表示し、Velopack 0.0.1369-g1d5c984 と組み合わせて 30 秒タイムアウトで動作 |
+| `UpdateChecker` | Velopack 自動更新の **`--update-check` サイレント CLI 経路** (Program.cs から `StartupRegistration` の HKCU\Run 登録経由で発火、UI 不要なバックグラウンド自動更新)。配信元は `Settings.UpdateBaseUrl` (= Cloudflare R2 カスタムドメイン) を **`Velopack.Sources.SimpleWebSource`** で取得 (v1.0.168 で `GithubSource` から切替) |
+| `App.Check4Update` | Velopack 自動更新の **UI 経路**。`Settings.Check4UpdatesOnStartup=true` のときメイン画面起動直後 + 「アップデート確認」ボタンから手動起動。`VelopackUpdateDialog.UpdateDialogWindow` をオーナー付きで表示し、Velopack 0.0.1369-g1d5c984 と組み合わせて 30 秒タイムアウトで動作。`SimpleWebSource` 経由 R2 取得 |
+| `App.UpdateCheckStateChanged` 静的イベント | `_isCheckingUpdate` フラグ遷移を `TryBeginUpdateCheck` / `EndUpdateCheck` ヘルパーで発火。`MainWindowViewModel.IsCheckingUpdate` を駆動し、起動時自動チェック中も「アップデート確認」ボタンが自動 disabled (並走実行防止) |
 | `LhamielUpdateStrings` | `VelopackUpdateDialog.IUpdateDialogStrings` の Lhamiel 実装 (Models/)。`Text.SelfUpdate.*` / `Text.Close` を `App.Text()` 経由で動的解決 (シングルトン、`NotifyLocaleChanged()` でロケール切替即時反映) |
 | `IpcService` | Single-instance enforcement via Named Pipe (`PipeOptions.CurrentUserOnly`) |
 | `FolderOpener` | Opens explorer to extraction/compression output folder |
@@ -159,7 +160,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - **Native AOT** (`PublishAot=true`) — avoid reflection-heavy patterns
 - **7z.dll** — `1llum1n4t1s.Sevenzip` NuGet が同梱。`NativeLibraryManager` が起動時に `LoadLibrary` で固定
 - **Logger** — `SuperLightLogger` File Target, `%LocalAppData%\Lhamiel\Lhamiel_yyyyMMdd.log`
-- **Velopack** 自動更新 — 2 系統: (1) `Program.cs --update-check` サイレント CLI 経路 (Windows ログイン時 `StartupRegistration` から発火、UI 無し)、(2) `App.Check4Update` UI 経路 (`VelopackUpdateDialog.Avalonia` 1.0.3 経由のダイアログ表示、`Settings.Check4UpdatesOnStartup=true` で起動時自動 + メニューから手動)
+- **Velopack** 自動更新 — 配信元は **Cloudflare R2** (`https://lhamiel.1llum1n4t1.com`、`SimpleWebSource` 経由)。2 系統: (1) `Program.cs --update-check` サイレント CLI 経路 (Windows ログイン時 `StartupRegistration` から発火、UI 無し)、(2) `App.Check4Update` UI 経路 (`VelopackUpdateDialog.Avalonia` 1.0.3 経由のダイアログ表示、`Settings.Check4UpdatesOnStartup=true` で起動時自動 + メニューから手動)。旧 GitHub Releases 経由 (`GithubSource`) は v1.0.168 で廃止 (即時カットオーバー、v1.0.167 以下は手動再インストール必要)
 - **AllowUnsafeBlocks** for P/Invoke (COM interop in `ShortcutCreator`, `FileIconHelper`, `CrashHandler`)
 - **Acrylic blur** — 全ダイアログで `ExperimentalAcrylicBorder` + `ExtendClientAreaToDecorationsHint`
 - Async/await + CancellationToken throughout all I/O operations
@@ -173,7 +174,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 ## CI/CD
 
 - **PR builds**: `.github/workflows/dotnet-build.yml` — restore, build, test + code coverage on every PR
-- **Release**: `.github/workflows/velopack-release.yml` — triggered by push to `release/*` branches
+- **Release**: `.github/workflows/velopack-release.yml` — `release/*` ブランチへの push でトリガー。`vpk pack` で win + win-arm64 を並列ビルド後、`wrangler@4.x` (Node.js 22) で Cloudflare R2 バケット `lhamiel-updates` にアップロード + `curl --fail` で配信確認 (`releases.{channel}.json` HTTP 200 検証)。必要 Secrets: `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`
 - **CodeQL**: `.github/workflows/codeql.yml` — C# security analysis on PR + weekly
 - **Dependabot**: `.github/dependabot.yml` — NuGet weekly + github-actions monthly
 
