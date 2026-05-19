@@ -175,7 +175,6 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Si è verificato un errore durante il controllo degli aggiornamenti.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Il repository degli aggiornamenti non è configurato.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Impossibile verificare gli aggiornamenti nell'ambiente di sviluppo.</x:String>
-  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">Controllo aggiornamenti in corso.</x:String>
 
   <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
   <x:String x:Key="Text.Close" xml:space="preserve">Chiudi</x:String>

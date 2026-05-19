@@ -175,7 +175,6 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">檢查更新時發生錯誤。</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">未設定更新儲存庫。</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">無法在開發環境中檢查更新。</x:String>
-  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">正在檢查更新。</x:String>
 
   <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
   <x:String x:Key="Text.Close" xml:space="preserve">關閉</x:String>

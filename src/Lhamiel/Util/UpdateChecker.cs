@@ -2,6 +2,7 @@ using Velopack;
 using Velopack.Sources;
 namespace Lhamiel.Util;
 
+
 /// <summary>
 /// アプリケーションの更新チェック・ダウンロードを行う共通クラス
 /// </summary>
@@ -47,34 +48,38 @@ public static class UpdateChecker
     /// <see cref="Settings"/> から <see cref="UpdateManager"/> を組み立てる共通ファクトリ。
     /// サイレント経路（<see cref="CheckAndDownloadAsync"/>）と UI 経路（<c>App.Check4Update</c>）から呼ばれる。
     /// <para>
-    /// 戻り値は <c>(mgr, repoUrl, channel)</c> のタプル。<see cref="Settings.UpdateRepoOwner"/> /
-    /// <see cref="Settings.UpdateRepoName"/> が未設定の場合は <c>null</c> を返す（呼び出し元が
-    /// <c>NotConfigured</c> や早期 return を判断）。
+    /// 戻り値は <c>(mgr, baseUrl, channel)</c> のタプル。<see cref="Settings.UpdateBaseUrl"/> が
+    /// 未設定の場合は <c>null</c> を返す（呼び出し元が <c>NotConfigured</c> や早期 return を判断）。
     /// </para>
     /// <para>
-    /// <see cref="Settings.UpdateRepoOwner"/> / <see cref="Settings.UpdateRepoName"/> は
-    /// <c>[JsonIgnore]</c> でハードコード固定されているため、現実には null/空にはならないが、
-    /// 防御として allow-list ガードを残す。
+    /// <see cref="Settings.UpdateBaseUrl"/> は <c>[JsonIgnore]</c> でハードコード固定されているため、
+    /// 現実には null/空にはならないが、防御として allow-list ガードを残す。
+    /// </para>
+    /// <para>
+    /// Cloudflare R2 を更新配信元として使う構成。Velopack の <see cref="SimpleWebSource"/> が
+    /// <c>{baseUrl}/releases.{channel}.json</c> を取得し、同ディレクトリの nupkg をダウンロードする。
+    /// channel は <c>vpk pack --channel</c> で指定した値（<c>win</c> / <c>win-arm64</c>）と一致する必要があり、
+    /// インストール時の channel が Velopack 内部に記憶されるため明示指定は不要。
     /// </para>
     /// </summary>
     /// <param name="settings">Settings インスタンス（呼び出し元で snapshot 推奨）</param>
-    /// <returns>UpdateManager とリポジトリ情報。未設定時は null</returns>
-    internal static (UpdateManager Manager, string RepoUrl, string Channel)? TryBuildUpdateManager(Settings settings)
+    /// <returns>UpdateManager と配信元情報。未設定時は null</returns>
+    internal static (UpdateManager Manager, string BaseUrl, string Channel)? TryBuildUpdateManager(Settings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        var repoOwner = settings.UpdateRepoOwner;
-        var repoName = settings.UpdateRepoName;
-        if (string.IsNullOrWhiteSpace(repoOwner) || string.IsNullOrWhiteSpace(repoName))
+        var baseUrl = settings.UpdateBaseUrl;
+        if (string.IsNullOrWhiteSpace(baseUrl))
             return null;
 
         var channel = string.IsNullOrWhiteSpace(settings.UpdateChannel) ? "release" : settings.UpdateChannel;
-        var repoUrl = $"https://github.com/{repoOwner}/{repoName}";
-        var isPrerelease = channel.Equals("prerelease", StringComparison.OrdinalIgnoreCase);
-        // GithubSource の第 2 引数 = AccessToken。public repo を前提に空文字列で構築する
-        // (将来 private repo に切り替える場合は Settings に AccessToken を追加し、ここで参照する)。
-        var source = new GithubSource(repoUrl, string.Empty, isPrerelease);
-        return (new UpdateManager(source), repoUrl, channel);
+        // SimpleWebSource: 静的 HTTP ホスティング (R2) からの取得。
+        // base URL + /releases.{channel}.json を取りに行く。channel は installed channel を
+        // Velopack が自動で再利用する (win / win-arm64)。Settings.UpdateChannel = "prerelease" を
+        // 別 channel として扱う場合は、UpdateOptions.ExplicitChannel で明示指定する必要あり
+        // (現状 vpk pack 側で prerelease 用 channel を生成していないため未対応)。
+        var source = new SimpleWebSource(baseUrl);
+        return (new UpdateManager(source), baseUrl, channel);
     }
 
     /// <summary>
@@ -95,7 +100,7 @@ public static class UpdateChecker
                 Logger.Log("更新元リポジトリが未設定のため更新チェックをスキップします。");
                 return new CheckResult(UpdateResult.NotConfigured, null, null, App.Text("Update.RepoNotConfigured"));
             }
-            var (updateManager, repoUrl, channel) = build.Value;
+            var (updateManager, baseUrl, channel) = build.Value;
 
             if (!updateManager.IsInstalled)
             {
@@ -103,7 +108,7 @@ public static class UpdateChecker
                 return new CheckResult(UpdateResult.NotInstalled, null, null, App.Text("Update.DevSkip"));
             }
 
-            Logger.Log($"更新チェック: リポジトリ: {repoUrl}, チャンネル: {channel}");
+            Logger.Log($"更新チェック: 配信元: {baseUrl}, チャンネル: {channel}");
             statusProgress?.Report(App.Text("Update.Downloading"));
 
             // 更新チェック（Velopack の CheckForUpdatesAsync は CancellationToken を受け取らないため、タイムアウトは Task.WhenAny で実装）

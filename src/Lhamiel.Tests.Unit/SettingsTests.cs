@@ -17,8 +17,7 @@ public class SettingsTests
         Assert.Equal("ZIP", settings.CompressionFormat);
         Assert.False(settings.ExtractionOutputToSameDirectory);
         Assert.False(settings.CompressionOutputToSameDirectory);
-        Assert.Equal("1llum1n4t1s", settings.UpdateRepoOwner);
-        Assert.Equal("Lhamiel", settings.UpdateRepoName);
+        Assert.Equal("https://lhamiel.1llum1n4t1.com", settings.UpdateBaseUrl);
         Assert.Equal("release", settings.UpdateChannel);
     }
 
@@ -56,8 +55,7 @@ public class SettingsTests
     public void ResetToDefaults_RestoresDefaultValues()
     {
         // Arrange
-        // UpdateRepoOwner / UpdateRepoName はセキュリティ上ハードコード固定のため
-        // 初期化子で書き換えは不可（読み取り専用）。
+        // UpdateBaseUrl はセキュリティ上ハードコード固定のため初期化子で書き換え不可（読み取り専用）。
         var settings = new Settings
         {
             CompressionFormat = "7z",
@@ -73,19 +71,22 @@ public class SettingsTests
         Assert.Equal("ZIP", settings.CompressionFormat);
         Assert.False(settings.ExtractionOutputToSameDirectory);
         Assert.False(settings.CompressionOutputToSameDirectory);
-        Assert.Equal("1llum1n4t1s", settings.UpdateRepoOwner);
-        Assert.Equal("Lhamiel", settings.UpdateRepoName);
+        Assert.Equal("https://lhamiel.1llum1n4t1.com", settings.UpdateBaseUrl);
         Assert.Equal("release", settings.UpdateChannel);
     }
 
     [Fact]
-    public void UpdateRepoOwner_IsHardcodedAndImmutable()
+    public void UpdateBaseUrl_IsHardcodedAndImmutable()
     {
-        // 自動更新の更新元リポジトリは settings.json で書き換えできない（固定）。
-        // 悪意あるユーザーが攻撃者リポジトリに誘導できないことを担保する回帰テスト。
+        // 自動更新の配信元 URL は settings.json で書き換えできない（固定）。
+        // 悪意あるユーザーが攻撃者ホスト (R2 / 自前サーバ等) に誘導できないことを担保する回帰テスト。
         var settings = new Settings();
-        Assert.Equal("1llum1n4t1s", settings.UpdateRepoOwner);
-        Assert.Equal("Lhamiel", settings.UpdateRepoName);
+        Assert.Equal("https://lhamiel.1llum1n4t1.com", settings.UpdateBaseUrl);
+
+        // setter が物理的に存在しないことも保証
+        var prop = typeof(Settings).GetProperty(nameof(Settings.UpdateBaseUrl));
+        Assert.NotNull(prop);
+        Assert.False(prop!.CanWrite);
     }
 
     [Fact]

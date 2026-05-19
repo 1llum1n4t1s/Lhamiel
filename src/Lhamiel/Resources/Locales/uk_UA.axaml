@@ -175,7 +175,6 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Під час перевірки оновлень сталася помилка.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Репозиторій оновлень не налаштовано.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Неможливо перевірити оновлення в середовищі розробки.</x:String>
-  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">Перевірка оновлень триває.</x:String>
 
   <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
   <x:String x:Key="Text.Close" xml:space="preserve">Закрити</x:String>

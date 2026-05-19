@@ -153,28 +153,26 @@ public class VelopackIntegrationAdversarialTests
     }
 
     /// <summary>
-    /// UpdateRepoOwner / UpdateRepoName は [JsonIgnore] + getter-only でハードコード固定。
-    /// JSON 経由で書き換え不可 (悪意ある誘導の防御)。
+    /// UpdateBaseUrl は [JsonIgnore] + getter-only でハードコード固定。
+    /// JSON 経由で書き換え不可 (悪意ある攻撃者ホストへの誘導の防御)。
     /// </summary>
     [Fact]
-    public void Settings_JsonInjectionForUpdateRepoOwner_IgnoredByJsonIgnore()
+    public void Settings_JsonInjectionForUpdateBaseUrl_IgnoredByJsonIgnore()
     {
         // Arrange
-        const string json = """{"UpdateRepoOwner": "evil-attacker", "UpdateRepoName": "evil-repo"}""";
+        const string json = """{"UpdateBaseUrl": "https://evil-attacker.example.com"}""";
 
         // Act
         var s = JsonSerializer.Deserialize(json, AppJsonContext.Default.Settings);
 
         // Assert
         Assert.NotNull(s);
-        Assert.Equal("1llum1n4t1s", s!.UpdateRepoOwner);
-        Assert.Equal("Lhamiel", s.UpdateRepoName);
+        Assert.Equal("https://lhamiel.1llum1n4t1.com", s!.UpdateBaseUrl);
 
         // setter が物理的に存在しないことも保証
-        var ownerProp = typeof(Settings).GetProperty(nameof(Settings.UpdateRepoOwner));
-        var nameProp = typeof(Settings).GetProperty(nameof(Settings.UpdateRepoName));
-        Assert.False(ownerProp!.CanWrite);
-        Assert.False(nameProp!.CanWrite);
+        var prop = typeof(Settings).GetProperty(nameof(Settings.UpdateBaseUrl));
+        Assert.NotNull(prop);
+        Assert.False(prop!.CanWrite);
     }
 
     /// <summary>

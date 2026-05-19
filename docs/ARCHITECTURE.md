@@ -156,5 +156,5 @@ D&D → MainWindowViewModel.ProcessDroppedPathsAsync
 ## CI/CD
 
 - **PRビルド**: `.github/workflows/dotnet-build.yml`
-- **リリース**: `.github/workflows/velopack-release.yml`（`release/*` ブランチ → Native AOT → Velopack → GitHub Releases）
+- **リリース**: `.github/workflows/velopack-release.yml`（`release/*` ブランチ → Native AOT → Velopack → Cloudflare R2 `lhamiel-updates` バケット）
 - **バージョン**: `Directory.Build.props` の `<Version>` タグで一元管理

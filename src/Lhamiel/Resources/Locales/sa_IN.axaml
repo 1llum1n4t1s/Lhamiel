@@ -175,7 +175,6 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">नवीकरणपरीक्षणे दोषः जातः।</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">नवीकरणभाण्डागारं विन्यस्तं नास्ति।</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">विकासपरिवेशे नवीकरणं परीक्षितुं न शक्यते।</x:String>
-  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">नवीकरणस्य परीक्षा प्रचलति।</x:String>
 
   <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
   <x:String x:Key="Text.Close" xml:space="preserve">पिदधातु</x:String>

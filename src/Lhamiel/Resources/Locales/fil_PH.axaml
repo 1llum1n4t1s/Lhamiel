@@ -175,7 +175,6 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">May naganap na error habang tinitingnan ang mga update.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Hindi naka-configure ang update repository.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Hindi makapag-check ng mga update sa development environment.</x:String>
-  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">Sinusuri ang mga update.</x:String>
 
   <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
   <x:String x:Key="Text.Close" xml:space="preserve">Isara</x:String>

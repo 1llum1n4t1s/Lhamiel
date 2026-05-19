@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Lhamiel.Models;
@@ -372,10 +373,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SubscribeAssociationChanges();
         LoadVersionInfo();
 
+        // 更新チェックの進行状態を購読してアップデート確認ボタンの IsEnabled を駆動する。
+        // 起動時自動チェックも反映されるため、auto check 中はボタンが押せない（並走実行を未然に防止）。
+        // ※ MainWindowViewModel はアプリ全体で 1 インスタンスなので unsubscribe しなくてもリークしない。
+        App.UpdateCheckStateChanged += OnAppUpdateCheckStateChanged;
+        IsCheckingUpdate = App.IsUpdateCheckInProgress;
+
         // 初期選択状態を設定
         OnZipCompressionLevelChanged(ZipCompressionLevel);
         OnSevenZipCompressionLevelChanged(SevenZipCompressionLevel);
         _isLoading = false;
+    }
+
+    /// <summary>App._isCheckingUpdate 遷移を UI スレッドに marshal して IsCheckingUpdate に反映する。</summary>
+    private void OnAppUpdateCheckStateChanged(bool inProgress)
+    {
+        Dispatcher.UIThread.Post(() => IsCheckingUpdate = inProgress);
     }
 
     /// <summary>
@@ -802,14 +815,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// 最新バージョンの確認コマンド。
     /// VelopackUpdateDialog.Avalonia の手動チェック経路を <see cref="App.Check4Update(bool)"/> 経由で起動する。
     /// 結果表示 (UpToDate / Available / Error / Checking) はダイアログ側で完結するため、
-    /// ViewModel 側でテキスト更新は不要（UI は <see cref="IsCheckingUpdate"/> でボタンの多重押下のみ防御する）。
+    /// ViewModel 側でテキスト更新は不要。<see cref="IsCheckingUpdate"/> は App.UpdateCheckStateChanged
+    /// イベントで駆動されるため、起動時自動チェック中もボタンが無効化される（並走実行を未然に防止）。
     /// </summary>
     [RelayCommand]
     private Task CheckForUpdateAsync()
     {
-        if (IsCheckingUpdate) return Task.CompletedTask;
-
-        IsCheckingUpdate = true;
         try
         {
             App.Check4Update(manually: true);
@@ -818,12 +829,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             Logger.LogException("更新チェックコマンドでエラーが発生", ex);
             _ = MessageService.ShowError(App.Text("Update.Error"));
-        }
-        finally
-        {
-            // ダイアログ自体は App.Check4Update 内部の Dispatcher.UIThread.InvokeAsync で
-            // 非同期に動くため、ボタンは即時に再有効化して良い（多重起動は App 側 Interlocked で防御済み）。
-            IsCheckingUpdate = false;
         }
         return Task.CompletedTask;
     }

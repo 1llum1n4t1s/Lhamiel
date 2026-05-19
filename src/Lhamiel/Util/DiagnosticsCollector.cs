@@ -15,9 +15,9 @@ internal static partial class DiagnosticsCollector
 {
     // マスク対象は「真の秘密 (API キー / トークン / パスワード / 個人情報)」のみに限定する。
     // 以下は意図的にマスク対象から除外:
-    //   - UpdateRepoOwner / UpdateRepoName: Settings に [JsonIgnore] でハードコード固定、settings.json に出ない
+    //   - UpdateBaseUrl: Settings に [JsonIgnore] でハードコード固定、settings.json に出ない
     //   - UpdateChannel: allow-list ("release" / "prerelease") の 2 択、公開情報
-    //   - IgnoreUpdateTag: GitHub Release タグ名 (公開情報、診断時にサポート担当に見せる方が有用)
+    //   - IgnoreUpdateTag: Velopack リリースタグ名 (公開情報、診断時にサポート担当に見せる方が有用)
     // 新たに秘密情報を Settings に追加した場合はここに列挙すること。
     private static readonly string[] _sensitiveKeys = [];
 

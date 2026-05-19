@@ -32,10 +32,12 @@ public class Settings
     private static readonly string SettingsFilePath = Path.Combine(AppDataDirectory, "settings.json");
 
     /// <summary>
-    /// 自動更新で許可する GitHub リポジトリの正規値（悪意ある誘導を防ぐためハードコード固定）
+    /// 自動更新で許可する R2 配信元の正規 URL（悪意ある誘導を防ぐためハードコード固定）。
+    /// Velopack の <see cref="Velopack.Sources.SimpleWebSource"/> がこの base URL + <c>/releases.{channel}.json</c> を
+    /// 取得しに行く。末尾の "/" は付けない（Velopack 内部で正規化される）。
+    /// 旧 GitHub Releases (https://github.com/1llum1n4t1s/Lhamiel) からは v1.0.168 以降で完全移行。
     /// </summary>
-    internal const string CanonicalUpdateRepoOwner = "1llum1n4t1s";
-    internal const string CanonicalUpdateRepoName = "Lhamiel";
+    internal const string CanonicalUpdateBaseUrl = "https://lhamiel.1llum1n4t1.com";
 
     /// <summary>
     /// テーマ設定（"System", "Dark", "Light"）
@@ -73,18 +75,12 @@ public class Settings
     public bool CompressionOutputToSameDirectory { get; set; }
 
     /// <summary>
-    /// 自動更新用のGitHubオーナー名。
-    /// セキュリティ上の理由でハードコード固定。settings.json から書き換えても反映されない。
+    /// 自動更新の配信元 base URL（Cloudflare R2 でホスティング）。
+    /// セキュリティ上の理由でハードコード固定（<see cref="CanonicalUpdateBaseUrl"/>）。
+    /// settings.json から書き換えても反映されない（悪意ある第三者ホストへの誘導を防ぐため）。
     /// </summary>
     [JsonIgnore]
-    public string UpdateRepoOwner => CanonicalUpdateRepoOwner;
-
-    /// <summary>
-    /// 自動更新用のGitHubリポジトリ名。
-    /// セキュリティ上の理由でハードコード固定。settings.json から書き換えても反映されない。
-    /// </summary>
-    [JsonIgnore]
-    public string UpdateRepoName => CanonicalUpdateRepoName;
+    public string UpdateBaseUrl => CanonicalUpdateBaseUrl;
 
     /// <summary>
     /// 自動更新用のチャンネル名
@@ -537,7 +533,7 @@ public class Settings
             if (TryGetString(root, nameof(CompressionFormat), out var cf)) { s.CompressionFormat = cf!; recoveredCount++; }
             if (TryGetString(root, nameof(ExtractionOutputDirectory), out var eod)) { s.ExtractionOutputDirectory = eod!; recoveredCount++; }
             if (TryGetString(root, nameof(CompressionOutputDirectory), out var cod)) { s.CompressionOutputDirectory = cod!; recoveredCount++; }
-            // UpdateRepoOwner / UpdateRepoName は [JsonIgnore] ハードコード固定のため回収不要
+            // UpdateBaseUrl は [JsonIgnore] ハードコード固定のため回収不要
             if (TryGetString(root, nameof(UpdateChannel), out var uc)) { s.UpdateChannel = uc!; recoveredCount++; }
             if (TryGetString(root, nameof(IgnoreUpdateTag), out var iut)) { s.IgnoreUpdateTag = iut!; recoveredCount++; }
             if (TryGetBool(root, nameof(Check4UpdatesOnStartup), out var c4uos)) { s.Check4UpdatesOnStartup = c4uos; recoveredCount++; }

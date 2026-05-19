@@ -757,6 +757,38 @@ public partial class App : Application
     public static bool IsUpdateCheckInProgress =>
         Interlocked.CompareExchange(ref _isCheckingUpdate, 0, 0) == 1;
 
+    /// <summary>更新チェックの進行状態が変化したときに発火するイベント (true=開始 / false=終了)。</summary>
+    /// <remarks>
+    /// 起動時自動チェックと手動チェック (アップデート確認ボタン) の両経路から発火する。
+    /// MainWindowViewModel はこれを購読して IsCheckingUpdate を駆動し、ボタンの IsEnabled を制御する。
+    /// ハンドラはバックグラウンドスレッドから呼ばれる可能性があるため、UI 更新は購読側で
+    /// Dispatcher.UIThread に marshal すること。
+    /// </remarks>
+    public static event Action<bool>? UpdateCheckStateChanged;
+
+    /// <summary>更新チェック開始の試行。0→1 への遷移に成功した場合のみ true を返し、イベントを発火する。</summary>
+    private static bool TryBeginUpdateCheck()
+    {
+        if (Interlocked.CompareExchange(ref _isCheckingUpdate, 1, 0) != 0)
+            return false;
+        RaiseUpdateCheckStateChanged(true);
+        return true;
+    }
+
+    /// <summary>更新チェック終了。1→0 への遷移に成功した場合のみイベントを発火する（多重呼出に対して冪等）。</summary>
+    private static void EndUpdateCheck()
+    {
+        if (Interlocked.CompareExchange(ref _isCheckingUpdate, 0, 1) == 1)
+            RaiseUpdateCheckStateChanged(false);
+    }
+
+    /// <summary>イベント発火時のハンドラ例外を握りつぶしてフラグ管理を巻き戻さないためのラッパー。</summary>
+    private static void RaiseUpdateCheckStateChanged(bool inProgress)
+    {
+        try { UpdateCheckStateChanged?.Invoke(inProgress); }
+        catch (Exception ex) { Logger.LogException("UpdateCheckStateChanged ハンドラで例外", ex); }
+    }
+
     /// <summary>
     /// GitHubリリースから最新バージョンを確認し、更新がある場合は VelopackUpdateDialog.Avalonia の
     /// <see cref="VelopackUpdateDialog.UpdateDialogWindow"/> でダウンロード / 適用までを誘導する。
@@ -767,16 +799,11 @@ public partial class App : Application
     /// </param>
     public static void Check4Update(bool manually = false)
     {
-        // 先勝ち: 既に更新チェック中なら何もしない（起動時自動チェックと手動チェックの同時実行を防止）。
-        // 手動チェック時にスキップした場合は、ボタンを押したのに無反応に見える事故を防ぐため
-        // 「実行中です」メッセージで明示的にフィードバックする。
-        if (Interlocked.CompareExchange(ref _isCheckingUpdate, 1, 0) != 0)
+        // 進行中フラグの先勝ちで二重起動を防止する（起動時自動チェック / 手動チェック 両経路に共通）。
+        // 並走中は UI 側の「アップデート確認」ボタンが UpdateCheckStateChanged 経由で IsEnabled=false に
+        // 落ちるため、ユーザーは押せない → サイレント return しても操作不可で違和感が出ない。
+        if (!TryBeginUpdateCheck())
         {
-            if (manually)
-            {
-                Dispatcher.UIThread.Post(() =>
-                    _ = MessageService.ShowInfo(App.Text("Update.AlreadyChecking")));
-            }
             return;
         }
 
@@ -801,7 +828,7 @@ public partial class App : Application
                         await MessageService.ShowInfo(App.Text("Update.RepoNotConfigured"));
                     return;
                 }
-                var (mgr, repoUrl, channel) = built.Value;
+                var (mgr, baseUrl, channel) = built.Value;
                 var isPrerelease = channel.Equals("prerelease", StringComparison.OrdinalIgnoreCase);
 
                 if (!mgr.IsInstalled)
@@ -857,7 +884,7 @@ public partial class App : Application
                 var owner = (Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
 
                 Logger.Log(
-                    $"Velopack 自動更新チェック開始: manually={manually}, repoUrl={repoUrl}, channel={(isPrerelease ? "prerelease" : "release")}",
+                    $"Velopack 自動更新チェック開始: manually={manually}, baseUrl={baseUrl}, channel={(isPrerelease ? "prerelease" : "release")}",
                     LogLevel.Warning);
 
                 // VelopackUpdateDialog.Avalonia 1.0.3 の ShowAsync が自動分岐で
@@ -884,7 +911,7 @@ public partial class App : Application
                 catch (OperationCanceledException)
                 {
                     Logger.Log(
-                        $"自動更新チェックがタイムアウトしました（{AutomaticUpdateCheckTimeout.TotalSeconds:F0} 秒）: repoUrl={repoUrl}, channel={(isPrerelease ? "prerelease" : "release")}",
+                        $"自動更新チェックがタイムアウトしました（{AutomaticUpdateCheckTimeout.TotalSeconds:F0} 秒）: baseUrl={baseUrl}, channel={(isPrerelease ? "prerelease" : "release")}",
                         LogLevel.Warning);
                     return;
                 }
@@ -906,17 +933,19 @@ public partial class App : Application
             }
             finally
             {
-                Interlocked.Exchange(ref _isCheckingUpdate, 0);
+                EndUpdateCheck();
             }
         });
 
             // InvokeAsync の DispatcherOperation がキャンセル / 失敗で lambda が走らなかった場合の
             // _isCheckingUpdate フォールバックリセット。Dispatcher shutdown 中の OperationCanceledException
             // でも stuck しないようにする。
+            // EndUpdateCheck() 自体が 1→0 への CAS なので、通常 finally と二重で呼ばれても冪等。
             _ = op.ContinueWith(t =>
             {
-                if (Interlocked.CompareExchange(ref _isCheckingUpdate, 0, 1) == 1)
+                if (IsUpdateCheckInProgress)
                 {
+                    EndUpdateCheck();
                     if (t.IsFaulted)
                         Logger.LogException("Check4Update の DispatcherOperation が異常終了", t.Exception!);
                     else if (t.IsCanceled)
@@ -927,7 +956,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             // InvokeAsync 呼び出し自体の同期例外 (Dispatcher shutdown 中など)。
-            Interlocked.Exchange(ref _isCheckingUpdate, 0);
+            EndUpdateCheck();
             Logger.LogException("Check4Update の InvokeAsync 呼び出しに失敗", ex);
         }
     }

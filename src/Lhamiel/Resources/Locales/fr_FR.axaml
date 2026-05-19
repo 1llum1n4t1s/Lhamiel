@@ -175,7 +175,6 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">Une erreur est survenue lors de la vérification des mises à jour.</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">Le dépôt de mises à jour n'est pas configuré.</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">Impossible de vérifier les mises à jour dans l'environnement de développement.</x:String>
-  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">Vérification des mises à jour en cours.</x:String>
 
   <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
   <x:String x:Key="Text.Close" xml:space="preserve">Fermer</x:String>

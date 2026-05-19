@@ -34,7 +34,7 @@
 }
 ```
 
-> **ℹ️ 補足**: `UpdateRepoOwner` / `UpdateRepoName` は `[JsonIgnore]` 属性付きの読み取り専用プロパティのため `settings.json` には書き出されず、記述しても読み込まれません（悪意ある第三者リポジトリへの誘導を防ぐための固定値）。
+> **ℹ️ 補足**: `UpdateBaseUrl` は `[JsonIgnore]` 属性付きの読み取り専用プロパティのため `settings.json` には書き出されず、記述しても読み込まれません（悪意ある第三者ホストへの誘導を防ぐための固定値）。
 
 ## プロパティ一覧
 
@@ -78,12 +78,11 @@
 
 ### 自動更新設定
 
-`UpdateRepoOwner` と `UpdateRepoName` は**セキュリティ上ハードコード固定**されており、`settings.json` から書き換えても反映されない（悪意ある第三者リポジトリへの誘導を防ぐため）。
+`UpdateBaseUrl` は**セキュリティ上ハードコード固定**されており、`settings.json` から書き換えても反映されない（悪意ある第三者ホストへの誘導を防ぐため）。Velopack の `SimpleWebSource` が `{UpdateBaseUrl}/releases.{channel}.json` を取得して更新チェックを行う。
 
 | プロパティ | 型 | デフォルト | 説明 |
 |-----------|------|----------|------|
-| `UpdateRepoOwner` | string | `"1llum1n4t1s"` | **設定不可（固定）**。`[JsonIgnore]` により `settings.json` の読み書き対象外。記述しても反映されない |
-| `UpdateRepoName` | string | `"Lhamiel"` | **設定不可（固定）**。`[JsonIgnore]` により `settings.json` の読み書き対象外。記述しても反映されない |
+| `UpdateBaseUrl` | string | `"https://lhamiel.1llum1n4t1.com"` | **設定不可（固定）**。Cloudflare R2 上の `lhamiel-updates` バケットへマップされたカスタムドメイン。`[JsonIgnore]` により `settings.json` の読み書き対象外。記述しても反映されない |
 | `UpdateChannel` | string | `"release"` | 更新チャンネル（`"release"` / `"prerelease"`）。case-insensitive で受理し、canonical な小文字（`release` / `prerelease`）に正規化される。未知の値は `release` にサイレントフォールバック |
 | `Check4UpdatesOnStartup` | bool | `true` | メイン画面起動時に Velopack 自動更新チェックを実行するか。`App.Check4Update(manually:false)` UI 経路の ON/OFF を切り替える。「全般」設定タブの「起動時にアップデートを確認」チェックボックスで変更可能 |
 | `IgnoreUpdateTag` | string | `""` | 「このバージョンをスキップ」で記録された Velopack リリースタグ名（例: `"v1.0.166"`）。自動チェックで一致タグの更新は VelopackUpdateDialog で抑止される。手動チェックは無視タグを無視する。`SanitizeAfterLoad` で長さ 256 超 / 制御文字混入時は空文字に正規化される。「バージョン」設定タブの「スキップを取り消す」ボタンでクリア可能 |

@@ -175,7 +175,6 @@
   <x:String x:Key="Text.Update.CheckError" xml:space="preserve">更新チェック中にエラーが発生しました。</x:String>
   <x:String x:Key="Text.Update.RepoNotConfigured" xml:space="preserve">更新元リポジトリが未設定です。</x:String>
   <x:String x:Key="Text.Update.DevSkip" xml:space="preserve">開発環境では更新チェックできません。</x:String>
-  <x:String x:Key="Text.Update.AlreadyChecking" xml:space="preserve">アップデートを確認中です。</x:String>
 
   <!-- Self Update Dialog (VelopackUpdateDialog.Avalonia) -->
   <x:String x:Key="Text.Close" xml:space="preserve">閉じる</x:String>
