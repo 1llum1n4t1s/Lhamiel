@@ -160,7 +160,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - **Native AOT** (`PublishAot=true`) — avoid reflection-heavy patterns
 - **7z.dll** — `1llum1n4t1s.Sevenzip` NuGet が同梱。`NativeLibraryManager` が起動時に `LoadLibrary` で固定
 - **Logger** — `SuperLightLogger` File Target, `%LocalAppData%\Lhamiel\Lhamiel_yyyyMMdd.log`
-- **Velopack** 自動更新 — 配信元は **Cloudflare R2** (`https://lhamiel.1llum1n4t1.com`、`SimpleWebSource` 経由) を「正」とし、移行期間中は **GitHub Releases も Legacy fallback として併用配信** (旧 `GithubSource` クライアント救済のため。CI workflow の `release` job が `continue-on-error: true` + `needs: [..., r2-upload]` で best-effort 実行)。2 系統: (1) `Program.cs --update-check` サイレント CLI 経路 (Windows ログイン時 `StartupRegistration` から発火、UI 無し)、(2) `App.Check4Update` UI 経路 (`VelopackUpdateDialog.Avalonia` 1.0.3 経由のダイアログ表示、`Settings.Check4UpdatesOnStartup=true` で起動時自動 + メニューから手動)。数バージョン経過後に旧クライアントが概ね R2 版に移行したら `release` job を削除して R2 単独配信へ切替える
+- **Velopack** 自動更新 — 配信元は **Cloudflare R2 単独** (`https://lhamiel.1llum1n4t1.com`、`SimpleWebSource` 経由)。通常リリース (`/vava`) は R2 のみに配信する。旧 `GithubSource` クライアント (v1.0.167 以下) 救済のため、**GitHub Releases には R2 対応版 (v1.0.169) を「踏み台」として 1 つだけ publish 済み** (削除せず永続保持。旧クライアントはこれ経由で R2 へ 2 段階移行する)。継続的な GitHub Releases 併用配信はしない。2 系統: (1) `Program.cs --update-check` サイレント CLI 経路 (Windows ログイン時 `StartupRegistration` から発火、UI 無し)、(2) `App.Check4Update` UI 経路 (`VelopackUpdateDialog.Avalonia` 1.0.3 経由のダイアログ表示、`Settings.Check4UpdatesOnStartup=true` で起動時自動 + メニューから手動)
 - **AllowUnsafeBlocks** for P/Invoke (COM interop in `ShortcutCreator`, `FileIconHelper`, `CrashHandler`)
 - **Acrylic blur** — 全ダイアログで `ExperimentalAcrylicBorder` + `ExtendClientAreaToDecorationsHint`
 - Async/await + CancellationToken throughout all I/O operations
@@ -174,7 +174,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 ## CI/CD
 
 - **PR builds**: `.github/workflows/dotnet-build.yml` — restore, build, test + code coverage on every PR
-- **Release**: `.github/workflows/velopack-release.yml` — `release/*` ブランチへの push でトリガー。`vpk pack` で win + win-arm64 を並列ビルド後、(1) `r2-upload` (Primary) job が `wrangler@4.x` (Node.js 22) で Cloudflare R2 バケット `lhamiel-updates` にアップロード + `curl --fail` で配信確認 (`releases.{channel}.json` HTTP 200 検証)、(2) `release` (Legacy fallback) job が R2 成功後に GitHub Releases にも nupkg を併用 upload (`continue-on-error: true` で R2 が正常なら workflow 全体は success)。必要 Secrets: `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`
+- **Release**: `.github/workflows/velopack-release.yml` — `release/*` ブランチへの push でトリガー。`vpk pack` で win + win-arm64 を並列ビルド後、`r2-upload` job が `wrangler@4.x` (Node.js 22) で Cloudflare R2 バケット `lhamiel-updates` にアップロード + `curl --fail` で配信確認 (`releases.{channel}.json` HTTP 200 検証)。**R2 単独配信** (GitHub Releases への継続 publish はしない。旧クライアント救済の踏み台は `/transfer-cf` 移行作業で publish 済み)。必要 Secrets: `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`
 - **CodeQL**: `.github/workflows/codeql.yml` — C# security analysis on PR + weekly
 - **Dependabot**: `.github/dependabot.yml` — NuGet weekly + github-actions monthly
 

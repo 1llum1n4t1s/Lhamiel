@@ -129,7 +129,7 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ### v1.0.169 (2026-05-20)
 
-- **併用配信 workflow での通常リリース** — 配信構成 (Cloudflare R2 = Primary / GitHub Releases = Legacy fallback) を確定後の初回定常リリース。`release` job (`continue-on-error: true`, `needs: [..., r2-upload]`) で R2 成功後に GitHub Releases へも nupkg を併用 upload する。アプリ機能の変更はなし
+- **R2 移行の踏み台バージョン** — 旧 `GithubSource` クライアント (v1.0.167 以下) が Cloudflare R2 配信へ乗り換えるための "踏み台" として、本バージョンを GitHub Releases にも publish。旧クライアントはこれを経由して R2 化 (2 段階アップデート) する。**以降の通常リリースは R2 単独配信**で、GitHub Releases への継続 publish はしない (踏み台 Release は削除せず永続保持)。アプリ機能の変更はなし
 
 ### v1.0.168 (2026-05-20)
 
