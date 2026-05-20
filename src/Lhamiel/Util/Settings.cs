@@ -36,8 +36,12 @@ public class Settings
     /// Velopack の <see cref="Velopack.Sources.SimpleWebSource"/> がこの base URL + <c>/releases.{channel}.json</c> を
     /// 取得しに行く。末尾の "/" は付けない（Velopack 内部で正規化される）。
     /// 旧 GitHub Releases (https://github.com/1llum1n4t1s/Lhamiel) からは v1.0.168 以降で完全移行。
+    /// 配信元は中立ドメイン lhamiel.nephilim.jp（旧 lhamiel.1llum1n4t1.com は配信期間が短くクリーン移行。
+    /// クラウド/企業 egress の SNI フィルタで false positive を起こすため中立ドメインへ切替えた）。
+    /// 超旧 GithubSource クライアント (≤v1.0.167) 救済のため、GitHub Releases に nephilim.jp 版を踏み台として
+    /// publish する（GithubSource は最新版を選ぶので、それ経由で更新 → 再起動後に nephilim.jp を見るようになる）。
     /// </summary>
-    internal const string CanonicalUpdateBaseUrl = "https://lhamiel.1llum1n4t1.com";
+    internal const string CanonicalUpdateBaseUrl = "https://lhamiel.nephilim.jp";
 
     /// <summary>
     /// テーマ設定（"System", "Dark", "Light"）

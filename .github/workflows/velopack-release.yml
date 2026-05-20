@@ -179,7 +179,7 @@ jobs:
       - name: 配信確認 (releases.{channel}.json の HTTP 200 を検証)
         run: |
           set -euo pipefail
-          base="https://lhamiel.1llum1n4t1.com"
+          base="https://lhamiel.nephilim.jp"
           for channel in win win-arm64; do
             url="${base}/releases.${channel}.json"
             echo "Checking: $url"

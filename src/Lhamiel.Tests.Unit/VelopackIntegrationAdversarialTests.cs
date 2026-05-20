@@ -167,7 +167,7 @@ public class VelopackIntegrationAdversarialTests
 
         // Assert
         Assert.NotNull(s);
-        Assert.Equal("https://lhamiel.1llum1n4t1.com", s!.UpdateBaseUrl);
+        Assert.Equal("https://lhamiel.nephilim.jp", s!.UpdateBaseUrl);
 
         // setter が物理的に存在しないことも保証
         var prop = typeof(Settings).GetProperty(nameof(Settings.UpdateBaseUrl));

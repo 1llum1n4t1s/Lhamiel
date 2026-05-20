@@ -17,7 +17,7 @@ public class SettingsTests
         Assert.Equal("ZIP", settings.CompressionFormat);
         Assert.False(settings.ExtractionOutputToSameDirectory);
         Assert.False(settings.CompressionOutputToSameDirectory);
-        Assert.Equal("https://lhamiel.1llum1n4t1.com", settings.UpdateBaseUrl);
+        Assert.Equal("https://lhamiel.nephilim.jp", settings.UpdateBaseUrl);
         Assert.Equal("release", settings.UpdateChannel);
     }
 
@@ -71,7 +71,7 @@ public class SettingsTests
         Assert.Equal("ZIP", settings.CompressionFormat);
         Assert.False(settings.ExtractionOutputToSameDirectory);
         Assert.False(settings.CompressionOutputToSameDirectory);
-        Assert.Equal("https://lhamiel.1llum1n4t1.com", settings.UpdateBaseUrl);
+        Assert.Equal("https://lhamiel.nephilim.jp", settings.UpdateBaseUrl);
         Assert.Equal("release", settings.UpdateChannel);
     }
 
@@ -81,7 +81,7 @@ public class SettingsTests
         // 自動更新の配信元 URL は settings.json で書き換えできない（固定）。
         // 悪意あるユーザーが攻撃者ホスト (R2 / 自前サーバ等) に誘導できないことを担保する回帰テスト。
         var settings = new Settings();
-        Assert.Equal("https://lhamiel.1llum1n4t1.com", settings.UpdateBaseUrl);
+        Assert.Equal("https://lhamiel.nephilim.jp", settings.UpdateBaseUrl);
 
         // setter が物理的に存在しないことも保証
         var prop = typeof(Settings).GetProperty(nameof(Settings.UpdateBaseUrl));
