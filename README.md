@@ -127,6 +127,10 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ## 更新履歴
 
+### v1.0.169 (2026-05-20)
+
+- **併用配信 workflow での通常リリース** — 配信構成 (Cloudflare R2 = Primary / GitHub Releases = Legacy fallback) を確定後の初回定常リリース。`release` job (`continue-on-error: true`, `needs: [..., r2-upload]`) で R2 成功後に GitHub Releases へも nupkg を併用 upload する。アプリ機能の変更はなし
+
 ### v1.0.168 (2026-05-20)
 
 - **自動更新の配信元に Cloudflare R2 を追加 (GitHub Releases と併用配信)** — `Settings.UpdateBaseUrl` (`https://lhamiel.1llum1n4t1.com`、`[JsonIgnore]` + getter-only ハードコード固定) を `Velopack.Sources.SimpleWebSource` 経由で取得。新クライアントは R2 から、旧クライアント (v1.0.167 以下の `GithubSource` クライアント) は引き続き GitHub Releases から自動更新を受け取る。CI workflow (`velopack-release.yml`) に R2 アップロード job (`wrangler@4.92.0` で `wrangler r2 object put` + 配信確認 `curl --fail` HTTP 200 検証) を追加し、既存の GitHub Releases upload job は **Legacy fallback** として `continue-on-error: true` + `needs: [..., r2-upload]` で併用継続 (`actions/setup-node@v6.4.0` SHA pin)。数バージョン経過後に旧クライアントが概ね R2 版へ移行したタイミングで GitHub Releases 側を停止予定
