@@ -138,14 +138,11 @@ public class Settings
     public bool IncludeHiddenAndSystemEntries { get; set; } = true;
 
     /// <summary>
-    /// 圧縮時に除外するファイル・フォルダのパターン。
-    /// デフォルト値は ArchiveExtractor の無視リストから生成。
-    /// </summary>
-    /// <summary>
     /// レガシー JSON 設定 (≤v1.0.170) との互換性のために残す書き込み専用プロパティ。
     /// 新しい仕組みではパターンを <see cref="LhaignoreFile"/>（.lhaignore ファイル）に保存する。
     /// 旧 settings.json をデシリアライズしたときだけ <see cref="_legacyExcludedFilePatterns"/>
     /// に値を渡し、<see cref="Load"/> がそれを .lhaignore へ移行したあと破棄する。
+    /// デフォルト値の管理は <see cref="LhaignoreFile.CreateDefaultContent"/> に移管済み。
     /// </summary>
     [JsonInclude]
     [JsonPropertyName("ExcludedFilePatterns")]
@@ -337,12 +334,19 @@ public class Settings
                                 Debug.WriteLine($"破損 settings.json の Delete に失敗: {deleteEx.Message}");
                                 try
                                 {
-                                    File.WriteAllText(SettingsFilePath, "{}");
+                                    // 最終フォールバックの空 JSON 上書きも atomic 書込で部分破損を防ぐ。
+                                    // RTK レビュー #B1-008 対応。
+                                    WriteAtomically(SettingsFilePath, "{}");
                                     sanitizationSucceeded = true;
                                 }
                                 catch (Exception writeEx)
                                 {
                                     Debug.WriteLine($"破損 settings.json の空 JSON 上書きに失敗: {writeEx.Message}");
+                                    // RTK レビュー #F-012 対応: 3 段フォールバック全失敗ケースで、Logger も
+                                    // 未初期化な可能性が高いため、emergency.log に直接書く最終フォールバック。
+                                    Logger.WriteEmergencyLog(
+                                        $"settings.json の退避・削除・空 JSON 上書きが全て失敗。次回起動時も同じエラーが再発します。元エラー: {ex.Message}",
+                                        writeEx);
                                 }
                             }
                         }
@@ -458,6 +462,12 @@ public class Settings
             ExtractionOutputDirectory = desktop;
         if (!IsUsableOutputDirectory(CompressionOutputDirectory))
             CompressionOutputDirectory = desktop;
+
+        // ログ容量・保持日数の Clamp（settings.json 改竄による異常値で TB 級ログ生成や
+        // 未来日付化による全削除を防ぐ防御。1 MB〜200 MB、0〜365 日 に制限）。
+        // RTK レビュー #F-005 対応。
+        LogMaxSizeMB = Math.Clamp(LogMaxSizeMB, 1, 200);
+        LogRetentionDays = Math.Clamp(LogRetentionDays, 0, 365);
     }
 
     private static bool IsUsableOutputDirectory(string? path)
@@ -508,18 +518,51 @@ public class Settings
     }
 
     /// <summary>
-    /// 設定をファイルに保存するメソッド
+    /// 設定をファイルに保存するメソッド。
+    /// <para>
+    /// ⚠️ atomic 性: <c>File.WriteAllText</c> は OS のディスクキャッシュへの flush タイミングと
+    /// プロセス強制終了 / 電源断のレースで、settings.json が 0 バイト truncate や中途半端な JSON で
+    /// 残るリスクがある。AutoSave (300ms デバウンス) で頻繁に走る経路なので、
+    /// <see cref="LhaignoreFile.WriteAtomically"/> と同じ「tmp + Move overwrite」パターンで
+    /// 部分書き込みを排除する。RTK レビュー #B1-007 対応。
+    /// </para>
     /// </summary>
     public void Save()
     {
         try
         {
             var json = JsonSerializer.Serialize(this, AppJsonContext.Default.Settings);
-            File.WriteAllText(SettingsFilePath, json);
+            WriteAtomically(SettingsFilePath, json);
         }
         catch (Exception ex)
         {
             throw new InvalidOperationException(App.Text("Error.SaveSettingsFailed", ex.Message), ex);
+        }
+    }
+
+    /// <summary>
+    /// 内容を一時ファイルに書いてから <see cref="File.Move(string, string, bool)"/> で
+    /// 上書きすることで、部分書き込みを排除する atomic 書込ヘルパ。
+    /// プロセス強制終了 / 電源断のレースで対象ファイルが 0 バイト truncate されるリスクを防ぐ。
+    /// 同一ボリューム上では <c>File.Move</c> は MoveFileEx の <c>MOVEFILE_REPLACE_EXISTING</c>
+    /// + Rename で atomic に振る舞う（クロスボリューム時はコピー扱いで atomic 性は劣化するが、
+    /// 通常 <c>%LocalAppData%\Lhamiel</c> 配下は同一ボリュームなので問題なし）。
+    /// </summary>
+    private static void WriteAtomically(string destinationPath, string content)
+    {
+        // GUID 付き一時ファイル名で並列書込時の衝突も回避する
+        var tmpPath = $"{destinationPath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllText(tmpPath, content);
+            File.Move(tmpPath, destinationPath, overwrite: true);
+        }
+        catch
+        {
+            // tmp の後始末（best-effort）
+            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); }
+            catch { /* tmp 削除失敗は無視（次回起動時の TempCleanup に任せる） */ }
+            throw;
         }
     }
 

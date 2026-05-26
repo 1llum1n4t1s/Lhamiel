@@ -107,6 +107,16 @@ internal static partial class CrashHandler
 
     /// <summary>
     /// dumps/ フォルダ内の .dmp が MaxDumpFiles を超えた分を古い順に削除する。
+    /// <para>
+    /// ⚠️ First Crash Preservation (RTK レビュー #F-004 対応): 起動失敗ループ等で
+    /// 連鎖クラッシュが発生した場合、根本原因の "最初のクラッシュ" が古いタイムスタンプで
+    /// 容易に rotation 削除されてしまう問題への対策。
+    /// </para>
+    /// <para>
+    /// 最古の dump 1 つ (= 真の root cause である可能性が最も高い) は LastWriteTime 順 rotation の
+    /// 対象から除外して保持する。<see cref="MaxDumpFiles"/> 個までは追加で「最新」を保持。
+    /// 結果として保持されるのは「最古 1 + 最新 (MaxDumpFiles - 1)」になる。
+    /// </para>
     /// </summary>
     internal static void RotateOldDumps()
     {
@@ -115,13 +125,30 @@ internal static partial class CrashHandler
             if (!Directory.Exists(DumpDirectory))
                 return;
 
+            // LastWriteTime 昇順 (古い順) で並べ、最古を first crash として保護対象に隔離
             var dumpFiles = Directory.GetFiles(DumpDirectory, "*.dmp")
                 .Select(f => new FileInfo(f))
-                .OrderByDescending(f => f.LastWriteTime)
+                .OrderBy(f => f.LastWriteTime)
                 .ToList();
 
-            foreach (var old in dumpFiles.Skip(MaxDumpFiles))
+            if (dumpFiles.Count <= MaxDumpFiles)
+                return;
+
+            // 保持する dump: [最古 (first crash)] + [最新 MaxDumpFiles-1 個]
+            var keepSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
+                dumpFiles[0].FullName  // first crash
+            };
+            // 最新 MaxDumpFiles-1 個を保持セットに追加
+            foreach (var recent in dumpFiles.OrderByDescending(f => f.LastWriteTime).Take(MaxDumpFiles - 1))
+            {
+                keepSet.Add(recent.FullName);
+            }
+
+            // 保持セットに含まれない dump を削除
+            foreach (var old in dumpFiles)
+            {
+                if (keepSet.Contains(old.FullName)) continue;
                 try
                 {
                     old.Delete();

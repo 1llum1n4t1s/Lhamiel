@@ -23,6 +23,10 @@
   "CompressMultipleAsOne": true,
   "DirectoryStructureMode": "IncludeRoot",
   "IncludeHiddenAndSystemEntries": true,
+  "RespectNestedGitignore": false,
+  "VerifyAfterExtraction": true,
+  "NormalizeUnicodeFileNames": true,
+  "PropagateMarkOfTheWeb": true,
   "ZipCompressionLevel": 5,
   "SevenZipCompressionLevel": 5,
   "LogMaxSizeMB": 10,
@@ -52,6 +56,9 @@
 | `ExtractionOutputToSameDirectory` | bool | `false` | アーカイブと同じ場所に展開 |
 | `OpenExtractionOutputFolder` | bool | `true` | 展開後にフォルダを開く |
 | `CreateArchiveNameFolder` | bool | `true` | アーカイブ名でフォルダ作成（二重フォルダ防止含む） |
+| `VerifyAfterExtraction` | bool | `true` | 展開後に CRC 検証（`ArchiveIntegrityVerifier.Test()`）を実行 |
+| `NormalizeUnicodeFileNames` | bool | `true` | macOS HFS+ 由来の NFD ファイル名を NFC に正規化 |
+| `PropagateMarkOfTheWeb` | bool | `true` | 元アーカイブの Zone.Identifier ADS を展開ファイルに伝播 |
 
 ### 圧縮設定
 

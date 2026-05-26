@@ -207,6 +207,9 @@
   <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">檔案使用中</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">檔案正被其他應用程式使用：{0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">請關閉正在使用該檔案的應用程式後重試。</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">Device is not responding</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">External device (USB / NAS / removable media) was disconnected or is not responding: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">發生 I/O 錯誤</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">請檢查檔案狀態後重試。</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">壓縮檔已損毀</x:String>

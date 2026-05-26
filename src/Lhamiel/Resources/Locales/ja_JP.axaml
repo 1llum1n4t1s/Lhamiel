@@ -207,6 +207,9 @@
   <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">ファイルが使用中です</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">ファイルが他のアプリケーションで使用されています: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">ファイルを使用しているアプリケーションを閉じてから再試行してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">デバイスが応答していません</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">外部デバイス (USB / NAS / リムーバブルメディア) が切断されたか応答していません: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">デバイスの接続状態を確認し、再接続してから再試行してください。</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">I/Oエラーが発生しました</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">ファイルの状態を確認し、再試行してください。</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">アーカイブファイルが破損しています</x:String>

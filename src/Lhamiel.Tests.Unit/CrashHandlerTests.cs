@@ -78,12 +78,15 @@ public class CrashHandlerTests
 
             CrashHandler.RotateOldDumps();
 
+            // First Crash Preservation (RTK レビュー #F-004): 最古 1 + 最新 (MaxDumpFiles - 1) 個を保持。
+            // 起動失敗ループ時に根本原因である "最初のクラッシュ" が rotation 削除されないように
+            // 設計を変更。よって test_00 (最古) と test_05, test_04 (最新 2 個) が残る。
             var remaining = Directory.GetFiles(dumpDir, "*.dmp");
             Assert.Equal(3, remaining.Length);
 
             var remainingNames = remaining.Select(Path.GetFileName).Order().ToArray();
-            Assert.Contains("Lhamiel_test_03.dmp", remainingNames);
-            Assert.Contains("Lhamiel_test_04.dmp", remainingNames);
+            Assert.Contains("Lhamiel_test_00.dmp", remainingNames); // first crash 保護
+            Assert.Contains("Lhamiel_test_04.dmp", remainingNames); // 最新 2 個
             Assert.Contains("Lhamiel_test_05.dmp", remainingNames);
         }
         finally

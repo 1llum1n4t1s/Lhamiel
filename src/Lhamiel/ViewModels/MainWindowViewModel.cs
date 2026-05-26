@@ -412,10 +412,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
             {
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
                 EnableRaisingEvents = true,
+                // RTK レビュー #C2-004 対応: 既定 8KB だと %LocalAppData%\Lhamiel 直下の他ファイル
+                // (settings.json AutoSave / Lhamiel_yyyyMMdd.log ローテーション / dumps/) の
+                // 書込みイベントでバッファ溢れて InternalBufferOverflowException → .lhaignore 変更を
+                // silent に取りこぼす経路がある。64KB に拡大して non-paged pool 消費は許容範囲に収める。
+                InternalBufferSize = 64 * 1024,
             };
             _lhaignoreWatcher.Changed += OnLhaignoreChanged;
             _lhaignoreWatcher.Created += OnLhaignoreChanged;
             _lhaignoreWatcher.Renamed += OnLhaignoreChanged;
+            // バッファ overflow など Watcher 内部エラーをサイレントに握り潰さずログに残す
+            _lhaignoreWatcher.Error += (_, e) =>
+            {
+                try { Logger.LogException(".lhaignore 監視で内部エラー発生 (Watcher を再初期化推奨)", e.GetException()); }
+                catch { /* Logger 未初期化のケース */ }
+            };
             _lhaignoreReloadDebounce = new System.Threading.Timer(_ =>
             {
                 Dispatcher.UIThread.Post(ReloadExcludedFilePatternsFromFile);
@@ -566,7 +577,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
             catch
             {
                 // .lhaignore に関連付けが無い環境では notepad で開く
-                Process.Start(new ProcessStartInfo("notepad.exe", $"\"{path}\"") { UseShellExecute = false });
+                // ⚠️ セキュリティ: "notepad.exe" 単独だと PATH 環境変数経由で悪意あるバイナリを掴むリスクがある
+                // (例: %LocalAppData%\Microsoft\WindowsApps はユーザー書込可で PATH に入っている)
+                // System32 のフルパス + ArgumentList で防御深度を確保する。
+                var systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
+                var notepadPath = Path.Combine(systemDir, "notepad.exe");
+                var fallbackInfo = new ProcessStartInfo
+                {
+                    FileName = notepadPath,
+                    UseShellExecute = false,
+                };
+                fallbackInfo.ArgumentList.Add(path);
+                Process.Start(fallbackInfo);
             }
         }
         catch (Exception ex)

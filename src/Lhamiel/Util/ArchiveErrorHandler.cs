@@ -86,7 +86,14 @@ public enum ArchiveErrorType
     /// <summary>
     /// アーカイブがパスワード保護されている／パスワード不一致
     /// </summary>
-    EncryptedOrWrongPassword
+    EncryptedOrWrongPassword,
+
+    /// <summary>
+    /// 外部デバイス (USB SSD / NAS / リムーバブルメディア) が切断された。
+    /// USB スリープ / 物理的取り外し / ネットワーク断 が主因で、アプリ側のリトライでは復旧しないため
+    /// ユーザーに再接続を促すべきエラー。RTK レビュー #F-003 対応。
+    /// </summary>
+    DeviceDisconnected
 }
 
 /// <summary>
@@ -156,6 +163,16 @@ public static class ArchiveErrorHandler
                     errorInfo.Message = App.Text("ErrorHandler.DiskFull");
                     errorInfo.Details = App.Text("ErrorHandler.DiskFullDetail", outputPath);
                     errorInfo.RecommendedAction = App.Text("ErrorHandler.DiskFullAction");
+                    errorInfo.IsRecoverable = true;
+                }
+                else if (IsDeviceDisconnectedError(ioEx))
+                {
+                    // USB SSD のスリープ / NAS タイムアウト / リムーバブルメディア取り外し
+                    // → リトライ不能、ユーザーに再接続を促す。RTK レビュー #F-003 対応。
+                    errorInfo.ErrorType = ArchiveErrorType.DeviceDisconnected;
+                    errorInfo.Message = App.Text("ErrorHandler.DeviceDisconnected");
+                    errorInfo.Details = App.Text("ErrorHandler.DeviceDisconnectedDetail", outputPath);
+                    errorInfo.RecommendedAction = App.Text("ErrorHandler.DeviceDisconnectedAction");
                     errorInfo.IsRecoverable = true;
                 }
                 else if (IsFileInUseError(ioEx))
@@ -331,25 +348,14 @@ public static class ArchiveErrorHandler
         return analysis;
     }
 
-    // Windows HResult定数（OSロケール非依存で正確に判定するため）
-    private const int HR_ERROR_DISK_FULL = unchecked((int)0x80070070);       // ERROR_DISK_FULL
-    private const int HR_ERROR_HANDLE_DISK_FULL = unchecked((int)0x80070027); // ERROR_HANDLE_DISK_FULL
-    private const int HR_ERROR_SHARING_VIOLATION = unchecked((int)0x80070020); // ERROR_SHARING_VIOLATION
-    private const int HR_ERROR_LOCK_VIOLATION = unchecked((int)0x80070021);   // ERROR_LOCK_VIOLATION
-
-    // 破損系 HResult（7z.dll / Windows が返す CRC・データ不正エラー）
-    private const int HR_ERROR_CRC = unchecked((int)0x80070017);             // ERROR_CRC
-    private const int HR_ERROR_INVALID_DATA = unchecked((int)0x8007000D);    // ERROR_INVALID_DATA
-    private const int HR_ERROR_BAD_FORMAT = unchecked((int)0x8007000B);      // ERROR_BAD_FORMAT
-    private const int HR_ERROR_FILE_CORRUPT = unchecked((int)0x80070570);    // ERROR_FILE_CORRUPT
-    private const int HR_ERROR_DISK_CORRUPT = unchecked((int)0x80070571);    // ERROR_DISK_CORRUPT
+    // Windows HResult 定数は Util/WindowsHResults.cs に集約 (RTK レビュー #B2-002 対応)。
 
     /// <summary>
     /// ディスク容量エラーかどうかを判定（HResultベースでOSロケール非依存）
     /// </summary>
     private static bool IsDiskSpaceError(IOException ex)
     {
-        return ex.HResult is HR_ERROR_DISK_FULL or HR_ERROR_HANDLE_DISK_FULL;
+        return ex.HResult is WindowsHResults.ErrorDiskFull or WindowsHResults.ErrorHandleDiskFull;
     }
 
     /// <summary>
@@ -357,7 +363,16 @@ public static class ArchiveErrorHandler
     /// </summary>
     private static bool IsFileInUseError(IOException ex)
     {
-        return ex.HResult is HR_ERROR_SHARING_VIOLATION or HR_ERROR_LOCK_VIOLATION;
+        return ex.HResult is WindowsHResults.ErrorSharingViolation or WindowsHResults.ErrorLockViolation;
+    }
+
+    /// <summary>
+    /// 外部デバイス切断系エラーかどうかを判定（USB SSD スリープ、NAS タイムアウト等）。
+    /// RTK レビュー #F-003 対応 — リトライ不能・ユーザー再接続が必要な永続エラーとして分類。
+    /// </summary>
+    private static bool IsDeviceDisconnectedError(IOException ex)
+    {
+        return WindowsHResults.IsDeviceDisconnected(ex.HResult);
     }
 
     /// <summary>
@@ -365,8 +380,7 @@ public static class ArchiveErrorHandler
     /// </summary>
     internal static bool IsCorruptedHResult(int hResult)
     {
-        return hResult is HR_ERROR_CRC or HR_ERROR_INVALID_DATA or HR_ERROR_BAD_FORMAT
-            or HR_ERROR_FILE_CORRUPT or HR_ERROR_DISK_CORRUPT;
+        return WindowsHResults.IsCorrupted(hResult);
     }
 
     /// <summary>

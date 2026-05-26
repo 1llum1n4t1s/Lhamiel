@@ -134,6 +134,9 @@ public sealed class GitignoreMatcher
                 if (singleFileMode && rule.Anchored)
                     continue;
 
+                // MatchTimeout 超過時は ReDoS パターンとして「マッチしない」扱いに倒す（安全側）。
+                // ユーザー編集の `.lhaignore` / nested `.gitignore` で catastrophic backtracking を
+                // 起こすパターンが書かれても圧縮スキャンが固まらないように保護する。
                 if (rule.DirectoryOnly)
                 {
                     // ディレクトリ限定ルール: 対象がディレクトリならパス全体で照合する。
@@ -141,7 +144,7 @@ public sealed class GitignoreMatcher
                     // （git の挙動: "node_modules/" は "node_modules/a.js" 配下も除外する）。
                     if (isDirectory)
                     {
-                        if (rule.Regex.IsMatch(localPath))
+                        if (SafeIsMatch(rule.Regex, localPath))
                             excluded = !rule.Negated;
                     }
                     else
@@ -150,14 +153,14 @@ public sealed class GitignoreMatcher
                         if (lastSlash > 0)
                         {
                             var parentDir = localPath[..lastSlash];
-                            if (rule.Regex.IsMatch(parentDir))
+                            if (SafeIsMatch(rule.Regex, parentDir))
                                 excluded = !rule.Negated;
                         }
                     }
                 }
                 else
                 {
-                    if (rule.Regex.IsMatch(localPath))
+                    if (SafeIsMatch(rule.Regex, localPath))
                         excluded = !rule.Negated;
                 }
             }
@@ -361,11 +364,38 @@ public sealed class GitignoreMatcher
         try
         {
             // NOTE: RegexOptions.Compiled は Native AOT 非対応のため使用禁止。
-            return new Regex(sb.ToString(), RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            // MatchTimeout: ユーザー編集の .lhaignore / nested .gitignore から構築される regex に
+            // `(?:.*/)?` 多段ネスト等が含まれると catastrophic backtracking で CPU 100% スピンする経路がある。
+            // 100ms の上限を設けて、超過したパターンは IsMatch 側で RegexMatchTimeoutException として
+            // catch して「マッチしない」扱いに倒す（安全側）。RTK レビュー #A2-004 / #C1-002 対応。
+            return new Regex(
+                sb.ToString(),
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromMilliseconds(100));
         }
         catch (ArgumentException)
         {
             return null;
+        }
+    }
+
+    /// <summary>
+    /// <see cref="Regex.IsMatch(string)"/> を <see cref="RegexMatchTimeoutException"/> 安全に実行する。
+    /// タイムアウト時は「マッチしない」を返して圧縮スキャンを継続させる（安全側に倒す）。
+    /// </summary>
+    private static bool SafeIsMatch(Regex regex, string input)
+    {
+        try
+        {
+            return regex.IsMatch(input);
+        }
+        catch (RegexMatchTimeoutException ex)
+        {
+            // パターンが ReDoS を引き起こした事実をユーザー診断のためログに残す（過剰ログ防止のため Warning）。
+            Logger.Log(
+                $"Gitignore パターンの正規表現マッチがタイムアウトしました（ReDoS 防御）: pattern='{regex}', input='{input}', {ex.Message}",
+                LogLevel.Warning);
+            return false;
         }
     }
 

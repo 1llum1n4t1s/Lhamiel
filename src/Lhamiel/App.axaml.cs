@@ -156,11 +156,18 @@ public partial class App : Application
             }
             catch (AbandonedMutexException)
             {
-                Logger.Log("前回のアプリケーション終了時に Mutex が正常にリリースされていません。Mutex を再取得しました。");
+                // 前回プロセスが Release せずに死んだケース。new Mutex(true, ...) は所有権を引き継いで
+                // 例外を投げるため _instanceMutex は取得済みになる。新規オーナーとして続行する。
+                Logger.Log("前回のアプリケーション終了時に Mutex が正常にリリースされていません。Mutex を再取得しました。", LogLevel.Warning);
             }
             catch (Exception ex)
             {
-                Logger.Log($"Mutex 初期化エラー: {ex.Message}");
+                // Mutex 作成自体に失敗（ACL 拒否 / リソース枯渇 / AV 干渉等）。
+                // 単一インスタンス保証は失われるが、起動を拒否するとユーザーが詰まるためフォールバック起動。
+                // ⚠️ _instanceMutex が null のまま fall-through するので、後続経路の `_instanceMutex?.ReleaseMutex()` が
+                // no-op になることを許容している（RTK レビュー #B1-006 対応で明示化）。
+                _instanceMutex = null;
+                Logger.LogException("Mutex 初期化エラー（単一インスタンス保証なしで起動継続）", ex);
             }
 
             // 初回起動時は IPC サーバーを開始して後続インスタンスからの引数を待機
