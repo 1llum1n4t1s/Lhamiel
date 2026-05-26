@@ -215,7 +215,9 @@ internal static class LhaignoreFile
     private static void WriteAtomically(string content)
     {
         Directory.CreateDirectory(Settings.AppDataDirectory);
-        var tmpPath = FilePath + ".tmp";
+        // 並行更新の安全性のため一意な temp 名を使う。固定 `.tmp` だと、別の UI 操作や
+        // 外部エディタの保存と temp ファイルが衝突して片方の更新を潰すリスクがある。
+        var tmpPath = $"{FilePath}.{Guid.NewGuid():N}.tmp";
         try
         {
             File.WriteAllText(tmpPath, content, Encoding.UTF8);

@@ -806,10 +806,13 @@ public static class ArchiveCompressor
         while (stack.Count > 0)
         {
             var current = stack.Pop();
-            IEnumerable<string> dirs;
+            // Directory.EnumerateDirectories は遅延評価で UnauthorizedAccessException / IOException は
+            // foreach 中に発生する。yield return より前に ToArray() で確定させて、列挙中の例外もここで
+            // catch できるようにする。
+            string[] dirs;
             try
             {
-                dirs = Directory.EnumerateDirectories(current, "*", enumOpts);
+                dirs = Directory.EnumerateDirectories(current, "*", enumOpts).ToArray();
             }
             catch (UnauthorizedAccessException) { continue; }
             catch (IOException) { continue; }
@@ -858,12 +861,15 @@ public static class ArchiveCompressor
         {
             var current = stack.Pop();
 
-            IEnumerable<string> files;
-            IEnumerable<string> dirs;
+            // Directory.Enumerate* は遅延評価で、UnauthorizedAccessException / IOException は
+            // foreach 中に発生する。yield return より前に ToArray() で確定させて、列挙中の例外も
+            // ここで catch できるようにする。
+            string[] files;
+            string[] dirs;
             try
             {
-                files = Directory.EnumerateFiles(current, "*", enumOpts);
-                dirs = Directory.EnumerateDirectories(current, "*", enumOpts);
+                files = Directory.EnumerateFiles(current, "*", enumOpts).ToArray();
+                dirs = Directory.EnumerateDirectories(current, "*", enumOpts).ToArray();
             }
             catch (UnauthorizedAccessException ex)
             {

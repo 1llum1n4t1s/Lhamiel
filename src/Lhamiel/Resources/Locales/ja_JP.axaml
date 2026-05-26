@@ -73,7 +73,7 @@
   <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">除外設定ファイルを開く</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">.lhaignore を既定のテキストエディタで開きます</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">圧縮対象内の .gitignore も併用する</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">圧縮対象のサブディレクトリに .gitignore があれば、そのディレクトリ以下のスコープでルールを追加適用します（例: C:\Users\IMT\dev を圧縮すると各リポジトリの .gitignore が効きます）</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">圧縮対象のサブディレクトリに .gitignore があれば、そのディレクトリ以下のスコープでルールを追加適用します（例: 作業フォルダを圧縮すると配下の各リポジトリの .gitignore が有効になります）</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">無圧縮</x:String>

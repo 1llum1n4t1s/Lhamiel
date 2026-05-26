@@ -388,11 +388,13 @@ public class Settings
 
         // .lhaignore の初期化。レガシー ExcludedFilePatterns があれば移行する。
         // 既にファイルがあれば何もしないので何度呼んでも安全。
+        // EnsureExists が失敗した（戻り値 false かつファイルも作成されなかった）場合は、
+        // 次回 Save で旧 ExcludedFilePatterns が消えて復元不能にならないよう、レガシー値を温存する。
         if (!File.Exists(LhaignoreFile.FilePath))
         {
-            LhaignoreFile.EnsureExists(settings._legacyExcludedFilePatterns);
-            // 移行後は次回 Save で旧キーを書き出さないように消しておく
-            settings._legacyExcludedFilePatterns = null;
+            var created = LhaignoreFile.EnsureExists(settings._legacyExcludedFilePatterns);
+            if (created || File.Exists(LhaignoreFile.FilePath))
+                settings._legacyExcludedFilePatterns = null;
         }
 
         return settings;

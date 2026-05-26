@@ -425,6 +425,45 @@ public class ArchiveCompressorTests
     }
 
     [Fact]
+    public async Task ScanSourceFiles_LhaignorePrunesSubtreeBeforeDiscoveringNestedGitignore()
+    {
+        // .lhaignore でディレクトリが枝刈りされていれば、その配下の .gitignore は読まれず
+        // 中身のルールも適用されない（性能保護 + 仕様の両方を回帰から守る）。
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var ignoredDir = Path.Combine(testRoot, "ignored");
+        var keptDir = Path.Combine(testRoot, "kept");
+        try
+        {
+            Directory.CreateDirectory(ignoredDir);
+            Directory.CreateDirectory(keptDir);
+            // ignored/ 配下の .gitignore は "*.txt" を除外しようとするが、
+            // .lhaignore が ignored/ 自体を枝刈りするので発見されないはず。
+            File.WriteAllText(Path.Combine(ignoredDir, ".gitignore"), "*.txt");
+            File.WriteAllText(Path.Combine(ignoredDir, "data.txt"), "x");
+            File.WriteAllText(Path.Combine(keptDir, "doc.txt"), "x");
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [testRoot],
+                GitignoreMatcher.Compile(["ignored/"]),
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true,
+                globalIgnoreLines: new[] { "ignored/" });
+
+            // ignored/ 配下は丸ごと除外される (data.txt も含む)
+            Assert.DoesNotContain(result, r => r.fullPath.Contains(Path.Combine("ignored", "data.txt")));
+            Assert.DoesNotContain(result, r => r.fullPath.EndsWith(Path.Combine("ignored", ".gitignore")));
+            // kept/doc.txt は ignored/.gitignore の "*.txt" の影響を受けず残る
+            Assert.Contains(result, r => r.fullPath.EndsWith(Path.Combine("kept", "doc.txt")));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
     public async Task ScanSourceFiles_RespectNestedGitignoreFalse_IgnoresGitignoreFiles()
     {
         // RespectNestedGitignore=false の場合、.gitignore は無視される

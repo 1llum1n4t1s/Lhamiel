@@ -578,10 +578,27 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>
     /// .lhaignore からパターンを読み直して ObservableCollection を更新する。
     /// </summary>
+    /// <summary>
+    /// .lhaignore からパターンを読み直して ObservableCollection を更新する。
+    /// FileSystemWatcher 経由で UI スレッドから呼ばれるため、読込失敗で UI 例外にならないよう
+    /// 一旦テンポラリに読んでから差し替える（失敗時は現在のリストを温存してログに残す）。
+    /// </summary>
     internal void ReloadExcludedFilePatternsFromFile()
     {
+        List<string> latest;
+        try
+        {
+            latest = LhaignoreFile.ReadPatterns();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            try { Logger.Log($".lhaignore の再読込に失敗: {ex.Message}", LogLevel.Warning); }
+            catch { /* Logger 未初期化のケース */ }
+            return;
+        }
+
         CompressionExcludedFilePatterns.Clear();
-        foreach (var pattern in LhaignoreFile.ReadPatterns())
+        foreach (var pattern in latest)
             CompressionExcludedFilePatterns.Add(pattern);
         SelectedExcludedFilePattern = null;
     }

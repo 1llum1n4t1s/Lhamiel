@@ -72,8 +72,8 @@
   <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">還原預設值</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">開啟排除檔案</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">在預設文字編輯器中開啟 .lhaignore</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">同時使用原始碼中的 .gitignore</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">如果原始碼的子目錄中包含 .gitignore，則在該範圍內套用其規則</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">同時使用來源中的 .gitignore</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">如果來源的子目錄中包含 .gitignore，則在該範圍內套用其規則</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">不壓縮</x:String>
