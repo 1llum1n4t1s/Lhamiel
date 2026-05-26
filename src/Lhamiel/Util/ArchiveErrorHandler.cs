@@ -369,10 +369,28 @@ public static class ArchiveErrorHandler
     /// <summary>
     /// 外部デバイス切断系エラーかどうかを判定（USB SSD スリープ、NAS タイムアウト等）。
     /// RTK レビュー #F-003 対応 — リトライ不能・ユーザー再接続が必要な永続エラーとして分類。
+    /// <para>
+    /// CodeRabbit 指摘対応 (#3305116049): 他の分類関数 (IsCorruptedFileError) と同様に、
+    /// HResult 一致しない経路（FileSystem ドライバ差分、ローカライズ済み例外メッセージ）の
+    /// フォールバックとしてメッセージ走査を追加。
+    /// </para>
     /// </summary>
     private static bool IsDeviceDisconnectedError(IOException ex)
     {
-        return WindowsHResults.IsDeviceDisconnected(ex.HResult);
+        // ① HResult ベースで判定 (OS ロケール非依存)
+        if (WindowsHResults.IsDeviceDisconnected(ex.HResult))
+            return true;
+
+        // ② メッセージキーワード走査 (OS ロケール依存のフォールバック)
+        var message = ex.Message?.ToLowerInvariant() ?? string.Empty;
+        return message.Contains("device is not ready")
+            || message.Contains("not responding")
+            || message.Contains("device does not exist")
+            || message.Contains("the network name")        // "The network name cannot be found" 等
+            || message.Contains("network name is no longer available")
+            || message.Contains("デバイスの準備ができていません")
+            || message.Contains("デバイスが応答")
+            || message.Contains("接続が切断");
     }
 
     /// <summary>

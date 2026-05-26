@@ -148,7 +148,13 @@ public class Settings
     [JsonPropertyName("ExcludedFilePatterns")]
     internal List<string>? ExcludedFilePatternsLegacy
     {
-        get => null;
+        // CodeRabbit 指摘対応 (Outside diff): getter を _legacyExcludedFilePatterns を返すように変更。
+        // 旧来は常に null を返していたが、それだと .lhaignore 移行失敗で legacyExcludedFilePatterns を
+        // 温存しても次回 Save() でその値が消える問題があった。getter から実値を返すことで、
+        // 移行失敗ケースでも保険として settings.json に残り続け、復旧時に再利用できる。
+        // 移行成功時は Load() 内で _legacyExcludedFilePatterns = null に明示クリアされるため、
+        // 通常パスでは null を返して "ExcludedFilePatterns" を JSON に出力しない振る舞いも維持される。
+        get => _legacyExcludedFilePatterns;
         set
         {
             // 旧 settings.json の `ExcludedFilePatterns` 配列を移行用にキャッシュする。

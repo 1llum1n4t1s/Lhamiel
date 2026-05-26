@@ -80,16 +80,22 @@ internal class Program
         const string uiMutexName = @"Local\Lhamiel_MainWindow_SingleInstance";
         Mutex? guardMutex = null;
         var guardMutexOwned = false;
+        var skipSilentUpdate = false;
         try
         {
             guardMutex = new Mutex(initiallyOwned: true, uiMutexName, out var createdNew);
             if (!createdNew)
             {
                 Logger.Log("通常 UI モードが既に起動中のためサイレント更新をスキップします (次回ログイン時に再試行)", LogLevel.Warning);
-                return;
+                // CodeRabbit 指摘対応 (#3305115838): 早期 return すると下流の finally を通らないため、
+                // フラグを立てて通常パスから抜けて finally で Mutex / Logger を確実に Dispose する。
+                skipSilentUpdate = true;
             }
-            // createdNew=true なら所有権を獲得済み（initiallyOwned: true による）
-            guardMutexOwned = true;
+            else
+            {
+                // createdNew=true なら所有権を獲得済み（initiallyOwned: true による）
+                guardMutexOwned = true;
+            }
         }
         catch (AbandonedMutexException)
         {
@@ -101,11 +107,13 @@ internal class Program
         catch (Exception mutexEx)
         {
             Logger.LogException("UI モード Mutex の確認に失敗 (サイレント更新は安全側で中止)", mutexEx);
-            return;
+            skipSilentUpdate = true;
         }
 
         try
         {
+            if (skipSilentUpdate)
+                return; // finally で guardMutex / Logger を Dispose してから抜ける
             Logger.Log("サイレント更新チェックを開始します。");
 
             var result = UpdateChecker.CheckAndDownloadAsync().GetAwaiter().GetResult();

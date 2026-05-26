@@ -207,9 +207,9 @@
   <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">सञ्चिका उपयोगे वर्तते</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">सञ्चिका अन्येन अनुप्रयोगेन उपयुज्यते: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">सञ्चिकाम् उपयुञ्जानम् अनुप्रयोगं पिदधातु पुनश्च प्रयततु।</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">Device is not responding</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">External device (USB / NAS / removable media) was disconnected or is not responding: {0}</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">उपकरण प्रतिक्रिया नहीं दे रहा है</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">बाह्य उपकरण (USB / NAS / हटाने योग्य मीडिया) डिस्कनेक्ट हो गया है या प्रतिक्रिया नहीं दे रहा है: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">उपकरण का कनेक्शन जांचें और पुनः प्रयास करने से पहले फिर से कनेक्ट करें।</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">निवेश-निर्गमदोषः जातः</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">सञ्चिकास्थितिं परीक्ष्य पुनः प्रयततु।</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">संग्रहसञ्चिका दूषिता अस्ति</x:String>

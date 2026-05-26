@@ -207,9 +207,9 @@
   <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">El archivo está en uso</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">El archivo está siendo utilizado por otra aplicación: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">Cierre la aplicación que utiliza el archivo e inténtelo de nuevo.</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">Device is not responding</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">External device (USB / NAS / removable media) was disconnected or is not responding: {0}</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">El dispositivo no responde</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">El dispositivo externo (USB / NAS / medios extraíbles) se desconectó o no responde: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Verifique la conexión del dispositivo y vuelva a conectarlo antes de reintentar.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Se produjo un error de E/S</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Compruebe el estado del archivo e inténtelo de nuevo.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">El archivo comprimido está dañado</x:String>

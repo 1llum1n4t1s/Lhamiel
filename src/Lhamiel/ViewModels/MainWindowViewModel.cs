@@ -421,11 +421,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _lhaignoreWatcher.Changed += OnLhaignoreChanged;
             _lhaignoreWatcher.Created += OnLhaignoreChanged;
             _lhaignoreWatcher.Renamed += OnLhaignoreChanged;
-            // バッファ overflow など Watcher 内部エラーをサイレントに握り潰さずログに残す
+            // バッファ overflow など Watcher 内部エラーをサイレントに握り潰さずログに残す。
+            // CodeRabbit 指摘対応 (#3305116091): InternalBufferOverflowException 等で
+            // イベント取りこぼしが発生すると CompressionExcludedFilePatterns が stale になるため、
+            // 再読み込み debounce を発火して resync を予約する（ログ出力のみだと UI が古いまま残る）。
             _lhaignoreWatcher.Error += (_, e) =>
             {
                 try { Logger.LogException(".lhaignore 監視で内部エラー発生 (Watcher を再初期化推奨)", e.GetException()); }
                 catch { /* Logger 未初期化のケース */ }
+                // イベント取りこぼし時の再同期を debounce 経由でスケジュール
+                try { _lhaignoreReloadDebounce?.Change(250, System.Threading.Timeout.Infinite); }
+                catch { /* timer disposed */ }
             };
             _lhaignoreReloadDebounce = new System.Threading.Timer(_ =>
             {

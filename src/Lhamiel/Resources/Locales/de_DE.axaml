@@ -207,9 +207,9 @@
   <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">Datei wird verwendet</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">Die Datei wird von einer anderen Anwendung verwendet: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">Schließen Sie die Anwendung, die die Datei verwendet, und versuchen Sie es erneut.</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">Device is not responding</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">External device (USB / NAS / removable media) was disconnected or is not responding: {0}</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">Gerät reagiert nicht</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">Externes Gerät (USB / NAS / Wechselmedium) wurde getrennt oder reagiert nicht: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Überprüfen Sie die Geräteverbindung und verbinden Sie das Gerät erneut, bevor Sie es nochmals versuchen.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Ein E/A-Fehler ist aufgetreten</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Überprüfen Sie den Dateistatus und versuchen Sie es erneut.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Die Archivdatei ist beschädigt</x:String>

@@ -207,9 +207,9 @@
   <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">파일이 사용 중입니다</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">파일이 다른 애플리케이션에서 사용 중입니다: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">파일을 사용 중인 애플리케이션을 닫고 다시 시도하세요.</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">Device is not responding</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">External device (USB / NAS / removable media) was disconnected or is not responding: {0}</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">장치가 응답하지 않습니다</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">외부 장치(USB / NAS / 이동식 미디어)가 연결 해제되었거나 응답하지 않습니다: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">장치 연결을 확인한 뒤 다시 연결하고 재시도하세요.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">I/O 오류가 발생했습니다</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">파일 상태를 확인하고 다시 시도하세요.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">아카이브 파일이 손상되었습니다</x:String>

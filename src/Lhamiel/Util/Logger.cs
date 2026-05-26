@@ -307,8 +307,13 @@ public static class Logger
                 _appName);
             Directory.CreateDirectory(logDir);
             var path = Path.Combine(logDir, $"{_appName}_emergency.log");
+            // CodeRabbit 指摘対応 (Outside diff): 緊急ログ経路でも MaskUserPath を適用する。
+            // 設定破損・起動失敗時のログには StackTrace 経由でユーザー実名フォルダパスが含まれやすく、
+            // 通常ロガー経路と同じ <USER> マスクを通すことでサポート ZIP の PII 露出を防ぐ。
+            var maskedMessage = MaskUserPath(message) + GetCorrelationSuffix();
+            var maskedException = MaskUserPath(exception.ToString());
             var line =
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [ERROR] {message}{Environment.NewLine}{exception}{Environment.NewLine}";
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [ERROR] {maskedMessage}{Environment.NewLine}{maskedException}{Environment.NewLine}";
             File.AppendAllText(path, line);
         }
         catch

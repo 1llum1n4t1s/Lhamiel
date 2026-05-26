@@ -258,8 +258,15 @@ public static class ArchiveCompressor
 
                 // 圧縮対象ディレクトリ内に .gitignore があれば layered matcher を構築する（その source 限定）。
                 // .lhaignore (= matcher 引数) で枝刈りしながら探索するので、node_modules/ 内の .gitignore は読まない。
-                var effectiveMatcher = (respectNestedGitignore && globalIgnoreLines is not null)
-                    ? BuildLayeredMatcherForSource(sourcePath, globalIgnoreLines, matcher, includeHiddenAndSystemEntries)
+                // CodeRabbit 指摘対応 (Outside diff): respectNestedGitignore=true なら globalIgnoreLines が null
+                // でも空配列にフォールバックして必ず BuildLayeredMatcherForSource を呼ぶ。これによりフラグ単体で
+                // ScanSourceFiles の振る舞いが意味どおりになる（public API として整合）。
+                var effectiveMatcher = respectNestedGitignore
+                    ? BuildLayeredMatcherForSource(
+                        sourcePath,
+                        globalIgnoreLines ?? Array.Empty<string>(),
+                        matcher,
+                        includeHiddenAndSystemEntries)
                     : matcher;
 
                 var files = GetFilesRecursively(sourcePath, effectiveMatcher, includeHiddenAndSystemEntries);
