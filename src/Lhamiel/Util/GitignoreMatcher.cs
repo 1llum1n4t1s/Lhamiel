@@ -376,13 +376,44 @@ public sealed class GitignoreMatcher
             }
             else if (c == '[')
             {
-                // 文字クラスは閉じ ] までそのまま転写（gitignore は POSIX 文字クラスのサブセット）。
-                // gitignore 仕様に従い、先頭の ] は文字クラスメンバ扱いなので i + 2 から検索する。
-                var searchFrom = (i + 1 < pattern.Length && pattern[i + 1] == ']') ? i + 2 : i + 1;
+                // 文字クラスは閉じ ] まで転写するが、gitignore のネゲート構文 [!...] は
+                // .NET regex の [^...] に変換する (Codex P2 #4 指摘対応)。
+                // gitignore 仕様 (POSIX fnmatch): 文字クラス先頭の '!' は否定。'^' も否定扱いされる
+                // 実装が多いが gitignore の正式仕様は '!'。.NET regex は '^' だけ否定として認識する
+                // ので、'!' を見たら '^' に変換する。
+                // また gitignore 仕様に従い、文字クラス先頭の ']' は閉じ括弧ではなくメンバ扱い。
+                var contentStart = i + 1;
+                var negated = contentStart < pattern.Length && pattern[contentStart] == '!';
+                if (negated)
+                    contentStart++;
+
+                // 文字クラス内容の先頭が ] ならそれもメンバ扱いとして 1 文字進める
+                var searchFrom = (contentStart < pattern.Length && pattern[contentStart] == ']')
+                    ? contentStart + 1
+                    : contentStart;
                 var end = pattern.IndexOf(']', searchFrom);
                 if (end < 0)
                     return null;
-                sb.Append(pattern, i, end - i + 1);
+
+                if (negated)
+                {
+                    // [!abc] → [^abc/] へ変換。
+                    // gitignore (POSIX fnmatch) の文字クラスは暗黙に path 区切り '/' を含まないので、
+                    // .NET の [^...] にそのまま変換すると '/' にもマッチしてしまい、
+                    // 例えば "foo/bar" の '/' 部分が `[!a]` にマッチしてパスを跨ぐ誤マッチを起こす。
+                    // 既存の `*` → `[^/]*` / `?` → `[^/]` と同じ方針で '/' を明示的に除外する。
+                    var classBody = pattern[contentStart..end]; // ']' を含まない中身
+                    sb.Append("[^");
+                    sb.Append(classBody);
+                    if (!classBody.Contains('/'))
+                        sb.Append('/');
+                    sb.Append(']');
+                }
+                else
+                {
+                    // [abc] → [abc] / []abc] → []abc] (そのまま転写)
+                    sb.Append(pattern, i, end - i + 1);
+                }
                 i = end + 1;
             }
             else if (c == '\\' && i + 1 < pattern.Length)

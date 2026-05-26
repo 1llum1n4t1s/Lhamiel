@@ -330,6 +330,70 @@ public class GitignoreMatcherTests
         // unrooted shell glob としての basename match までは止めない。
     }
 
+    // === Codex P2 #4 回帰テスト: ネゲート文字クラス [!...] を gitignore 仕様準拠 ===
+
+    [Fact]
+    public void NegatedCharClass_ExcludesMembers()
+    {
+        // gitignore 仕様: "[!a].tmp" は「a 以外の単一文字 + .tmp」を除外する。
+        // 旧実装は [!a] を .NET regex の [!a] にそのまま転写していたため、
+        // ! と a がメンバとして扱われ、結果が逆転していた (Codex P2 #4 指摘)。
+        var m = GitignoreMatcher.Compile(["[!a].tmp"]);
+
+        // a 以外の単一文字 + .tmp はマッチする（'!' も a ではないのでマッチ ← Codex 指摘の核心）
+        Assert.True(m.IsExcluded("b.tmp", false));
+        Assert.True(m.IsExcluded("c.tmp", false));
+        Assert.True(m.IsExcluded("x.tmp", false));
+        Assert.True(m.IsExcluded("!.tmp", false));
+
+        // a 自体はメンバなのでマッチしない
+        Assert.False(m.IsExcluded("a.tmp", false));
+    }
+
+    [Fact]
+    public void NegatedCharClass_DoesNotMatchPathSeparator()
+    {
+        // gitignore (POSIX fnmatch) の文字クラスは暗黙に '/' を除外する。
+        // [^.../] に '/' を追加する変換でないと、`foo[!a]bar` が `foo/bar` にマッチして
+        // path 区切りを跨ぐ誤マッチになる。
+        var m = GitignoreMatcher.Compile(["foo[!a]bar"]);
+
+        // segment 内の単一文字置換はマッチする
+        Assert.True(m.IsExcluded("fooxbar", false));
+        Assert.True(m.IsExcluded("foobbar", false));
+
+        // path 区切りには到達しない
+        Assert.False(m.IsExcluded("foo/bar", false));
+        // a はメンバなのでマッチしない
+        Assert.False(m.IsExcluded("fooabar", false));
+    }
+
+    [Fact]
+    public void NegatedCharClassMultipleChars_ExcludesAllMembers()
+    {
+        // [!abc] は a, b, c 以外の単一文字にマッチ
+        var m = GitignoreMatcher.Compile(["[!abc].log"]);
+
+        Assert.True(m.IsExcluded("d.log", false));
+        Assert.True(m.IsExcluded("z.log", false));
+        Assert.False(m.IsExcluded("a.log", false));
+        Assert.False(m.IsExcluded("b.log", false));
+        Assert.False(m.IsExcluded("c.log", false));
+    }
+
+    [Fact]
+    public void NonNegatedCharClass_StillWorks()
+    {
+        // 通常の [abc] は変換されない（従来通り）
+        var m = GitignoreMatcher.Compile(["[abc].log"]);
+
+        Assert.True(m.IsExcluded("a.log", false));
+        Assert.True(m.IsExcluded("b.log", false));
+        Assert.True(m.IsExcluded("c.log", false));
+        Assert.False(m.IsExcluded("d.log", false));
+        Assert.False(m.IsExcluded("!.log", false));  // ! はメンバではない
+    }
+
     [Fact]
     public void ValidGlobstarForms_StillWorkAsBefore()
     {
