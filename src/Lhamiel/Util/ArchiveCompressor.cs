@@ -187,24 +187,39 @@ public static class ArchiveCompressor
         }
         catch (OperationCanceledException)
         {
-            if (outputCreated && File.Exists(outputPath))
-            {
-                try
-                {
-                    File.Delete(outputPath);
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"キャンセル時の一時ファイル削除に失敗しました: {outputPath}, {ex.Message}");
-                }
-            }
-
+            // キャンセル時: 書きかけの出力ファイルを掃除する。
+            TryDeletePartialOutput(outputPath, outputCreated, "キャンセル");
             throw;
         }
         catch (Exception ex)
         {
+            // 異常終了時 (SevenZipException, IOException, USB 切断による ERROR_DEV_NOT_EXIST など):
+            // writer.Save の途中で例外が出た場合、書きかけの 7z/zip ファイルが Next Header (中央
+            // ディレクトリ) 欠損の破損状態で残る。これを掃除してユーザーに「壊れた成果物」を
+            // 渡さないようにする。削除自体が device error で失敗することもあるが best-effort で良い。
             Logger.Log($"圧縮でエラーが発生しました: {ex.Message}");
+            TryDeletePartialOutput(outputPath, outputCreated, "圧縮エラー");
             throw;
+        }
+    }
+
+    /// <summary>
+    /// 圧縮中断時の書きかけ出力ファイルを掃除する best-effort ヘルパ。
+    /// <paramref name="outputCreated"/> が false（writer.Save まで到達していない）のときは何もしない。
+    /// File.Delete 自身が失敗（device not exist 等）した場合は警告ログだけ残して呑む。
+    /// </summary>
+    private static void TryDeletePartialOutput(string outputPath, bool outputCreated, string reason)
+    {
+        if (!outputCreated || !File.Exists(outputPath))
+            return;
+        try
+        {
+            File.Delete(outputPath);
+            Logger.Log($"{reason}時の部分ファイルを削除しました: {outputPath}");
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"{reason}時の部分ファイル削除に失敗しました: {outputPath}, {ex.Message}", LogLevel.Warning);
         }
     }
 

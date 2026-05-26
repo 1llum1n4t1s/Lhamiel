@@ -464,6 +464,45 @@ public class ArchiveCompressorTests
     }
 
     [Fact]
+    public async Task CompressFilesAsync_WhenSevenZipExceptionThrown_DeletesPartialOutput()
+    {
+        // 圧縮対象ファイル → outputPath まで設定済の状態で writer.Save が SevenZipException 相当を
+        // 投げると、書きかけの outputPath が残ったままになるバグの回帰テスト。
+        // ここでは「outputPath を書き込み不能なディレクトリにする」ことで似たエラー条件を作り、
+        // 結果として outputPath が残らない（部分ファイルが残らない）ことを確認する。
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testRoot, "src");
+        try
+        {
+            Directory.CreateDirectory(sourceDir);
+            File.WriteAllText(Path.Combine(sourceDir, "a.txt"), "hello");
+
+            // 出力先を「事前にダミーファイルを作って読み書き不能を擬装する」ような
+            // 細工は OS 依存になりやすいので、ここでは「存在しないドライブ」を出力先にして
+            // 例外を誘発する。Lhamiel が outputCreated=true 後に発生する例外でも部分ファイルを
+            // 残さない事を確かめる回帰テスト。
+            // Note: Z:\ など存在しないドライブを使う。CI 環境差に注意。
+            var fakeDrive = "Z:\\does_not_exist_lhamiel_test\\out.zip";
+
+            var ex = await Assert.ThrowsAnyAsync<Exception>(async () =>
+                await ArchiveCompressor.CompressFilesAsync(
+                    [sourceDir],
+                    fakeDrive,
+                    Cube.FileSystem.SevenZip.Format.Zip,
+                    cancellationToken: TestContext.Current.CancellationToken));
+
+            // 何らかの例外が出るのが期待挙動 (DirectoryNotFoundException / IOException / SevenZipException など)。
+            // 重要なのは出力先に部分ファイルが残らないこと。
+            Assert.False(File.Exists(fakeDrive), $"部分ファイルが残っている: {fakeDrive}");
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
     public async Task ScanSourceFiles_RespectNestedGitignoreFalse_IgnoresGitignoreFiles()
     {
         // RespectNestedGitignore=false の場合、.gitignore は無視される

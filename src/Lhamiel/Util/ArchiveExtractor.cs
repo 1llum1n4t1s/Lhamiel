@@ -879,6 +879,38 @@ public static class ArchiveExtractor
     /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
+/// <summary>
+    /// <see cref="ArchiveReader"/> の生成（内部で <c>FormatFactory.From(string)</c> がアーカイブを
+    /// 排他オープンする）が「使用中（SHARING_VIOLATION）」例外で失敗するケースを救済する。
+    ///
+    /// よくある原因:
+    /// <list type="bullet">
+    ///   <item>圧縮終了直後で 7z 自身がまだファイルを掴んでいる</item>
+    ///   <item>Windows Defender / Windows Indexer / Explorer プレビューが瞬間的にロック中</item>
+    ///   <item>クラウドストレージ同期クライアントが書き込み完了直後にハッシュ計算でロック</item>
+    /// </list>
+    ///
+    /// これらは数百 ms 以内に解放されることが多いので、<see cref="LockedFileRetryPolicy.ExecuteAsync"/>
+    /// で指数バックオフリトライする（既定 3 回 / 200ms→400ms）。永続的ロックや破損ファイルは
+    /// <see cref="LockedFileRetryPolicy.IsTransientLockError"/> が false を返すので即時 throw される。
+    /// </summary>
+    private static async Task<ArchiveReader> OpenArchiveReaderWithRetry(
+        string archivePath,
+        AsyncPasswordQuery passwordQuery,
+        ArchiveOption extractOption,
+        CancellationToken cancellationToken)
+    {
+        ArchiveReader? reader = null;
+        await LockedFileRetryPolicy.ExecuteAsync(
+            () => Task.Run(() =>
+            {
+                reader = new ArchiveReader(archivePath, passwordQuery, extractOption);
+            }, cancellationToken),
+            archivePath,
+            cancellationToken: cancellationToken);
+        return reader!;
+    }
+
     public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null, bool normalizeUnicode = true)
     {
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}");
@@ -1006,8 +1038,12 @@ public static class ArchiveExtractor
             }, cancellationToken);
 
             // ネイティブ側（7z.dll）との連携を確実に保護するため
-            // using スコープ内で reader と progress を管理する
-            using (var reader = new ArchiveReader(archivePath, passwordQuery, extractOption))
+            // using スコープ内で reader と progress を管理する。
+            // `new ArchiveReader` 内部で FormatFactory.From がアーカイブを排他オープンするが、
+            // 圧縮直後の自プロセスロックや Defender / Indexer の瞬間ロックで
+            // SHARING_VIOLATION (0x80070020) が出ることがあるので OpenArchiveReaderWithRetry で
+            // 指数バックオフリトライする（200ms → 400ms、計 3 回）。
+            using (var reader = await OpenArchiveReaderWithRetry(archivePath, passwordQuery, extractOption, cancellationToken))
             {
                 Logger.Log($"一時ディレクトリへの展開処理開始: {archivePath} -> {tempOutputPath}");
 
