@@ -1,0 +1,16 @@
+# Lhamiel ランディングページ配信 Worker。
+# lhamiel.nephilim.jp は R2 バケット lhamiel-updates のカスタムドメイン。
+# 下のルートを被せると Worker が Custom Domain より優先され、worker.js が
+# "/" のみランディングページを返し、それ以外のパスは R2 にそのまま委譲する。
+name = "lhamiel-landing"
+main = "worker.js"
+compatibility_date = "2026-05-01"
+
+routes = [
+  { pattern = "lhamiel.nephilim.jp/*", zone_name = "nephilim.jp" },
+]
+
+# index.html を文字列として worker.js に import する（Text モジュール）。
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]

@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lhamiel — 高速アーカイブ圧縮・展開ツール / Fast archive tool for Windows</title>
+<meta name="description" content="Lhamiel（ラミエル）は Windows 向けの高速・シンプルな無料オープンソース・アーカイブ圧縮／展開ツール。ドラッグ＆ドロップで ZIP / 7z / TAR を瞬時に圧縮・解凍。Native AOT (.NET 10) でランタイム不要。Lhamiel is a free, open-source archive compressor & extractor for Windows. Drag & drop to compress or extract ZIP / 7z / TAR. No runtime required. Download now." />
+<meta name="keywords" content="Lhamiel, ラミエル, archive, 圧縮, 解凍, ZIP, 7z, TAR, Windows, free software, open source, download" />
+<meta name="author" content="1llum1n4t1s" />
+<meta name="robots" content="index, follow" />
+<meta name="theme-color" content="#070b1f" />
+<link rel="canonical" href="https://lhamiel.nephilim.jp/" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Lhamiel" />
+<meta property="og:title" content="Lhamiel — 高速アーカイブ圧縮・展開ツール / Fast archive tool for Windows" />
+<meta property="og:description" content="無料・オープンソースの Windows 向けアーカイブツール。ドラッグ＆ドロップで ZIP / 7z / TAR を瞬時に圧縮・解凍。A free, open-source archive compressor & extractor for Windows." />
+<meta property="og:url" content="https://lhamiel.nephilim.jp/" />
+<meta property="og:locale" content="ja_JP" />
+<meta property="og:locale:alternate" content="en_US" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Lhamiel — 高速アーカイブ圧縮・展開ツール / Fast archive tool for Windows" />
+<meta name="twitter:description" content="無料・オープンソースの Windows 向けアーカイブツール。ドラッグ＆ドロップで圧縮・解凍。Free & open-source archive tool for Windows." />
+
+<!-- Inline SVG favicon: ice-cyan octahedron -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237df9ff'/%3E%3Cstop offset='1' stop-color='%233a4cff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='6' fill='%23070b1f'/%3E%3Cpath d='M16 4 L27 16 L16 28 L5 16 Z' fill='url(%23g)'/%3E%3Cpath d='M16 4 L16 28 M5 16 L27 16' stroke='%23070b1f' stroke-width='1.1' opacity='.55'/%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Syne:wght@500;600;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap" rel="stylesheet" />
+
+<style>
+  /* ============================================================
+     Lhamiel — "Crystalline Geometric"
+     Deep indigo → midnight dark, sharp ice-cyan accents.
+     Motif: faceted crystal / octahedron / tessellation.
+     ============================================================ */
+
+  :root{
+    --bg-0:#04060f;       /* deepest midnight */
+    --bg-1:#070b1f;       /* base */
+    --bg-2:#0c1230;       /* raised */
+    --bg-3:#131a44;       /* panel */
+    --indigo:#3a4cff;     /* dominant indigo */
+    --indigo-deep:#1c2580;
+    --cyan:#7df9ff;       /* ice-cyan accent */
+    --cyan-soft:#9ffcffcc;
+    --frost:#cfe6ff;      /* frosted text */
+    --ink:#f3f8ff;        /* primary text */
+    --muted:#8ea0d0;      /* secondary / EN line */
+    --muted-2:#5d6da5;    /* faint */
+    --line:#2a356f;       /* hairline */
+    --line-bright:#46e0ff33;
+    --glass:#0b1234cc;
+    --shadow:0 30px 80px -30px #000a;
+    --r:18px;
+    --maxw:1180px;
+
+    --f-display:"Unbounded", "Zen Kaku Gothic New", system-ui, sans-serif;
+    --f-head:"Syne", "Zen Kaku Gothic New", system-ui, sans-serif;
+    --f-jp:"Zen Kaku Gothic New", "Syne", system-ui, sans-serif;
+    --f-body:"Syne", "Zen Kaku Gothic New", system-ui, sans-serif;
+  }
+
+  *,*::before,*::after{ box-sizing:border-box; }
+
+  html{ scroll-behavior:smooth; -webkit-text-size-adjust:100%; }
+
+  body{
+    margin:0;
+    background:var(--bg-1);
+    color:var(--ink);
+    font-family:var(--f-body);
+    line-height:1.6;
+    font-size:clamp(15px,1.05vw,17px);
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  /* ---- Layered atmospheric background (fixed) ---- */
+  .bgwrap{ position:fixed; inset:0; z-index:-2; overflow:hidden; pointer-events:none; }
+  .bgwrap::before{
+    /* faceted gradient mesh */
+    content:""; position:absolute; inset:-20%;
+    background:
+      radial-gradient(48% 40% at 18% 8%, #2030a055 0%, transparent 60%),
+      radial-gradient(40% 38% at 88% 22%, #1e8fff33 0%, transparent 62%),
+      radial-gradient(60% 50% at 70% 100%, #1a226b66 0%, transparent 60%),
+      linear-gradient(160deg, var(--bg-0), var(--bg-1) 45%, #060a22 100%);
+  }
+  .bgwrap::after{
+    /* grain overlay */
+    content:""; position:absolute; inset:0; opacity:.05; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .tess{ position:absolute; inset:0; width:100%; height:100%; opacity:.5; }
+  .tess line, .tess polygon{ stroke:#3650c4; }
+
+  /* ---- Layout primitives ---- */
+  .wrap{ width:min(92%,var(--maxw)); margin-inline:auto; }
+  section{ position:relative; }
+  .eyebrow{
+    font-family:var(--f-head); font-weight:700; letter-spacing:.34em;
+    text-transform:uppercase; font-size:.7rem; color:var(--cyan);
+    display:inline-flex; align-items:center; gap:.7em;
+  }
+  .eyebrow::before{ content:""; width:26px; height:1px; background:linear-gradient(90deg,var(--cyan),transparent); }
+  .en{ color:var(--muted); font-family:var(--f-body); font-weight:500; }
+  .gradtext{
+    background:linear-gradient(110deg,var(--cyan) 0%, #b9c4ff 42%, var(--indigo) 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+
+  a{ color:inherit; }
+
+  /* ============================ HEADER ============================ */
+  header.nav{
+    position:sticky; top:0; z-index:50;
+    backdrop-filter:blur(14px) saturate(1.2);
+    background:linear-gradient(180deg, #070b1fdd, #070b1f55 70%, transparent);
+    border-bottom:1px solid #ffffff0d;
+  }
+  .nav-inner{ display:flex; align-items:center; justify-content:space-between; padding:.85rem 0; }
+  .brand{ display:flex; align-items:center; gap:.7rem; text-decoration:none; }
+  .brand .mark{ width:30px; height:30px; flex:none; filter:drop-shadow(0 0 10px #46e0ff66); }
+  .brand b{ font-family:var(--f-display); font-weight:800; font-size:1.18rem; letter-spacing:.02em; }
+  .brand span{ font-family:var(--f-jp); color:var(--muted); font-size:.78rem; margin-left:.1rem; }
+  .nav-links{ display:flex; align-items:center; gap:1.6rem; }
+  .nav-links a{
+    text-decoration:none; color:var(--frost); font-family:var(--f-head); font-weight:600;
+    font-size:.86rem; letter-spacing:.02em; opacity:.82; transition:opacity .2s, color .2s;
+  }
+  .nav-links a:hover{ opacity:1; color:var(--cyan); }
+  .nav-links .ghbtn{
+    border:1px solid var(--line); padding:.5rem .95rem; border-radius:10px;
+    display:inline-flex; align-items:center; gap:.5rem; opacity:1;
+    transition:border-color .2s, background .2s, transform .2s;
+  }
+  .nav-links .ghbtn:hover{ border-color:var(--cyan); background:#46e0ff12; transform:translateY(-1px); }
+  .nav-links svg{ width:16px; height:16px; }
+  @media(max-width:720px){ .nav-links .nav-anchor{ display:none; } }
+
+  /* ============================ HERO ============================ */
+  .hero{ padding:clamp(3rem,9vw,7rem) 0 clamp(3.5rem,7vw,6rem); }
+  .hero-grid{
+    display:grid; grid-template-columns:1.15fr .85fr; gap:clamp(2rem,5vw,4.5rem);
+    align-items:center;
+  }
+  @media(max-width:920px){ .hero-grid{ grid-template-columns:1fr; } }
+
+  .badge-row{ display:flex; flex-wrap:wrap; gap:.55rem; margin-bottom:1.6rem; }
+  .badge{
+    font-family:var(--f-head); font-weight:600; font-size:.72rem; letter-spacing:.04em;
+    padding:.4rem .7rem; border-radius:999px; border:1px solid var(--line);
+    background:#0a1030aa; color:var(--frost); display:inline-flex; gap:.45rem; align-items:center;
+  }
+  .badge .dot{ width:6px; height:6px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+
+  h1.title{
+    font-family:var(--f-display); font-weight:800;
+    font-size:clamp(3.1rem,9vw,6.2rem); line-height:.92; letter-spacing:-.01em;
+    margin:.2rem 0 .1rem;
+  }
+  .title-sub{
+    font-family:var(--f-jp); font-weight:500; color:var(--muted);
+    font-size:clamp(1rem,2.4vw,1.35rem); letter-spacing:.18em; margin:0 0 1.4rem;
+  }
+  .tagline{ font-family:var(--f-jp); font-weight:700; font-size:clamp(1.25rem,3.2vw,1.85rem); line-height:1.4; margin:0 0 .35rem; }
+  .tagline-en{ color:var(--muted); font-size:clamp(.95rem,2vw,1.1rem); font-weight:500; margin:0 0 2rem; max-width:46ch; }
+
+  .cta-row{ display:flex; flex-wrap:wrap; gap:.9rem; align-items:center; }
+  .btn{
+    --bw:1px;
+    position:relative; isolation:isolate;
+    font-family:var(--f-head); font-weight:700; font-size:.95rem; letter-spacing:.01em;
+    text-decoration:none; cursor:pointer;
+    padding:.95rem 1.5rem; border-radius:13px;
+    display:inline-flex; align-items:center; gap:.7rem;
+    transition:transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s, border-color .22s, background .22s;
+  }
+  .btn svg{ width:19px; height:19px; }
+  .btn-primary{
+    color:#04060f;
+    background:linear-gradient(120deg,var(--cyan), #8ad6ff 55%, #b9c4ff);
+    box-shadow:0 14px 40px -12px #46e0ff88, inset 0 0 0 1px #ffffff55;
+  }
+  .btn-primary .sub{ font-weight:600; font-size:.74rem; opacity:.72; margin-left:.1rem; }
+  .btn-primary:hover{ transform:translateY(-3px); box-shadow:0 22px 55px -12px #46e0ffaa, inset 0 0 0 1px #fff; }
+  .btn-ghost{
+    color:var(--frost); border:1px solid var(--line);
+    background:#0a1030aa;
+  }
+  .btn-ghost:hover{ transform:translateY(-3px); border-color:var(--cyan); background:#46e0ff14; box-shadow:0 16px 40px -18px #000; }
+
+  .hero-meta{ margin-top:1.6rem; display:flex; flex-wrap:wrap; gap:1.1rem 1.8rem; color:var(--muted); font-size:.84rem; }
+  .hero-meta b{ color:var(--frost); font-family:var(--f-head); }
+  .hero-meta .en{ display:block; font-size:.74rem; color:var(--muted-2); }
+
+  /* ---- The signature crystal ---- */
+  .crystal-stage{
+    position:relative; aspect-ratio:1/1; display:grid; place-items:center;
+    perspective:1100px;
+  }
+  .crystal-stage::before{
+    content:""; position:absolute; inset:8% 8% 6%;
+    background:radial-gradient(circle at 50% 55%, #46e0ff33, transparent 62%);
+    filter:blur(22px); z-index:0;
+  }
+  .ring{
+    position:absolute; border:1px solid var(--line); border-radius:50%;
+    inset:6%; opacity:.5;
+    animation:spin 60s linear infinite;
+  }
+  .ring.r2{ inset:16%; border-style:dashed; border-color:#46e0ff2e; animation-duration:42s; animation-direction:reverse; }
+  .ring.r3{ inset:-2%; border-color:#2a356f88; animation-duration:90s; }
+
+  .crystal{
+    position:relative; width:62%; aspect-ratio:1/1; z-index:2;
+    transform-style:preserve-3d;
+    animation:float 9s ease-in-out infinite, tilt 16s ease-in-out infinite;
+    filter:drop-shadow(0 26px 40px #000a);
+  }
+  /* octahedron via two stacked clip-path triangles per half, layered facets */
+  .facet{ position:absolute; inset:0; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); }
+  .facet.core{
+    background:
+      linear-gradient(135deg,#0e1538 0%, #1b2a8e 40%, #3a4cff 70%, #6ee9ff 100%);
+    box-shadow:inset 0 0 60px #6ee9ff33;
+  }
+  .facet.tl{ clip-path:polygon(50% 0, 100% 50%, 50% 50%); background:linear-gradient(160deg,#a9f1ff,#3a4cff); opacity:.96; }
+  .facet.tr{ clip-path:polygon(50% 0, 0 50%, 50% 50%); background:linear-gradient(200deg,#7df9ff,#1c2580); opacity:.88; }
+  .facet.bl{ clip-path:polygon(0 50%, 50% 100%, 50% 50%); background:linear-gradient(20deg,#101a52,#3a4cff); opacity:.92; }
+  .facet.br{ clip-path:polygon(100% 50%, 50% 100%, 50% 50%); background:linear-gradient(-20deg,#1b2a8e,#6ee9ff); opacity:.8; }
+  .facet.edges{
+    background:
+      linear-gradient(transparent 49.4%, #bff4ff88 49.6%, #bff4ff88 50.4%, transparent 50.6%),
+      linear-gradient(90deg,transparent 49.4%, #bff4ff66 49.6%, #bff4ff66 50.4%, transparent 50.6%);
+    mix-blend-mode:screen;
+  }
+  .glint{
+    position:absolute; width:60%; height:60%; left:8%; top:8%; z-index:3;
+    background:linear-gradient(135deg,#ffffffcc, transparent 45%);
+    clip-path:polygon(50% 0, 78% 30%, 40% 42%, 0 28%);
+    mix-blend-mode:screen; opacity:.7;
+    animation:glint 9s ease-in-out infinite;
+  }
+  .shard{
+    position:absolute; z-index:1; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);
+    background:linear-gradient(135deg,#46e0ff, #1c2580);
+    opacity:.55; filter:drop-shadow(0 0 8px #46e0ff55);
+  }
+  .shard.s1{ width:13%; aspect-ratio:1; top:4%; left:50%; animation:orbit 12s linear infinite; }
+  .shard.s2{ width:8%; aspect-ratio:1; bottom:8%; left:14%; animation:orbit 18s linear infinite reverse; }
+  .shard.s3{ width:6%; aspect-ratio:1; top:36%; right:2%; animation:orbit 22s linear infinite; }
+
+  @keyframes float{ 0%,100%{ transform:translateY(0) } 50%{ transform:translateY(-16px) } }
+  @keyframes tilt{ 0%,100%{ transform:rotate(0deg) } 50%{ transform:rotate(8deg) } }
+  @keyframes glint{ 0%,100%{ opacity:.35; transform:translate(0,0) } 50%{ opacity:.85; transform:translate(6%,4%) } }
+  @keyframes spin{ to{ transform:rotate(360deg) } }
+  @keyframes orbit{ to{ transform:rotate(360deg) translateX(2px) } }
+
+  /* ============================ MARQUEE / FORMATS ============================ */
+  .formats{ border-block:1px solid #ffffff0d; padding:1.1rem 0; background:#070b1f88; }
+  .formats-inner{ display:flex; align-items:center; gap:1.4rem; flex-wrap:wrap; justify-content:center; }
+  .formats .lbl{ font-family:var(--f-head); font-weight:600; letter-spacing:.16em; font-size:.7rem; color:var(--muted-2); text-transform:uppercase; }
+  .chip{
+    font-family:var(--f-display); font-weight:600; font-size:.9rem; letter-spacing:.03em;
+    color:var(--frost); padding:.3rem .8rem; border:1px solid var(--line); border-radius:8px;
+    background:linear-gradient(180deg,#0e1640,#0a1030);
+  }
+  .chip.lock::after{ content:"🔒"; margin-left:.4rem; font-size:.75em; filter:grayscale(.2); }
+
+  /* ============================ SECTION HEAD ============================ */
+  .sec{ padding:clamp(3.4rem,8vw,6rem) 0; }
+  .sec-head{ max-width:62ch; margin-bottom:clamp(2rem,4vw,3rem); }
+  .sec-head h2{
+    font-family:var(--f-display); font-weight:800; letter-spacing:-.01em;
+    font-size:clamp(2rem,5vw,3.2rem); line-height:1.02; margin:.8rem 0 .5rem;
+  }
+  .sec-head .h2-en{ font-family:var(--f-head); color:var(--muted); font-size:clamp(1rem,2vw,1.25rem); font-weight:600; letter-spacing:.02em; }
+  .sec-head p{ color:var(--muted); margin:.9rem 0 0; }
+  .sec-head p .en{ display:block; margin-top:.2rem; font-size:.92em; }
+
+  /* ============================ FEATURES GRID ============================ */
+  .feat-grid{
+    display:grid; grid-template-columns:repeat(12,1fr); gap:1rem;
+  }
+  .card{
+    grid-column:span 4;
+    position:relative; overflow:hidden;
+    border:1px solid var(--line); border-radius:var(--r);
+    background:linear-gradient(180deg,#0c1234, #090d26);
+    padding:1.5rem 1.45rem 1.6rem;
+    transition:transform .3s cubic-bezier(.2,.8,.2,1), border-color .3s, box-shadow .3s, background .3s;
+  }
+  .card::before{ /* faceted corner cut */
+    content:""; position:absolute; top:-1px; right:-1px; width:54px; height:54px;
+    background:linear-gradient(135deg,#46e0ff22, transparent 70%);
+    clip-path:polygon(100% 0, 0 0, 100% 100%);
+    transition:background .3s;
+  }
+  .card::after{ /* hover sweep */
+    content:""; position:absolute; inset:0; opacity:0;
+    background:radial-gradient(120px 120px at var(--mx,80%) var(--my,0%), #46e0ff1f, transparent 70%);
+    transition:opacity .3s;
+  }
+  .card:hover{ transform:translateY(-6px); border-color:#46e0ff66; box-shadow:0 26px 50px -28px #000, 0 0 0 1px #46e0ff22; }
+  .card:hover::after{ opacity:1; }
+  .card:hover::before{ background:linear-gradient(135deg,#46e0ff55, transparent 70%); }
+  .card:hover .ic{ transform:rotate(-8deg) scale(1.06); }
+
+  .card.wide{ grid-column:span 6; }
+  .card.tall{ grid-column:span 4; }
+  @media(max-width:900px){ .card,.card.wide,.card.tall{ grid-column:span 6; } }
+  @media(max-width:600px){ .card,.card.wide,.card.tall{ grid-column:span 12; } }
+
+  .ic{
+    width:46px; height:46px; border-radius:12px; margin-bottom:1.05rem;
+    display:grid; place-items:center; flex:none;
+    background:linear-gradient(140deg,#13205e,#0a1030);
+    border:1px solid var(--line-bright);
+    transition:transform .3s;
+  }
+  .ic svg{ width:24px; height:24px; stroke:var(--cyan); fill:none; stroke-width:1.7; }
+  .card h3{ font-family:var(--f-head); font-weight:700; font-size:1.12rem; margin:0 0 .1rem; letter-spacing:.01em; }
+  .card .h3-en{ font-family:var(--f-head); font-weight:600; color:var(--cyan-soft); font-size:.78rem; letter-spacing:.06em; text-transform:uppercase; display:block; margin-bottom:.6rem; }
+  .card p{ margin:0; color:var(--frost); font-size:.92rem; }
+  .card p .en{ display:block; margin-top:.45rem; color:var(--muted); font-size:.85rem; }
+  .card .tags{ margin-top:.9rem; display:flex; flex-wrap:wrap; gap:.4rem; }
+  .card .tags span{ font-family:var(--f-head); font-size:.68rem; letter-spacing:.04em; padding:.18rem .5rem; border-radius:6px; background:#0e1640; border:1px solid var(--line); color:var(--muted); }
+
+  /* ============================ SPLIT: HOW / DROP ============================ */
+  .split{ display:grid; grid-template-columns:1fr 1fr; gap:clamp(1.4rem,3vw,2.4rem); align-items:stretch; }
+  @media(max-width:840px){ .split{ grid-template-columns:1fr; } }
+  .dropzone{
+    position:relative; border:1.5px dashed #46e0ff66; border-radius:var(--r);
+    background:linear-gradient(160deg,#0b1234, #0a1030); padding:2rem 1.6rem;
+    display:flex; flex-direction:column; gap:1rem; min-height:240px; justify-content:center;
+    overflow:hidden;
+  }
+  .dropzone::before{
+    content:""; position:absolute; inset:0; opacity:.5;
+    background:repeating-linear-gradient(45deg,#46e0ff08 0 12px, transparent 12px 24px);
+  }
+  .dz-row{ display:flex; align-items:center; gap:1rem; position:relative; }
+  .dz-ic{ width:54px; height:54px; flex:none; border-radius:12px; display:grid; place-items:center; background:#10185099; border:1px solid var(--line-bright); }
+  .dz-ic svg{ width:28px; height:28px; stroke:var(--cyan); fill:none; stroke-width:1.6; }
+  .dz-row b{ font-family:var(--f-head); font-weight:700; font-size:1.02rem; display:block; }
+  .dz-row .en{ font-size:.82rem; }
+  .dz-arrow{ text-align:center; color:var(--cyan); font-size:1.3rem; position:relative; animation:pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:.4 } 50%{ opacity:1 } }
+
+  .how-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1rem; }
+  .how-list li{ display:flex; gap:1rem; align-items:flex-start; padding:1rem 1.1rem; border:1px solid var(--line); border-radius:14px; background:#0a0f2a88; transition:border-color .25s, transform .25s; }
+  .how-list li:hover{ border-color:#46e0ff55; transform:translateX(4px); }
+  .num{ font-family:var(--f-display); font-weight:800; font-size:1.1rem; color:var(--cyan); flex:none; width:1.8rem; }
+  .how-list b{ font-family:var(--f-head); font-weight:700; }
+  .how-list .en{ font-size:.82rem; }
+
+  /* ============================ SYSTEM REQUIREMENTS ============================ */
+  .req-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:1rem; }
+  @media(max-width:840px){ .req-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media(max-width:460px){ .req-grid{ grid-template-columns:1fr; } }
+  .req{
+    border:1px solid var(--line); border-radius:var(--r); padding:1.3rem 1.25rem;
+    background:linear-gradient(180deg,#0c1234,#090d26); position:relative; overflow:hidden;
+    transition:border-color .25s, transform .25s;
+  }
+  .req:hover{ border-color:#46e0ff55; transform:translateY(-4px); }
+  .req .k{ font-family:var(--f-head); font-weight:600; letter-spacing:.12em; text-transform:uppercase; font-size:.68rem; color:var(--cyan); margin-bottom:.5rem; }
+  .req .v{ font-family:var(--f-display); font-weight:600; font-size:1.18rem; line-height:1.2; }
+  .req .v small{ font-family:var(--f-jp); font-weight:400; font-size:.8rem; color:var(--muted); display:block; margin-top:.35rem; letter-spacing:0; }
+
+  /* ============================ DOWNLOAD ============================ */
+  .download{ position:relative; }
+  .dl-panel{
+    position:relative; overflow:hidden;
+    border:1px solid #46e0ff33; border-radius:26px;
+    background:
+      radial-gradient(60% 90% at 85% 0%, #1e3aa044, transparent 60%),
+      radial-gradient(50% 80% at 0% 100%, #46e0ff1a, transparent 60%),
+      linear-gradient(160deg,#0c1336, #080c24);
+    padding:clamp(2rem,5vw,3.4rem);
+    box-shadow:var(--shadow);
+  }
+  .dl-panel::before{
+    content:""; position:absolute; right:-60px; top:-60px; width:260px; height:260px; opacity:.25;
+    background:conic-gradient(from 30deg,#46e0ff, transparent 40%, #3a4cff 70%, transparent);
+    clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);
+    animation:spin 38s linear infinite; pointer-events:none;
+  }
+  .dl-head{ display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:1rem; margin-bottom:1.8rem; position:relative; }
+  .dl-head h2{ font-family:var(--f-display); font-weight:800; font-size:clamp(1.9rem,4.5vw,2.8rem); margin:.4rem 0 0; }
+  .dl-head .h2-en{ color:var(--muted); font-family:var(--f-head); font-weight:600; }
+  .price-pill{ font-family:var(--f-head); font-weight:700; font-size:.8rem; letter-spacing:.05em; color:var(--cyan); border:1px solid var(--line-bright); background:#46e0ff12; padding:.5rem .9rem; border-radius:999px; }
+
+  .dl-grid{ display:grid; grid-template-columns:1fr 1fr; gap:1rem; position:relative; }
+  @media(max-width:680px){ .dl-grid{ grid-template-columns:1fr; } }
+  .dl-card{
+    text-decoration:none; color:var(--ink);
+    border:1px solid var(--line); border-radius:18px;
+    background:linear-gradient(180deg,#0e1640, #0a1030);
+    padding:1.5rem 1.5rem 1.4rem; display:flex; align-items:center; gap:1.1rem;
+    transition:transform .26s cubic-bezier(.2,.8,.2,1), border-color .26s, box-shadow .26s, background .26s;
+    position:relative; overflow:hidden;
+  }
+  .dl-card::after{ content:""; position:absolute; inset:0; opacity:0; background:linear-gradient(120deg,#46e0ff18, transparent 60%); transition:opacity .26s; }
+  .dl-card:hover{ transform:translateY(-5px); border-color:var(--cyan); box-shadow:0 26px 55px -24px #000, 0 0 0 1px #46e0ff33; }
+  .dl-card:hover::after{ opacity:1; }
+  .dl-card:hover .dl-ic{ background:linear-gradient(140deg,#46e0ff,#3a4cff); }
+  .dl-card:hover .dl-ic svg{ stroke:#04060f; }
+  .dl-ic{ width:54px; height:54px; flex:none; border-radius:13px; display:grid; place-items:center; background:linear-gradient(140deg,#13205e,#0a1030); border:1px solid var(--line-bright); transition:background .26s; }
+  .dl-ic svg{ width:28px; height:28px; stroke:var(--cyan); fill:none; stroke-width:1.6; transition:stroke .26s; }
+  .dl-card .arch{ font-family:var(--f-display); font-weight:600; font-size:1.18rem; line-height:1.1; }
+  .dl-card .os{ font-family:var(--f-head); color:var(--muted); font-size:.82rem; display:block; margin-top:.25rem; }
+  .dl-card .go{ margin-left:auto; color:var(--cyan); font-size:1.3rem; transition:transform .26s; flex:none; }
+  .dl-card:hover .go{ transform:translateX(5px); }
+  .dl-card[data-suggested]::before{
+    content:"おすすめ / Recommended"; position:absolute; top:.85rem; right:.9rem;
+    font-family:var(--f-head); font-weight:700; font-size:.62rem; letter-spacing:.05em;
+    color:#04060f; background:linear-gradient(120deg,var(--cyan),#b9c4ff); padding:.2rem .55rem; border-radius:6px;
+    opacity:0; transition:opacity .3s;
+  }
+  .dl-card[data-suggested].show-suggest::before{ opacity:1; }
+
+  .dl-note{ margin-top:1.5rem; display:flex; flex-wrap:wrap; gap:.7rem 1.6rem; color:var(--muted); font-size:.82rem; position:relative; }
+  .dl-note span{ display:inline-flex; align-items:center; gap:.5rem; }
+  .dl-note svg{ width:15px; height:15px; stroke:var(--cyan); fill:none; stroke-width:1.7; }
+  .dl-note .en{ color:var(--muted-2); }
+
+  /* ============================ TRUST STRIP ============================ */
+  .trust{ display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-top:1.2rem; }
+  @media(max-width:760px){ .trust{ grid-template-columns:1fr; } }
+  .trust div{ border:1px solid var(--line); border-radius:14px; padding:1.1rem 1.2rem; background:#0a0f2a88; }
+  .trust b{ font-family:var(--f-head); font-weight:700; color:var(--cyan); display:block; margin-bottom:.25rem; font-size:.92rem; }
+  .trust p{ margin:0; color:var(--muted); font-size:.82rem; }
+  .trust p .en{ display:block; color:var(--muted-2); margin-top:.2rem; }
+
+  /* ============================ FOOTER ============================ */
+  footer{
+    border-top:1px solid #ffffff0d; margin-top:clamp(3rem,6vw,5rem);
+    background:linear-gradient(180deg, transparent, #060a1c);
+    padding:clamp(2.6rem,5vw,4rem) 0 2.5rem;
+  }
+  .foot-grid{ display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:2rem; }
+  @media(max-width:760px){ .foot-grid{ grid-template-columns:1fr; gap:1.6rem; } }
+  .foot-brand .brand{ margin-bottom:.9rem; }
+  .foot-brand p{ color:var(--muted); font-size:.86rem; max-width:38ch; margin:.4rem 0; }
+  .foot-brand p .en{ display:block; color:var(--muted-2); margin-top:.25rem; }
+  .foot-col h4{ font-family:var(--f-head); font-weight:700; letter-spacing:.1em; text-transform:uppercase; font-size:.74rem; color:var(--frost); margin:0 0 .9rem; }
+  .foot-col a, .foot-col span{ display:block; color:var(--muted); text-decoration:none; font-size:.86rem; margin-bottom:.55rem; transition:color .2s; }
+  .foot-col a:hover{ color:var(--cyan); }
+  .legit{
+    margin-top:2rem; padding-top:1.5rem; border-top:1px solid #ffffff0d;
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:1rem;
+    color:var(--muted-2); font-size:.78rem;
+  }
+  .legit .badge-safe{
+    display:inline-flex; align-items:center; gap:.5rem; color:var(--cyan);
+    border:1px solid var(--line-bright); background:#46e0ff10; padding:.4rem .8rem; border-radius:999px;
+    font-family:var(--f-head); font-weight:600; letter-spacing:.02em;
+  }
+  .legit .badge-safe svg{ width:15px; height:15px; stroke:var(--cyan); fill:none; stroke-width:1.8; }
+  .legit p{ margin:0; max-width:60ch; }
+  .legit p .en{ display:block; margin-top:.2rem; }
+
+  /* ============================ REVEAL ANIMATION ============================ */
+  .reveal{ opacity:0; transform:translateY(26px); }
+  .is-in .reveal{
+    animation:rise .8s cubic-bezier(.2,.85,.25,1) forwards;
+    animation-delay:var(--d,0ms);
+  }
+  @keyframes rise{ to{ opacity:1; transform:none; } }
+
+  /* hero loads immediately with stagger */
+  .hero .reveal{ animation:rise .9s cubic-bezier(.2,.85,.25,1) forwards; animation-delay:var(--d,0ms); }
+
+  :focus-visible{ outline:2px solid var(--cyan); outline-offset:3px; border-radius:6px; }
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{ animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+    .reveal{ opacity:1 !important; transform:none !important; }
+  }
+</style>
+</head>
+
+<body>
+<div class="bgwrap" aria-hidden="true">
+  <svg class="tess" preserveAspectRatio="xMidYMid slice" viewBox="0 0 1200 800" fill="none" stroke-width="1">
+    <g opacity="0.6">
+      <polygon points="120,80 260,40 300,180 160,230" fill="none" stroke-opacity="0.35"/>
+      <polygon points="300,180 160,230 240,360 380,310" fill="none" stroke-opacity="0.25"/>
+      <polygon points="980,60 1120,120 1080,260 940,210" fill="none" stroke-opacity="0.3"/>
+      <polygon points="1080,260 940,210 980,380 1140,340" fill="none" stroke-opacity="0.2"/>
+      <polygon points="540,520 700,470 760,640 600,700" fill="none" stroke-opacity="0.28"/>
+      <line x1="0" y1="200" x2="1200" y2="120" stroke-opacity="0.12"/>
+      <line x1="0" y1="600" x2="1200" y2="680" stroke-opacity="0.1"/>
+      <line x1="300" y1="0" x2="420" y2="800" stroke-opacity="0.1"/>
+      <line x1="900" y1="0" x2="820" y2="800" stroke-opacity="0.1"/>
+    </g>
+  </svg>
+</div>
+
+<!-- ===================== HEADER ===================== -->
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top" aria-label="Lhamiel home">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#7df9ff"/><stop offset="1" stop-color="#3a4cff"/>
+        </linearGradient></defs>
+        <path d="M16 2 L30 16 L16 30 L2 16 Z" fill="url(#bm)"/>
+        <path d="M16 2 L16 30 M2 16 L30 16 M16 16 L30 16" stroke="#070b1f" stroke-width="1" opacity="0.5"/>
+      </svg>
+      <span><b>Lhamiel</b><span lang="ja">ラミエル</span></span>
+    </a>
+    <nav class="nav-links" aria-label="Primary">
+      <a class="nav-anchor" href="#features">機能</a>
+      <a class="nav-anchor" href="#requirements">動作環境</a>
+      <a class="nav-anchor" href="#download">ダウンロード</a>
+      <a class="ghbtn" href="https://github.com/1llum1n4t1s/Lhamiel" target="_blank" rel="noopener noreferrer">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.78 0 12.29c0 5.21 3.44 9.63 8.2 11.19.6.11.82-.25.82-.56 0-.28-.01-1.02-.02-2-3.34.71-4.04-1.58-4.04-1.58-.55-1.37-1.34-1.73-1.34-1.73-1.09-.73.08-.72.08-.72 1.2.08 1.84 1.21 1.84 1.21 1.07 1.8 2.81 1.28 3.5.98.11-.76.42-1.28.76-1.58-2.67-.3-5.47-1.31-5.47-5.83 0-1.29.47-2.34 1.24-3.17-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.3 1.21a11.6 11.6 0 0 1 6 0c2.28-1.53 3.29-1.21 3.29-1.21.65 1.66.24 2.88.12 3.18.77.83 1.23 1.88 1.23 3.17 0 4.53-2.8 5.53-5.48 5.82.43.37.81 1.1.81 2.22 0 1.6-.01 2.9-.01 3.29 0 .31.21.69.83.57C20.57 21.91 24 17.5 24 12.29 24 5.78 18.63.5 12 .5Z"/></svg>
+        <span lang="en">GitHub</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ===================== HERO ===================== -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <div class="badge-row reveal" style="--d:60ms">
+          <span class="badge"><span class="dot"></span>無料・オープンソース <span class="en" lang="en">Free &amp; Open Source</span></span>
+          <span class="badge">Windows 10 / 11</span>
+          <span class="badge">Native AOT · .NET 10</span>
+        </div>
+
+        <h1 class="title reveal" id="hero-title" style="--d:120ms"><span class="gradtext">Lhamiel</span></h1>
+        <p class="title-sub reveal" lang="ja" style="--d:180ms">ラミエル</p>
+
+        <p class="tagline reveal" lang="ja" style="--d:240ms">ドロップするだけ。圧縮も解凍も、結晶のように速く正確に。</p>
+        <p class="tagline-en reveal" lang="en" style="--d:300ms">Just drop it. A fast, simple archive compressor &amp; extractor for Windows — precise as cut glass.</p>
+
+        <div class="cta-row reveal" style="--d:360ms">
+          <a class="btn btn-primary" id="primary-dl" href="https://lhamiel.nephilim.jp/Lhamiel-win-Setup.exe" download>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+            <span>ダウンロード <span class="sub" lang="en" id="primary-dl-sub">Windows x64</span></span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/1llum1n4t1s/Lhamiel" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.37.5 0 5.78 0 12.29c0 5.21 3.44 9.63 8.2 11.19.6.11.82-.25.82-.56 0-.28-.01-1.02-.02-2-3.34.71-4.04-1.58-4.04-1.58-.55-1.37-1.34-1.73-1.34-1.73-1.09-.73.08-.72.08-.72 1.2.08 1.84 1.21 1.84 1.21 1.07 1.8 2.81 1.28 3.5.98.11-.76.42-1.28.76-1.58-2.67-.3-5.47-1.31-5.47-5.83 0-1.29.47-2.34 1.24-3.17-.13-.3-.54-1.52.11-3.18 0 0 1.01-.32 3.3 1.21a11.6 11.6 0 0 1 6 0c2.28-1.53 3.29-1.21 3.29-1.21.65 1.66.24 2.88.12 3.18.77.83 1.23 1.88 1.23 3.17 0 4.53-2.8 5.53-5.48 5.82.43.37.81 1.1.81 2.22 0 1.6-.01 2.9-.01 3.29 0 .31.21.69.83.57C20.57 21.91 24 17.5 24 12.29 24 5.78 18.63.5 12 .5Z"/></svg>
+            <span>ソースコード <span class="sub" lang="en">View on GitHub</span></span>
+          </a>
+        </div>
+
+        <div class="hero-meta reveal" style="--d:440ms">
+          <div><b>ランタイム不要</b><span class="en" lang="en">No runtime needed</span></div>
+          <div><b>17 言語対応</b><span class="en" lang="en">17 languages</span></div>
+          <div><b>x64 &amp; ARM64</b><span class="en" lang="en">Both architectures</span></div>
+          <div><b>通常権限で動作</b><span class="en" lang="en">Normal user privileges</span></div>
+        </div>
+      </div>
+
+      <!-- Signature crystal -->
+      <div class="crystal-stage reveal" style="--d:280ms" aria-hidden="true">
+        <div class="ring r3"></div>
+        <div class="ring"></div>
+        <div class="ring r2"></div>
+        <div class="shard s1"></div>
+        <div class="shard s2"></div>
+        <div class="shard s3"></div>
+        <div class="crystal">
+          <div class="facet core"></div>
+          <div class="facet tl"></div>
+          <div class="facet tr"></div>
+          <div class="facet bl"></div>
+          <div class="facet br"></div>
+          <div class="facet edges"></div>
+          <div class="glint"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FORMATS STRIP ===================== -->
+  <section class="formats" aria-label="対応フォーマット / Supported formats">
+    <div class="wrap formats-inner">
+      <span class="lbl">圧縮 / Compress</span>
+      <span class="chip">ZIP</span>
+      <span class="chip">7z</span>
+      <span class="chip">TAR</span>
+      <span class="lbl" style="margin-left:.6rem">解凍 / Extract</span>
+      <span class="chip lock">ZIP</span>
+      <span class="chip lock">7z</span>
+      <span class="chip lock">RAR</span>
+      <span class="chip">TAR</span>
+      <span class="chip">＋多数 / many more</span>
+    </div>
+  </section>
+
+  <!-- ===================== FEATURES ===================== -->
+  <section class="sec" id="features" aria-labelledby="feat-title">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">Features</span>
+        <h2 id="feat-title">必要なものが、ちょうど全部。</h2>
+        <p class="h2-en" lang="en">Everything you need, nothing you don't.</p>
+        <p lang="ja">日常の圧縮・解凍を、賢く・安全に・速く。Lhamiel は細部まで気が利く設計です。
+          <span class="en" lang="en">Smart, safe and fast archiving — thoughtfully engineered down to the smallest detail.</span>
+        </p>
+      </div>
+
+      <div class="feat-grid">
+
+        <article class="card wide reveal" style="--d:40ms">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><rect x="4" y="17" width="16" height="4" rx="1"/></svg></div>
+          <span class="h3-en" lang="en">Drag &amp; Drop, Auto-detect</span>
+          <h3 lang="ja">ドラッグ＆ドロップで自動判別</h3>
+          <p lang="ja">ファイルやフォルダーを落とせば自動で圧縮、アーカイブを落とせば自動で展開。考えることはありません。
+            <span class="en" lang="en">Drop a file or folder to auto-compress; drop an archive to auto-extract. Zero thinking required.</span>
+          </p>
+          <div class="tags"><span>ZIP</span><span>7z</span><span>TAR</span><span>Auto</span></div>
+        </article>
+
+        <article class="card reveal" style="--d:100ms">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+          <span class="h3-en" lang="en">Password Protection</span>
+          <h3 lang="ja">パスワード保護</h3>
+          <p lang="ja">パスワード付き ZIP / 7z の作成に対応。RAR を含む暗号化アーカイブの展開も。
+            <span class="en" lang="en">Create password-protected ZIP / 7z, and extract encrypted archives including RAR.</span>
+          </p>
+        </article>
+
+        <article class="card reveal" style="--d:160ms">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h7l2 2h7v9a2 2 0 0 1-2 2H4z"/><path d="M9 13l2 2 4-4"/></svg></div>
+          <span class="h3-en" lang="en">No Double-Nesting</span>
+          <h3 lang="ja">二重フォルダーを防止</h3>
+          <p lang="ja">展開時の「フォルダーの中にまた同名フォルダー」を賢く回避します。
+            <span class="en" lang="en">Smartly prevents the dreaded folder-inside-a-folder when extracting.</span>
+          </p>
+        </article>
+
+        <article class="card reveal" style="--d:60ms">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7v5l3 2"/><path d="M21 3l-4 4-2-2"/></svg></div>
+          <span class="h3-en" lang="en">Compress Locked Files</span>
+          <h3 lang="ja">使用中ファイルも圧縮</h3>
+          <p lang="ja">他のアプリが開いてロック中のファイルも、可能な限り圧縮します。
+            <span class="en" lang="en">Compresses files that are locked or in use by other applications.</span>
+          </p>
+        </article>
+
+        <article class="card reveal" style="--d:120ms">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h7"/><path d="M16 15l5 5m0-5-5 5"/></svg></div>
+          <span class="h3-en" lang="en">Exclusion List</span>
+          <h3 lang="ja">除外リスト</h3>
+          <p lang="ja"><code style="font-family:var(--f-head)">.DS_Store</code> や <code style="font-family:var(--f-head)">node_modules</code> など、不要物を自動で除外。
+            <span class="en" lang="en">Automatically skip clutter like .DS_Store and node_modules.</span>
+          </p>
+        </article>
+
+        <article class="card reveal" style="--d:180ms">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4v6c0 5-3.5 7.5-8 8-4.5-.5-8-3-8-8V7z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <span class="h3-en" lang="en">Safe by Design</span>
+          <h3 lang="ja">安全性への配慮</h3>
+          <p lang="ja">ディスク空き容量の事前チェック、破損アーカイブの可能な限りの復旧、競合時の解決ダイアログ。
+            <span class="en" lang="en">Disk-space pre-check, best-effort recovery of corrupt archives, and a file-conflict resolution dialog.</span>
+          </p>
+        </article>
+
+        <article class="card reveal" style="--d:80ms">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M2 12h20M12 3c2.5 2.5 2.5 15 0 18M12 3C9.5 5.5 9.5 18.5 12 21"/></svg></div>
+          <span class="h3-en" lang="en">Mark-of-the-Web</span>
+          <h3 lang="ja">MotW を引き継ぎ</h3>
+          <p lang="ja">インターネット由来の印（Mark-of-the-Web）を展開後のファイルにも適切に伝搬します。
+            <span class="en" lang="en">Propagates the Mark-of-the-Web to extracted files for OS security checks.</span>
+          </p>
+        </article>
+
+        <article class="card reveal" style="--d:140ms">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 3 2 5 2 7h10c0-2 2-4 2-7a7 7 0 0 0-7-7z"/><path d="M9 21h6M10 18h4"/></svg></div>
+          <span class="h3-en" lang="en">Themes &amp; Languages</span>
+          <h3 lang="ja">テーマと多言語</h3>
+          <p lang="ja">ダーク / ライト / システム連動（アクリル・ブラー）。UI は 17 言語に対応。
+            <span class="en" lang="en">Dark / light / system themes with acrylic blur. UI available in 17 languages.</span>
+          </p>
+        </article>
+
+        <article class="card reveal" style="--d:200ms">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 9h8M8 13h5"/><path d="M7 21h10"/></svg></div>
+          <span class="h3-en" lang="en">File Association</span>
+          <h3 lang="ja">ファイル関連付け</h3>
+          <p lang="ja">隠しファイル・システムファイルの任意取り込みや、各形式の関連付けにも対応。
+            <span class="en" lang="en">Optional hidden / system files and file-type association for each format.</span>
+          </p>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== HOW IT WORKS / DROPZONE ===================== -->
+  <section class="sec" aria-labelledby="how-title" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">How it works</span>
+        <h2 id="how-title">使い方は、ひとつだけ。</h2>
+        <p class="h2-en" lang="en">One gesture. That's it.</p>
+      </div>
+
+      <div class="split">
+        <div class="dropzone reveal" role="img" aria-label="ファイルをドロップして圧縮、アーカイブをドロップして展開 / Drop a file to compress, drop an archive to extract">
+          <div class="dz-row">
+            <div class="dz-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 3h9l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/></svg></div>
+            <div><b lang="ja">ファイル / フォルダー</b><span class="en" lang="en">A file or folder</span></div>
+          </div>
+          <div class="dz-arrow" aria-hidden="true">↓ &nbsp; 圧縮 / Compress &nbsp; ↓</div>
+          <div class="dz-row">
+            <div class="dz-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M9 5v14"/></svg></div>
+            <div><b lang="ja">アーカイブ</b><span class="en" lang="en">An archive → auto-extract</span></div>
+          </div>
+        </div>
+
+        <ol class="how-list reveal" style="--d:120ms">
+          <li><span class="num">1</span><div><b lang="ja">ドロップする</b> <span class="en" lang="en">Drop it onto Lhamiel.</span><br><span style="color:var(--muted);font-size:.88rem" lang="ja">中身を見て、圧縮か展開かを自動で判断します。</span></div></li>
+          <li><span class="num">2</span><div><b lang="ja">必要なら微調整</b> <span class="en" lang="en">Tweak if needed.</span><br><span style="color:var(--muted);font-size:.88rem" lang="ja">形式・パスワード・除外リストはいつでも変更可能。</span></div></li>
+          <li><span class="num">3</span><div><b lang="ja">完了</b> <span class="en" lang="en">Done — instantly.</span><br><span style="color:var(--muted);font-size:.88rem" lang="ja">競合や空き容量は事前にチェック。安心して任せられます。</span></div></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SYSTEM REQUIREMENTS ===================== -->
+  <section class="sec" id="requirements" aria-labelledby="req-title" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">System Requirements</span>
+        <h2 id="req-title">動作環境</h2>
+        <p class="h2-en" lang="en">System requirements</p>
+      </div>
+      <div class="req-grid">
+        <div class="req reveal" style="--d:40ms">
+          <div class="k">OS</div>
+          <div class="v">Windows 10 / 11<small lang="ja">64-bit エディション</small></div>
+        </div>
+        <div class="req reveal" style="--d:90ms">
+          <div class="k">Architecture</div>
+          <div class="v">x64 &amp; ARM64<small lang="ja">両アーキテクチャ対応</small></div>
+        </div>
+        <div class="req reveal" style="--d:140ms">
+          <div class="k">Runtime</div>
+          <div class="v">不要 / None<small lang="en">Native AOT — .NET 10 self-contained</small></div>
+        </div>
+        <div class="req reveal" style="--d:190ms">
+          <div class="k">Privileges</div>
+          <div class="v">通常ユーザー<small lang="en">Runs without admin rights</small></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== DOWNLOAD ===================== -->
+  <section class="sec download" id="download" aria-labelledby="dl-title">
+    <div class="wrap">
+      <div class="dl-panel reveal">
+        <div class="dl-head">
+          <div>
+            <span class="eyebrow">Download</span>
+            <h2 id="dl-title">今すぐ手に入れる</h2>
+            <p class="h2-en" lang="en">Get Lhamiel for Windows</p>
+          </div>
+          <span class="price-pill">¥0 · 完全無料 / Always free</span>
+        </div>
+
+        <div class="dl-grid">
+          <a class="dl-card" id="dl-x64" data-suggested href="https://lhamiel.nephilim.jp/Lhamiel-win-Setup.exe" download>
+            <div class="dl-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5 10.5 4v7H3z"/><path d="M10.5 4 21 2.5V11h-10.5z"/><path d="M3 13h7.5v7L3 18.5z"/><path d="M10.5 13H21v8.5L10.5 20z"/></svg></div>
+            <div>
+              <span class="arch">Windows · x64</span>
+              <span class="os" lang="en">Intel / AMD 64-bit · Setup.exe</span>
+            </div>
+            <span class="go" aria-hidden="true">↓</span>
+          </a>
+
+          <a class="dl-card" id="dl-arm64" href="https://lhamiel.nephilim.jp/Lhamiel-win-arm64-Setup.exe" download>
+            <div class="dl-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5 10.5 4v7H3z"/><path d="M10.5 4 21 2.5V11h-10.5z"/><path d="M3 13h7.5v7L3 18.5z"/><path d="M10.5 13H21v8.5L10.5 20z"/></svg></div>
+            <div>
+              <span class="arch">Windows · ARM64</span>
+              <span class="os" lang="en">ARM 64-bit (Snapdragon等) · Setup.exe</span>
+            </div>
+            <span class="go" aria-hidden="true">↓</span>
+          </a>
+        </div>
+
+        <div class="dl-note">
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M21 3l-9 9-3-3"/></svg> <span lang="ja">Velopack による自動更新に対応</span><span class="en" lang="en">&nbsp;Auto-updates via Velopack</span></span>
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 6v6c0 5 3.5 7.5 8 8 4.5-.5 8-3 8-8V6z"/></svg> <span lang="ja">マルウェアではない正規ソフトウェア</span><span class="en" lang="en">&nbsp;Legitimate, non-malicious software</span></span>
+          <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg> <span lang="ja">ソースコードは GitHub で公開</span><span class="en" lang="en">&nbsp;Source on GitHub</span></span>
+        </div>
+
+        <div class="trust">
+          <div class="reveal" style="--d:40ms">
+            <b lang="en">100% Free &amp; Open Source</b>
+            <p lang="ja">完全無料。広告・課金・トラッキング一切なし。
+              <span class="en" lang="en">No ads, no paywalls, no tracking — ever.</span>
+            </p>
+          </div>
+          <div class="reveal" style="--d:90ms">
+            <b lang="en">Transparent &amp; Auditable</b>
+            <p lang="ja">全ソースコードを GitHub で公開。誰でも検証できます。
+              <span class="en" lang="en">Full source is public on GitHub for anyone to audit.</span>
+            </p>
+          </div>
+          <div class="reveal" style="--d:140ms">
+            <b lang="en">Fast &amp; Lightweight</b>
+            <p lang="ja">Native AOT で即起動。ランタイムのインストールは不要です。
+              <span class="en" lang="en">Native AOT means instant startup with no runtime install.</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===================== FOOTER ===================== -->
+<footer aria-labelledby="foot-title">
+  <h2 id="foot-title" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Footer</h2>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="#top" aria-label="Lhamiel home">
+          <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+            <defs><linearGradient id="fm" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#7df9ff"/><stop offset="1" stop-color="#3a4cff"/>
+            </linearGradient></defs>
+            <path d="M16 2 L30 16 L16 30 L2 16 Z" fill="url(#fm)"/>
+            <path d="M16 2 L16 30 M2 16 L30 16" stroke="#070b1f" stroke-width="1" opacity="0.5"/>
+          </svg>
+          <span><b>Lhamiel</b><span lang="ja">ラミエル</span></span>
+        </a>
+        <p lang="ja">Windows 向けの高速・シンプルなアーカイブ圧縮／展開ツール。無料・オープンソース。
+          <span class="en" lang="en">A fast, simple archive compressor &amp; extractor for Windows. Free and open source.</span>
+        </p>
+      </div>
+
+      <nav class="foot-col" aria-label="Product">
+        <h4>Product</h4>
+        <a href="#features">機能 <span lang="en">/ Features</span></a>
+        <a href="#requirements">動作環境 <span lang="en">/ Requirements</span></a>
+        <a href="#download">ダウンロード <span lang="en">/ Download</span></a>
+      </nav>
+
+      <nav class="foot-col" aria-label="Project">
+        <h4>Project</h4>
+        <a href="https://github.com/1llum1n4t1s/Lhamiel" target="_blank" rel="noopener noreferrer">GitHub リポジトリ <span lang="en">/ Repository</span></a>
+        <a href="https://github.com/1llum1n4t1s/Lhamiel/issues" target="_blank" rel="noopener noreferrer">不具合報告 <span lang="en">/ Issues</span></a>
+        <a href="https://github.com/1llum1n4t1s/Lhamiel/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">ライセンス <span lang="en">/ License</span></a>
+        <span>自動更新 <span lang="en">/ Auto-updates via Velopack</span></span>
+      </nav>
+    </div>
+
+    <div class="legit">
+      <span class="badge-safe">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 6v6c0 5 3.5 7.5 8 8 4.5-.5 8-3 8-8V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        正規ソフトウェア / Legitimate software
+      </span>
+      <p>
+        <span lang="ja">Lhamiel はマルウェアやアドウェアを含まない、正規の無料オープンソース・ソフトウェアです。トラッキングや広告は一切ありません。© 2026 1llum1n4t1s.</span>
+        <span class="en" lang="en">Lhamiel is legitimate, free and open-source software. It contains no malware or adware, and performs no tracking. © 2026 1llum1n4t1s.</span>
+      </p>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* Progressive enhancement only — page is fully functional & visible without JS. */
+(function(){
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* 1) Scroll-reveal: reveal sections as they enter the viewport. */
+  var sections = document.querySelectorAll('section, footer');
+  if (reduce || !('IntersectionObserver' in window)) {
+    sections.forEach(function(s){ s.classList.add('is-in'); });
+  } else {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){
+        if (e.isIntersecting){ e.target.classList.add('is-in'); io.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+    sections.forEach(function(s){ io.observe(s); });
+    /* hero is in view immediately */
+    var hero = document.querySelector('.hero');
+    if (hero) hero.classList.add('is-in');
+  }
+
+  /* 2) OS-architecture hint: highlight the likely-correct download. */
+  try {
+    var ua = (navigator.userAgent || '') + ' ' + (navigator.platform || '');
+    var isArm = /aarch64|arm64|ARM\b/i.test(ua);
+    var x64 = document.getElementById('dl-x64');
+    var arm = document.getElementById('dl-arm64');
+    var primarySub = document.getElementById('primary-dl-sub');
+    var primaryBtn = document.getElementById('primary-dl');
+    if (isArm && arm && x64) {
+      arm.setAttribute('data-suggested','');
+      x64.removeAttribute('data-suggested');
+      arm.classList.add('show-suggest');
+      if (primarySub) primarySub.textContent = 'Windows ARM64';
+      if (primaryBtn) primaryBtn.setAttribute('href','https://lhamiel.nephilim.jp/Lhamiel-win-arm64-Setup.exe');
+    } else if (x64) {
+      x64.classList.add('show-suggest');
+    }
+  } catch(e){ /* no-op */ }
+
+  /* 3) Card hover spotlight follows the cursor. */
+  if (!reduce) {
+    document.querySelectorAll('.card').forEach(function(card){
+      card.addEventListener('pointermove', function(ev){
+        var r = card.getBoundingClientRect();
+        card.style.setProperty('--mx', (ev.clientX - r.left) + 'px');
+        card.style.setProperty('--my', (ev.clientY - r.top) + 'px');
+      });
+    });
+  }
+})();
+</script>
+</body>
+</html>
