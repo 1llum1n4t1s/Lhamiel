@@ -615,24 +615,40 @@ public class ArchiveExtractorTests
             // 2. ZIP を排他ロック (`FileShare.None`)
             var holder = new FileStream(zipPath, FileMode.Open, FileAccess.Read, FileShare.None);
 
-            // 3. 300ms 後にロック解除する別タスク（リトライ機構の最初の待機 200ms より後、合計待機 600ms 以内）
+            // 3. 300ms 後にロック解除する別タスク（リトライ機構の最初の待機 200ms より後、合計待機 600ms 以内）。
+            //    CancellationToken.None を使う + finally で holder を確実に Dispose して、テストキャンセル時の
+            //    ファイルハンドルリークを防ぐ。
             var unlocker = Task.Run(async () =>
             {
-                await Task.Delay(300, TestContext.Current.CancellationToken);
-                holder.Dispose();
+                try
+                {
+                    await Task.Delay(300, CancellationToken.None);
+                }
+                finally
+                {
+                    holder.Dispose();
+                }
             });
 
-            // 4. ExtractArchive を呼ぶ。OpenArchiveReaderWithRetry の 200ms→400ms バックオフで
-            //    途中でロックが外れ、2 回目か 3 回目の試行で reader 生成に成功するはず。
-            var outputDir = Path.Combine(testDir, "extracted");
-            await ArchiveExtractor.ExtractArchive(zipPath, outputDir, cancellationToken: TestContext.Current.CancellationToken);
+            try
+            {
+                // 4. ExtractArchive を呼ぶ。OpenArchiveReaderWithRetry の 200ms→400ms バックオフで
+                //    途中でロックが外れ、2 回目か 3 回目の試行で reader 生成に成功するはず。
+                var outputDir = Path.Combine(testDir, "extracted");
+                await ArchiveExtractor.ExtractArchive(zipPath, outputDir, cancellationToken: TestContext.Current.CancellationToken);
 
-            await unlocker;
+                await unlocker;
 
-            // 5. 結果: hello.txt が中身込みで展開されていること
-            var outputFile = Path.Combine(outputDir, "hello.txt");
-            Assert.True(File.Exists(outputFile), $"展開ファイルが見つからない: {outputFile}");
-            Assert.Equal("hello locked world", File.ReadAllText(outputFile));
+                // 5. 結果: hello.txt が中身込みで展開されていること
+                var outputFile = Path.Combine(outputDir, "hello.txt");
+                Assert.True(File.Exists(outputFile), $"展開ファイルが見つからない: {outputFile}");
+                Assert.Equal("hello locked world", File.ReadAllText(outputFile));
+            }
+            finally
+            {
+                // 上で例外が出て unlocker に到達しないケースでも holder を必ず解放する。
+                holder.Dispose();
+            }
         }
         finally
         {

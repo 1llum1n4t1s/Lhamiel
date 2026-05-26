@@ -25,7 +25,7 @@ Lhamiel の Setup.exe / Update.exe / 同梱バイナリに Authenticode 署名�
 
 ## 全体構成図
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │  ゆろさん PC (Windows 11)                                       │
 │                                                                 │
@@ -62,6 +62,7 @@ Lhamiel の Setup.exe / Update.exe / 同梱バイナリに Authenticode 署名�
    - 為替次第で安い方を選択 (両方とも同じ Certum 直販)
 
 2. **入力情報**
+
    | 項目 | 内容 |
    |------|------|
    | 氏名 | **パスポート英字表記と完全一致** (姓名順、ヘボン式) |
@@ -188,7 +189,7 @@ Get-AuthenticodeSignature $env:TEMP/Lhamiel-Setup.exe | Format-List
 
 ### 現状 (`velopack-release.yml`)
 
-```
+```text
 build → velopack (vpk pack on windows-latest) → r2-upload (wrangler)
 ```
 

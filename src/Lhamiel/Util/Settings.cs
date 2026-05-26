@@ -617,20 +617,28 @@ public class Settings
             }
 
             // レガシー ExcludedFilePatterns 配列があれば .lhaignore 移行用にキャッシュする。
-            // 空配列もユーザーが「意図的に除外なし」と設定した状態として尊重し、
-            // デフォルトパターンで上書きしないよう保持する。
+            // - 真の空配列 `[]`: ユーザーの「意図的に除外なし」を尊重して空のまま保持する
+            // - 全要素が型不正（例: `[123, true]`）で文字列を 1 件も回収できなかった: 破損とみなし、
+            //   デフォルトパターン（CreateDefaultContent）に温存させる
             if (root.TryGetProperty("ExcludedFilePatterns", out var efpEl) && efpEl.ValueKind == JsonValueKind.Array)
             {
                 try
                 {
                     var list = new List<string>();
+                    var hadElements = false;
                     foreach (var item in efpEl.EnumerateArray())
                     {
+                        hadElements = true;
                         if (item.ValueKind == JsonValueKind.String)
                             list.Add(item.GetString()!);
                     }
-                    s._legacyExcludedFilePatterns = list;
-                    recoveredCount++;
+                    // 「要素はあったが 1 件も文字列が無かった」ケースは破損扱いで未回収にする。
+                    // 真の空配列 (hadElements=false) は意図的設定として保持する。
+                    if (!hadElements || list.Count > 0)
+                    {
+                        s._legacyExcludedFilePatterns = list;
+                        recoveredCount++;
+                    }
                 }
                 catch { /* 配列回収失敗 → デフォルト維持 */ }
             }

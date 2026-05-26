@@ -466,9 +466,12 @@ public class ArchiveCompressorTests
     [Fact]
     public async Task CompressFilesAsync_WhenSevenZipExceptionThrown_DeletesPartialOutput()
     {
+        // Windows 固有: 「存在しないドライブレター」を出力先にして例外を誘発する。
+        // 非 Windows ではドライブレターの概念が無いのでスキップ。
+        Assert.SkipWhen(!OperatingSystem.IsWindows(), "Windows のドライブレターに依存するテスト");
+
         // 圧縮対象ファイル → outputPath まで設定済の状態で writer.Save が SevenZipException 相当を
         // 投げると、書きかけの outputPath が残ったままになるバグの回帰テスト。
-        // ここでは「outputPath を書き込み不能なディレクトリにする」ことで似たエラー条件を作り、
         // 結果として outputPath が残らない（部分ファイルが残らない）ことを確認する。
         var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
         var sourceDir = Path.Combine(testRoot, "src");
@@ -477,29 +480,49 @@ public class ArchiveCompressorTests
             Directory.CreateDirectory(sourceDir);
             File.WriteAllText(Path.Combine(sourceDir, "a.txt"), "hello");
 
-            // 出力先を「事前にダミーファイルを作って読み書き不能を擬装する」ような
-            // 細工は OS 依存になりやすいので、ここでは「存在しないドライブ」を出力先にして
-            // 例外を誘発する。Lhamiel が outputCreated=true 後に発生する例外でも部分ファイルを
-            // 残さない事を確かめる回帰テスト。
-            // Note: Z:\ など存在しないドライブを使う。CI 環境差に注意。
-            var fakeDrive = "Z:\\does_not_exist_lhamiel_test\\out.zip";
+            // 存在しないドライブレターを動的に探す。Z:\ などをハードコードすると、テスト環境で
+            // 実際にそのドライブが存在すると例外が出なくなり flake になる。
+            var fakeDrive = FindUnusedDriveLetter();
+            if (fakeDrive is null)
+            {
+                Assert.Skip("利用可能な未使用ドライブレターが見つからない");
+                return;
+            }
+            var fakePath = $"{fakeDrive}:\\does_not_exist_lhamiel_test\\out.zip";
 
-            var ex = await Assert.ThrowsAnyAsync<Exception>(async () =>
+            await Assert.ThrowsAnyAsync<Exception>(async () =>
                 await ArchiveCompressor.CompressFilesAsync(
                     [sourceDir],
-                    fakeDrive,
+                    fakePath,
                     Cube.FileSystem.SevenZip.Format.Zip,
                     cancellationToken: TestContext.Current.CancellationToken));
 
             // 何らかの例外が出るのが期待挙動 (DirectoryNotFoundException / IOException / SevenZipException など)。
             // 重要なのは出力先に部分ファイルが残らないこと。
-            Assert.False(File.Exists(fakeDrive), $"部分ファイルが残っている: {fakeDrive}");
+            Assert.False(File.Exists(fakePath), $"部分ファイルが残っている: {fakePath}");
         }
         finally
         {
             if (Directory.Exists(testRoot))
                 Directory.Delete(testRoot, true);
         }
+    }
+
+    /// <summary>
+    /// テスト用に「現在マウントされていないドライブレター」を 1 つ返す。見つからなければ null。
+    /// D〜Z を逆順 (Z 寄り) で探す（A〜C はシステム予約寄りで避ける）。
+    /// </summary>
+    private static char? FindUnusedDriveLetter()
+    {
+        var inUse = DriveInfo.GetDrives()
+            .Select(d => char.ToUpperInvariant(d.Name[0]))
+            .ToHashSet();
+        for (var c = 'Z'; c >= 'D'; c--)
+        {
+            if (!inUse.Contains(c))
+                return c;
+        }
+        return null;
     }
 
     [Fact]

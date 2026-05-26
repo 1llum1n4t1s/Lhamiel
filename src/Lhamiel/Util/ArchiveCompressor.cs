@@ -574,24 +574,16 @@ public static class ArchiveCompressor
     }
 
     /// <summary>
-    /// ファイルが除外パターンに一致するかチェックする
-    /// HashSet による O(1) 照合でパスセグメント数に対して O(n) で完了する
-    /// </summary>
-    /// <param name="path">チェックするパス</param>
-    /// <param name="excludedPatternSet">除外パターンの HashSet（大文字小文字無視）</param>
-    /// <returns>除外すべき場合はtrue</returns>
-    /// <summary>
-    /// 指定されたパスが除外対象か判定する。<paramref name="rootDir"/> が null の場合はファイル名のみで判定する
-    /// （単一ファイルがソースに渡されたケース）。
-    /// </summary>
-    /// <summary>
-    /// 指定されたパスが除外対象か判定する。<paramref name="rootDir"/> が null の場合はファイル名のみで判定する
-    /// （単一ファイルがソースに渡されたケース）。
-    /// </summary>
-    /// <summary>
     /// 指定されたパスが除外対象か判定する。<paramref name="rootDir"/> が null の場合は単一ファイルモードで
-    /// パス全体を照合する（ファイル名だけでなく、親ディレクトリのセグメントも directoryOnly ルールで判定される）。
+    /// パス全体を <see cref="GitignoreMatcher"/> に照合する（ファイル名だけでなく、親ディレクトリの
+    /// セグメントも directoryOnly ルールで判定される）。<paramref name="rootDir"/> が指定されたときは
+    /// <see cref="Path.GetRelativePath(string, string)"/> で相対パス化して照合する。
     /// </summary>
+    /// <param name="path">チェックするパス（絶対 or 相対）</param>
+    /// <param name="matcher"><see cref="GitignoreMatcher"/>（.lhaignore および各 .gitignore から構築済）</param>
+    /// <param name="rootDir">ソースルート（指定時は path をルート相対化）。<c>null</c> で単一ファイルモード</param>
+    /// <param name="isDirectory">対象がディレクトリの場合は <c>true</c></param>
+    /// <returns>除外すべき場合は <c>true</c></returns>
     internal static bool ShouldExcludeFile(string path, GitignoreMatcher matcher, string? rootDir = null, bool isDirectory = false)
     {
         if (!matcher.HasRules)
