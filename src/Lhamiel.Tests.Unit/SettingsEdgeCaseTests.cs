@@ -39,6 +39,28 @@ public class SettingsEdgeCaseTests
     }
 
     [Fact]
+    public void Settings_LegacyExcludedFilePatterns_EmptyArrayIsPreserved()
+    {
+        // 旧 settings.json で `ExcludedFilePatterns: []` (意図的に空) を持つユーザーが
+        // アップグレードした際、空配列が null 扱いされてデフォルト除外パターンに置き換わると
+        // 「ユーザーが意図的に除外なし」設定を壊してしまうので、setter は空配列も保持する。
+        // (Codex P1 指摘の回帰テスト)
+        var s = new Settings();
+        s.ExcludedFilePatternsLegacy = new List<string>();
+        Assert.NotNull(s._legacyExcludedFilePatterns);
+        Assert.Empty(s._legacyExcludedFilePatterns!);
+    }
+
+    [Fact]
+    public void Settings_LegacyExcludedFilePatterns_NullIsTreatedAsNull()
+    {
+        // null は「キーが無かった」状態なので legacy フィールドも null のまま。
+        var s = new Settings();
+        s.ExcludedFilePatternsLegacy = null;
+        Assert.Null(s._legacyExcludedFilePatterns);
+    }
+
+    [Fact]
     public void LhaignoreFile_DefaultContentContainsAllIgnoredItems()
     {
         var content = LhaignoreFile.CreateDefaultContent();

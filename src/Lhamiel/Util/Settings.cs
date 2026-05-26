@@ -154,7 +154,11 @@ public class Settings
         get => null;
         set
         {
-            if (value is { Count: > 0 })
+            // 旧 settings.json の `ExcludedFilePatterns` 配列を移行用にキャッシュする。
+            // 空配列 `[]` も「ユーザーが意図的に除外なしにした」状態として尊重し、
+            // デフォルトパターンで上書きしないように null と区別して保持する。
+            // 当プロパティの setter は JsonSerializer/JsonDocument 経路の両方から呼ばれる。
+            if (value is not null)
                 _legacyExcludedFilePatterns = value;
         }
     }
@@ -613,6 +617,8 @@ public class Settings
             }
 
             // レガシー ExcludedFilePatterns 配列があれば .lhaignore 移行用にキャッシュする。
+            // 空配列もユーザーが「意図的に除外なし」と設定した状態として尊重し、
+            // デフォルトパターンで上書きしないよう保持する。
             if (root.TryGetProperty("ExcludedFilePatterns", out var efpEl) && efpEl.ValueKind == JsonValueKind.Array)
             {
                 try
@@ -623,11 +629,8 @@ public class Settings
                         if (item.ValueKind == JsonValueKind.String)
                             list.Add(item.GetString()!);
                     }
-                    if (list.Count > 0)
-                    {
-                        s._legacyExcludedFilePatterns = list;
-                        recoveredCount++;
-                    }
+                    s._legacyExcludedFilePatterns = list;
+                    recoveredCount++;
                 }
                 catch { /* 配列回収失敗 → デフォルト維持 */ }
             }

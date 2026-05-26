@@ -573,6 +573,10 @@ public static class ArchiveCompressor
     /// 指定されたパスが除外対象か判定する。<paramref name="rootDir"/> が null の場合はファイル名のみで判定する
     /// （単一ファイルがソースに渡されたケース）。
     /// </summary>
+    /// <summary>
+    /// 指定されたパスが除外対象か判定する。<paramref name="rootDir"/> が null の場合は単一ファイルモードで
+    /// パス全体を照合する（ファイル名だけでなく、親ディレクトリのセグメントも directoryOnly ルールで判定される）。
+    /// </summary>
     internal static bool ShouldExcludeFile(string path, GitignoreMatcher matcher, string? rootDir = null, bool isDirectory = false)
     {
         if (!matcher.HasRules)
@@ -582,9 +586,11 @@ public static class ArchiveCompressor
         bool singleFileMode;
         if (rootDir is null)
         {
-            // 単一ファイル: ベース名のみで判定する。ルート相対構造が無いため
-            // アンカードパターン（/build や doc/manual.txt など）はスキップさせる。
-            relative = Path.GetFileName(path);
+            // 単一ファイル: パス全体を / 区切りに正規化して渡す。
+            // ファイル名だけでは "node_modules/a.js" のようなパスで `node_modules/` ルールが効かないため、
+            // 親セグメントも照合できるよう IsExcluded 側でディレクトリ限定ルールが親ディレクトリ部にも適用される。
+            // ルート相対のアンカードパターン（"/build" 等）は singleFileMode=true でスキップする。
+            relative = GitignoreMatcher.NormalizePath(path).TrimStart('/');
             if (string.IsNullOrEmpty(relative))
                 return false;
             singleFileMode = true;

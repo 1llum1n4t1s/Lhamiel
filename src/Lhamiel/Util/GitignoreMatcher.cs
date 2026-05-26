@@ -129,14 +129,37 @@ public sealed class GitignoreMatcher
 
             foreach (var rule in layer.Rules)
             {
-                if (rule.DirectoryOnly && !isDirectory)
-                    continue;
                 // 単一ファイル判定中はアンカード（root 相対）ルールを無効化する。
                 // 例えば "/build" を持つルールは、ルートからの構造が無い単独のファイル名 "build" にはマッチさせない。
                 if (singleFileMode && rule.Anchored)
                     continue;
-                if (rule.Regex.IsMatch(localPath))
-                    excluded = !rule.Negated;
+
+                if (rule.DirectoryOnly)
+                {
+                    // ディレクトリ限定ルール: 対象がディレクトリならパス全体で照合する。
+                    // ファイルの場合は親ディレクトリ部分のいずれかにマッチするかを試す
+                    // （git の挙動: "node_modules/" は "node_modules/a.js" 配下も除外する）。
+                    if (isDirectory)
+                    {
+                        if (rule.Regex.IsMatch(localPath))
+                            excluded = !rule.Negated;
+                    }
+                    else
+                    {
+                        var lastSlash = localPath.LastIndexOf('/');
+                        if (lastSlash > 0)
+                        {
+                            var parentDir = localPath[..lastSlash];
+                            if (rule.Regex.IsMatch(parentDir))
+                                excluded = !rule.Negated;
+                        }
+                    }
+                }
+                else
+                {
+                    if (rule.Regex.IsMatch(localPath))
+                        excluded = !rule.Negated;
+                }
             }
         }
         return excluded;

@@ -233,4 +233,26 @@ public class GitignoreMatcherTests
         Assert.False(m.HasRules);
         Assert.False(m.IsExcluded("anything", false));
     }
+
+    [Fact]
+    public void DirectoryOnlyPattern_MatchesFileUnderIgnoredDirectory()
+    {
+        // git の挙動: "node_modules/" は配下のファイル "node_modules/a.js" も除外する。
+        // (Codex P2 指摘の回帰テスト)
+        var m = GitignoreMatcher.Compile(["node_modules/"]);
+        Assert.True(m.IsExcluded("node_modules", isDirectory: true));
+        Assert.True(m.IsExcluded("node_modules/a.js", isDirectory: false));
+        Assert.True(m.IsExcluded("src/node_modules/index.js", isDirectory: false));
+        // ファイル名が "node_modules" だが directoryOnly なのでマッチしない
+        Assert.False(m.IsExcluded("node_modules", isDirectory: false));
+    }
+
+    [Fact]
+    public void DirectoryOnlyPattern_SingleFileMode_MatchesParentSegment()
+    {
+        // 単一ファイル指定（rootDir なし）で C:\...\node_modules\a.js を渡しても、
+        // 親セグメント "node_modules" が directoryOnly ルールにマッチして除外される。
+        var m = GitignoreMatcher.Compile(["node_modules/"]);
+        Assert.True(m.IsExcluded("C:/foo/node_modules/a.js", isDirectory: false, singleFileMode: true));
+    }
 }
