@@ -526,6 +526,53 @@ public class ArchiveCompressorTests
     }
 
     [Fact]
+    public async Task ScanSourceFiles_RespectNestedGitignore_RootGitignorePrunesNestedDiscovery()
+    {
+        // RTK レビュー Codex P2 対応: DiscoverGitignoreFiles が root の .gitignore を読み込んだ後、
+        // サブディレクトリ走査でもそのルールを枝刈りに使うことを確認する。
+        // 具体的には、root .gitignore で "vendor/" を除外している場合、vendor/ 配下の nested .gitignore
+        // は読まれず、vendor/ 配下のファイルも圧縮対象から除外される。
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(testRoot);
+            // root .gitignore で vendor/ を除外
+            File.WriteAllText(Path.Combine(testRoot, ".gitignore"), "vendor/\n");
+
+            // vendor/ 配下にダミーファイルと、さらに別のルールを持つ nested .gitignore を配置
+            // 期待: vendor/ ごと枝刈りされるので、nested .gitignore は読み込まれず、vendor/*.txt も含まれない
+            var vendorDir = Path.Combine(testRoot, "vendor");
+            Directory.CreateDirectory(vendorDir);
+            File.WriteAllText(Path.Combine(vendorDir, ".gitignore"), "!keep.txt\n");
+            File.WriteAllText(Path.Combine(vendorDir, "lib.txt"), "x");
+            File.WriteAllText(Path.Combine(vendorDir, "keep.txt"), "x");
+
+            // 一方、root 配下の通常ファイルは含まれる
+            File.WriteAllText(Path.Combine(testRoot, "app.txt"), "x");
+
+            // respectNestedGitignore=true の場合は globalIgnoreLines も必須
+            // (BuildLayeredMatcherForSource の条件: respectNestedGitignore && globalIgnoreLines is not null)
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [testRoot],
+                GitignoreMatcher.Empty,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true,
+                globalIgnoreLines: Array.Empty<string>());
+
+            // app.txt は含まれる
+            Assert.Contains(result, r => r.fullPath.EndsWith("app.txt"));
+            // vendor/ 配下は root .gitignore で除外されて含まれない（nested .gitignore の !keep.txt も到達しない）
+            Assert.DoesNotContain(result, r => r.fullPath.Contains("vendor"));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
     public async Task ScanSourceFiles_RespectNestedGitignoreFalse_IgnoresGitignoreFiles()
     {
         // RespectNestedGitignore=false の場合、.gitignore は無視される

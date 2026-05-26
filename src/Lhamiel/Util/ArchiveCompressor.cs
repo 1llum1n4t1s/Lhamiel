@@ -347,7 +347,7 @@ public static class ArchiveCompressor
             (string.Empty, globalIgnoreLines),
         };
 
-        foreach (var (relativeDir, lines) in DiscoverGitignoreFiles(sourceDir, fallbackMatcher, includeHiddenAndSystemEntries))
+        foreach (var (relativeDir, lines) in DiscoverGitignoreFiles(sourceDir, globalIgnoreLines, includeHiddenAndSystemEntries))
         {
             layers.Add((relativeDir, lines));
         }
@@ -357,20 +357,36 @@ public static class ArchiveCompressor
 
     private static IEnumerable<(string relativeDir, string[] lines)> DiscoverGitignoreFiles(
         string sourceDir,
-        GitignoreMatcher fallbackMatcher,
+        IReadOnlyList<string> globalIgnoreLines,
         bool includeHiddenAndSystemEntries)
     {
-        // source root 自身の .gitignore（あれば）
+        // source root 自身の .gitignore（あれば）を先に読む。
+        // ⚠️ ここで読んだ root の .gitignore は、その後のサブディレクトリ走査 (= さらなる nested
+        // .gitignore を探す再帰探索) でも枝刈りに使う。これをしないと、root .gitignore で除外される
+        // 大規模サブツリー (vendor/, build/, node_modules/.pnpm/ 等) も毎回完全に走査されて
+        // O(tree size) の無駄なスキャンコストが発生する。RTK レビュー Codex P2 指摘対応。
+        string[]? rootLines = null;
         var rootGitignore = Path.Combine(sourceDir, ".gitignore");
         if (File.Exists(rootGitignore))
         {
-            var lines = TryReadGitignoreLines(rootGitignore);
-            if (lines is not null)
-                yield return (string.Empty, lines);
+            rootLines = TryReadGitignoreLines(rootGitignore);
+            if (rootLines is not null)
+                yield return (string.Empty, rootLines);
         }
 
-        // ディレクトリツリーを fallback matcher で枝刈りしながら走査
-        foreach (var dir in EnumerateDirectoriesWithPruning(sourceDir, fallbackMatcher, includeHiddenAndSystemEntries))
+        // .lhaignore (globalIgnoreLines) + root .gitignore のルールを合流させた matcher を構築。
+        // これにより root の .gitignore で除外される vendor/ や build/ 等のサブツリーが枝刈りされ、
+        // nested .gitignore 探索のコストが大幅に削減される。
+        var pruneMatcher = rootLines is not null && rootLines.Length > 0
+            ? GitignoreMatcher.CompileLayered(new (string, IEnumerable<string>)[]
+                {
+                    (string.Empty, globalIgnoreLines),
+                    (string.Empty, rootLines),
+                })
+            : GitignoreMatcher.Compile(globalIgnoreLines);
+
+        // ディレクトリツリーを「.lhaignore + root .gitignore」併合 matcher で枝刈りしながら走査
+        foreach (var dir in EnumerateDirectoriesWithPruning(sourceDir, pruneMatcher, includeHiddenAndSystemEntries))
         {
             var giPath = Path.Combine(dir, ".gitignore");
             if (!File.Exists(giPath))
