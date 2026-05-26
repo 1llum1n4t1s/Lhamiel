@@ -66,18 +66,6 @@
         "resolved": "8.4.2",
         "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="
       },
-      "CRDebugger.Avalonia": {
-        "type": "Direct",
-        "requested": "[1.0.26, )",
-        "resolved": "1.0.26",
-        "contentHash": "ptuf0FEq8alIOD5/9IWjaEeJy/KWzrfmFXlC4APngTxXHVFLnHKrqlTw2qHl8WkYPGXTxq10ReUtfCPwjquDOg==",
-        "dependencies": {
-          "Avalonia": "12.0.3",
-          "Avalonia.Themes.Fluent": "12.0.3",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.8",
-          "SuperLightLogger": "1.0.7"
-        }
-      },
       "MessageBox.Avalonia": {
         "type": "Direct",
         "requested": "[12.0.0, )",
@@ -113,9 +101,9 @@
       },
       "Tmds.DBus.Protocol": {
         "type": "Direct",
-        "requested": "[0.93.0, )",
-        "resolved": "0.93.0",
-        "contentHash": "KDshXiWIfl26HUUN9Yv6CbAluEld8ZTrH+CJuCfLdBV/nXuhuEkcJrdcgApd5vCIkhxvOluJu9Qp7hn90hHcXQ=="
+        "requested": "[0.94.0, )",
+        "resolved": "0.94.0",
+        "contentHash": "kCcyda6Yy38DD6YS5VjEwViVSDRknK4ZzfGlj0Iqq6butijNZog8zm6ne4toGqmNCXIR4NiEui6WzyNOtMSofA=="
       },
       "Velopack": {
         "type": "Direct",
