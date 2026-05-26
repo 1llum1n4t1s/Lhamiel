@@ -327,17 +327,40 @@ public sealed class GitignoreMatcher
             {
                 if (i + 1 < pattern.Length && pattern[i + 1] == '*')
                 {
-                    // ** : 0 個以上のパスセグメント
-                    // 直前 / 直後の / は飲み込む（"foo/**/bar" が "foo/bar" にもマッチするように）
-                    var consumedLeadingSlash = sb.Length > 0 && sb[^1] == '/';
-                    if (consumedLeadingSlash)
-                        sb.Length -= 1;
+                    // gitignore 仕様: ** が globstar（パス区切りを跨ぐ任意マッチ）として扱われるのは
+                    // 以下の特定形式のみ:
+                    //   (1) **/ で始まる (leading **)
+                    //   (2) /** で終わる (trailing /** — ParseLine 側で endsWithDoubleStar に変換済み)
+                    //   (3) /**/ の形 (middle **)
+                    // それ以外（例: "ab**cd", "/ab**cd", "foo**bar", "**foo", "foo**"）は
+                    // 通常の連続 * と同等に扱う（git-scm.com/docs/gitignore "Other consecutive asterisks
+                    // are considered regular asterisks"）。
+                    // Codex P2 指摘対応: 旧実装は前後の境界をチェックせず常に globstar として処理し、
+                    // "ab**cd" が "ab/cd" にマッチする等、Git と乖離した結果になっていた。
+                    var prevIsBoundary = i == 0 || pattern[i - 1] == '/';
+                    var nextIsBoundary = i + 2 >= pattern.Length || pattern[i + 2] == '/';
 
-                    sb.Append("(?:.*/)?");
-                    i += 2;
+                    if (prevIsBoundary && nextIsBoundary)
+                    {
+                        // ** : 0 個以上のパスセグメント
+                        // 直前 / 直後の / は飲み込む（"foo/**/bar" が "foo/bar" にもマッチするように）
+                        var consumedLeadingSlash = sb.Length > 0 && sb[^1] == '/';
+                        if (consumedLeadingSlash)
+                            sb.Length -= 1;
 
-                    if (i < pattern.Length && pattern[i] == '/')
-                        i++;
+                        sb.Append("(?:.*/)?");
+                        i += 2;
+
+                        if (i < pattern.Length && pattern[i] == '/')
+                            i++;
+                    }
+                    else
+                    {
+                        // gitignore 仕様外の ** = 連続する * 2 つ ≡ 単一の * と等価 ([^/]*)。
+                        // path 区切りを跨がない通常ワイルドカードとして扱う。
+                        sb.Append("[^/]*");
+                        i += 2;
+                    }
                 }
                 else
                 {

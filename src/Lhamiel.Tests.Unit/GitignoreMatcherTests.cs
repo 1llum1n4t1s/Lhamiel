@@ -255,4 +255,102 @@ public class GitignoreMatcherTests
         var m = GitignoreMatcher.Compile(["node_modules/"]);
         Assert.True(m.IsExcluded("C:/foo/node_modules/a.js", isDirectory: false, singleFileMode: true));
     }
+
+    // === Codex P2 #3 回帰テスト: ** は gitignore 仕様の境界形式のみ globstar として扱う ===
+
+    [Fact]
+    public void EmbeddedDoubleStar_DoesNotSpanPathSeparator()
+    {
+        // gitignore 仕様: "ab**cd" のようにパス区切りを伴わない ** は通常の連続 * として扱う。
+        // すなわち [^/]* と等価で、パス区切り '/' は跨がない。
+        // (Codex P2 #3 指摘の回帰テスト)
+        var m = GitignoreMatcher.Compile(["ab**cd"]);
+
+        // ファイル名内のワイルドカードとしては機能する
+        Assert.True(m.IsExcluded("abcd", false));
+        Assert.True(m.IsExcluded("abxcd", false));
+        Assert.True(m.IsExcluded("abxxxcd", false));
+
+        // 重要: パス区切りを跨ぐマッチは Git の挙動と乖離するため、起きてはならない
+        Assert.False(m.IsExcluded("ab/cd", false));
+        Assert.False(m.IsExcluded("ab/xx/cd", false));
+    }
+
+    [Fact]
+    public void EmbeddedDoubleStarWithLeadingSlash_DoesNotSpanPathSeparator()
+    {
+        // 先頭にアンカー "/" を持っていても、body 内の ** が境界 (/) を持たないなら通常扱い。
+        var m = GitignoreMatcher.Compile(["/ab**cd"]);
+
+        Assert.True(m.IsExcluded("abxcd", false));
+        Assert.False(m.IsExcluded("ab/cd", false));
+        // アンカードなので深い位置のファイルにはマッチしない
+        Assert.False(m.IsExcluded("sub/abcd", false));
+    }
+
+    [Fact]
+    public void EmbeddedDoubleStarBetweenSegments_DoesNotSpanPathSeparator()
+    {
+        // "foo**bar" のように segment 内に挟まる ** も通常扱い (Git 仕様)
+        var m = GitignoreMatcher.Compile(["foo**bar"]);
+
+        Assert.True(m.IsExcluded("foobar", false));
+        Assert.True(m.IsExcluded("fooxxbar", false));
+        Assert.False(m.IsExcluded("foo/bar", false));
+        Assert.False(m.IsExcluded("foo/xx/bar", false));
+    }
+
+    [Fact]
+    public void TrailingEmbeddedDoubleStar_IsTreatedAsRegularStar()
+    {
+        // "foo**" は末尾 "/**" 形式ではない（** 直前が '/' でない）ので、通常の連続 * = 単一の * として扱う。
+        // すなわち "foo**" ≡ "foo*" の挙動になり、Git の `foo*` 仕様と一致する:
+        //   - "foobar" 等の basename match: ✅
+        //   - "foo" 単体: ✅
+        //   - "foo/bar": ディレクトリ "foo" として match → 配下も波及（Git の foo* の挙動と同じ）
+        // Codex P2 #3 指摘の核は「path 区切りを跨ぐ ab**cd の directory semantics 強制」回避なので、
+        // このケース（segment 内 wildcard としての展開）は意図通り。
+        var m = GitignoreMatcher.Compile(["foo**"]);
+
+        Assert.True(m.IsExcluded("foobar", false));
+        Assert.True(m.IsExcluded("foo", false));
+    }
+
+    [Fact]
+    public void LeadingEmbeddedDoubleStar_IsTreatedAsRegularStar()
+    {
+        // "**foo" は先頭 "**/" 形式ではない（** 直後が '/' でない）ので、通常の連続 * = 単一の * として扱う。
+        // すなわち "**foo" ≡ "*foo" の挙動になり、Git の `*foo` 仕様（unrooted basename match）と一致する。
+        var m = GitignoreMatcher.Compile(["**foo"]);
+
+        Assert.True(m.IsExcluded("foo", false));
+        Assert.True(m.IsExcluded("xxfoo", false));
+        // anchored=false なので任意深さでも basename "foo" 系にマッチする（Git の `*foo` と同じ挙動）。
+        // ここで重要なのは「** が directory globstar として強制扱いされない」ことであって、
+        // unrooted shell glob としての basename match までは止めない。
+    }
+
+    [Fact]
+    public void ValidGlobstarForms_StillWorkAsBefore()
+    {
+        // 修正後も以下の gitignore 仕様の valid globstar 形式は従来通り動作することを保証する。
+
+        // (1) 先頭の **/ : 任意深さの foo にマッチ
+        var leading = GitignoreMatcher.Compile(["**/foo"]);
+        Assert.True(leading.IsExcluded("foo", false));
+        Assert.True(leading.IsExcluded("a/foo", false));
+        Assert.True(leading.IsExcluded("a/b/c/foo", false));
+
+        // (2) 末尾の /** : foo 配下の全てにマッチ（ParseLine で endsWithDoubleStar 経由）
+        var trailing = GitignoreMatcher.Compile(["foo/**"]);
+        Assert.True(trailing.IsExcluded("foo/bar", false));
+        Assert.True(trailing.IsExcluded("foo/sub/bar", false));
+        Assert.False(trailing.IsExcluded("foo", false));    // foo 単体ファイルは除外しない
+
+        // (3) 中間の /**/ : 任意セグメント数を跨ぐ
+        var middle = GitignoreMatcher.Compile(["foo/**/bar"]);
+        Assert.True(middle.IsExcluded("foo/bar", false));
+        Assert.True(middle.IsExcluded("foo/x/bar", false));
+        Assert.True(middle.IsExcluded("foo/x/y/z/bar", false));
+    }
 }
