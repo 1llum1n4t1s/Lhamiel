@@ -568,34 +568,40 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// 編集後の変更は <see cref="_lhaignoreWatcher"/> がピックアップして UI を更新する。
     /// </summary>
     [RelayCommand]
-    private void OpenExcludedPatternsFile()
+    private async Task OpenExcludedPatternsFile()
     {
         try
         {
             // 開いた瞬間にファイルが存在することを保証する（初回起動でユーザーが先に押した場合の保険）
             LhaignoreFile.EnsureExists();
-
             var path = LhaignoreFile.FilePath;
-            try
+
+            // Issue #54 対策: Process.Start(UseShellExecute=true) を UI スレッドから直接呼ぶと、
+            // ShellExecuteEx の内部処理 (シェル拡張初期化・関連付け解決等) が UI スレッドを
+            // blocking して操作不能に見える経路がある。Task.Run で別スレッドへ逃がす。
+            await Task.Run(() =>
             {
-                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
-            }
-            catch
-            {
-                // .lhaignore に関連付けが無い環境では notepad で開く
-                // ⚠️ セキュリティ: "notepad.exe" 単独だと PATH 環境変数経由で悪意あるバイナリを掴むリスクがある
-                // (例: %LocalAppData%\Microsoft\WindowsApps はユーザー書込可で PATH に入っている)
-                // System32 のフルパス + ArgumentList で防御深度を確保する。
-                var systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
-                var notepadPath = Path.Combine(systemDir, "notepad.exe");
-                var fallbackInfo = new ProcessStartInfo
+                try
                 {
-                    FileName = notepadPath,
-                    UseShellExecute = false,
-                };
-                fallbackInfo.ArgumentList.Add(path);
-                Process.Start(fallbackInfo);
-            }
+                    using var _ = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                }
+                catch
+                {
+                    // .lhaignore に関連付けが無い環境では notepad で開く
+                    // ⚠️ セキュリティ: "notepad.exe" 単独だと PATH 環境変数経由で悪意あるバイナリを掴むリスクがある
+                    // (例: %LocalAppData%\Microsoft\WindowsApps はユーザー書込可で PATH に入っている)
+                    // System32 のフルパス + ArgumentList で防御深度を確保する。
+                    var systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
+                    var notepadPath = Path.Combine(systemDir, "notepad.exe");
+                    var fallbackInfo = new ProcessStartInfo
+                    {
+                        FileName = notepadPath,
+                        UseShellExecute = false,
+                    };
+                    fallbackInfo.ArgumentList.Add(path);
+                    using var _ = Process.Start(fallbackInfo);
+                }
+            });
         }
         catch (Exception ex)
         {
@@ -1008,7 +1014,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true })?.Dispose();
+            // Issue #54 対策: Process.Start(UseShellExecute=true) を UI スレッドから直接呼ぶと、
+            // 環境次第で ShellExecuteEx の内部処理 (SmartScreen URL reputation, AV URL scanning,
+            // シェル拡張初期化等) が UI スレッドを blocking し、メッセージポンプが停止して
+            // 「アプリ全体が操作不能」に見える経路がある。ShellOpener が Task.Run で別スレッドへ
+            // 逃がすため、UI スレッドはすぐ next frame に戻れる。
+            await ShellOpener.OpenWithDefaultHandlerAsync(url);
         }
         catch (Exception ex)
         {

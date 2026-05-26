@@ -1,4 +1,3 @@
-using System.Diagnostics;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -81,31 +80,22 @@ public static class FolderOpener
             return;
         }
 
-        try
+        if (DryRun)
         {
-            if (DryRun)
-            {
-                Logger.Log($"フォルダを開く処理をスキップしました（DryRun）: {folderPath}", LogLevel.Debug);
-                return;
-            }
-
-            // ArgumentList を使うことで explorer.exe の引数が CommandLineToArgvW の規則通り
-            // 安全にエスケープされ、スイッチ注入（/select,... 等）を防ぐ。
-            var processInfo = new ProcessStartInfo
-            {
-                FileName = "explorer.exe",
-                UseShellExecute = true,
-                CreateNoWindow = false
-            };
-            processInfo.ArgumentList.Add(folderPath);
-
-            using var process = Process.Start(processInfo);
-
-            Logger.Log($"フォルダをエクスプローラーで開きました: {folderPath}", LogLevel.Debug);
+            Logger.Log($"フォルダを開く処理をスキップしました（DryRun）: {folderPath}", LogLevel.Debug);
+            return;
         }
-        catch (Exception ex)
-        {
-            Logger.LogException($"フォルダを開く処理でエラーが発生しました: {folderPath}", ex);
-        }
+
+        // explorer.exe 起動は ShellOpener が Task.Run で別スレッドへ逃がす (Issue #54 対策)。
+        // 戻り値の Task は fire-and-forget で投げる: 呼び出し元は同期 void シグネチャを
+        // 維持するため await しない。例外はタスク内で catch してログに記録する。
+        _ = ShellOpener.OpenInExplorerAsync(folderPath)
+            .ContinueWith(t =>
+            {
+                if (t.IsFaulted && t.Exception is not null)
+                    Logger.LogException($"フォルダを開く処理でエラーが発生しました: {folderPath}", t.Exception.GetBaseException());
+                else if (t.IsCompletedSuccessfully)
+                    Logger.Log($"フォルダをエクスプローラーで開きました: {folderPath}", LogLevel.Debug);
+            }, TaskScheduler.Default);
     }
 }
