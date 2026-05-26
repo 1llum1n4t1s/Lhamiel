@@ -258,13 +258,12 @@ public static class ArchiveCompressor
 
                 // 圧縮対象ディレクトリ内に .gitignore があれば layered matcher を構築する（その source 限定）。
                 // .lhaignore (= matcher 引数) で枝刈りしながら探索するので、node_modules/ 内の .gitignore は読まない。
-                // CodeRabbit 指摘対応 (Outside diff): respectNestedGitignore=true なら globalIgnoreLines が null
-                // でも空配列にフォールバックして必ず BuildLayeredMatcherForSource を呼ぶ。これによりフラグ単体で
-                // ScanSourceFiles の振る舞いが意味どおりになる（public API として整合）。
+                // ⚠️ Codex P2 指摘対応 (#3305241279): BuildLayeredMatcherForSource は matcher (= fallbackMatcher) を
+                // 必ず base layer として保持するので、globalIgnoreLines が null でも .lhaignore ルールは保証される。
                 var effectiveMatcher = respectNestedGitignore
                     ? BuildLayeredMatcherForSource(
                         sourcePath,
-                        globalIgnoreLines ?? Array.Empty<string>(),
+                        globalIgnoreLines,
                         matcher,
                         includeHiddenAndSystemEntries)
                     : matcher;
@@ -341,30 +340,48 @@ public static class ArchiveCompressor
     /// 圧縮対象ディレクトリ <paramref name="sourceDir"/> 配下から <c>.gitignore</c> を発見し、
     /// 各 <c>.gitignore</c> をその親ディレクトリ相対の layer として合成した <see cref="GitignoreMatcher"/> を返す。
     /// 既に <c>.lhaignore</c> で除外されるディレクトリ（例: <c>node_modules/</c>）配下の <c>.gitignore</c> は読み込まない。
+    /// <para>
+    /// Codex P2 指摘対応: <paramref name="globalIgnoreLines"/> が <c>null</c> の場合でも
+    /// <paramref name="fallbackMatcher"/> のルールを必ず保持する。旧実装は <c>globalIgnoreLines ?? []</c> で
+    /// フォールバックしていたが、それだと呼び出し元が既に <c>.lhaignore</c> から compile 済みの matcher を
+    /// 持っている場合（生 lines を保持していないケース）に <c>fallbackMatcher</c> のルールが silent ドロップされていた。
+    /// </para>
     /// </summary>
     internal static GitignoreMatcher BuildLayeredMatcherForSource(
         string sourceDir,
-        IReadOnlyList<string> globalIgnoreLines,
+        IReadOnlyList<string>? globalIgnoreLines,
         GitignoreMatcher fallbackMatcher,
         bool includeHiddenAndSystemEntries)
     {
-        var layers = new List<(string baseRelativePath, IEnumerable<string> lines)>
-        {
-            // .lhaignore は source root スコープ
-            (string.Empty, globalIgnoreLines),
-        };
+        ArgumentNullException.ThrowIfNull(fallbackMatcher);
 
-        foreach (var (relativeDir, lines) in DiscoverGitignoreFiles(sourceDir, globalIgnoreLines, includeHiddenAndSystemEntries))
+        // ベース matcher は呼び出し元から渡された fallbackMatcher (= 既にコンパイル済みの .lhaignore matcher)。
+        // globalIgnoreLines が非 null なら、それを source root スコープの追加 layer として最初に重ねる。
+        // 通常パスでは fallbackMatcher 自体が .lhaignore からビルドされているため、ルール重複が発生する場合
+        // もあるが、gitignore セマンティクスでは同一ルールの重複評価は最終 excluded 値に影響しない（後勝ちで同じ結果）。
+        var additionalLayers = new List<(string baseRelativePath, IEnumerable<string> lines)>();
+        if (globalIgnoreLines is { Count: > 0 })
         {
-            layers.Add((relativeDir, lines));
+            additionalLayers.Add((string.Empty, globalIgnoreLines));
         }
 
-        return GitignoreMatcher.CompileLayered(layers);
+        // 枝刈り用 prune matcher は fallback + global lines + root .gitignore (もしあれば) を合成する。
+        // DiscoverGitignoreFiles が yield する layer は呼び出し時点でこの prune matcher で枝刈り済み。
+        foreach (var (relativeDir, lines) in DiscoverGitignoreFiles(
+                     sourceDir, fallbackMatcher, globalIgnoreLines, includeHiddenAndSystemEntries))
+        {
+            additionalLayers.Add((relativeDir, lines));
+        }
+
+        return additionalLayers.Count == 0
+            ? fallbackMatcher
+            : GitignoreMatcher.CompileLayered(fallbackMatcher, additionalLayers);
     }
 
     private static IEnumerable<(string relativeDir, string[] lines)> DiscoverGitignoreFiles(
         string sourceDir,
-        IReadOnlyList<string> globalIgnoreLines,
+        GitignoreMatcher fallbackMatcher,
+        IReadOnlyList<string>? globalIgnoreLines,
         bool includeHiddenAndSystemEntries)
     {
         // source root 自身の .gitignore（あれば）を先に読む。
@@ -381,18 +398,20 @@ public static class ArchiveCompressor
                 yield return (string.Empty, rootLines);
         }
 
-        // .lhaignore (globalIgnoreLines) + root .gitignore のルールを合流させた matcher を構築。
-        // これにより root の .gitignore で除外される vendor/ や build/ 等のサブツリーが枝刈りされ、
-        // nested .gitignore 探索のコストが大幅に削減される。
-        var pruneMatcher = rootLines is not null && rootLines.Length > 0
-            ? GitignoreMatcher.CompileLayered(new (string, IEnumerable<string>)[]
-                {
-                    (string.Empty, globalIgnoreLines),
-                    (string.Empty, rootLines),
-                })
-            : GitignoreMatcher.Compile(globalIgnoreLines);
+        // 枝刈り matcher = fallbackMatcher + global lines + root .gitignore の 3 段合流。
+        // fallbackMatcher のルールを必ず保持することで、呼び出し元から渡された .lhaignore ルールが
+        // silent ドロップされる経路を排除する (Codex P2 指摘 #3305241279)。
+        var pruneAdditional = new List<(string baseRelativePath, IEnumerable<string> lines)>();
+        if (globalIgnoreLines is { Count: > 0 })
+            pruneAdditional.Add((string.Empty, globalIgnoreLines));
+        if (rootLines is { Length: > 0 })
+            pruneAdditional.Add((string.Empty, rootLines));
 
-        // ディレクトリツリーを「.lhaignore + root .gitignore」併合 matcher で枝刈りしながら走査
+        var pruneMatcher = pruneAdditional.Count == 0
+            ? fallbackMatcher
+            : GitignoreMatcher.CompileLayered(fallbackMatcher, pruneAdditional);
+
+        // ディレクトリツリーを併合 matcher で枝刈りしながら走査
         foreach (var dir in EnumerateDirectoriesWithPruning(sourceDir, pruneMatcher, includeHiddenAndSystemEntries))
         {
             var giPath = Path.Combine(dir, ".gitignore");

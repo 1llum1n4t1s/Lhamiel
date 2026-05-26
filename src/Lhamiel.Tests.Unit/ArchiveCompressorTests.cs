@@ -526,6 +526,44 @@ public class ArchiveCompressorTests
     }
 
     [Fact]
+    public async Task ScanSourceFiles_RespectNestedGitignore_FallbackMatcherRulesArePreserved()
+    {
+        // Codex P2 指摘対応 (#3305241279): respectNestedGitignore=true かつ globalIgnoreLines=null
+        // のとき、呼び出し元から渡された matcher (fallbackMatcher) のルールが silent ドロップされる
+        // 経路があった。修正後は fallbackMatcher が base layer として必ず保持されることを確認する。
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(testRoot);
+            // .lhaignore 由来の matcher を直接構築 (生 lines は ScanSourceFiles に渡さない)
+            var fallbackMatcher = GitignoreMatcher.Compile(["*.tmp"]);
+
+            // テストファイル: tmp/log の混在
+            File.WriteAllText(Path.Combine(testRoot, "data.tmp"), "should be excluded");
+            File.WriteAllText(Path.Combine(testRoot, "data.log"), "should be included");
+
+            // globalIgnoreLines = null だが、fallbackMatcher の "*.tmp" は効くべき
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [testRoot],
+                fallbackMatcher,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true,
+                globalIgnoreLines: null); // ← Codex 指摘の null パス
+
+            // *.tmp は fallbackMatcher で除外される
+            Assert.DoesNotContain(result, r => r.fullPath.EndsWith("data.tmp"));
+            // *.log は含まれる
+            Assert.Contains(result, r => r.fullPath.EndsWith("data.log"));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
     public async Task ScanSourceFiles_RespectNestedGitignore_RootGitignorePrunesNestedDiscovery()
     {
         // RTK レビュー Codex P2 対応: DiscoverGitignoreFiles が root の .gitignore を読み込んだ後、

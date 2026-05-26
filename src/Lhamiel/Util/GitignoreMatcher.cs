@@ -82,6 +82,36 @@ public sealed class GitignoreMatcher
         return layers.Count == 0 ? Empty : new GitignoreMatcher([.. layers]);
     }
 
+    /// <summary>
+    /// 既存の <see cref="GitignoreMatcher"/> の layer をベースに、追加 layer を末尾に重ねて
+    /// 新しい <see cref="GitignoreMatcher"/> を返す。base の layer が先に評価され、追加 layer が
+    /// 後勝ちで評価される（gitignore のスコープ深い後勝ち仕様と整合）。
+    /// <para>
+    /// `ScanSourceFiles` 側で <c>.lhaignore</c> から既にコンパイル済みの matcher を保持しているケース
+    /// （生 lines を持っていない経路）でも、nested <c>.gitignore</c> を後段の layer として加算するために使う。
+    /// Codex P2 指摘対応: 旧実装では <c>fallbackMatcher</c> が参照されず global ルールが silent ドロップされていた。
+    /// </para>
+    /// </summary>
+    public static GitignoreMatcher CompileLayered(
+        GitignoreMatcher baseMatcher,
+        IEnumerable<(string baseRelativePath, IEnumerable<string> lines)> additionalLayerSources)
+    {
+        ArgumentNullException.ThrowIfNull(baseMatcher);
+        ArgumentNullException.ThrowIfNull(additionalLayerSources);
+
+        // base 側は既に Layer 化されているのでそのままコピー。追加分のみ生 lines から compile する。
+        var layers = new List<Layer>(baseMatcher._layers);
+        foreach (var (basePath, lines) in additionalLayerSources)
+        {
+            var rules = CompileRules(lines);
+            if (rules.Length == 0)
+                continue;
+            var normalizedBase = NormalizePath(basePath ?? string.Empty).Trim('/');
+            layers.Add(new Layer(normalizedBase, rules));
+        }
+        return layers.Count == 0 ? Empty : new GitignoreMatcher([.. layers]);
+    }
+
     private static Rule[] CompileRules(IEnumerable<string> lines)
     {
         var rules = new List<Rule>();
