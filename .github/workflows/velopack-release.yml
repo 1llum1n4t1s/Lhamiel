@@ -228,18 +228,21 @@ jobs:
           echo "::endgroup::"
 
           # 2. R2 上の全 object を cursor ページネーション付きで取得
+          #    継続判定は result_info.is_truncated を明示利用 (CodeRabbit 指摘で意図を明確化)
           all_keys=()
           cursor=""
           while true; do
             if [[ -n "$cursor" ]]; then
-              resp=$(curl --fail --silent "${api}/objects?per_page=1000&cursor=${cursor}" -H "$auth_header")
+              resp=$(curl --fail --silent --max-time 30 "${api}/objects?per_page=1000&cursor=${cursor}" -H "$auth_header")
             else
-              resp=$(curl --fail --silent "${api}/objects?per_page=1000" -H "$auth_header")
+              resp=$(curl --fail --silent --max-time 30 "${api}/objects?per_page=1000" -H "$auth_header")
             fi
             while IFS= read -r k; do
               [[ -n "$k" ]] && all_keys+=("$k")
             done < <(echo "$resp" | jq -r '.result[]?.key')
 
+            truncated=$(echo "$resp" | jq -r '.result_info.is_truncated // false')
+            [[ "$truncated" != "true" ]] && break
             cursor=$(echo "$resp" | jq -r '.result_info.cursor // ""')
             [[ -z "$cursor" || "$cursor" == "null" ]] && break
           done
@@ -270,12 +273,13 @@ jobs:
           echo "::endgroup::"
 
           # 4. 一個ずつ DELETE
+          #    --max-time 30 でハング防止 (他の curl 呼び出しと統一、CodeRabbit 指摘対応)
           deleted=0
           failed=0
           for key in "${to_delete[@]}"; do
             # URL エンコード (ファイル名は通常 ASCII だが念のため)
             encoded=$(jq -nr --arg k "$key" '$k|@uri')
-            resp=$(curl --silent -X DELETE "${api}/objects/${encoded}" -H "$auth_header")
+            resp=$(curl --silent --max-time 30 -X DELETE "${api}/objects/${encoded}" -H "$auth_header")
             success=$(echo "$resp" | jq -r '.success')
             if [[ "$success" == "true" ]]; then
               echo "  🗑️  Deleted: $key"
