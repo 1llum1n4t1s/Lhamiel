@@ -552,4 +552,73 @@ public class ArchiveCompressorTests
                 Directory.Delete(testRoot, true);
         }
     }
+
+    [Fact]
+    public async Task ScanSourceFiles_SourceRootBasenameMatchesAnchoredPattern_DoesNotEmptyArchive()
+    {
+        // ユーザーが「build」という名前のフォルダを圧縮対象として明示的に指定したとき、
+        // `.lhaignore` / `.gitignore` の anchored パターン `/build` でルート自身が
+        // 除外されて空アーカイブになる回帰を防ぐ（Codex P1 指摘 2026-05-26）。
+        // gitignore セマンティクスでは `/build` は親基準でルート直下にマッチするものであり、
+        // ユーザーが明示指定したソースルート自身を意味しない。
+        var parent = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var buildDir = Path.Combine(parent, "build");
+        try
+        {
+            Directory.CreateDirectory(buildDir);
+            File.WriteAllText(Path.Combine(buildDir, "artifact.txt"), "x");
+            File.WriteAllText(Path.Combine(buildDir, "log.txt"), "x");
+
+            // anchored パターン `/build` を含む matcher
+            var matcher = GitignoreMatcher.Compile(["/build"]);
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [buildDir],
+                matcher,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: false);
+
+            // ルート basename が "build" でも、anchored `/build` でルート自身は除外されない
+            Assert.Contains(result, r => r.fullPath.EndsWith("artifact.txt"));
+            Assert.Contains(result, r => r.fullPath.EndsWith("log.txt"));
+        }
+        finally
+        {
+            if (Directory.Exists(parent))
+                Directory.Delete(parent, true);
+        }
+    }
+
+    [Fact]
+    public async Task ScanSourceFiles_SourceRootBasenameMatchesDirectoryPattern_DoesNotEmptyArchive()
+    {
+        // ユーザーが「node_modules」という名前のフォルダを圧縮対象として明示指定したとき、
+        // `node_modules/` パターンで空にならず、配下ファイルが正しく含まれることを保証する。
+        // ignore ルールは子エントリに適用されるべきで、ユーザー明示指定のルートを覆さない。
+        var parent = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var nodeModulesDir = Path.Combine(parent, "node_modules");
+        try
+        {
+            Directory.CreateDirectory(nodeModulesDir);
+            File.WriteAllText(Path.Combine(nodeModulesDir, "package.json"), "{}");
+
+            var matcher = GitignoreMatcher.Compile(["node_modules/"]);
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [nodeModulesDir],
+                matcher,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: false);
+
+            // ユーザー明示指定の node_modules ルート配下は含まれる
+            Assert.Contains(result, r => r.fullPath.EndsWith("package.json"));
+        }
+        finally
+        {
+            if (Directory.Exists(parent))
+                Directory.Delete(parent, true);
+        }
+    }
 }

@@ -848,18 +848,13 @@ public static class ArchiveCompressor
     /// <returns>ファイルパスのリスト</returns>
     private static IEnumerable<string> GetFilesRecursively(string directoryPath, GitignoreMatcher matcher, bool includeHiddenAndSystemEntries)
     {
-        // ディレクトリ自体（ルート）が除外対象なら何も返さない。
-        // ルートは相対パスがゼロなので IsExcluded は常に false → ファイル名のみで判定する。
-        if (matcher.HasRules
-            && matcher.IsExcluded(GitignoreMatcher.NormalizePath(Path.GetFileName(directoryPath)), isDirectory: true))
-        {
-            return [];
-        }
-
-        // ディレクトリ単位で枝刈りしながら DFS する。
-        // .gitignore の "node_modules/" のようなパターンは、ディレクトリ自体を除外したら
-        // 配下を走査しない方が正しく速い。Directory.EnumerateFiles の
-        // AllDirectories だと枝刈りができないので、自前で再帰する。
+        // ユーザーが圧縮対象として明示的に指定したソースルートそのものは除外しない。
+        // gitignore のセマンティクスでは ignore ルールは「子エントリ」に適用されるべきで、
+        // anchored パターン (例: "/build") は親基準でルート直下にマッチするものであって、
+        // ソースルート自身を意味しない。basename だけで判定すると "build" という名前の
+        // フォルダを圧縮しようとしただけで空アーカイブになる回帰が起きるので、ルート
+        // 自身の除外判定は行わない（配下のサブディレクトリ・ファイルは
+        // EnumerateFilesWithPruning 内で root 相対パスにより正しく枝刈りされる）。
         return EnumerateFilesWithPruning(directoryPath, matcher, includeHiddenAndSystemEntries);
     }
 
