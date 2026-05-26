@@ -65,11 +65,15 @@
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Включать скрытые/системные файлы и папки</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Элементы с атрибутом Hidden или System также добавляются в архив.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Список исключений при сжатии</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Имена файлов или папок из этого списка пропускаются при сжатии.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">например .git или node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Шаблоны из этого списка пропускаются при сжатии. Поддерживается синтаксис, совместимый с .gitignore (например *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">например *.log или node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">Добавить</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">Удалить</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Сбросить по умолчанию</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Открыть файл исключений</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Открывает .lhaignore в текстовом редакторе по умолчанию</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Также использовать .gitignore внутри источника</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">Если подкаталог источника содержит .gitignore, его правила применяются в этой области</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Без сжатия</x:String>

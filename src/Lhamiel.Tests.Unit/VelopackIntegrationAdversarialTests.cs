@@ -315,7 +315,8 @@ public class VelopackIntegrationAdversarialTests
     }
 
     /// <summary>
-    /// Snapshot 取得後に元 Settings を変更しても snapshot 側が不変 (深コピー検証)。
+    /// Snapshot 取得後に元 Settings の値型プロパティを変更しても snapshot 側が不変であることを検証する。
+    /// （除外パターンは .lhaignore ファイルに移行済みのため Settings の状態ではなくなった）
     /// </summary>
     [Fact]
     public void Settings_Snapshot_IsolatedFromSubsequentMutation()
@@ -324,19 +325,17 @@ public class VelopackIntegrationAdversarialTests
         var original = new Settings
         {
             Theme = "Dark",
-            ExcludedFilePatterns = new List<string> { "alpha", "beta" },
+            IgnoreUpdateTag = "v1.0.0",
         };
 
         // Act
         var snap = original.Snapshot();
         original.Theme = "Light";
-        original.ExcludedFilePatterns.Clear();
-        original.ExcludedFilePatterns.Add("gamma");
+        original.IgnoreUpdateTag = "v2.0.0";
 
-        // Assert: snap1 は影響を受けない
+        // Assert: snapshot は影響を受けない
         Assert.Equal("Dark", snap.Theme);
-        Assert.Equal(new[] { "alpha", "beta" }, snap.ExcludedFilePatterns);
-        Assert.NotSame(original.ExcludedFilePatterns, snap.ExcludedFilePatterns);
+        Assert.Equal("v1.0.0", snap.IgnoreUpdateTag);
     }
 
     /// <summary>
@@ -447,13 +446,14 @@ public class VelopackIntegrationAdversarialSequentialTests
 
     /// <summary>
     /// Mutate + CreateSnapshot を並列実行しても InvalidOperationException (列挙中変更) が発生しない。
+    /// 除外パターンは .lhaignore に移行済みのため、ここでは IgnoreUpdateTag (string) を入れ替える。
     /// </summary>
     [Fact(Timeout = 15000)]
     public async Task SettingsManager_ConcurrentSnapshotAndMutate_NoEnumerationException()
     {
         // Arrange
         var mgr = SettingsManager.Instance;
-        var originalPatterns = new List<string>(mgr.Current.ExcludedFilePatterns);
+        var originalTag = mgr.Current.IgnoreUpdateTag;
         try
         {
             using var stop = new CancellationTokenSource();
@@ -466,9 +466,7 @@ public class VelopackIntegrationAdversarialSequentialTests
                 {
                     try
                     {
-                        var sz = rng.Next(1, 32);
-                        var list = Enumerable.Range(0, sz).Select(_ => Guid.NewGuid().ToString("N")).ToList();
-                        mgr.Mutate(s => s.ExcludedFilePatterns = list);
+                        mgr.Mutate(s => s.IgnoreUpdateTag = $"v{rng.Next(1, 1000)}.{rng.Next(0, 100)}.{rng.Next(0, 100)}");
                     }
                     catch (Exception ex) { exceptions.Add(ex); }
                 }
@@ -481,7 +479,7 @@ public class VelopackIntegrationAdversarialSequentialTests
                     try
                     {
                         var snap = mgr.CreateSnapshot();
-                        foreach (var p in snap.ExcludedFilePatterns) _ = p?.Length ?? 0;
+                        _ = snap.IgnoreUpdateTag?.Length ?? 0;
                     }
                     catch (Exception ex) { exceptions.Add(ex); }
                 }
@@ -497,7 +495,7 @@ public class VelopackIntegrationAdversarialSequentialTests
         }
         finally
         {
-            try { mgr.Mutate(s => s.ExcludedFilePatterns = [.. originalPatterns]); } catch { }
+            try { mgr.Mutate(s => s.IgnoreUpdateTag = originalTag); } catch { }
         }
     }
 

@@ -155,49 +155,68 @@ public class ArchiveCompressorTests
         Assert.DoesNotContain(format, ArchiveCompressor.WritableFormats);
     }
 
-    // === ShouldExcludeFile ===
+    // === ShouldExcludeFile (gitignore semantics) ===
 
     [Fact]
-    public void ShouldExcludeFile_WithMatchingFilename_ReturnsTrue()
+    public void ShouldExcludeFile_WithMatchingFilenameInSingleFileMode_ReturnsTrue()
     {
-        var patterns = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".DS_Store", "Thumbs.db" };
-        Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\.DS_Store", patterns));
+        // 単一ファイル（rootDir=null）: ベース名のみで判定
+        var matcher = GitignoreMatcher.Compile([".DS_Store", "Thumbs.db"]);
+        Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\.DS_Store", matcher));
     }
 
     [Fact]
-    public void ShouldExcludeFile_WithMatchingDirectory_ReturnsTrue()
+    public void ShouldExcludeFile_WithMatchingDirectorySegment_ReturnsTrue()
     {
-        var patterns = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "__MACOSX" };
-        Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\__MACOSX\file.txt", patterns));
+        // rootDir を指定すれば中間ディレクトリ名 (__MACOSX) のセグメントマッチが効く
+        var matcher = GitignoreMatcher.Compile(["__MACOSX"]);
+        Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\root\__MACOSX\file.txt", matcher, rootDir: @"C:\root"));
     }
 
     [Fact]
     public void ShouldExcludeFile_WithNoMatch_ReturnsFalse()
     {
-        var patterns = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".DS_Store" };
-        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\readme.txt", patterns));
+        var matcher = GitignoreMatcher.Compile([".DS_Store"]);
+        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\readme.txt", matcher));
     }
 
     [Fact]
-    public void ShouldExcludeFile_WithEmptyPatterns_ReturnsFalse()
+    public void ShouldExcludeFile_WithEmptyMatcher_ReturnsFalse()
     {
-        var patterns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\.DS_Store", patterns));
+        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\.DS_Store", GitignoreMatcher.Empty));
     }
 
     [Fact]
     public void ShouldExcludeFile_CaseInsensitive_ReturnsTrue()
     {
-        var patterns = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "thumbs.db" };
-        Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\THUMBS.DB", patterns));
+        var matcher = GitignoreMatcher.Compile(["thumbs.db"]);
+        Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\THUMBS.DB", matcher));
     }
 
     [Fact]
     public void ShouldExcludeFile_PartialMatch_ReturnsFalse()
     {
         // パターンがファイル名の一部にしかマッチしない場合は除外しない
-        var patterns = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Test" };
-        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\TestFile.txt", patterns));
+        var matcher = GitignoreMatcher.Compile(["Test"]);
+        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\TestFile.txt", matcher));
+    }
+
+    [Fact]
+    public void ShouldExcludeFile_GitignoreGlobPattern_MatchesExtension()
+    {
+        // gitignore 互換: *.log は任意の .log ファイルにマッチ
+        var matcher = GitignoreMatcher.Compile(["*.log"]);
+        Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\debug.log", matcher));
+        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\debug.txt", matcher));
+    }
+
+    [Fact]
+    public void ShouldExcludeFile_GitignoreNegationPattern_ReIncludesFile()
+    {
+        // gitignore 互換: !pattern で除外を取り消し
+        var matcher = GitignoreMatcher.Compile(["*.log", "!keep.log"]);
+        Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\debug.log", matcher));
+        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\keep.log", matcher));
     }
 
     // === ScanSourceFiles: 空ディレクトリ ===
@@ -220,7 +239,7 @@ public class ArchiveCompressorTests
 
             var result = await ArchiveCompressor.ScanSourceFiles(
                 [sourceDir],
-                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                GitignoreMatcher.Empty,
                 cancellationToken: TestContext.Current.CancellationToken,
                 dirModeOverride: DirectoryStructureMode.IncludeRoot);
 
@@ -253,7 +272,7 @@ public class ArchiveCompressorTests
 
             var result = await ArchiveCompressor.ScanSourceFiles(
                 [sourceDir],
-                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                GitignoreMatcher.Empty,
                 cancellationToken: TestContext.Current.CancellationToken,
                 dirModeOverride: DirectoryStructureMode.Flat);
 
@@ -282,7 +301,7 @@ public class ArchiveCompressorTests
 
             var result = await ArchiveCompressor.ScanSourceFiles(
                 [sourceDir],
-                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                GitignoreMatcher.Empty,
                 cancellationToken: TestContext.Current.CancellationToken,
                 dirModeOverride: DirectoryStructureMode.IncludeRoot);
 
@@ -314,7 +333,7 @@ public class ArchiveCompressorTests
 
             var result = await ArchiveCompressor.ScanSourceFiles(
                 [sourceDir],
-                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                GitignoreMatcher.Empty,
                 cancellationToken: TestContext.Current.CancellationToken,
                 dirModeOverride: DirectoryStructureMode.IncludeRoot,
                 includeHiddenAndSystemEntriesOverride: true);
@@ -345,7 +364,7 @@ public class ArchiveCompressorTests
 
             var result = await ArchiveCompressor.ScanSourceFiles(
                 [sourceDir],
-                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
+                GitignoreMatcher.Empty,
                 cancellationToken: TestContext.Current.CancellationToken,
                 dirModeOverride: DirectoryStructureMode.IncludeRoot,
                 includeHiddenAndSystemEntriesOverride: false);
@@ -356,6 +375,78 @@ public class ArchiveCompressorTests
         {
             if (Directory.Exists(gitDirPath))
                 new DirectoryInfo(gitDirPath).Attributes &= ~FileAttributes.Hidden;
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    // === ScanSourceFiles: ネストされた .gitignore 統合テスト ===
+
+    [Fact]
+    public async Task ScanSourceFiles_RespectNestedGitignore_AppliesRulesScopedToSubdirectory()
+    {
+        // ディレクトリ構造:
+        //   testRoot/repoA/.gitignore   → "*.log"
+        //   testRoot/repoA/debug.log    → 除外されるべき
+        //   testRoot/repoA/keep.txt     → 含まれる
+        //   testRoot/repoB/debug.log    → 含まれる (repoA の .gitignore 範囲外)
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var repoADir = Path.Combine(testRoot, "repoA");
+        var repoBDir = Path.Combine(testRoot, "repoB");
+        try
+        {
+            Directory.CreateDirectory(repoADir);
+            Directory.CreateDirectory(repoBDir);
+            File.WriteAllText(Path.Combine(repoADir, ".gitignore"), "*.log");
+            File.WriteAllText(Path.Combine(repoADir, "debug.log"), "x");
+            File.WriteAllText(Path.Combine(repoADir, "keep.txt"), "x");
+            File.WriteAllText(Path.Combine(repoBDir, "debug.log"), "x");
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [testRoot],
+                GitignoreMatcher.Empty,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true,
+                globalIgnoreLines: Array.Empty<string>());
+
+            // repoA/debug.log は .gitignore で除外される
+            Assert.DoesNotContain(result, r => r.fullPath.EndsWith(Path.Combine("repoA", "debug.log")));
+            // repoA/keep.txt は含まれる
+            Assert.Contains(result, r => r.fullPath.EndsWith(Path.Combine("repoA", "keep.txt")));
+            // repoB/debug.log は repoA の .gitignore スコープ外なので含まれる
+            Assert.Contains(result, r => r.fullPath.EndsWith(Path.Combine("repoB", "debug.log")));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
+    public async Task ScanSourceFiles_RespectNestedGitignoreFalse_IgnoresGitignoreFiles()
+    {
+        // RespectNestedGitignore=false の場合、.gitignore は無視される
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(testRoot);
+            File.WriteAllText(Path.Combine(testRoot, ".gitignore"), "*.log");
+            File.WriteAllText(Path.Combine(testRoot, "debug.log"), "x");
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [testRoot],
+                GitignoreMatcher.Empty,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: false);
+
+            // debug.log は .gitignore が読まれないので含まれる
+            Assert.Contains(result, r => r.fullPath.EndsWith("debug.log"));
+        }
+        finally
+        {
             if (Directory.Exists(testRoot))
                 Directory.Delete(testRoot, true);
         }

@@ -141,7 +141,26 @@ public class Settings
     /// 圧縮時に除外するファイル・フォルダのパターン。
     /// デフォルト値は ArchiveExtractor の無視リストから生成。
     /// </summary>
-    public List<string> ExcludedFilePatterns { get; set; } = CreateDefaultExcludedFilePatterns();
+    /// <summary>
+    /// レガシー JSON 設定 (≤v1.0.170) との互換性のために残す書き込み専用プロパティ。
+    /// 新しい仕組みではパターンを <see cref="LhaignoreFile"/>（.lhaignore ファイル）に保存する。
+    /// 旧 settings.json をデシリアライズしたときだけ <see cref="_legacyExcludedFilePatterns"/>
+    /// に値を渡し、<see cref="Load"/> がそれを .lhaignore へ移行したあと破棄する。
+    /// </summary>
+    [JsonInclude]
+    [JsonPropertyName("ExcludedFilePatterns")]
+    internal List<string>? ExcludedFilePatternsLegacy
+    {
+        get => null;
+        set
+        {
+            if (value is { Count: > 0 })
+                _legacyExcludedFilePatterns = value;
+        }
+    }
+
+    [JsonIgnore]
+    internal List<string>? _legacyExcludedFilePatterns;
 
     /// <summary>
     /// サポートされているテーマ一覧。UI および <see cref="SanitizeAfterLoad"/> で使用。
@@ -173,6 +192,10 @@ public class Settings
     /// <summary>
     /// 圧縮除外リストの既定値を作成する。
     /// </summary>
+    /// <summary>
+    /// 旧 API 互換用。新しい仕組みでは <see cref="LhaignoreFile.CreateDefaultContent"/> を直接使う。
+    /// </summary>
+    [Obsolete("Use LhaignoreFile.ResetToDefaults() / ReadPatterns() instead.")]
     public static List<string> CreateDefaultExcludedFilePatterns() =>
         [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
 
@@ -212,6 +235,14 @@ public class Settings
     /// </summary>
     public bool PropagateMarkOfTheWeb { get; set; } = true;
 
+
+    /// <summary>
+    /// 圧縮対象のディレクトリツリー内に <c>.gitignore</c> があれば、そのルールを <c>.lhaignore</c> と
+    /// 混合して除外判定に使う。各 <c>.gitignore</c> はそれがあるディレクトリ以下にスコープされる。
+    /// デフォルトは OFF（オプトイン）。
+    /// </summary>
+    public bool RespectNestedGitignore { get; set; } = false;
+
     /// <summary>
     /// 並列アクセスに対して安全なスナップショット（浅いコピー）を返す。
     /// 呼び出し元は処理開始時に1回だけ呼び出し、その後はスナップショットを使うことで
@@ -229,7 +260,7 @@ public class Settings
     {
         var copy = (Settings)MemberwiseClone();
         // 参照型コレクションは明示的に深コピー（新しく追加した場合は下に追記すること）
-        copy.ExcludedFilePatterns = ExcludedFilePatterns is null ? [] : [.. ExcludedFilePatterns];
+        // 除外パターンは .lhaignore ファイルが真の源なので Settings 上に状態は持たない。
         return copy;
     }
 
@@ -239,6 +270,7 @@ public class Settings
     /// <returns>読み込まれた設定オブジェクト</returns>
     public static Settings Load()
     {
+        Settings? settings = null;
         try
         {
             // 旧パス（アプリケーション実行ディレクトリ）
@@ -268,7 +300,6 @@ public class Settings
             if (File.Exists(SettingsFilePath))
             {
                 var json = File.ReadAllText(SettingsFilePath);
-                Settings? settings;
                 try
                 {
                     settings = JsonSerializer.Deserialize(json, AppJsonContext.Default.Settings);
@@ -338,15 +369,14 @@ public class Settings
                 if (settings != null)
                 {
                     settings.SanitizeAfterLoad();
-                    return settings;
                 }
-
-                return new Settings();
             }
-
-            var defaultSettings = new Settings();
-            defaultSettings.Save(); // 新規作成時にファイルに書き込む
-            return defaultSettings;
+            else
+            {
+                var defaultSettings = new Settings();
+                defaultSettings.Save(); // 新規作成時にファイルに書き込む
+                settings = defaultSettings;
+            }
         }
         catch (Exception ex)
         {
@@ -354,7 +384,18 @@ public class Settings
             Debug.WriteLine($"設定ファイルの読み込みに失敗しました: {ex.Message}");
         }
 
-        return new Settings();
+        settings ??= new Settings();
+
+        // .lhaignore の初期化。レガシー ExcludedFilePatterns があれば移行する。
+        // 既にファイルがあれば何もしないので何度呼んでも安全。
+        if (!File.Exists(LhaignoreFile.FilePath))
+        {
+            LhaignoreFile.EnsureExists(settings._legacyExcludedFilePatterns);
+            // 移行後は次回 Save で旧キーを書き出さないように消しておく
+            settings._legacyExcludedFilePatterns = null;
+        }
+
+        return settings;
     }
 
     /// <summary>
@@ -388,8 +429,6 @@ public class Settings
         // CompressionFormat も同様に canonical ケース正規化。
         CompressionFormat = Array.Find(SupportedCompressionFormats, f => string.Equals(f, CompressionFormat, StringComparison.OrdinalIgnoreCase))
                             ?? "ZIP";
-
-        ExcludedFilePatterns = NormalizeExcludedFilePatterns(ExcludedFilePatterns ?? CreateDefaultExcludedFilePatterns());
 
         // IgnoreUpdateTag は VelopackUpdateDialog の VersionIgnored イベント経由でユーザーが
         // 「このバージョンをスキップ」を押した GitHub Release タグ名が保存される。
@@ -442,6 +481,10 @@ public class Settings
         return true;
     }
 
+    /// <summary>
+    /// 旧 API 互換用の入力正規化（Trim + 空除去 + 大小無視重複排除）。
+    /// 新しい仕組みでは <see cref="LhaignoreFile"/> 経由でファイルへ書き出すため通常は不要。
+    /// </summary>
     internal static List<string> NormalizeExcludedFilePatterns(IEnumerable<string> patterns)
     {
         var result = new List<string>();
@@ -499,10 +542,12 @@ public class Settings
         Locale = "";
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
-        ExcludedFilePatterns = CreateDefaultExcludedFilePatterns();
         VerifyAfterExtraction = true;
         NormalizeUnicodeFileNames = true;
         PropagateMarkOfTheWeb = true;
+        RespectNestedGitignore = false;
+        // 除外パターンは .lhaignore ファイルが真の源なので、リセット時もそちらを更新する。
+        LhaignoreFile.ResetToDefaults();
         // NOTE: 新しいプロパティを追加したら必ずここにも追加すること（リセット漏れ防止）
     }
 
@@ -552,6 +597,7 @@ public class Settings
             if (TryGetBool(root, nameof(VerifyAfterExtraction), out var vae)) { s.VerifyAfterExtraction = vae; recoveredCount++; }
             if (TryGetBool(root, nameof(NormalizeUnicodeFileNames), out var nufn)) { s.NormalizeUnicodeFileNames = nufn; recoveredCount++; }
             if (TryGetBool(root, nameof(PropagateMarkOfTheWeb), out var pmotw)) { s.PropagateMarkOfTheWeb = pmotw; recoveredCount++; }
+            if (TryGetBool(root, nameof(RespectNestedGitignore), out var rng)) { s.RespectNestedGitignore = rng; recoveredCount++; }
 
             if (TryGetInt(root, nameof(LogMaxSizeMB), out var lms)) { s.LogMaxSizeMB = lms; recoveredCount++; }
             if (TryGetInt(root, nameof(LogRetentionDays), out var lrd)) { s.LogRetentionDays = lrd; recoveredCount++; }
@@ -564,7 +610,8 @@ public class Settings
                 recoveredCount++;
             }
 
-            if (root.TryGetProperty(nameof(ExcludedFilePatterns), out var efpEl) && efpEl.ValueKind == JsonValueKind.Array)
+            // レガシー ExcludedFilePatterns 配列があれば .lhaignore 移行用にキャッシュする。
+            if (root.TryGetProperty("ExcludedFilePatterns", out var efpEl) && efpEl.ValueKind == JsonValueKind.Array)
             {
                 try
                 {
@@ -574,8 +621,11 @@ public class Settings
                         if (item.ValueKind == JsonValueKind.String)
                             list.Add(item.GetString()!);
                     }
-                    s.ExcludedFilePatterns = [.. list];
-                    recoveredCount++;
+                    if (list.Count > 0)
+                    {
+                        s._legacyExcludedFilePatterns = list;
+                        recoveredCount++;
+                    }
                 }
                 catch { /* 配列回収失敗 → デフォルト維持 */ }
             }

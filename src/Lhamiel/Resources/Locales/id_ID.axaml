@@ -65,11 +65,15 @@
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Sertakan file dan folder tersembunyi/sistem</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Entri dengan atribut Hidden atau System juga ditambahkan ke arsip.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Daftar Pengecualian Kompresi</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Nama file atau folder dalam daftar ini dilewati saat kompresi.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">mis. .git atau node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Pola dalam daftar ini dilewati saat kompresi. Sintaksis kompatibel .gitignore (mis. *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">mis. *.log atau node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">Tambah</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">Hapus</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Pulihkan Default</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Buka berkas pengecualian</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Buka .lhaignore di editor teks default</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Gunakan juga .gitignore di dalam sumber</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">Jika subdirektori sumber berisi .gitignore, terapkan aturannya dalam cakupan tersebut</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Tanpa Kompresi</x:String>

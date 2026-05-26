@@ -39,33 +39,13 @@ public class SettingsEdgeCaseTests
     }
 
     [Fact]
-    public void ExcludedFilePatterns_DefaultContainsAllIgnoredItems()
+    public void LhaignoreFile_DefaultContentContainsAllIgnoredItems()
     {
-        var settings = new Settings();
+        var content = LhaignoreFile.CreateDefaultContent();
         foreach (var file in ArchiveExtractor.IgnoredSystemFiles)
-            Assert.Contains(file, settings.ExcludedFilePatterns);
+            Assert.Contains(file, content, StringComparison.Ordinal);
         foreach (var dir in ArchiveExtractor.IgnoredSystemDirectories)
-            Assert.Contains(dir, settings.ExcludedFilePatterns);
-    }
-
-    [Fact]
-    public void ExcludedFilePatterns_DefaultHasNoDuplicates()
-    {
-        var settings = new Settings();
-        var distinct = settings.ExcludedFilePatterns.Distinct(StringComparer.OrdinalIgnoreCase).Count();
-        Assert.Equal(settings.ExcludedFilePatterns.Count, distinct);
-    }
-
-    [Fact]
-    public void ExcludedFilePatterns_ResetRestoresDefaults()
-    {
-        var settings = new Settings();
-        settings.ExcludedFilePatterns.Clear();
-        settings.ExcludedFilePatterns.Add("custom_pattern");
-        settings.ResetToDefaults();
-
-        Assert.DoesNotContain("custom_pattern", settings.ExcludedFilePatterns);
-        Assert.Contains(".DS_Store", settings.ExcludedFilePatterns);
+            Assert.Contains(dir + "/", content, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -335,6 +335,11 @@
                                         Text="{DynamicResource Text.Settings.ExcludedPatterns.Description}"
                                         TextWrapping="Wrap" />
 
+                                    <CheckBox
+                                        Content="{DynamicResource Text.Settings.ExcludedPatterns.RespectGitignore}"
+                                        IsChecked="{Binding RespectNestedGitignore}"
+                                        ToolTip.Tip="{DynamicResource Text.Settings.ExcludedPatterns.RespectGitignore.Tip}" />
+
                                     <ListBox
                                         Height="220"
                                         ItemsSource="{Binding CompressionExcludedFilePatterns}"
@@ -363,14 +368,28 @@
                                             Content="{DynamicResource Text.Settings.ExcludedPatterns.Add}" />
                                     </Grid>
 
-                                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
                                         <Button
+                                            Grid.Column="0"
+                                            Command="{Binding OpenExcludedPatternsFileCommand}"
+                                            Content="{DynamicResource Text.Settings.ExcludedPatterns.OpenFile}"
+                                            ToolTip.Tip="{DynamicResource Text.Settings.ExcludedPatterns.OpenFile.Tip}" />
+                                        <Button
+                                            Grid.Column="2"
+                                            Margin="0,0,8,0"
                                             Command="{Binding RemoveExcludedPatternCommand}"
                                             Content="{DynamicResource Text.Settings.ExcludedPatterns.Remove}" />
                                         <Button
+                                            Grid.Column="3"
                                             Command="{Binding ResetExcludedPatternsCommand}"
                                             Content="{DynamicResource Text.Settings.ExcludedPatterns.Reset}" />
-                                    </StackPanel>
+                                    </Grid>
                                 </StackPanel>
                             </primitives:HeaderedContentControl>
                         </StackPanel>

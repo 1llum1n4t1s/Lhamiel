@@ -65,11 +65,15 @@
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">மறை/System கோப்புகள் மற்றும் கோப்புறைகளைச் சேர்க்கவும்</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden அல்லது System பண்புள்ள உருப்படிகளும் காப்பகத்தில் சேர்க்கப்படும்.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">சுருக்க விலக்கு பட்டியல்</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">இந்த பட்டியலில் உள்ள கோப்பு அல்லது கோப்புறை பெயர்கள் சுருக்கும்போது தவிர்க்கப்படும்.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">எ.கா. .git அல்லது node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">இந்த பட்டியலில் உள்ள வடிவங்கள் சுருக்கும்போது தவிர்க்கப்படும். .gitignore-உடன் இணக்கமான தொடரியல் (எ.கா. *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">எ.கா. *.log அல்லது node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">சேர்</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">அகற்று</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">இயல்புகளுக்கு மீட்டமை</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">விலக்கல் கோப்பைத் திற</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">முன்னிருப்பு உரை எடிட்டரில் .lhaignore-ஐத் திறக்கும்</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">மூலத்தில் உள்ள .gitignore-களையும் பயன்படுத்து</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">மூலத்தின் துணை அடைவில் .gitignore இருந்தால், அதன் விதிகள் அந்த எல்லைக்குள் பயன்படுத்தப்படும்</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">சுருக்கமில்லை</x:String>

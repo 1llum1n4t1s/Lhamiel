@@ -65,11 +65,15 @@
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Inclure les fichiers et dossiers cachés/système</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Les éléments avec les attributs Hidden ou System sont aussi ajoutés aux archives.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Liste d'exclusion de compression</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Les noms de fichiers ou dossiers de cette liste sont ignorés pendant la compression.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">ex. .git ou node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Les motifs de cette liste sont ignorés pendant la compression. Syntaxe compatible .gitignore (ex. *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">ex. *.log ou node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">Ajouter</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">Supprimer</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Restaurer les valeurs par défaut</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Ouvrir le fichier d'exclusion</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Ouvre .lhaignore dans l'éditeur de texte par défaut</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Utiliser aussi les .gitignore dans la source</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">Si un sous-dossier de la source contient un .gitignore, ses règles sont appliquées dans cette portée</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Sans compression</x:String>

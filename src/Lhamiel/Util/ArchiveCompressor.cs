@@ -100,9 +100,10 @@ public static class ArchiveCompressor
 
         // 設定スナップショットを取得（race を避けるため処理開始時点で1回だけ）
         var settings = settingsOverride ?? SettingsManager.Instance.CreateSnapshot();
-        var excludedPatternSet = new HashSet<string>(
-            settings.ExcludedFilePatterns ?? [],
-            StringComparer.OrdinalIgnoreCase);
+        // 除外パターンは .lhaignore（gitignore 互換）から圧縮実行毎に読み直す。
+        // RespectNestedGitignore=true なら各サブツリーの .gitignore も layered matcher として合成する。
+        var lhaignoreLines = LhaignoreFile.ReadLines();
+        var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
 
         var outputCreated = false;
         try
@@ -112,11 +113,13 @@ public static class ArchiveCompressor
             // 解決済みリストが渡された場合はそのまま使用、なければスキャン
             var filesToCompress = resolvedFiles ?? await ScanSourceFiles(
                 sourceList,
-                excludedPatternSet,
+                ignoreMatcher,
                 cancellationToken,
                 settings.DirectoryStructureMode,
                 settings.NormalizeUnicodeFileNames,
-                settings.IncludeHiddenAndSystemEntries);
+                settings.IncludeHiddenAndSystemEntries,
+                respectNestedGitignore: settings.RespectNestedGitignore,
+                globalIgnoreLines: lhaignoreLines);
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
@@ -210,9 +213,11 @@ public static class ArchiveCompressor
     /// 戻り値は (fullPath, relativePath) のリスト。衝突解決はまだ行われない。
     /// </summary>
     public static async Task<List<(string fullPath, string relativePath)>> ScanSourceFiles(
-        List<string> sourceList, HashSet<string> excludedPatternSet, CancellationToken cancellationToken = default,
+        List<string> sourceList, GitignoreMatcher matcher, CancellationToken cancellationToken = default,
         DirectoryStructureMode? dirModeOverride = null, bool? normalizeUnicodeOverride = null,
-        bool? includeHiddenAndSystemEntriesOverride = null)
+        bool? includeHiddenAndSystemEntriesOverride = null,
+        bool respectNestedGitignore = false,
+        IReadOnlyList<string>? globalIgnoreLines = null)
     {
         var filesToCompress = new List<(string fullPath, string relativePath)>();
         var dirMode = dirModeOverride ?? SettingsManager.Instance.Current.DirectoryStructureMode;
@@ -226,7 +231,8 @@ public static class ArchiveCompressor
 
             if (File.Exists(sourcePath))
             {
-                if (!ShouldExcludeFile(sourcePath, excludedPatternSet))
+                // 単一ファイル: ファイル名のみで判定（ソースルートが無いため）
+                if (!ShouldExcludeFile(sourcePath, matcher, rootDir: null, isDirectory: false))
                 {
                     filesToCompress.Add((sourcePath, NormalizeNfc(Path.GetFileName(sourcePath), normalizeUnicode)));
                 }
@@ -235,7 +241,13 @@ public static class ArchiveCompressor
             {
                 Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
 
-                var files = GetFilesRecursively(sourcePath, excludedPatternSet, includeHiddenAndSystemEntries);
+                // 圧縮対象ディレクトリ内に .gitignore があれば layered matcher を構築する（その source 限定）。
+                // .lhaignore (= matcher 引数) で枝刈りしながら探索するので、node_modules/ 内の .gitignore は読まない。
+                var effectiveMatcher = (respectNestedGitignore && globalIgnoreLines is not null)
+                    ? BuildLayeredMatcherForSource(sourcePath, globalIgnoreLines, matcher, includeHiddenAndSystemEntries)
+                    : matcher;
+
+                var files = GetFilesRecursively(sourcePath, effectiveMatcher, includeHiddenAndSystemEntries);
                 var parentDir = dirMode == DirectoryStructureMode.IncludeRoot
                     ? (Path.GetDirectoryName(sourcePath) ?? "")
                     : sourcePath;
@@ -275,7 +287,7 @@ public static class ArchiveCompressor
                 // Flatモードでなければ空ディレクトリを収集してエントリに追加
                 if (dirMode != DirectoryStructureMode.Flat)
                 {
-                    var emptyDirs = CollectEmptyDirectories(sourcePath, excludedPatternSet, directoriesWithFiles, includeHiddenAndSystemEntries);
+                    var emptyDirs = CollectEmptyDirectories(sourcePath, effectiveMatcher, directoriesWithFiles, includeHiddenAndSystemEntries);
                     foreach (var emptyDir in emptyDirs)
                     {
                         var relativePath = NormalizeNfc(Path.GetRelativePath(parentDir, emptyDir), normalizeUnicode);
@@ -301,6 +313,72 @@ public static class ArchiveCompressor
         // 衝突するか」で判定するため、同一 fullPath 重複は衝突検出で素通しされてしまい、
         // このステップで除去しないと ArchiveWriter が同名エントリを重複追加してしまう。
         return DeduplicateByIdentity(filesToCompress);
+    }
+
+    /// <summary>
+    /// 圧縮対象ディレクトリ <paramref name="sourceDir"/> 配下から <c>.gitignore</c> を発見し、
+    /// 各 <c>.gitignore</c> をその親ディレクトリ相対の layer として合成した <see cref="GitignoreMatcher"/> を返す。
+    /// 既に <c>.lhaignore</c> で除外されるディレクトリ（例: <c>node_modules/</c>）配下の <c>.gitignore</c> は読み込まない。
+    /// </summary>
+    internal static GitignoreMatcher BuildLayeredMatcherForSource(
+        string sourceDir,
+        IReadOnlyList<string> globalIgnoreLines,
+        GitignoreMatcher fallbackMatcher,
+        bool includeHiddenAndSystemEntries)
+    {
+        var layers = new List<(string baseRelativePath, IEnumerable<string> lines)>
+        {
+            // .lhaignore は source root スコープ
+            (string.Empty, globalIgnoreLines),
+        };
+
+        foreach (var (relativeDir, lines) in DiscoverGitignoreFiles(sourceDir, fallbackMatcher, includeHiddenAndSystemEntries))
+        {
+            layers.Add((relativeDir, lines));
+        }
+
+        return GitignoreMatcher.CompileLayered(layers);
+    }
+
+    private static IEnumerable<(string relativeDir, string[] lines)> DiscoverGitignoreFiles(
+        string sourceDir,
+        GitignoreMatcher fallbackMatcher,
+        bool includeHiddenAndSystemEntries)
+    {
+        // source root 自身の .gitignore（あれば）
+        var rootGitignore = Path.Combine(sourceDir, ".gitignore");
+        if (File.Exists(rootGitignore))
+        {
+            var lines = TryReadGitignoreLines(rootGitignore);
+            if (lines is not null)
+                yield return (string.Empty, lines);
+        }
+
+        // ディレクトリツリーを fallback matcher で枝刈りしながら走査
+        foreach (var dir in EnumerateDirectoriesWithPruning(sourceDir, fallbackMatcher, includeHiddenAndSystemEntries))
+        {
+            var giPath = Path.Combine(dir, ".gitignore");
+            if (!File.Exists(giPath))
+                continue;
+            var lines = TryReadGitignoreLines(giPath);
+            if (lines is null)
+                continue;
+            var rel = Path.GetRelativePath(sourceDir, dir);
+            yield return (rel, lines);
+        }
+    }
+
+    private static string[]? TryReadGitignoreLines(string path)
+    {
+        try
+        {
+            return File.ReadAllLines(path);
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($".gitignore の読み込みに失敗しました: {path}, {ex.Message}", LogLevel.Warning);
+            return null;
+        }
     }
 
     /// <summary>
@@ -487,47 +565,39 @@ public static class ArchiveCompressor
     /// <param name="path">チェックするパス</param>
     /// <param name="excludedPatternSet">除外パターンの HashSet（大文字小文字無視）</param>
     /// <returns>除外すべき場合はtrue</returns>
-    internal static bool ShouldExcludeFile(string path, HashSet<string> excludedPatternSet)
+    /// <summary>
+    /// 指定されたパスが除外対象か判定する。<paramref name="rootDir"/> が null の場合はファイル名のみで判定する
+    /// （単一ファイルがソースに渡されたケース）。
+    /// </summary>
+    /// <summary>
+    /// 指定されたパスが除外対象か判定する。<paramref name="rootDir"/> が null の場合はファイル名のみで判定する
+    /// （単一ファイルがソースに渡されたケース）。
+    /// </summary>
+    internal static bool ShouldExcludeFile(string path, GitignoreMatcher matcher, string? rootDir = null, bool isDirectory = false)
     {
-        if (excludedPatternSet.Count == 0)
-        {
+        if (!matcher.HasRules)
             return false;
-        }
 
-        // パスセグメントを走査し、いずれかが除外パターンに一致すればtrue
-        // ファイル名もパスセグメントの一部なので、個別チェック不要
-        // MemoryExtensions.Split + stackalloc で配列アロケーションを回避
-        ReadOnlySpan<char> separators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
-        const int StackBufSize = 64;
-        Span<Range> ranges = stackalloc Range[StackBufSize]; // パスセグメント数の上限（通常十分）
-        var count = path.AsSpan().SplitAny(ranges, separators, StringSplitOptions.RemoveEmptyEntries);
-        for (var i = 0; i < count; i++)
+        string relative;
+        bool singleFileMode;
+        if (rootDir is null)
         {
-            if (excludedPatternSet.Contains(path[ranges[i]]))
-            {
-                return true;
-            }
+            // 単一ファイル: ベース名のみで判定する。ルート相対構造が無いため
+            // アンカードパターン（/build や doc/manual.txt など）はスキップさせる。
+            relative = Path.GetFileName(path);
+            if (string.IsNullOrEmpty(relative))
+                return false;
+            singleFileMode = true;
         }
-
-        // バッファ上限到達時は後段セグメントを見落としている可能性があるので、
-        // アロケーションを受け入れて全セグメントを再走査する（node_modules 等の
-        // 中間ディレクトリ除外も確実に判定するため）。
-        // 64 階層超えは WSL マウントや深い UNC のレアケースなので、この経路のコストは許容する。
-        // セパレータ配列は ArchiveFormatConstants の共有 static フィールドを使い、
-        // 呼出毎のアロケを避ける。
-        if (count == StackBufSize)
+        else
         {
-            var segments = path.Split(
-                ArchiveFormatConstants.PathSeparators,
-                StringSplitOptions.RemoveEmptyEntries);
-            foreach (var segment in segments)
-            {
-                if (excludedPatternSet.Contains(segment))
-                    return true;
-            }
+            relative = Path.GetRelativePath(rootDir, path);
+            if (relative == "." || string.IsNullOrEmpty(relative))
+                return false;
+            singleFileMode = false;
         }
 
-        return false;
+        return matcher.IsExcluded(GitignoreMatcher.NormalizePath(relative), isDirectory, singleFileMode);
     }
 
     /// <summary>
@@ -701,20 +771,18 @@ public static class ArchiveCompressor
     /// <returns>空ディレクトリのパスリスト</returns>
     private static List<string> CollectEmptyDirectories(
         string rootDir,
-        HashSet<string> excludedPatternSet,
+        GitignoreMatcher matcher,
         HashSet<string> directoriesWithFiles,
         bool includeHiddenAndSystemEntries)
     {
         var emptyDirs = new List<string>();
         try
         {
-            var allDirs = Directory.EnumerateDirectories(rootDir, "*", CreateRecursiveEnumerationOptions(includeHiddenAndSystemEntries));
-
-            foreach (var dir in allDirs)
+            // 枝刈り対応の DFS で全ディレクトリを列挙する。matcher で除外されたディレクトリは
+            // 自身も配下も対象外。
+            var dirs = EnumerateDirectoriesWithPruning(rootDir, matcher, includeHiddenAndSystemEntries);
+            foreach (var dir in dirs)
             {
-                if (ShouldExcludeFile(dir, excludedPatternSet))
-                    continue;
-
                 // ファイルを含むディレクトリ（またはその祖先）でなければ空ディレクトリ
                 if (!directoriesWithFiles.Contains(dir))
                     emptyDirs.Add(dir);
@@ -728,47 +796,107 @@ public static class ArchiveCompressor
         return emptyDirs;
     }
 
+    private static IEnumerable<string> EnumerateDirectoriesWithPruning(string root, GitignoreMatcher matcher, bool includeHiddenAndSystemEntries)
+    {
+        var enumOpts = CreateNonRecursiveEnumerationOptions(includeHiddenAndSystemEntries);
+
+        var stack = new Stack<string>();
+        stack.Push(root);
+
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+            IEnumerable<string> dirs;
+            try
+            {
+                dirs = Directory.EnumerateDirectories(current, "*", enumOpts);
+            }
+            catch (UnauthorizedAccessException) { continue; }
+            catch (IOException) { continue; }
+
+            foreach (var dir in dirs)
+            {
+                if (ShouldExcludeFile(dir, matcher, root, isDirectory: true))
+                    continue;
+                yield return dir;
+                stack.Push(dir);
+            }
+        }
+    }
+
     /// <summary>
     /// ディレクトリ内のファイルを再帰的に取得する（除外フィルタ適用）
     /// </summary>
     /// <param name="directoryPath">ディレクトリパス</param>
     /// <param name="excludedPatternSet">除外パターンの HashSet</param>
     /// <returns>ファイルパスのリスト</returns>
-    private static IEnumerable<string> GetFilesRecursively(string directoryPath, HashSet<string> excludedPatternSet, bool includeHiddenAndSystemEntries)
+    private static IEnumerable<string> GetFilesRecursively(string directoryPath, GitignoreMatcher matcher, bool includeHiddenAndSystemEntries)
     {
-        try
+        // ディレクトリ自体（ルート）が除外対象なら何も返さない。
+        // ルートは相対パスがゼロなので IsExcluded は常に false → ファイル名のみで判定する。
+        if (matcher.HasRules
+            && matcher.IsExcluded(GitignoreMatcher.NormalizePath(Path.GetFileName(directoryPath)), isDirectory: true))
         {
-            // ディレクトリ自体が除外対象かチェック
-            if (ShouldExcludeFile(directoryPath, excludedPatternSet))
+            return [];
+        }
+
+        // ディレクトリ単位で枝刈りしながら DFS する。
+        // .gitignore の "node_modules/" のようなパターンは、ディレクトリ自体を除外したら
+        // 配下を走査しない方が正しく速い。Directory.EnumerateFiles の
+        // AllDirectories だと枝刈りができないので、自前で再帰する。
+        return EnumerateFilesWithPruning(directoryPath, matcher, includeHiddenAndSystemEntries);
+    }
+
+    private static IEnumerable<string> EnumerateFilesWithPruning(string root, GitignoreMatcher matcher, bool includeHiddenAndSystemEntries)
+    {
+        var enumOpts = CreateNonRecursiveEnumerationOptions(includeHiddenAndSystemEntries);
+
+        var stack = new Stack<string>();
+        stack.Push(root);
+
+        while (stack.Count > 0)
+        {
+            var current = stack.Pop();
+
+            IEnumerable<string> files;
+            IEnumerable<string> dirs;
+            try
             {
-                return [];
+                files = Directory.EnumerateFiles(current, "*", enumOpts);
+                dirs = Directory.EnumerateDirectories(current, "*", enumOpts);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Logger.Log($"アクセス権限がありません: {current}, {ex.Message}");
+                continue;
+            }
+            catch (IOException ex)
+            {
+                Logger.Log($"ファイル取得中にI/Oエラー: {current}, {ex.Message}");
+                continue;
             }
 
-            // Directory.EnumerateFiles を使用して効率的にファイルを取得
-            var enumerationOptions = CreateRecursiveEnumerationOptions(includeHiddenAndSystemEntries);
+            foreach (var file in files)
+            {
+                if (!ShouldExcludeFile(file, matcher, root, isDirectory: false))
+                    yield return file;
+            }
 
-            return Directory.EnumerateFiles(directoryPath, "*", enumerationOptions)
-                .Where(file => !ShouldExcludeFile(file, excludedPatternSet));
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            Logger.Log($"アクセス権限がありません: {directoryPath}, {ex.Message}");
-            return [];
-        }
-        catch (IOException ex)
-        {
-            Logger.Log($"ファイル取得中にI/Oエラー: {directoryPath}, {ex.Message}");
-            return [];
+            foreach (var dir in dirs)
+            {
+                if (!ShouldExcludeFile(dir, matcher, root, isDirectory: true))
+                    stack.Push(dir);
+            }
         }
     }
 
-    private static EnumerationOptions CreateRecursiveEnumerationOptions(bool includeHiddenAndSystemEntries) => new()
+    private static EnumerationOptions CreateNonRecursiveEnumerationOptions(bool includeHiddenAndSystemEntries) => new()
     {
-        RecurseSubdirectories = true,
-        IgnoreInaccessible = true, // 権限エラーで止まらないようにする
-        AttributesToSkip = includeHiddenAndSystemEntries
-            ? 0
-            : FileAttributes.Hidden | FileAttributes.System
+        RecurseSubdirectories = false,
+        IgnoreInaccessible = true,
+        AttributesToSkip = includeHiddenAndSystemEntries ? 0 : FileAttributes.Hidden | FileAttributes.System,
     };
+
+    
 
 }

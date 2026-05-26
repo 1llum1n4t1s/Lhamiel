@@ -65,11 +65,15 @@
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">गुप्त/System सञ्चिकाः कोशाश्च समावेशय</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden अथवा System गुणयुक्तानि अपि सञ्चिकागारे योज्यन्ते।</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">सङ्कोचनवर्जनसूची</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">अस्यां सूच्यां स्थितानि सञ्चिका-कोशनामानि सङ्कोचने वर्ज्यन्ते।</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">उदा. .git अथवा node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">अस्यां सूच्यां स्थिताः प्रतिमाः सङ्कोचने वर्ज्यन्ते। .gitignore-योग्या वाक्यरचना (उदा. *.log, node_modules/, !keep.txt)।</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">उदा. *.log अथवा node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">योजय</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">अपाकुरु</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">मूल्यम् पुनःस्थापय</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">वर्जन-सञ्चिकां उद्घाटयतु</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">.lhaignore-सञ्चिकां प्रामाणिक-पाठ्य-सम्पादके उद्घाटयति</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">मूले स्थिताः .gitignore-सञ्चिकाः अपि उपयुङ्क्तु</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">यदि मूलस्य उपसञ्चिकायां .gitignore अस्ति, तस्य नियमाः तस्मिन् क्षेत्रे प्रवर्तन्ते</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">सङ्कोचनं नास्ति</x:String>

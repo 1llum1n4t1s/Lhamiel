@@ -85,6 +85,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _includeHiddenAndSystemEntries = true;
 
+    [ObservableProperty]
+    private bool _respectNestedGitignore;
+
     /// <summary>
     /// メイン画面起動時に Velopack 自動更新チェックを走らせるかどうかの UI バインディング。
     /// 「全般」タブのチェックボックスから ON/OFF を切り替える。
@@ -166,11 +169,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
             s.CompressMultipleAsOne = CompressMultipleAsOne;
             s.IncludeHiddenAndSystemEntries = IncludeHiddenAndSystemEntries;
+            s.RespectNestedGitignore = RespectNestedGitignore;
             s.Check4UpdatesOnStartup = Check4UpdatesOnStartup;
             s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
             s.ZipCompressionLevel = ZipCompressionLevel;
             s.SevenZipCompressionLevel = SevenZipCompressionLevel;
-            s.ExcludedFilePatterns = Settings.NormalizeExcludedFilePatterns(CompressionExcludedFilePatterns);
+            // 除外パターンは .lhaignore ファイルが真の源なので、settings.json には書き出さない。
         });
     }
 
@@ -221,6 +225,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnCompressMultipleAsOneChanged(bool value) => AutoSave();
 
     partial void OnIncludeHiddenAndSystemEntriesChanged(bool value) => AutoSave();
+    partial void OnRespectNestedGitignoreChanged(bool value) => AutoSave();
 
     partial void OnCheck4UpdatesOnStartupChanged(bool value) => AutoSave();
 
@@ -355,6 +360,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public ObservableCollection<string> CompressionExcludedFilePatterns { get; } = [];
 
+    // .lhaignore ファイルを外部エディタで編集した場合に UI に反映するための監視。
+    // VM はアプリ全体で 1 インスタンスのため Dispose せず leak させる前提。
+    private FileSystemWatcher? _lhaignoreWatcher;
+    private System.Threading.Timer? _lhaignoreReloadDebounce;
+
     /// <summary>
     /// コンストラクタ
     /// </summary>
@@ -372,6 +382,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         LoadAssociationStatus();
         SubscribeAssociationChanges();
         LoadVersionInfo();
+        InitializeLhaignoreWatcher();
 
         // 更新チェックの進行状態を購読してアップデート確認ボタンの IsEnabled を駆動する。
         // 起動時自動チェックも反映されるため、auto check 中はボタンが押せない（並走実行を未然に防止）。
@@ -383,6 +394,43 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnZipCompressionLevelChanged(ZipCompressionLevel);
         OnSevenZipCompressionLevelChanged(SevenZipCompressionLevel);
         _isLoading = false;
+    }
+
+    /// <summary>
+    /// .lhaignore ファイルが外部エディタで編集された場合に UI を再ロードするための watcher を起動する。
+    /// テキストエディタは保存時に複数 Change イベントを発火しがちなので 250ms デバウンスする。
+    /// </summary>
+    private void InitializeLhaignoreWatcher()
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(LhaignoreFile.FilePath);
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                return;
+
+            _lhaignoreWatcher = new FileSystemWatcher(dir, Path.GetFileName(LhaignoreFile.FilePath))
+            {
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
+                EnableRaisingEvents = true,
+            };
+            _lhaignoreWatcher.Changed += OnLhaignoreChanged;
+            _lhaignoreWatcher.Created += OnLhaignoreChanged;
+            _lhaignoreWatcher.Renamed += OnLhaignoreChanged;
+            _lhaignoreReloadDebounce = new System.Threading.Timer(_ =>
+            {
+                Dispatcher.UIThread.Post(ReloadExcludedFilePatternsFromFile);
+            }, null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($".lhaignore 監視の初期化に失敗: {ex.Message}", LogLevel.Warning);
+        }
+    }
+
+    private void OnLhaignoreChanged(object sender, FileSystemEventArgs e)
+    {
+        // 250ms デバウンス（エディタが保存中に複数イベントを撃つので）
+        _lhaignoreReloadDebounce?.Change(250, System.Threading.Timeout.Infinite);
     }
 
     /// <summary>App._isCheckingUpdate 遷移を UI スレッドに marshal して IsCheckingUpdate に反映する。</summary>
@@ -413,13 +461,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OpenCompressionOutputFolder = s.OpenCompressionOutputFolder;
         CompressMultipleAsOne = s.CompressMultipleAsOne;
         IncludeHiddenAndSystemEntries = s.IncludeHiddenAndSystemEntries;
+        RespectNestedGitignore = s.RespectNestedGitignore;
         Check4UpdatesOnStartup = s.Check4UpdatesOnStartup;
         IgnoredUpdateTag = s.IgnoreUpdateTag ?? string.Empty;
         SelectedDirectoryStructureMode = (int)s.DirectoryStructureMode;
         SelectedLocale = string.IsNullOrEmpty(s.Locale) ? App.DetectDefaultLocale() : s.Locale;
         ZipCompressionLevel = s.ZipCompressionLevel;
         SevenZipCompressionLevel = s.SevenZipCompressionLevel;
-        LoadExcludedFilePatterns(s.ExcludedFilePatterns);
+        // 除外パターンは settings.json ではなく .lhaignore から読み込む。
+        ReloadExcludedFilePatternsFromFile();
     }
 
     partial void OnExtractionOutputToSameDirectoryChanged(bool value)
@@ -469,13 +519,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (pattern.Length == 0)
             return;
 
-        if (!CompressionExcludedFilePatterns.Contains(pattern, StringComparer.OrdinalIgnoreCase))
-            CompressionExcludedFilePatterns.Add(pattern);
-
+        LhaignoreFile.AppendPattern(pattern);
+        ReloadExcludedFilePatternsFromFile();
         SelectedExcludedFilePattern = CompressionExcludedFilePatterns
             .FirstOrDefault(p => string.Equals(p, pattern, StringComparison.OrdinalIgnoreCase));
         NewExcludedFilePattern = string.Empty;
-        AutoSave();
     }
 
     [RelayCommand]
@@ -484,22 +532,56 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (SelectedExcludedFilePattern is null)
             return;
 
-        CompressionExcludedFilePatterns.Remove(SelectedExcludedFilePattern);
+        LhaignoreFile.RemovePattern(SelectedExcludedFilePattern);
+        ReloadExcludedFilePatternsFromFile();
         SelectedExcludedFilePattern = null;
-        AutoSave();
     }
 
     [RelayCommand]
     private void ResetExcludedPatterns()
     {
-        LoadExcludedFilePatterns(Settings.CreateDefaultExcludedFilePatterns());
-        AutoSave();
+        LhaignoreFile.ResetToDefaults();
+        ReloadExcludedFilePatternsFromFile();
     }
 
-    private void LoadExcludedFilePatterns(IEnumerable<string>? patterns)
+
+    /// <summary>
+    /// .lhaignore ファイルを既定のテキストエディタで開く。
+    /// 関連付けが無い場合は notepad.exe にフォールバックする。
+    /// 編集後の変更は <see cref="_lhaignoreWatcher"/> がピックアップして UI を更新する。
+    /// </summary>
+    [RelayCommand]
+    private void OpenExcludedPatternsFile()
+    {
+        try
+        {
+            // 開いた瞬間にファイルが存在することを保証する（初回起動でユーザーが先に押した場合の保険）
+            LhaignoreFile.EnsureExists();
+
+            var path = LhaignoreFile.FilePath;
+            try
+            {
+                Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+            }
+            catch
+            {
+                // .lhaignore に関連付けが無い環境では notepad で開く
+                Process.Start(new ProcessStartInfo("notepad.exe", $"\"{path}\"") { UseShellExecute = false });
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($".lhaignore のオープンに失敗: {ex.Message}", LogLevel.Warning);
+        }
+    }
+
+    /// <summary>
+    /// .lhaignore からパターンを読み直して ObservableCollection を更新する。
+    /// </summary>
+    internal void ReloadExcludedFilePatternsFromFile()
     {
         CompressionExcludedFilePatterns.Clear();
-        foreach (var pattern in Settings.NormalizeExcludedFilePatterns(patterns ?? Settings.CreateDefaultExcludedFilePatterns()))
+        foreach (var pattern in LhaignoreFile.ReadPatterns())
             CompressionExcludedFilePatterns.Add(pattern);
         SelectedExcludedFilePattern = null;
     }
