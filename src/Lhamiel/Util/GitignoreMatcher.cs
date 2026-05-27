@@ -342,15 +342,20 @@ public sealed class GitignoreMatcher
 
                     if (prevIsBoundary && nextIsBoundary)
                     {
-                        // ** : 0 個以上のパスセグメント
-                        // 直前 / 直後の / は飲み込む（"foo/**/bar" が "foo/bar" にもマッチするように）
-                        var consumedLeadingSlash = sb.Length > 0 && sb[^1] == '/';
-                        if (consumedLeadingSlash)
-                            sb.Length -= 1;
-
+                        // ** : 0 個以上のパスセグメント。
+                        // gitignore 仕様: ** は path 区切りを跨ぐが、隣接する path component を
+                        // マージしない。例: "foo/**/bar" は "foo/bar" / "foo/x/bar" にマッチするが
+                        // "foobar" にはマッチしない (Codex P2 #5 指摘対応)。
+                        // よって前の '/' は sb から削除せず保持し、後続の '/' のみ消費する形にする:
+                        //   "foo/**/bar" → "foo/(?:.*/)?bar" (前 '/' 保持、後 '/' 消費)
+                        //   "**/foo"    → "(?:.*/)?foo"     (i==0 なので sb 末尾は '/' でない)
+                        // 旧実装は前の '/' を sb.Length-1 で削除し (?:.*/)? が optional な形で
+                        // 出力されたため、"foo/**/bar" の regex が "foo(?:.*/)?bar..." となり
+                        // 区切りを失った "foobar" にも誤マッチしていた。
                         sb.Append("(?:.*/)?");
                         i += 2;
 
+                        // 直後の '/' を消費 ((?:.*/)? が末尾 '/' を含むので二重スラッシュを避ける)
                         if (i < pattern.Length && pattern[i] == '/')
                             i++;
                     }

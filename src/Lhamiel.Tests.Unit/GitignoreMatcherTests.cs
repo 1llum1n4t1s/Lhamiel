@@ -66,6 +66,26 @@ public class GitignoreMatcherTests
     }
 
     [Fact]
+    public void MiddleDoubleStar_DoesNotMergePathComponents()
+    {
+        // gitignore 仕様: "foo/**/bar" は path 区切りを跨ぐが、隣接 component をマージしない。
+        // "foo/bar" / "foo/x/bar" にはマッチするが、区切りを失った "foobar" にはマッチしない。
+        // (Codex P2 #5 指摘の回帰テスト)
+        var m = GitignoreMatcher.Compile(["foo/**/bar"]);
+
+        // 正常マッチ
+        Assert.True(m.IsExcluded("foo/bar", false));        // 0 directories (** は 0 個 OK)
+        Assert.True(m.IsExcluded("foo/x/bar", false));      // 1 directory
+        Assert.True(m.IsExcluded("foo/a/b/c/bar", false));  // 深いネスト
+
+        // 重要: 区切りを失った root file はマッチさせない
+        Assert.False(m.IsExcluded("foobar", false));        // path 区切りなし
+        Assert.False(m.IsExcluded("foobar.txt", false));    // 区切りなし + 拡張子
+        Assert.False(m.IsExcluded("xfoo/bar", false));      // foo の前に余計な文字
+        Assert.False(m.IsExcluded("foo/barx", false));      // bar の後に余計な文字
+    }
+
+    [Fact]
     public void LeadingSlash_AnchorsToRoot()
     {
         var m = GitignoreMatcher.Compile(["/build"]);
