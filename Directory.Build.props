@@ -6,7 +6,7 @@
     <PlatformTarget Condition="'$(PlatformTarget)' == ''">x64</PlatformTarget>
     <Platforms>x64;ARM64</Platforms>
     <SupportedOSPlatformVersion>8.0</SupportedOSPlatformVersion>
-    <Version>1.0.171</Version>
+    <Version>1.0.172</Version>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyTitle>Lhamiel</AssemblyTitle>

@@ -107,12 +107,9 @@
       },
       "Velopack": {
         "type": "Direct",
-        "requested": "[0.0.1369-g1d5c984, )",
-        "resolved": "0.0.1369-g1d5c984",
-        "contentHash": "Cpc3ywXrng2oKcZvpjq/mdspF6v2bFa4AhZ2OwIgNKD+bnlw1QXRVGKLY5QyNiPz64FcUnPqSG2b2RkDujIl+A==",
-        "dependencies": {
-          "NuGet.Versioning": "6.14.0"
-        }
+        "requested": "[1.0.1, )",
+        "resolved": "1.0.1",
+        "contentHash": "LlmymFeEYBGNQfNiG89buDUT6C09MgqJnLzkvQz997fk/+KfmlyXlwbxOBFxt24HL4B8TQAFmNa6Oy9K4XlH0Q=="
       },
       "VelopackUpdateDialog.Avalonia": {
         "type": "Direct",
@@ -297,11 +294,6 @@
         "type": "Transitive",
         "resolved": "10.0.8",
         "contentHash": "OBPo4nYhMyIbtueoC10CBm6AGAbo/A9IV8QQ/6ryZS7VvmqpGT7hunazeHLxFawRzn3oLOq4jhqhpBX4tfswWQ=="
-      },
-      "NuGet.Versioning": {
-        "type": "Transitive",
-        "resolved": "6.14.0",
-        "contentHash": "4v4blkhCv8mpKtfx+z0G/X0daVCzdIaHSC51GkUspugi5JIMn2Bo8xm5PdZYF0U68gOBfz/+aPWMnpRd85Jbow=="
       },
       "SkiaSharp": {
         "type": "Transitive",
