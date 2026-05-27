@@ -177,14 +177,20 @@ public sealed class GitignoreMatcher
                         if (SafeIsMatch(rule.Regex, localPath))
                             excluded = !rule.Negated;
                     }
-                    else
+                    else if (!rule.Negated)
                     {
+                        // Codex P2 指摘対応: directoryOnly の negation は配下ファイルを再包含しない。
+                        // Git 仕様: "!foo/" は「foo ディレクトリ自体を traversable に」するだけで、
+                        // 配下のファイル "foo/bar" は ignored のまま (再包含には別途 file pattern が必要)。
+                        // allow-list 形式の ignore ("*" + "!src/" 等) で、Git では src/ 配下のファイルが
+                        // 依然 ignored だが、旧実装は親ディレクトリマッチで child を再包含してしまい、
+                        // 意図しない build/cache ファイルが silent に archive に含まれる経路があった。
                         var lastSlash = localPath.LastIndexOf('/');
                         if (lastSlash > 0)
                         {
                             var parentDir = localPath[..lastSlash];
                             if (SafeIsMatch(rule.Regex, parentDir))
-                                excluded = !rule.Negated;
+                                excluded = true;
                         }
                     }
                 }

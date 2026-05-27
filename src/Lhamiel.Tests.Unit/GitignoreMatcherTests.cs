@@ -268,6 +268,39 @@ public class GitignoreMatcherTests
     }
 
     [Fact]
+    public void NegatedDirectoryRule_DoesNotReIncludeChildFiles()
+    {
+        // Git 仕様: "!foo/" は foo ディレクトリ自体を traversable にするだけで、配下のファイルを
+        // 再包含しない。allow-list ignore ("*" + "!src/" 等) で Git は src/ 配下のファイルを
+        // 依然 ignored 扱いするが、旧実装は親ディレクトリマッチで child を再包含してしまっていた。
+        // (Codex P2 指摘の回帰テスト)
+        var m = GitignoreMatcher.Compile(["*", "!src/"]);
+
+        // ディレクトリ src そのものは traversable (!src/ で再包含されるべき)
+        Assert.False(m.IsExcluded("src", isDirectory: true));
+
+        // 配下のファイルは依然 ignored (!src/ は file レベルの再包含をしない)
+        Assert.True(m.IsExcluded("src/main.c", isDirectory: false));
+        Assert.True(m.IsExcluded("src/build/obj.o", isDirectory: false));
+
+        // 他のファイルも * によって ignored のまま
+        Assert.True(m.IsExcluded("readme.txt", isDirectory: false));
+    }
+
+    [Fact]
+    public void NonNegatedDirectoryRule_StillExcludesChildFiles()
+    {
+        // 通常の "node_modules/" は配下のファイルも除外する (Git 仕様)
+        // (Codex P2 修正の回帰防止: negated 側だけ child 再包含を止めたことで、
+        //  non-negated 側の child 除外が壊れていないことを保証)
+        var m = GitignoreMatcher.Compile(["node_modules/"]);
+
+        Assert.True(m.IsExcluded("node_modules", isDirectory: true));
+        Assert.True(m.IsExcluded("node_modules/a.js", isDirectory: false));
+        Assert.True(m.IsExcluded("src/node_modules/index.js", isDirectory: false));
+    }
+
+    [Fact]
     public void DirectoryOnlyPattern_SingleFileMode_MatchesParentSegment()
     {
         // 単一ファイル指定（rootDir なし）で C:\...\node_modules\a.js を渡しても、

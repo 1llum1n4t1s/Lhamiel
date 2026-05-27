@@ -199,6 +199,10 @@ jobs:
       # - 削除対象を「.nupkg かつ manifest 外」に絞ることで、想定外のファイル
       #   (誰かが手動 put した object) を誤って消さない安全側設計
       # - API: Cloudflare V4 (既存 CLOUDFLARE_API_TOKEN で動く / 追加 secret 不要)
+      # - keep_map は **ローカル packages/ の manifest** から構築する (Codex P1 指摘対応):
+      #   public endpoint から fetch すると CDN/R2 の伝播タイミング次第で「アップロード前の
+      #   旧 manifest」が返る race condition があり、新 nupkg が keep_map に入らないまま
+      #   削除されてしまう経路があった。
       - name: 旧バージョン nupkg を削除 (manifest 外をクリーンアップ)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -208,19 +212,25 @@ jobs:
           api="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/r2/buckets/lhamiel-updates"
           auth_header="Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"
 
-          # 1. 各 channel の manifest を fetch して keep set を構築
-          #    keep set = manifest の Assets[].FileName で参照されるファイル一覧
+          # 1. ローカル packages/ の manifest (=今アップロードしたものと同一) から keep set 構築。
+          #    CDN/R2 の伝播遅延に依存しないため、リリース直後に新 nupkg を誤削除する race を回避。
           declare -A keep_map
-          for channel in win win-arm64; do
-            url="https://lhamiel.nephilim.jp/releases.${channel}.json"
-            manifest=$(curl --fail --silent --show-error \
-                            --max-time 30 --retry 3 --retry-delay 5 --retry-all-errors \
-                            "$url")
+          shopt -s nullglob
+          local_manifests=(packages/releases.*.json)
+          shopt -u nullglob
+
+          if [[ "${#local_manifests[@]}" -eq 0 ]]; then
+            echo "::error::packages/releases.*.json が見つかりません。Velopack 成果物のダウンロードに失敗している可能性があります。"
+            exit 1
+          fi
+
+          for manifest_path in "${local_manifests[@]}"; do
+            echo "Reading local manifest: $manifest_path"
             while IFS= read -r filename; do
               if [[ -n "$filename" && "$filename" != "null" ]]; then
                 keep_map["$filename"]=1
               fi
-            done < <(echo "$manifest" | jq -r '.Assets[]?.FileName // empty')
+            done < <(jq -r '.Assets[]?.FileName // empty' "$manifest_path")
           done
 
           echo "::group::manifest 内の保持対象 nupkg (${#keep_map[@]} files)"

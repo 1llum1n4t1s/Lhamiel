@@ -45,7 +45,11 @@ internal static class WindowsHResults
     // ⚠️ RTK レビュー #F-003 対応: 過去事例「23.5GiB 7z 破損 (1Work.7z)」の原因が USB ドライブ
     // 切断による ERROR_DEV_NOT_EXIST だったため、明示的に分類してリトライ対象から除外する
     // （リトライしても復旧しない、かつユーザーに再接続を促すべきエラー）。
-    internal const int ErrorDevNotExist = unchecked((int)0x800703E3);    // ERROR_DEV_NOT_EXIST
+    // Codex P2 指摘対応: 旧値 0x800703E3 は ERROR_OPERATION_ABORTED (995) であって
+    // ERROR_DEV_NOT_EXIST ではない。正しい値は 55 (0x37) = HRESULT 0x80070037。
+    // 旧値のままだと実際の USB / NAS 切断が DeviceDisconnected として分類されず
+    // 無駄リトライに回り、逆に aborted operation が誤って切断扱いされていた。
+    internal const int ErrorDevNotExist = unchecked((int)0x80070037);    // ERROR_DEV_NOT_EXIST (Win32 55)
     internal const int ErrorNotReady = unchecked((int)0x80070015);       // ERROR_NOT_READY
     internal const int ErrorBadNetpath = unchecked((int)0x80070035);     // ERROR_BAD_NETPATH
     internal const int ErrorNetworkBusy = unchecked((int)0x80070036);    // ERROR_NETWORK_BUSY

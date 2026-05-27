@@ -127,7 +127,6 @@ public static class ArchiveCompressor
             progress?.Report(new ProgressInfo(0, App.Text("Compressor.Processing")));
 
             // 圧縮を実行（IProgress<Report>で詳細な進捗を取得）
-            outputCreated = true;
             Logger.Log("圧縮処理を開始します");
 
             try
@@ -162,6 +161,13 @@ public static class ArchiveCompressor
                         if (throttler.ShouldReport(percentage))
                             progress?.Report(new ProgressInfo(percentage, ""));
                     }, cancellationToken);
+
+                    // outputCreated を writer.Save の直前にセットする (Codex P2 指摘対応)。
+                    // writer.Save が outputPath を実際に開く / 上書きを開始するのはここから。
+                    // Save 前 (CreateArchiveWriter / writer.Add 等) で例外が出た場合、outputPath
+                    // はまだ書かれていないため、既存アーカイブを上書き対象として指定していた
+                    // ケースで誤ってユーザーの有効ファイルを削除しないようにする。
+                    outputCreated = true;
 
                     // ネイティブメソッドの呼び出し
                     writer.Save(outputPath, reportProgress);
