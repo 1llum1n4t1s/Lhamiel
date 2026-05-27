@@ -203,18 +203,13 @@ jobs:
           done
 
       # 旧バージョン nupkg のクリーンアップ (Aggressive 戦略):
-      # - releases.{channel}.json (manifest) に含まれない nupkg を削除
-      # - Setup.exe / Portable.zip / RELEASES / assets.*.json は固定ファイル名で
-      #   上書きされる Velopack 内部ファイル & ランディング DL 用なので保持
-      # - 万一 manifest 取得が失敗 / 配信確認をパスしていない場合はこのステップが
-      #   そもそも走らない (needs: 直前の配信確認ステップが OK が前提)
+      # - releases.{channel}.json (manifest) に含まれない *.nupkg を削除
+      # - Setup.exe / Portable.zip / RELEASES / assets.*.json / releases.*.json は
+      #   固定ファイル名で毎リリース上書きされる Velopack 内部 & ランディング DL 用なので保護
       # - 削除対象を「.nupkg かつ manifest 外」に絞ることで、想定外のファイル
       #   (誰かが手動 put した object) を誤って消さない安全側設計
-      # - API: Cloudflare V4 (既存 CLOUDFLARE_API_TOKEN で動く / 追加 secret 不要)
-      # - keep_map は **ローカル packages/ の manifest** から構築する (Codex P1 指摘対応):
-      #   public endpoint から fetch すると CDN/R2 の伝播タイミング次第で「アップロード前の
-      #   旧 manifest」が返る race condition があり、新 nupkg が keep_map に入らないまま
-      #   削除されてしまう経路があった。
+      # - 配信確認ステップ後に走る (manifest 取得不能なら手前で fail し cleanup は走らない)
+      # - API: Cloudflare V4 で完結 (CLOUDFLARE_API_TOKEN だけで動く / R2 S3 互換 Access Key 不要)
       - name: 旧バージョン nupkg を削除 (manifest 外をクリーンアップ)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -250,7 +245,7 @@ jobs:
           echo "::endgroup::"
 
           # 2. R2 上の全 object を cursor ページネーション付きで取得
-          #    継続判定は result_info.is_truncated を明示利用 (CodeRabbit 指摘で意図を明確化)
+          #    継続判定は result_info.is_truncated を明示利用 (意図を明確化)
           all_keys=()
           cursor=""
           while true; do
@@ -273,14 +268,10 @@ jobs:
           printf '  %s\n' "${all_keys[@]}"
           echo "::endgroup::"
 
-          # 3. 削除対象判定:
-          #    - 拡張子 .nupkg のもののみ対象 (.exe / .zip / .json / RELEASES 等は保護)
-          #    - keep_map に含まれないものを削除
+          # 3. 削除対象判定: 拡張子 .nupkg のもののみ対象 + keep_map 外
           to_delete=()
           for key in "${all_keys[@]}"; do
-            # nupkg 以外は安全側で保持
             [[ "$key" != *.nupkg ]] && continue
-            # manifest に含まれていれば保持
             [[ -n "${keep_map[$key]:-}" ]] && continue
             to_delete+=("$key")
           done
@@ -295,11 +286,10 @@ jobs:
           echo "::endgroup::"
 
           # 4. 一個ずつ DELETE
-          #    --max-time 30 でハング防止 (他の curl 呼び出しと統一、CodeRabbit 指摘対応)
+          #    --max-time 30 でハング防止 (他の curl 呼び出しと統一)
           deleted=0
           failed=0
           for key in "${to_delete[@]}"; do
-            # URL エンコード (ファイル名は通常 ASCII だが念のため)
             encoded=$(jq -nr --arg k "$key" '$k|@uri')
             resp=$(curl --silent --max-time 30 -X DELETE "${api}/objects/${encoded}" -H "$auth_header")
             success=$(echo "$resp" | jq -r '.success')
