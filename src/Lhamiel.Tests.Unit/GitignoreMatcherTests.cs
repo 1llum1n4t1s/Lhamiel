@@ -268,6 +268,54 @@ public class GitignoreMatcherTests
     }
 
     [Fact]
+    public void NegatedDirectoryRule_DoesNotPropagateToDescendantDirectories()
+    {
+        // Codex P2 指摘の回帰テスト: `!src/` は `src` ディレクトリ自体を traversable にするだけで、
+        // `src/sub` 等の descendant ディレクトリには再包含を伝播させない (Git 仕様: 親が
+        // excluded のまま descendant の re-include は効かない)。
+        var m = GitignoreMatcher.CompileLayered([
+            (string.Empty, new[] { "*", "!src/" }),
+        ]);
+
+        // src 自身は再包含されて traversable
+        Assert.False(m.IsExcluded("src", isDirectory: true));
+
+        // descendant ディレクトリは依然 ignored (!src/ は伝播しない)
+        Assert.True(m.IsExcluded("src/sub", isDirectory: true));
+        Assert.True(m.IsExcluded("src/sub/inner", isDirectory: true));
+
+        // 配下のファイルも依然 ignored
+        Assert.True(m.IsExcluded("src/main.c", isDirectory: false));
+        Assert.True(m.IsExcluded("src/sub/file.c", isDirectory: false));
+    }
+
+    [Fact]
+    public void PositiveCharClass_DoesNotMatchSlash()
+    {
+        // Codex P2 指摘の回帰テスト: positive な文字クラス `[ab/]` は gitignore の
+        // FNM_PATHNAME 仕様で `/` をメンバとして扱わない。
+        // Git: "foo[ab/]bar" は fooabar / foobbar にマッチするが foo/bar にはマッチしない。
+        var m = GitignoreMatcher.Compile(["foo[ab/]bar"]);
+
+        // 通常のメンバマッチ
+        Assert.True(m.IsExcluded("fooabar", isDirectory: false));
+        Assert.True(m.IsExcluded("foobbar", isDirectory: false));
+
+        // 重要: '/' はメンバ扱いされず、path 区切りを跨ぐマッチは起きない
+        Assert.False(m.IsExcluded("foo/bar", isDirectory: false));
+    }
+
+    [Fact]
+    public void PositiveCharClass_OnlySlash_RuleIsDiscarded()
+    {
+        // [/] のような '/' のみのクラスは gitignore 仕様外。Git では何にもマッチしない。
+        // 実装では rule 全体を破棄して「マッチしない」扱いに倒す (安全側)。
+        var m = GitignoreMatcher.Compile(["[/]"]);
+        Assert.False(m.IsExcluded("foo", isDirectory: false));
+        Assert.False(m.IsExcluded("a/b", isDirectory: false));
+    }
+
+    [Fact]
     public void NegatedDirectoryRule_DoesNotReIncludeChildFiles()
     {
         // Git 仕様: "!foo/" は foo ディレクトリ自体を traversable にするだけで、配下のファイルを

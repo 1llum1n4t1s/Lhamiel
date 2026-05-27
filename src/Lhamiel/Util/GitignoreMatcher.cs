@@ -174,7 +174,14 @@ public sealed class GitignoreMatcher
                     // （git の挙動: "node_modules/" は "node_modules/a.js" 配下も除外する）。
                     if (isDirectory)
                     {
-                        if (SafeIsMatch(rule.Regex, localPath))
+                        // Codex P2 指摘対応: negated + directoryOnly のときは exact 用 regex を使う。
+                        // 通常 regex は descendant にもマッチするが、Git 仕様では "!src/" は
+                        // src ディレクトリそのものだけを traversable にし、src/sub 等の descendant
+                        // は parent excluded の状態のまま (re-include は伝播しない)。
+                        var regexToUse = rule.Negated && rule.DirectoryExactRegex is not null
+                            ? rule.DirectoryExactRegex
+                            : rule.Regex;
+                        if (SafeIsMatch(regexToUse, localPath))
                             excluded = !rule.Negated;
                     }
                     else if (!rule.Negated)
@@ -308,14 +315,23 @@ public sealed class GitignoreMatcher
             endsWithDoubleStar = true;
         }
 
-        var regex = TryBuildRegex(body, anchored, endsWithDoubleStar);
+        var regex = TryBuildRegex(body, anchored, endsWithDoubleStar, exactMatch: false);
         if (regex is null)
             return null;
 
-        return new Rule(regex, negated, directoryOnly, anchored);
+        // Codex P2 指摘対応: negated + directoryOnly のときは「対象ディレクトリそのもの」だけ
+        // 再包含するために exact 用 regex も生成する。Git 仕様で親ディレクトリが除外されている
+        // 場合は descendant に traversal を伝播させないため (詳細は Rule.DirectoryExactRegex)。
+        Regex? exactRegex = null;
+        if (negated && directoryOnly && !endsWithDoubleStar)
+        {
+            exactRegex = TryBuildRegex(body, anchored, endsWithDoubleStar, exactMatch: true);
+        }
+
+        return new Rule(regex, exactRegex, negated, directoryOnly, anchored);
     }
 
-    private static Regex? TryBuildRegex(string pattern, bool anchored, bool endsWithDoubleStar)
+    private static Regex? TryBuildRegex(string pattern, bool anchored, bool endsWithDoubleStar, bool exactMatch)
     {
         var sb = new StringBuilder();
         sb.Append('^');
@@ -406,14 +422,19 @@ public sealed class GitignoreMatcher
                 if (end < 0)
                     return null;
 
+                // gitignore (POSIX FNM_PATHNAME) の文字クラスは暗黙に path 区切り '/' を
+                // メンバとして扱わない。.NET の文字クラスにそのまま転写すると '/' を含む
+                // ケースでパス区切りを跨ぐ誤マッチを起こすため、negated / positive 両方で
+                // '/' を文字クラスから除外する。
+                // - negated: [!abc] → [^abc/] (元から '/' を除外 + 必要なら追加)
+                // - positive: [ab/] → [ab] ('/' を classBody から除去)
+                // 例: "foo[ab/]bar" は Git では foo/bar にマッチしない (FNM_PATHNAME)。
+                // Codex P2 #4 (negated 側) で対応済 → 今回 P2 で positive 側も同等に修正。
+                var classBody = pattern[contentStart..end]; // ']' を含まない中身
+
                 if (negated)
                 {
-                    // [!abc] → [^abc/] へ変換。
-                    // gitignore (POSIX fnmatch) の文字クラスは暗黙に path 区切り '/' を含まないので、
-                    // .NET の [^...] にそのまま変換すると '/' にもマッチしてしまい、
-                    // 例えば "foo/bar" の '/' 部分が `[!a]` にマッチしてパスを跨ぐ誤マッチを起こす。
-                    // 既存の `*` → `[^/]*` / `?` → `[^/]` と同じ方針で '/' を明示的に除外する。
-                    var classBody = pattern[contentStart..end]; // ']' を含まない中身
+                    // [!abc] → [^abc/] へ変換
                     sb.Append("[^");
                     sb.Append(classBody);
                     if (!classBody.Contains('/'))
@@ -422,8 +443,26 @@ public sealed class GitignoreMatcher
                 }
                 else
                 {
-                    // [abc] → [abc] / []abc] → []abc] (そのまま転写)
-                    sb.Append(pattern, i, end - i + 1);
+                    // [abc] → [abc] / [ab/c] → [abc]: '/' を除去
+                    if (classBody.Contains('/'))
+                    {
+                        var filtered = classBody.Replace("/", string.Empty);
+                        if (filtered.Length == 0)
+                        {
+                            // [/] のような '/' のみのクラスは gitignore 仕様外で git では
+                            // 結果的に何にもマッチしない。空クラスは .NET regex でも構文エラー
+                            // なので、ルール全体を破棄してマッチを止める (安全側)。
+                            return null;
+                        }
+                        sb.Append('[');
+                        sb.Append(filtered);
+                        sb.Append(']');
+                    }
+                    else
+                    {
+                        // [abc] / []abc] (先頭 ']' メンバ扱い) はそのまま転写
+                        sb.Append(pattern, i, end - i + 1);
+                    }
                 }
                 i = end + 1;
             }
@@ -449,6 +488,12 @@ public sealed class GitignoreMatcher
                 sb.Append(".+$");
             else
                 sb.Append("/.+$");
+        }
+        else if (exactMatch)
+        {
+            // exactMatch: 対象 path そのものだけマッチ (descendant は巻き込まない)。
+            // negated + directoryOnly の rule で「対象ディレクトリそのものだけ再包含」用。
+            sb.Append('$');
         }
         else
         {
@@ -505,7 +550,19 @@ public sealed class GitignoreMatcher
         sb.Append(c);
     }
 
-    private sealed record Rule(Regex Regex, bool Negated, bool DirectoryOnly, bool Anchored);
+    /// <param name="Regex">通常マッチ用の regex (末尾 <c>(?:/.*)?$</c> 付きで descendant も巻き込む)。</param>
+    /// <param name="DirectoryExactRegex">
+    /// negated + directoryOnly ルールのときだけ生成される、対象ディレクトリそのものだけを exact match
+    /// する regex (末尾 <c>$</c> のみ、descendant を巻き込まない)。
+    /// <para>
+    /// Codex P2 指摘対応: Git 仕様では「親ディレクトリが除外されているとき内部ファイル / サブディレクトリ
+    /// は re-include できない」。例: <c>*</c> + <c>!src/</c> + <c>!src/sub/file</c> の allow-list 構成で
+    /// 旧実装は <c>src/sub</c> も <c>!src/</c> でマッチして scanning を継続し、後の file 再包含で
+    /// <c>src/sub/file</c> がアーカイブに入ってしまった。negated directory rule は対象 dir そのものだけ
+    /// 再包含し、descendant への伝播を断つ必要がある。
+    /// </para>
+    /// </param>
+    private sealed record Rule(Regex Regex, Regex? DirectoryExactRegex, bool Negated, bool DirectoryOnly, bool Anchored);
 
     /// <summary>
     /// 1 つの <c>.gitignore</c> ファイル（または <c>.lhaignore</c>）のスコープを表す layer。

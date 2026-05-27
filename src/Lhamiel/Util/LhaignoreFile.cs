@@ -64,7 +64,12 @@ internal static class LhaignoreFile
                     var trimmed = (p ?? string.Empty).Trim();
                     if (trimmed.Length == 0)
                         continue;
-                    sb.AppendLine(trimmed);
+                    // Codex P2 指摘対応: 旧 ExcludedFilePatterns はリテラルなパス成分名だったが、
+                    // .lhaignore は gitignore 仕様で評価されるため、`*` / `?` / `[` / `]` / `\` /
+                    // 先頭 `!` / 先頭 `#` を含むリテラル名はメタ文字として再解釈されてしまう。
+                    // 例: 旧設定で `foo[1].txt` を除外していたユーザは、移行後 character class
+                    // 扱いとなりリテラル `foo[1].txt` がマッチしなくなる。escape して仕様変更を防ぐ。
+                    sb.AppendLine(EscapeGitignoreLiteral(trimmed));
                 }
                 content = sb.ToString();
             }
@@ -77,6 +82,44 @@ internal static class LhaignoreFile
             catch { /* Logger 未初期化のケース */ }
             return false;
         }
+    }
+
+    /// <summary>
+    /// 旧 ExcludedFilePatterns のリテラル文字列を gitignore で「メタ文字を含まないリテラル」と
+    /// して扱われる形にエスケープする。
+    /// <para>
+    /// gitignore メタ文字: <c>*</c> / <c>?</c> / <c>[</c> / <c>]</c> / <c>\</c> をバックスラッシュ
+    /// でエスケープ。先頭 <c>!</c>（否定）と先頭 <c>#</c>（コメント）も同様にエスケープする。
+    /// パス区切り <c>/</c> はリテラルでも gitignore でも path 構造を表すので escape しない
+    /// （旧 ExcludedFilePatterns は basename 想定なので通常 <c>/</c> は含まないが、含まれていた
+    /// 場合はそのまま path 相対 anchored 扱いとして転写する）。
+    /// </para>
+    /// </summary>
+    internal static string EscapeGitignoreLiteral(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+        var sb = new StringBuilder(input.Length + 4);
+        for (var i = 0; i < input.Length; i++)
+        {
+            var c = input[i];
+            // 先頭の '!' / '#' は gitignore で特別な意味を持つので escape
+            if (i == 0 && (c == '!' || c == '#'))
+            {
+                sb.Append('\\');
+                sb.Append(c);
+                continue;
+            }
+            // wildcard / character class / escape 文字
+            if (c is '*' or '?' or '[' or ']' or '\\')
+            {
+                sb.Append('\\');
+                sb.Append(c);
+                continue;
+            }
+            sb.Append(c);
+        }
+        return sb.ToString();
     }
 
     /// <summary>

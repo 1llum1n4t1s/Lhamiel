@@ -8,6 +8,18 @@ on:
 permissions:
   contents: read
 
+# Codex P1 指摘対応: 複数の release/** push が overlap した場合、
+# 古い run の cleanup step (manifest 外を削除) が、新しい run が
+# upload したばかりの nupkg を「manifest 外」として削除してしまう
+# race condition がある。
+# workflow level の concurrency group で release 系を直列化する:
+# - group=release-r2: 全リリースで共通の lock
+# - cancel-in-progress=false: 走っている run はそのまま終わらせる
+#   (削除途中で中断すると整合性が壊れるため、キャンセルではなく queue)
+concurrency:
+  group: release-r2
+  cancel-in-progress: false
+
 jobs:
   build:
     name: Build
