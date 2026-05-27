@@ -434,7 +434,10 @@ public sealed class GitignoreMatcher
 
                 if (negated)
                 {
-                    // [!abc] → [^abc/] へ変換
+                    // [!abc] → [^abc/] へ変換。
+                    // negation は補集合なので、'/' を class に追加するだけで除外できる。
+                    // range が '/' (0x2F) を含む場合 (例: [!.-0]) も [^.-0/] と書けば
+                    // '/' は補集合の対象になり結果的にマッチ対象から外れる。
                     sb.Append("[^");
                     sb.Append(classBody);
                     if (!classBody.Contains('/'))
@@ -443,25 +446,37 @@ public sealed class GitignoreMatcher
                 }
                 else
                 {
-                    // [abc] → [abc] / [ab/c] → [abc]: '/' を除去
-                    if (classBody.Contains('/'))
+                    // positive class: gitignore (FNM_PATHNAME) は文字クラス内に '/' を
+                    // マッチさせない。リテラルな '/' (Codex P2 で対応済) に加え、range が
+                    // '/' (0x2F) を範囲に含むケース (例: [.-0] = 0x2E-0x30) も除外する必要がある。
+                    // .NET regex の character class subtraction `[base-[/]]` で確実に '/' を引く。
+                    // Codex P2 指摘 #6 (range slash) 対応。
+                    var clean = classBody.Contains('/')
+                        ? classBody.Replace("/", string.Empty)
+                        : classBody;
+                    if (clean.Length == 0)
                     {
-                        var filtered = classBody.Replace("/", string.Empty);
-                        if (filtered.Length == 0)
-                        {
-                            // [/] のような '/' のみのクラスは gitignore 仕様外で git では
-                            // 結果的に何にもマッチしない。空クラスは .NET regex でも構文エラー
-                            // なので、ルール全体を破棄してマッチを止める (安全側)。
-                            return null;
-                        }
+                        // [/] や [//] のような '/' のみのクラスは仕様外で何にもマッチしない。
+                        // 空クラスは .NET regex で構文エラーなので rule 全体を破棄する。
+                        return null;
+                    }
+
+                    if (clean.Contains(']'))
+                    {
+                        // ']' を含む class (先頭 ']' メンバ扱い) は subtraction の base group
+                        // として曖昧になる可能性があるため、subtraction を使わず Replace のみで
+                        // 対応する (range に '/' が潜む + ']' 先頭メンバの組み合わせは稀)。
                         sb.Append('[');
-                        sb.Append(filtered);
+                        sb.Append(clean);
                         sb.Append(']');
                     }
                     else
                     {
-                        // [abc] / []abc] (先頭 ']' メンバ扱い) はそのまま転写
-                        sb.Append(pattern, i, end - i + 1);
+                        // 標準ケース: subtraction で確実に '/' を除外
+                        // 例: [abc] → [abc-[/]], [.-0] → [.-0-[/]] (range に潜む '/' も除外)
+                        sb.Append('[');
+                        sb.Append(clean);
+                        sb.Append("-[/]]");
                     }
                 }
                 i = end + 1;

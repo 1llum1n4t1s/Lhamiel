@@ -306,6 +306,44 @@ public class GitignoreMatcherTests
     }
 
     [Fact]
+    public void PositiveCharClass_RangeContainingSlash_DoesNotMatchSlash()
+    {
+        // Codex P2 #6 指摘の回帰テスト: ASCII range が '/' (0x2F) を含むケース。
+        // [.-0] は ASCII 0x2E (.) 〜 0x30 (0) で間に 0x2F (/) が含まれる。
+        // Git は FNM_PATHNAME で文字クラス内に '/' をマッチさせないので、
+        // "foo[.-0]bar" は fooabar (NG), foo.bar / foo0bar (OK) にマッチするが
+        // foo/bar にはマッチしない。
+        var m = GitignoreMatcher.Compile(["foo[.-0]bar"]);
+
+        // range の両端は OK
+        Assert.True(m.IsExcluded("foo.bar", isDirectory: false));
+        Assert.True(m.IsExcluded("foo0bar", isDirectory: false));
+        // range の中間 (0x2F 直前の文字 / 直後の文字)
+        // 注: ASCII 0x2E-0x30 の間に 0x2F だけしかないので両端のみ確認
+
+        // 重要: '/' (0x2F) は range に物理的に含まれるが、subtraction で除外される
+        Assert.False(m.IsExcluded("foo/bar", isDirectory: false));
+    }
+
+    [Fact]
+    public void PositiveCharClass_NegatedRangeContainingSlash_DoesNotMatchSlash()
+    {
+        // negated 側の対称テスト: [!.-0] でも '/' をマッチさせない (補集合で除外)
+        var m = GitignoreMatcher.Compile(["foo[!.-0]bar"]);
+
+        // .-0 の範囲外文字はマッチ
+        Assert.True(m.IsExcluded("fooXbar", isDirectory: false));
+        Assert.True(m.IsExcluded("fooAbar", isDirectory: false));
+
+        // range 内文字はマッチしない
+        Assert.False(m.IsExcluded("foo.bar", isDirectory: false));
+        Assert.False(m.IsExcluded("foo0bar", isDirectory: false));
+
+        // '/' は依然マッチしない (negated でも path 区切りは跨がない)
+        Assert.False(m.IsExcluded("foo/bar", isDirectory: false));
+    }
+
+    [Fact]
     public void PositiveCharClass_OnlySlash_RuleIsDiscarded()
     {
         // [/] のような '/' のみのクラスは gitignore 仕様外。Git では何にもマッチしない。
