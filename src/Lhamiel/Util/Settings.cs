@@ -138,10 +138,36 @@ public class Settings
     public bool IncludeHiddenAndSystemEntries { get; set; } = true;
 
     /// <summary>
-    /// 圧縮時に除外するファイル・フォルダのパターン。
-    /// デフォルト値は ArchiveExtractor の無視リストから生成。
+    /// レガシー JSON 設定 (≤v1.0.170) との互換性のために残す書き込み専用プロパティ。
+    /// 新しい仕組みではパターンを <see cref="LhaignoreFile"/>（.lhaignore ファイル）に保存する。
+    /// 旧 settings.json をデシリアライズしたときだけ <see cref="_legacyExcludedFilePatterns"/>
+    /// に値を渡し、<see cref="Load"/> がそれを .lhaignore へ移行したあと破棄する。
+    /// デフォルト値の管理は <see cref="LhaignoreFile.CreateDefaultContent"/> に移管済み。
     /// </summary>
-    public List<string> ExcludedFilePatterns { get; set; } = CreateDefaultExcludedFilePatterns();
+    [JsonInclude]
+    [JsonPropertyName("ExcludedFilePatterns")]
+    internal List<string>? ExcludedFilePatternsLegacy
+    {
+        // CodeRabbit 指摘対応 (Outside diff): getter を _legacyExcludedFilePatterns を返すように変更。
+        // 旧来は常に null を返していたが、それだと .lhaignore 移行失敗で legacyExcludedFilePatterns を
+        // 温存しても次回 Save() でその値が消える問題があった。getter から実値を返すことで、
+        // 移行失敗ケースでも保険として settings.json に残り続け、復旧時に再利用できる。
+        // 移行成功時は Load() 内で _legacyExcludedFilePatterns = null に明示クリアされるため、
+        // 通常パスでは null を返して "ExcludedFilePatterns" を JSON に出力しない振る舞いも維持される。
+        get => _legacyExcludedFilePatterns;
+        set
+        {
+            // 旧 settings.json の `ExcludedFilePatterns` 配列を移行用にキャッシュする。
+            // 空配列 `[]` も「ユーザーが意図的に除外なしにした」状態として尊重し、
+            // デフォルトパターンで上書きしないように null と区別して保持する。
+            // 当プロパティの setter は JsonSerializer/JsonDocument 経路の両方から呼ばれる。
+            if (value is not null)
+                _legacyExcludedFilePatterns = value;
+        }
+    }
+
+    [JsonIgnore]
+    internal List<string>? _legacyExcludedFilePatterns;
 
     /// <summary>
     /// サポートされているテーマ一覧。UI および <see cref="SanitizeAfterLoad"/> で使用。
@@ -173,6 +199,10 @@ public class Settings
     /// <summary>
     /// 圧縮除外リストの既定値を作成する。
     /// </summary>
+    /// <summary>
+    /// 旧 API 互換用。新しい仕組みでは <see cref="LhaignoreFile.CreateDefaultContent"/> を直接使う。
+    /// </summary>
+    [Obsolete("Use LhaignoreFile.ResetToDefaults() / ReadPatterns() instead.")]
     public static List<string> CreateDefaultExcludedFilePatterns() =>
         [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
 
@@ -212,6 +242,14 @@ public class Settings
     /// </summary>
     public bool PropagateMarkOfTheWeb { get; set; } = true;
 
+
+    /// <summary>
+    /// 圧縮対象のディレクトリツリー内に <c>.gitignore</c> があれば、そのルールを <c>.lhaignore</c> と
+    /// 混合して除外判定に使う。各 <c>.gitignore</c> はそれがあるディレクトリ以下にスコープされる。
+    /// デフォルトは OFF（オプトイン）。
+    /// </summary>
+    public bool RespectNestedGitignore { get; set; } = false;
+
     /// <summary>
     /// 並列アクセスに対して安全なスナップショット（浅いコピー）を返す。
     /// 呼び出し元は処理開始時に1回だけ呼び出し、その後はスナップショットを使うことで
@@ -229,7 +267,7 @@ public class Settings
     {
         var copy = (Settings)MemberwiseClone();
         // 参照型コレクションは明示的に深コピー（新しく追加した場合は下に追記すること）
-        copy.ExcludedFilePatterns = ExcludedFilePatterns is null ? [] : [.. ExcludedFilePatterns];
+        // 除外パターンは .lhaignore ファイルが真の源なので Settings 上に状態は持たない。
         return copy;
     }
 
@@ -239,6 +277,7 @@ public class Settings
     /// <returns>読み込まれた設定オブジェクト</returns>
     public static Settings Load()
     {
+        Settings? settings = null;
         try
         {
             // 旧パス（アプリケーション実行ディレクトリ）
@@ -268,7 +307,6 @@ public class Settings
             if (File.Exists(SettingsFilePath))
             {
                 var json = File.ReadAllText(SettingsFilePath);
-                Settings? settings;
                 try
                 {
                     settings = JsonSerializer.Deserialize(json, AppJsonContext.Default.Settings);
@@ -302,12 +340,19 @@ public class Settings
                                 Debug.WriteLine($"破損 settings.json の Delete に失敗: {deleteEx.Message}");
                                 try
                                 {
-                                    File.WriteAllText(SettingsFilePath, "{}");
+                                    // 最終フォールバックの空 JSON 上書きも atomic 書込で部分破損を防ぐ。
+                                    // RTK レビュー #B1-008 対応。
+                                    WriteAtomically(SettingsFilePath, "{}");
                                     sanitizationSucceeded = true;
                                 }
                                 catch (Exception writeEx)
                                 {
                                     Debug.WriteLine($"破損 settings.json の空 JSON 上書きに失敗: {writeEx.Message}");
+                                    // RTK レビュー #F-012 対応: 3 段フォールバック全失敗ケースで、Logger も
+                                    // 未初期化な可能性が高いため、emergency.log に直接書く最終フォールバック。
+                                    Logger.WriteEmergencyLog(
+                                        $"settings.json の退避・削除・空 JSON 上書きが全て失敗。次回起動時も同じエラーが再発します。元エラー: {ex.Message}",
+                                        writeEx);
                                 }
                             }
                         }
@@ -338,15 +383,14 @@ public class Settings
                 if (settings != null)
                 {
                     settings.SanitizeAfterLoad();
-                    return settings;
                 }
-
-                return new Settings();
             }
-
-            var defaultSettings = new Settings();
-            defaultSettings.Save(); // 新規作成時にファイルに書き込む
-            return defaultSettings;
+            else
+            {
+                var defaultSettings = new Settings();
+                defaultSettings.Save(); // 新規作成時にファイルに書き込む
+                settings = defaultSettings;
+            }
         }
         catch (Exception ex)
         {
@@ -354,7 +398,20 @@ public class Settings
             Debug.WriteLine($"設定ファイルの読み込みに失敗しました: {ex.Message}");
         }
 
-        return new Settings();
+        settings ??= new Settings();
+
+        // .lhaignore の初期化。レガシー ExcludedFilePatterns があれば移行する。
+        // 既にファイルがあれば何もしないので何度呼んでも安全。
+        // EnsureExists が失敗した（戻り値 false かつファイルも作成されなかった）場合は、
+        // 次回 Save で旧 ExcludedFilePatterns が消えて復元不能にならないよう、レガシー値を温存する。
+        if (!File.Exists(LhaignoreFile.FilePath))
+        {
+            var created = LhaignoreFile.EnsureExists(settings._legacyExcludedFilePatterns);
+            if (created || File.Exists(LhaignoreFile.FilePath))
+                settings._legacyExcludedFilePatterns = null;
+        }
+
+        return settings;
     }
 
     /// <summary>
@@ -389,8 +446,6 @@ public class Settings
         CompressionFormat = Array.Find(SupportedCompressionFormats, f => string.Equals(f, CompressionFormat, StringComparison.OrdinalIgnoreCase))
                             ?? "ZIP";
 
-        ExcludedFilePatterns = NormalizeExcludedFilePatterns(ExcludedFilePatterns ?? CreateDefaultExcludedFilePatterns());
-
         // IgnoreUpdateTag は VelopackUpdateDialog の VersionIgnored イベント経由でユーザーが
         // 「このバージョンをスキップ」を押した GitHub Release タグ名が保存される。
         // settings.json 直接編集や JSON null (System.Text.Json が non-nullable string に null を代入する経路)、
@@ -413,6 +468,12 @@ public class Settings
             ExtractionOutputDirectory = desktop;
         if (!IsUsableOutputDirectory(CompressionOutputDirectory))
             CompressionOutputDirectory = desktop;
+
+        // ログ容量・保持日数の Clamp（settings.json 改竄による異常値で TB 級ログ生成や
+        // 未来日付化による全削除を防ぐ防御。1 MB〜200 MB、0〜365 日 に制限）。
+        // RTK レビュー #F-005 対応。
+        LogMaxSizeMB = Math.Clamp(LogMaxSizeMB, 1, 200);
+        LogRetentionDays = Math.Clamp(LogRetentionDays, 0, 365);
     }
 
     private static bool IsUsableOutputDirectory(string? path)
@@ -442,6 +503,10 @@ public class Settings
         return true;
     }
 
+    /// <summary>
+    /// 旧 API 互換用の入力正規化（Trim + 空除去 + 大小無視重複排除）。
+    /// 新しい仕組みでは <see cref="LhaignoreFile"/> 経由でファイルへ書き出すため通常は不要。
+    /// </summary>
     internal static List<string> NormalizeExcludedFilePatterns(IEnumerable<string> patterns)
     {
         var result = new List<string>();
@@ -459,18 +524,51 @@ public class Settings
     }
 
     /// <summary>
-    /// 設定をファイルに保存するメソッド
+    /// 設定をファイルに保存するメソッド。
+    /// <para>
+    /// ⚠️ atomic 性: <c>File.WriteAllText</c> は OS のディスクキャッシュへの flush タイミングと
+    /// プロセス強制終了 / 電源断のレースで、settings.json が 0 バイト truncate や中途半端な JSON で
+    /// 残るリスクがある。AutoSave (300ms デバウンス) で頻繁に走る経路なので、
+    /// <see cref="LhaignoreFile.WriteAtomically"/> と同じ「tmp + Move overwrite」パターンで
+    /// 部分書き込みを排除する。RTK レビュー #B1-007 対応。
+    /// </para>
     /// </summary>
     public void Save()
     {
         try
         {
             var json = JsonSerializer.Serialize(this, AppJsonContext.Default.Settings);
-            File.WriteAllText(SettingsFilePath, json);
+            WriteAtomically(SettingsFilePath, json);
         }
         catch (Exception ex)
         {
             throw new InvalidOperationException(App.Text("Error.SaveSettingsFailed", ex.Message), ex);
+        }
+    }
+
+    /// <summary>
+    /// 内容を一時ファイルに書いてから <see cref="File.Move(string, string, bool)"/> で
+    /// 上書きすることで、部分書き込みを排除する atomic 書込ヘルパ。
+    /// プロセス強制終了 / 電源断のレースで対象ファイルが 0 バイト truncate されるリスクを防ぐ。
+    /// 同一ボリューム上では <c>File.Move</c> は MoveFileEx の <c>MOVEFILE_REPLACE_EXISTING</c>
+    /// + Rename で atomic に振る舞う（クロスボリューム時はコピー扱いで atomic 性は劣化するが、
+    /// 通常 <c>%LocalAppData%\Lhamiel</c> 配下は同一ボリュームなので問題なし）。
+    /// </summary>
+    private static void WriteAtomically(string destinationPath, string content)
+    {
+        // GUID 付き一時ファイル名で並列書込時の衝突も回避する
+        var tmpPath = $"{destinationPath}.{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllText(tmpPath, content);
+            File.Move(tmpPath, destinationPath, overwrite: true);
+        }
+        catch
+        {
+            // tmp の後始末（best-effort）
+            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); }
+            catch { /* tmp 削除失敗は無視（次回起動時の TempCleanup に任せる） */ }
+            throw;
         }
     }
 
@@ -499,10 +597,12 @@ public class Settings
         Locale = "";
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
-        ExcludedFilePatterns = CreateDefaultExcludedFilePatterns();
         VerifyAfterExtraction = true;
         NormalizeUnicodeFileNames = true;
         PropagateMarkOfTheWeb = true;
+        RespectNestedGitignore = false;
+        // 除外パターンは .lhaignore ファイルが真の源なので、リセット時もそちらを更新する。
+        LhaignoreFile.ResetToDefaults();
         // NOTE: 新しいプロパティを追加したら必ずここにも追加すること（リセット漏れ防止）
     }
 
@@ -552,6 +652,7 @@ public class Settings
             if (TryGetBool(root, nameof(VerifyAfterExtraction), out var vae)) { s.VerifyAfterExtraction = vae; recoveredCount++; }
             if (TryGetBool(root, nameof(NormalizeUnicodeFileNames), out var nufn)) { s.NormalizeUnicodeFileNames = nufn; recoveredCount++; }
             if (TryGetBool(root, nameof(PropagateMarkOfTheWeb), out var pmotw)) { s.PropagateMarkOfTheWeb = pmotw; recoveredCount++; }
+            if (TryGetBool(root, nameof(RespectNestedGitignore), out var rng)) { s.RespectNestedGitignore = rng; recoveredCount++; }
 
             if (TryGetInt(root, nameof(LogMaxSizeMB), out var lms)) { s.LogMaxSizeMB = lms; recoveredCount++; }
             if (TryGetInt(root, nameof(LogRetentionDays), out var lrd)) { s.LogRetentionDays = lrd; recoveredCount++; }
@@ -564,18 +665,29 @@ public class Settings
                 recoveredCount++;
             }
 
-            if (root.TryGetProperty(nameof(ExcludedFilePatterns), out var efpEl) && efpEl.ValueKind == JsonValueKind.Array)
+            // レガシー ExcludedFilePatterns 配列があれば .lhaignore 移行用にキャッシュする。
+            // - 真の空配列 `[]`: ユーザーの「意図的に除外なし」を尊重して空のまま保持する
+            // - 全要素が型不正（例: `[123, true]`）で文字列を 1 件も回収できなかった: 破損とみなし、
+            //   デフォルトパターン（CreateDefaultContent）に温存させる
+            if (root.TryGetProperty("ExcludedFilePatterns", out var efpEl) && efpEl.ValueKind == JsonValueKind.Array)
             {
                 try
                 {
                     var list = new List<string>();
+                    var hadElements = false;
                     foreach (var item in efpEl.EnumerateArray())
                     {
+                        hadElements = true;
                         if (item.ValueKind == JsonValueKind.String)
                             list.Add(item.GetString()!);
                     }
-                    s.ExcludedFilePatterns = [.. list];
-                    recoveredCount++;
+                    // 「要素はあったが 1 件も文字列が無かった」ケースは破損扱いで未回収にする。
+                    // 真の空配列 (hadElements=false) は意図的設定として保持する。
+                    if (!hadElements || list.Count > 0)
+                    {
+                        s._legacyExcludedFilePatterns = list;
+                        recoveredCount++;
+                    }
                 }
                 catch { /* 配列回収失敗 → デフォルト維持 */ }
             }

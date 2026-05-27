@@ -65,11 +65,15 @@
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Includi file e cartelle nascosti/di sistema</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Anche gli elementi con attributo Hidden o System vengono aggiunti agli archivi.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Elenco esclusioni compressione</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">I nomi di file o cartelle in questo elenco vengono ignorati durante la compressione.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">es. .git o node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">I pattern in questo elenco vengono ignorati durante la compressione. Sintassi compatibile con .gitignore (es. *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">es. *.log o node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">Aggiungi</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">Rimuovi</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Ripristina predefiniti</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Apri file di esclusione</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Apre .lhaignore nell'editor di testo predefinito</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Usa anche i .gitignore nella sorgente</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">Se una sottocartella della sorgente contiene un .gitignore, le sue regole vengono applicate in quell'ambito</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Nessuna compressione</x:String>
@@ -203,6 +207,9 @@
   <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">File in uso</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">Il file è utilizzato da un'altra applicazione: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">Chiudi l'applicazione che sta usando il file e riprova.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">Device is not responding</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">External device (USB / NAS / removable media) was disconnected or is not responding: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Si è verificato un errore di I/O</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Controlla lo stato del file e riprova.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Il file di archivio è danneggiato</x:String>

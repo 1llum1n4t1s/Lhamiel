@@ -74,25 +74,46 @@ internal class Program
         // 通常 UI モードのインスタンスとの並走を検知する。UI モード Mutex が掴まれている場合、
         // 自動更新適用 (ApplyUpdatesAndExit) が UI モードのファイルロックと衝突するため、
         // サイレント更新は適用せず次回ログインに回す。
+        // ⚠️ RTK レビュー #D-003 対応: UI 側 (App.axaml.cs) と同じ `initiallyOwned: true` で所有権を取り、
+        // サイレント実行中に UI モード起動が走るレースを完全に防ぐ。所有権取得は finally 内で
+        // ReleaseMutex してから Dispose する。
         const string uiMutexName = @"Local\Lhamiel_MainWindow_SingleInstance";
         Mutex? guardMutex = null;
+        var guardMutexOwned = false;
+        var skipSilentUpdate = false;
         try
         {
-            guardMutex = new Mutex(initiallyOwned: false, uiMutexName, out var createdNew);
+            guardMutex = new Mutex(initiallyOwned: true, uiMutexName, out var createdNew);
             if (!createdNew)
             {
                 Logger.Log("通常 UI モードが既に起動中のためサイレント更新をスキップします (次回ログイン時に再試行)", LogLevel.Warning);
-                return;
+                // CodeRabbit 指摘対応 (#3305115838): 早期 return すると下流の finally を通らないため、
+                // フラグを立てて通常パスから抜けて finally で Mutex / Logger を確実に Dispose する。
+                skipSilentUpdate = true;
             }
+            else
+            {
+                // createdNew=true なら所有権を獲得済み（initiallyOwned: true による）
+                guardMutexOwned = true;
+            }
+        }
+        catch (AbandonedMutexException)
+        {
+            // 前回プロセスが Release せずに死んだケース。new Mutex は所有権を引き継いで例外を投げる。
+            // サイレント更新を続行してよい（前回の UI モードはもう存在しないことが確実）。
+            Logger.Log("前回プロセスが Mutex を Release せずに終了していました。所有権を引き継いでサイレント更新を続行します。", LogLevel.Warning);
+            guardMutexOwned = true;
         }
         catch (Exception mutexEx)
         {
             Logger.LogException("UI モード Mutex の確認に失敗 (サイレント更新は安全側で中止)", mutexEx);
-            return;
+            skipSilentUpdate = true;
         }
 
         try
         {
+            if (skipSilentUpdate)
+                return; // finally で guardMutex / Logger を Dispose してから抜ける
             Logger.Log("サイレント更新チェックを開始します。");
 
             var result = UpdateChecker.CheckAndDownloadAsync().GetAwaiter().GetResult();
@@ -113,7 +134,18 @@ internal class Program
         }
         finally
         {
-            try { guardMutex?.Dispose(); } catch { }
+            // Mutex は所有権を取ったスレッドからしか ReleaseMutex できないので、明示的に解放してから Dispose する。
+            // (RTK レビュー #D-003 対応: initiallyOwned: true の対称化に伴う後始末)
+            try
+            {
+                if (guardMutexOwned)
+                {
+                    try { guardMutex?.ReleaseMutex(); }
+                    catch (ApplicationException) { /* 別スレッドからの release は無視 */ }
+                }
+                guardMutex?.Dispose();
+            }
+            catch { /* best-effort */ }
             Logger.Dispose();
         }
     }

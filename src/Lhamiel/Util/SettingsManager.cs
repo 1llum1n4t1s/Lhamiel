@@ -16,8 +16,10 @@ public sealed class SettingsManager
     /// <summary>
     /// 変更・保存・スナップショット作成を直列化するためのロック。
     /// UI スレッド上の AutoSave と、バックグラウンド Task.Run 上の
-    /// <see cref="CreateSnapshot"/> が同時に走っても <see cref="Settings.ExcludedFilePatterns"/> 等の
-    /// コレクション列挙で <see cref="InvalidOperationException"/> が起きないようにする。
+    /// <see cref="CreateSnapshot"/> が同時に走っても、Settings 内の参照型フィールドの列挙で
+    /// <see cref="InvalidOperationException"/> が起きないようにする。
+    /// （除外パターンは <see cref="LhaignoreFile"/> = `.lhaignore` ファイルが真の源で、
+    /// Settings 上に状態は持たない。）
     /// </summary>
     private readonly object _lock = new();
 
@@ -47,8 +49,9 @@ public sealed class SettingsManager
     }
 
     /// <summary>
-    /// 設定を同一ロック下で変更する。<c>_settings</c> 自体のプロパティ代入や
-    /// <see cref="Settings.ExcludedFilePatterns"/> 等のコレクション差し替えで使用する。
+    /// 設定を同一ロック下で変更する。<c>_settings</c> のプロパティ代入で使用する。
+    /// 除外パターンは <see cref="LhaignoreFile"/> 経由で別管理なので、Settings 上の
+    /// コレクション差し替えはない。
     /// </summary>
     /// <param name="mutator">変更アクション</param>
     public void Mutate(Action<Settings> mutator)

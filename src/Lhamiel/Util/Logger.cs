@@ -45,14 +45,79 @@ public static class Logger
     private static string _appName = "App";
 
     /// <summary>
-    /// 最小ログレベル（これ以上のレベルのログのみ出力）
+    /// 現在の処理ジョブを識別する相関 ID。<see cref="BeginScope(string)"/> で
+    /// 並列圧縮/展開ジョブのログを後追跡可能にするための AsyncLocal スコープ。
+    /// RTK レビュー #F-001 対応。
+    /// </summary>
+    private static readonly System.Threading.AsyncLocal<string?> _correlationId = new();
+
+    /// <summary>
+    /// 最小ログレベル（これ以上のレベルのログのみ出力）。
+    /// RTK レビュー #F-002 対応: Release ビルドでも Info 以上を出力して、
+    /// ユーザー環境で「ExtractArchiveAsync 開始」「圧縮完了」等のフロー追跡ログが
+    /// 完全に消失する事態を防ぐ。Warning にしたい場合は設定 UI で切替を検討。
     /// </summary>
     private static readonly LogLevel MinLogLevel =
 #if DEBUG
         LogLevel.Debug;
 #else
-        LogLevel.Warning;
+        LogLevel.Info;
 #endif
+
+    /// <summary>
+    /// 現在のスレッドの相関 ID を設定し、Dispose 時に元の値に戻す scope ハンドル。
+    /// 並列ジョブごとに <c>using (Logger.BeginScope("Extract-" + Guid.NewGuid().ToString("N").Substring(0, 8))) {...}</c>
+    /// で囲むことで、ログ末尾に <c>[id:XXXX]</c> が付き、grep で 1 ジョブのログだけを抽出できる。
+    /// </summary>
+    public static IDisposable BeginScope(string correlationId)
+    {
+        var previous = _correlationId.Value;
+        _correlationId.Value = correlationId;
+        return new ScopeHandle(previous);
+    }
+
+    private sealed class ScopeHandle(string? previous) : IDisposable
+    {
+        private bool _disposed;
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            _correlationId.Value = previous;
+        }
+    }
+
+    /// <summary>
+    /// 現在の相関 ID を <c>[id:XXXX]</c> 形式で取得する（無ければ空文字）。
+    /// 各 <c>WriteToLogger</c> 呼び出しでメッセージ末尾に付加する。
+    /// </summary>
+    private static string GetCorrelationSuffix()
+    {
+        var id = _correlationId.Value;
+        return string.IsNullOrEmpty(id) ? string.Empty : $" [id:{id}]";
+    }
+
+    /// <summary>
+    /// ユーザー名を含むパスを <c>&lt;USER&gt;</c> プレースホルダにマスクする。
+    /// <c>C:\Users\田中太郎\...</c> のような PII 露出を Logger 経由のサポート ZIP で防ぐ。
+    /// RTK レビュー #F-014 対応。
+    /// </summary>
+    private static string MaskUserPath(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return input;
+        // 多言語ユーザー名にも対応するため UserName ベースの単純置換
+        var userName = Environment.UserName;
+        if (!string.IsNullOrEmpty(userName))
+        {
+            // case-insensitive 置換（Windows のパスは大小区別なし）
+            input = System.Text.RegularExpressions.Regex.Replace(
+                input,
+                System.Text.RegularExpressions.Regex.Escape(userName),
+                "<USER>",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+        return input;
+    }
 
     /// <summary>
     /// ロガーを初期化する
@@ -228,10 +293,12 @@ public static class Logger
     }
 
     /// <summary>
-    /// _logger 未初期化時の緊急ログ書き込み。
-    /// %LocalAppData%\Lhamiel\Lhamiel_emergency.log に追記する。
+    /// _logger 未初期化時の緊急ログ書き込み（外部から呼ぶ用に internal で公開）。
+    /// <see cref="Settings.Load"/> の 3 段フォールバックが全失敗したケース等、
+    /// Logger.Log すら使えない経路でも最低限の診断情報を残すために使う。
+    /// %LocalAppData%\Lhamiel\Lhamiel_emergency.log に追記する。RTK レビュー #F-012 対応。
     /// </summary>
-    private static void WriteEmergencyLog(string message, Exception exception)
+    internal static void WriteEmergencyLog(string message, Exception exception)
     {
         try
         {
@@ -240,8 +307,13 @@ public static class Logger
                 _appName);
             Directory.CreateDirectory(logDir);
             var path = Path.Combine(logDir, $"{_appName}_emergency.log");
+            // CodeRabbit 指摘対応 (Outside diff): 緊急ログ経路でも MaskUserPath を適用する。
+            // 設定破損・起動失敗時のログには StackTrace 経由でユーザー実名フォルダパスが含まれやすく、
+            // 通常ロガー経路と同じ <USER> マスクを通すことでサポート ZIP の PII 露出を防ぐ。
+            var maskedMessage = MaskUserPath(message) + GetCorrelationSuffix();
+            var maskedException = MaskUserPath(exception.ToString());
             var line =
-                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [ERROR] {message}{Environment.NewLine}{exception}{Environment.NewLine}";
+                $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [ERROR] {maskedMessage}{Environment.NewLine}{maskedException}{Environment.NewLine}";
             File.AppendAllText(path, line);
         }
         catch
@@ -279,25 +351,29 @@ public static class Logger
     }
 
     /// <summary>
-    /// SuperLightLogger の ILog にレベル別メソッドでメッセージを書き出す
+    /// SuperLightLogger の ILog にレベル別メソッドでメッセージを書き出す。
+    /// 相関 ID とユーザー名マスクを自動付加する。
     /// </summary>
     private static void WriteToLogger(string message, LogLevel level)
     {
         if (_logger == null) return;
 
+        // ユーザー名マスク + 相関 ID 付加
+        var augmented = MaskUserPath(message) + GetCorrelationSuffix();
+
         switch (level)
         {
             case LogLevel.Debug:
-                _logger.Debug(message);
+                _logger.Debug(augmented);
                 break;
             case LogLevel.Info:
-                _logger.Info(message);
+                _logger.Info(augmented);
                 break;
             case LogLevel.Warning:
-                _logger.Warn(message);
+                _logger.Warn(augmented);
                 break;
             case LogLevel.Error:
-                _logger.Error(message);
+                _logger.Error(augmented);
                 break;
         }
     }

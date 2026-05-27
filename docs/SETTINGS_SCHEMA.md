@@ -23,7 +23,10 @@
   "CompressMultipleAsOne": true,
   "DirectoryStructureMode": "IncludeRoot",
   "IncludeHiddenAndSystemEntries": true,
-  "ExcludedFilePatterns": [".DS_Store", "Thumbs.db", "desktop.ini", "__MACOSX"],
+  "RespectNestedGitignore": false,
+  "VerifyAfterExtraction": true,
+  "NormalizeUnicodeFileNames": true,
+  "PropagateMarkOfTheWeb": true,
   "ZipCompressionLevel": 5,
   "SevenZipCompressionLevel": 5,
   "LogMaxSizeMB": 10,
@@ -53,6 +56,9 @@
 | `ExtractionOutputToSameDirectory` | bool | `false` | アーカイブと同じ場所に展開 |
 | `OpenExtractionOutputFolder` | bool | `true` | 展開後にフォルダを開く |
 | `CreateArchiveNameFolder` | bool | `true` | アーカイブ名でフォルダ作成（二重フォルダ防止含む） |
+| `VerifyAfterExtraction` | bool | `true` | 展開後に CRC 検証（`ArchiveIntegrityVerifier.Test()`）を実行 |
+| `NormalizeUnicodeFileNames` | bool | `true` | macOS HFS+ 由来の NFD ファイル名を NFC に正規化 |
+| `PropagateMarkOfTheWeb` | bool | `true` | 元アーカイブの Zone.Identifier ADS を展開ファイルに伝播 |
 
 ### 圧縮設定
 
@@ -67,7 +73,56 @@
 | `IncludeHiddenAndSystemEntries` | bool | `true` | 圧縮時に Hidden/System 属性のファイル・フォルダも列挙対象に含める |
 | `ZipCompressionLevel` | int | `5` | ZIP圧縮レベル（0-9） |
 | `SevenZipCompressionLevel` | int | `5` | 7z圧縮レベル（0-9） |
-| `ExcludedFilePatterns` | string[] | システムファイル | 圧縮時に除外するファイル名・フォルダ名（**glob 非対応、パスセグメント完全一致のみ**。例: `.DS_Store`、`.git`、`__MACOSX`） |
+
+> **除外パターンは別ファイル**: 圧縮時の除外パターンは `settings.json` ではなく [`%LocalAppData%\Lhamiel\.lhaignore`](#圧縮時の除外パターン-lhaignore) に保存される。`v1.0.171` 以降、`.gitignore` 互換構文に対応。
+
+### 圧縮時の除外パターン (.lhaignore)
+
+`.lhaignore` は `%LocalAppData%\Lhamiel\.lhaignore` に置かれるテキストファイルで、`.gitignore` と同じ構文で圧縮対象から除外するパターンを記述する。設定タブの「除外設定ファイルを開く」ボタンから既定のテキストエディタで開ける。
+
+主要構文:
+
+| 構文 | 意味 | 例 |
+|------|------|----|
+| `#` から始まる行 | コメント | `# 不要な build 成果物` |
+| `*.log` | 拡張子マッチ（任意の階層） | `debug.log`, `src/sub/info.log` |
+| `node_modules/` | 末尾 `/` でディレクトリ限定 | `node_modules/` 配下を枝刈り |
+| `/build` | 先頭 `/` でルートにアンカー | ソースルート直下の `build` のみ |
+| `**/cache` | `**` で任意階層を表現 | `cache`, `a/cache`, `a/b/cache` |
+| `[Tt]humbs.db` | 文字クラス | `Thumbs.db`, `thumbs.db` |
+| `!keep.log` | 先頭 `!` で否定（再包含） | 直前で除外された `keep.log` を取り戻す |
+| `\#literal` | 先頭 `\` で `#`/`!` をエスケープ | リテラル `#literal` をマッチ |
+
+挙動メモ:
+- マッチは大小区別なし（Windows ファイルシステム互換）。
+- ディレクトリ除外（`node_modules/` など）は配下を枝刈りするため、`!node_modules/keep.txt` での再包含は機能しない。
+- 旧 `settings.json` の `ExcludedFilePatterns` 配列は初回起動時に自動で `.lhaignore` へ移行され、次回 Save で JSON から消える。
+
+### ネストされた `.gitignore` の併用
+
+設定 `RespectNestedGitignore` (デフォルト `false` / オプトイン) を有効にすると、圧縮対象のディレクトリツリー内にある `.gitignore` をスキャン前に発見し、各 `.gitignore` をそのディレクトリのスコープで `.lhaignore` のルールに **追加で** 適用する。
+
+例: `C:\Users\IMT\dev` を圧縮するときに、
+
+```
+C:\Users\IMT\dev\
+├── .lhaignore                  ← グローバル除外（全 source に適用）
+├── repoA\
+│   ├── .gitignore              ← repoA 配下にのみ適用
+│   └── build\                  ← repoA/.gitignore に "build/" があれば除外
+└── repoB\
+    └── .gitignore              ← repoB 配下にのみ適用
+```
+
+各 `.gitignore` は独立してスコープされるので、`repoA/.gitignore` に書いた `/build` は `repoA/build` だけにマッチし、`repoB/build` には影響しない。
+
+- 探索は `.lhaignore` の枝刈り後のディレクトリのみ対象（`node_modules/` 内の `.gitignore` は読まない）
+- 圧縮実行毎に最新の `.gitignore` を読み直すため、編集後の再圧縮で即反映される
+- 設定 UI: 「圧縮設定」タブ → 除外設定セクションの「圧縮対象内の .gitignore も併用する」チェックボックス
+
+| プロパティ | 型 | デフォルト | 説明 |
+|-----------|------|----------|------|
+| `RespectNestedGitignore` | bool | `false` | 圧縮対象のサブディレクトリにある `.gitignore` を自動で除外ルールに追加 |
 
 ### ログ設定
 

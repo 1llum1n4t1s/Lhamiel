@@ -75,11 +75,13 @@ Drag-and-drop drives the app:
 **圧縮時のロック中ファイル対応**: ソースファイルは元パスのまま `ArchiveWriter.Add()` に渡す。ロック中のファイルはライブラリ（`1llum1n4t1s.Sevenzip`）の `UpdateCallback` が自動的に一時コピーして処理する。スキャン後に削除されたファイルは `File.Exists()` チェックでスキップし、残りのファイルで圧縮を続行する。
 
 **圧縮時のファイル列挙・除外設定**:
-- `ArchiveCompressor.ScanSourceFiles` は `Settings` スナップショットを元に対象一覧を構築する。
+- `ArchiveCompressor.ScanSourceFiles` は `Settings` スナップショットと `GitignoreMatcher` を元に対象一覧を構築する。
 - `IncludeHiddenAndSystemEntries=true`（デフォルト）では `EnumerationOptions.AttributesToSkip = 0` とし、Hidden/System 属性のファイル・フォルダも含める（例: `.git`）。
 - `IncludeHiddenAndSystemEntries=false` では Hidden/System 属性をスキップする。
-- `ExcludedFilePatterns` は圧縮時の除外リスト。glob ではなくパスセグメント完全一致で判定する（例: `.DS_Store`, `Thumbs.db`, `.git`, `node_modules`, `__MACOSX`）。
-- 除外リストは圧縮設定 UI で追加・削除・既定値リセット可能。保存前に trim / 空文字除外 / case-insensitive 重複排除を行う。
+- 除外パターンは `%LocalAppData%\Lhamiel\.lhaignore` に保存され、**`.gitignore` 互換のグロブ・否定・ディレクトリ限定構文に対応**（例: `*.log`, `node_modules/`, `/build`, `**/cache`, `!keep.txt`）。
+- `ArchiveCompressor.GetFilesRecursively` は除外ディレクトリで枝刈りする手書き DFS（`Stack<string>`）を使うので、`node_modules/` 配下を踏まずに済む。
+- 圧縮実行ごとに `LhaignoreFile.LoadMatcher()` で最新内容を読み直すため、設定 UI を介さない外部編集も反映される。
+- 設定 UI（追加・削除・既定値リセット・「除外設定ファイルを開く」）は `.lhaignore` を直接編集する。`FileSystemWatcher` が外部編集を検知して `ObservableCollection<string>` を再ロードする。
 
 ### Key Util Classes
 
@@ -87,7 +89,9 @@ Drag-and-drop drives the app:
 |-------|---------------|
 | `ArchiveProcessor` | Orchestrator — decides extract vs compress, manages workflow |
 | `ArchiveExtractor` | Extraction with `ShouldSkipFolderCreation`, `TryExtractEntryAsync` (retry with exponential backoff) |
-| `ArchiveCompressor` | Compression with Unicode NFC normalization, Hidden/System enumeration control, and exclusion pattern filtering |
+| `ArchiveCompressor` | Compression with Unicode NFC normalization, Hidden/System enumeration control, and `.gitignore` 互換除外マッチ (`GitignoreMatcher` + ディレクトリ枝刈り DFS) |
+| `GitignoreMatcher` | `.gitignore` 互換のパターンコンパイラ／マッチャ（`*` / `?` / `**` / `[abc]` / 否定 `!` / アンカー `/` / ディレクトリ限定 `/` 末尾） |
+| `LhaignoreFile` | `%LocalAppData%\Lhamiel\.lhaignore` の I/O（読込・追記・削除・既定値リセット・移行）。`LoadMatcher()` で `GitignoreMatcher` を返す |
 | `ArchiveErrorHandler` | HResult-based error classification (二段判定: HResult → メッセージ走査フォールバック) |
 | `ArchiveIntegrityVerifier` | Post-extraction CRC verification via `reader.Test()` |
 | `LockedFileRetryPolicy` | Generic exponential backoff retry for SHARING_VIOLATION / LOCK_VIOLATION |
@@ -169,7 +173,8 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - **Long path support**: `app.manifest` で `longPathAware` + `PathValidator.EnsureLongPathPrefix`
 - **Mark of the Web**: 元アーカイブの Zone.Identifier ADS を展開ファイルに伝播（`Settings.PropagateMarkOfTheWeb`）
 - **Compression scan attributes**: `Settings.IncludeHiddenAndSystemEntries` が圧縮スキャン時の `EnumerationOptions.AttributesToSkip` を制御する。
-- **Compression exclusions**: `Settings.ExcludedFilePatterns` は glob ではなくパスセグメント完全一致。UI から管理でき、保存時に正規化される。
+- **Compression exclusions**: `%LocalAppData%\Lhamiel\.lhaignore` に `.gitignore` 互換構文で記述。`GitignoreMatcher` が compile して `ArchiveCompressor` 側でディレクトリ枝刈り付きマッチを行う。UI 追加・削除・既定値リセット + 「除外設定ファイルを開く」（既定エディタで開く）の 4 操作で管理し、`FileSystemWatcher` が外部編集を検知して UI を再同期する。
+- **Nested .gitignore**: `Settings.RespectNestedGitignore` (default **false / オプトイン**) が ON なら、圧縮対象のサブディレクトリ内の `.gitignore` をスキャン前に発見し、各 `.gitignore` をそのスコープで `GitignoreMatcher.CompileLayered` に追加。`.lhaignore` の枝刈り後のディレクトリのみ探索する（node_modules 内の .gitignore は読まない）。
 
 ## CI/CD
 

@@ -65,11 +65,15 @@
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">隠し/System属性のファイル・フォルダも含める</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden または System 属性の項目もアーカイブに含めます。</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">圧縮時の除外リスト</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">ここに登録したファイル名・フォルダ名は圧縮時に除外します。</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">例: .git または node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">ここに登録したパターンは圧縮時に除外します。.gitignore 互換の構文に対応 (例: *.log, node_modules/, !keep.txt)。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">例: *.log または node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">追加</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">削除</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">既定に戻す</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">除外設定ファイルを開く</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">.lhaignore を既定のテキストエディタで開きます</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">圧縮対象内の .gitignore も併用する</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">圧縮対象のサブディレクトリに .gitignore があれば、そのディレクトリ以下のスコープでルールを追加適用します（例: 作業フォルダを圧縮すると配下の各リポジトリの .gitignore が有効になります）</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">無圧縮</x:String>
@@ -203,6 +207,9 @@
   <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">ファイルが使用中です</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">ファイルが他のアプリケーションで使用されています: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">ファイルを使用しているアプリケーションを閉じてから再試行してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">デバイスが応答していません</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">外部デバイス (USB / NAS / リムーバブルメディア) が切断されたか応答していません: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">デバイスの接続状態を確認し、再接続してから再試行してください。</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">I/Oエラーが発生しました</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">ファイルの状態を確認し、再試行してください。</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">アーカイブファイルが破損しています</x:String>

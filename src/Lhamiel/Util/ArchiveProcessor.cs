@@ -488,13 +488,19 @@ public static class ArchiveProcessor
                 List<(string fullPath, string relativePath)>? resolvedFiles = null;
                 if (settings.DirectoryStructureMode == DirectoryStructureMode.Flat && Directory.Exists(sourcePath))
                 {
+                    // 除外パターンは .lhaignore（gitignore 互換）から圧縮実行毎に読み直す。
+                    // RespectNestedGitignore=true なら各サブツリーの .gitignore も layered matcher として合成する。
+                    var lhaignoreLines = LhaignoreFile.ReadLines();
+                    var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
                     var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
                         [sourcePath],
-                        new HashSet<string>(settings.ExcludedFilePatterns ?? [], StringComparer.OrdinalIgnoreCase),
+                        ignoreMatcher,
                         actualCancellationToken,
                         dirModeOverride: settings.DirectoryStructureMode,
                         normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames,
-                        includeHiddenAndSystemEntriesOverride: settings.IncludeHiddenAndSystemEntries);
+                        includeHiddenAndSystemEntriesOverride: settings.IncludeHiddenAndSystemEntries,
+                        respectNestedGitignore: settings.RespectNestedGitignore,
+                        globalIgnoreLines: lhaignoreLines);
 
                     var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);
                     if (conflicts.Count > 0)
@@ -850,15 +856,18 @@ public static class ArchiveProcessor
 
                 // ファイルリストをスキャン。
                 // 設定は処理開始時点でスナップショット化して以降の race を避ける。
+                // 除外パターンは .lhaignore（gitignore 互換）から圧縮実行毎に読み直す。
+                // RespectNestedGitignore=true なら各サブツリーの .gitignore も layered matcher として合成する。
                 var settings = SettingsManager.Instance.CreateSnapshot();
-                var excludedPatternSet = new HashSet<string>(
-                    settings.ExcludedFilePatterns ?? [],
-                    StringComparer.OrdinalIgnoreCase);
+                var lhaignoreLines = LhaignoreFile.ReadLines();
+                var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
                 var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
-                    sourcePaths.ToList(), excludedPatternSet, actualCancellationToken,
+                    sourcePaths.ToList(), ignoreMatcher, actualCancellationToken,
                     dirModeOverride: settings.DirectoryStructureMode,
                     normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames,
-                    includeHiddenAndSystemEntriesOverride: settings.IncludeHiddenAndSystemEntries);
+                    includeHiddenAndSystemEntriesOverride: settings.IncludeHiddenAndSystemEntries,
+                    respectNestedGitignore: settings.RespectNestedGitignore,
+                    globalIgnoreLines: lhaignoreLines);
 
                 // 衝突検出
                 var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);

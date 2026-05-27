@@ -65,11 +65,15 @@
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">숨김/System 파일 및 폴더 포함</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden 또는 System 특성이 있는 항목도 아카이브에 추가합니다.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">압축 제외 목록</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">이 목록의 파일 또는 폴더 이름은 압축 중 건너뜁니다.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">예: .git 또는 node_modules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">이 목록의 패턴은 압축 시 건너뜁니다. .gitignore 호환 구문 지원 (예: *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">예: *.log 또는 node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">추가</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">제거</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">기본값 복원</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">제외 파일 열기</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">.lhaignore를 기본 텍스트 편집기에서 엽니다</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">소스 내부의 .gitignore도 함께 사용</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">소스의 하위 디렉토리에 .gitignore가 있으면 해당 범위에서 규칙을 적용합니다</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">압축 없음</x:String>
@@ -203,6 +207,9 @@
   <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">파일이 사용 중입니다</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">파일이 다른 애플리케이션에서 사용 중입니다: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">파일을 사용 중인 애플리케이션을 닫고 다시 시도하세요.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">장치가 응답하지 않습니다</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">외부 장치(USB / NAS / 이동식 미디어)가 연결 해제되었거나 응답하지 않습니다: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">장치 연결을 확인한 뒤 다시 연결하고 재시도하세요.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">I/O 오류가 발생했습니다</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">파일 상태를 확인하고 다시 시도하세요.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">아카이브 파일이 손상되었습니다</x:String>

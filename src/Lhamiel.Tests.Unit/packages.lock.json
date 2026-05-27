@@ -29,9 +29,9 @@
       },
       "Tmds.DBus.Protocol": {
         "type": "Direct",
-        "requested": "[0.93.0, )",
-        "resolved": "0.93.0",
-        "contentHash": "KDshXiWIfl26HUUN9Yv6CbAluEld8ZTrH+CJuCfLdBV/nXuhuEkcJrdcgApd5vCIkhxvOluJu9Qp7hn90hHcXQ=="
+        "requested": "[0.94.0, )",
+        "resolved": "0.94.0",
+        "contentHash": "kCcyda6Yy38DD6YS5VjEwViVSDRknK4ZzfGlj0Iqq6butijNZog8zm6ne4toGqmNCXIR4NiEui6WzyNOtMSofA=="
       },
       "xunit.runner.visualstudio": {
         "type": "Direct",
@@ -522,7 +522,7 @@
           "CommunityToolkit.Mvvm": "[8.4.2, )",
           "MessageBox.Avalonia": "[12.0.0, )",
           "SuperLightLogger": "[1.0.7, )",
-          "Tmds.DBus.Protocol": "[0.93.0, )",
+          "Tmds.DBus.Protocol": "[0.94.0, )",
           "Velopack": "[0.0.1369-g1d5c984, )",
           "VelopackUpdateDialog.Avalonia": "[1.0.3, )"
         }

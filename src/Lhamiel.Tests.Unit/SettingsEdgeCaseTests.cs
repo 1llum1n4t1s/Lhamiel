@@ -39,33 +39,35 @@ public class SettingsEdgeCaseTests
     }
 
     [Fact]
-    public void ExcludedFilePatterns_DefaultContainsAllIgnoredItems()
+    public void Settings_LegacyExcludedFilePatterns_EmptyArrayIsPreserved()
     {
-        var settings = new Settings();
+        // 旧 settings.json で `ExcludedFilePatterns: []` (意図的に空) を持つユーザーが
+        // アップグレードした際、空配列が null 扱いされてデフォルト除外パターンに置き換わると
+        // 「ユーザーが意図的に除外なし」設定を壊してしまうので、setter は空配列も保持する。
+        // (Codex P1 指摘の回帰テスト)
+        var s = new Settings();
+        s.ExcludedFilePatternsLegacy = new List<string>();
+        Assert.NotNull(s._legacyExcludedFilePatterns);
+        Assert.Empty(s._legacyExcludedFilePatterns!);
+    }
+
+    [Fact]
+    public void Settings_LegacyExcludedFilePatterns_NullIsTreatedAsNull()
+    {
+        // null は「キーが無かった」状態なので legacy フィールドも null のまま。
+        var s = new Settings();
+        s.ExcludedFilePatternsLegacy = null;
+        Assert.Null(s._legacyExcludedFilePatterns);
+    }
+
+    [Fact]
+    public void LhaignoreFile_DefaultContentContainsAllIgnoredItems()
+    {
+        var content = LhaignoreFile.CreateDefaultContent();
         foreach (var file in ArchiveExtractor.IgnoredSystemFiles)
-            Assert.Contains(file, settings.ExcludedFilePatterns);
+            Assert.Contains(file, content, StringComparison.Ordinal);
         foreach (var dir in ArchiveExtractor.IgnoredSystemDirectories)
-            Assert.Contains(dir, settings.ExcludedFilePatterns);
-    }
-
-    [Fact]
-    public void ExcludedFilePatterns_DefaultHasNoDuplicates()
-    {
-        var settings = new Settings();
-        var distinct = settings.ExcludedFilePatterns.Distinct(StringComparer.OrdinalIgnoreCase).Count();
-        Assert.Equal(settings.ExcludedFilePatterns.Count, distinct);
-    }
-
-    [Fact]
-    public void ExcludedFilePatterns_ResetRestoresDefaults()
-    {
-        var settings = new Settings();
-        settings.ExcludedFilePatterns.Clear();
-        settings.ExcludedFilePatterns.Add("custom_pattern");
-        settings.ResetToDefaults();
-
-        Assert.DoesNotContain("custom_pattern", settings.ExcludedFilePatterns);
-        Assert.Contains(".DS_Store", settings.ExcludedFilePatterns);
+            Assert.Contains(dir + "/", content, StringComparison.Ordinal);
     }
 
     [Fact]

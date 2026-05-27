@@ -85,6 +85,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _includeHiddenAndSystemEntries = true;
 
+    [ObservableProperty]
+    private bool _respectNestedGitignore;
+
     /// <summary>
     /// メイン画面起動時に Velopack 自動更新チェックを走らせるかどうかの UI バインディング。
     /// 「全般」タブのチェックボックスから ON/OFF を切り替える。
@@ -166,11 +169,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.OpenCompressionOutputFolder = OpenCompressionOutputFolder;
             s.CompressMultipleAsOne = CompressMultipleAsOne;
             s.IncludeHiddenAndSystemEntries = IncludeHiddenAndSystemEntries;
+            s.RespectNestedGitignore = RespectNestedGitignore;
             s.Check4UpdatesOnStartup = Check4UpdatesOnStartup;
             s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
             s.ZipCompressionLevel = ZipCompressionLevel;
             s.SevenZipCompressionLevel = SevenZipCompressionLevel;
-            s.ExcludedFilePatterns = Settings.NormalizeExcludedFilePatterns(CompressionExcludedFilePatterns);
+            // 除外パターンは .lhaignore ファイルが真の源なので、settings.json には書き出さない。
         });
     }
 
@@ -221,6 +225,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     partial void OnCompressMultipleAsOneChanged(bool value) => AutoSave();
 
     partial void OnIncludeHiddenAndSystemEntriesChanged(bool value) => AutoSave();
+    partial void OnRespectNestedGitignoreChanged(bool value) => AutoSave();
 
     partial void OnCheck4UpdatesOnStartupChanged(bool value) => AutoSave();
 
@@ -355,6 +360,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public ObservableCollection<string> CompressionExcludedFilePatterns { get; } = [];
 
+    // .lhaignore ファイルを外部エディタで編集した場合に UI に反映するための監視。
+    // VM はアプリ全体で 1 インスタンスのため Dispose せず leak させる前提。
+    private FileSystemWatcher? _lhaignoreWatcher;
+    private System.Threading.Timer? _lhaignoreReloadDebounce;
+
     /// <summary>
     /// コンストラクタ
     /// </summary>
@@ -372,6 +382,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         LoadAssociationStatus();
         SubscribeAssociationChanges();
         LoadVersionInfo();
+        InitializeLhaignoreWatcher();
 
         // 更新チェックの進行状態を購読してアップデート確認ボタンの IsEnabled を駆動する。
         // 起動時自動チェックも反映されるため、auto check 中はボタンが押せない（並走実行を未然に防止）。
@@ -383,6 +394,60 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OnZipCompressionLevelChanged(ZipCompressionLevel);
         OnSevenZipCompressionLevelChanged(SevenZipCompressionLevel);
         _isLoading = false;
+    }
+
+    /// <summary>
+    /// .lhaignore ファイルが外部エディタで編集された場合に UI を再ロードするための watcher を起動する。
+    /// テキストエディタは保存時に複数 Change イベントを発火しがちなので 250ms デバウンスする。
+    /// </summary>
+    private void InitializeLhaignoreWatcher()
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(LhaignoreFile.FilePath);
+            if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+                return;
+
+            _lhaignoreWatcher = new FileSystemWatcher(dir, Path.GetFileName(LhaignoreFile.FilePath))
+            {
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
+                EnableRaisingEvents = true,
+                // RTK レビュー #C2-004 対応: 既定 8KB だと %LocalAppData%\Lhamiel 直下の他ファイル
+                // (settings.json AutoSave / Lhamiel_yyyyMMdd.log ローテーション / dumps/) の
+                // 書込みイベントでバッファ溢れて InternalBufferOverflowException → .lhaignore 変更を
+                // silent に取りこぼす経路がある。64KB に拡大して non-paged pool 消費は許容範囲に収める。
+                InternalBufferSize = 64 * 1024,
+            };
+            _lhaignoreWatcher.Changed += OnLhaignoreChanged;
+            _lhaignoreWatcher.Created += OnLhaignoreChanged;
+            _lhaignoreWatcher.Renamed += OnLhaignoreChanged;
+            // バッファ overflow など Watcher 内部エラーをサイレントに握り潰さずログに残す。
+            // CodeRabbit 指摘対応 (#3305116091): InternalBufferOverflowException 等で
+            // イベント取りこぼしが発生すると CompressionExcludedFilePatterns が stale になるため、
+            // 再読み込み debounce を発火して resync を予約する（ログ出力のみだと UI が古いまま残る）。
+            _lhaignoreWatcher.Error += (_, e) =>
+            {
+                try { Logger.LogException(".lhaignore 監視で内部エラー発生 (Watcher を再初期化推奨)", e.GetException()); }
+                catch { /* Logger 未初期化のケース */ }
+                // イベント取りこぼし時の再同期を debounce 経由でスケジュール
+                try { _lhaignoreReloadDebounce?.Change(250, System.Threading.Timeout.Infinite); }
+                catch { /* timer disposed */ }
+            };
+            _lhaignoreReloadDebounce = new System.Threading.Timer(_ =>
+            {
+                Dispatcher.UIThread.Post(ReloadExcludedFilePatternsFromFile);
+            }, null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($".lhaignore 監視の初期化に失敗: {ex.Message}", LogLevel.Warning);
+        }
+    }
+
+    private void OnLhaignoreChanged(object sender, FileSystemEventArgs e)
+    {
+        // 250ms デバウンス（エディタが保存中に複数イベントを撃つので）
+        _lhaignoreReloadDebounce?.Change(250, System.Threading.Timeout.Infinite);
     }
 
     /// <summary>App._isCheckingUpdate 遷移を UI スレッドに marshal して IsCheckingUpdate に反映する。</summary>
@@ -413,13 +478,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         OpenCompressionOutputFolder = s.OpenCompressionOutputFolder;
         CompressMultipleAsOne = s.CompressMultipleAsOne;
         IncludeHiddenAndSystemEntries = s.IncludeHiddenAndSystemEntries;
+        RespectNestedGitignore = s.RespectNestedGitignore;
         Check4UpdatesOnStartup = s.Check4UpdatesOnStartup;
         IgnoredUpdateTag = s.IgnoreUpdateTag ?? string.Empty;
         SelectedDirectoryStructureMode = (int)s.DirectoryStructureMode;
         SelectedLocale = string.IsNullOrEmpty(s.Locale) ? App.DetectDefaultLocale() : s.Locale;
         ZipCompressionLevel = s.ZipCompressionLevel;
         SevenZipCompressionLevel = s.SevenZipCompressionLevel;
-        LoadExcludedFilePatterns(s.ExcludedFilePatterns);
+        // 除外パターンは settings.json ではなく .lhaignore から読み込む。
+        ReloadExcludedFilePatternsFromFile();
     }
 
     partial void OnExtractionOutputToSameDirectoryChanged(bool value)
@@ -469,13 +536,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (pattern.Length == 0)
             return;
 
-        if (!CompressionExcludedFilePatterns.Contains(pattern, StringComparer.OrdinalIgnoreCase))
-            CompressionExcludedFilePatterns.Add(pattern);
-
+        LhaignoreFile.AppendPattern(pattern);
+        ReloadExcludedFilePatternsFromFile();
         SelectedExcludedFilePattern = CompressionExcludedFilePatterns
             .FirstOrDefault(p => string.Equals(p, pattern, StringComparison.OrdinalIgnoreCase));
         NewExcludedFilePattern = string.Empty;
-        AutoSave();
     }
 
     [RelayCommand]
@@ -484,22 +549,90 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (SelectedExcludedFilePattern is null)
             return;
 
-        CompressionExcludedFilePatterns.Remove(SelectedExcludedFilePattern);
+        LhaignoreFile.RemovePattern(SelectedExcludedFilePattern);
+        ReloadExcludedFilePatternsFromFile();
         SelectedExcludedFilePattern = null;
-        AutoSave();
     }
 
     [RelayCommand]
     private void ResetExcludedPatterns()
     {
-        LoadExcludedFilePatterns(Settings.CreateDefaultExcludedFilePatterns());
-        AutoSave();
+        LhaignoreFile.ResetToDefaults();
+        ReloadExcludedFilePatternsFromFile();
     }
 
-    private void LoadExcludedFilePatterns(IEnumerable<string>? patterns)
+
+    /// <summary>
+    /// .lhaignore ファイルを既定のテキストエディタで開く。
+    /// 関連付けが無い場合は notepad.exe にフォールバックする。
+    /// 編集後の変更は <see cref="_lhaignoreWatcher"/> がピックアップして UI を更新する。
+    /// </summary>
+    [RelayCommand]
+    private async Task OpenExcludedPatternsFile()
     {
+        try
+        {
+            // 開いた瞬間にファイルが存在することを保証する（初回起動でユーザーが先に押した場合の保険）
+            LhaignoreFile.EnsureExists();
+            var path = LhaignoreFile.FilePath;
+
+            // Issue #54 対策: Process.Start(UseShellExecute=true) を UI スレッドから直接呼ぶと、
+            // ShellExecuteEx の内部処理 (シェル拡張初期化・関連付け解決等) が UI スレッドを
+            // blocking して操作不能に見える経路がある。Task.Run で別スレッドへ逃がす。
+            await Task.Run(() =>
+            {
+                try
+                {
+                    using var _ = Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+                }
+                catch
+                {
+                    // .lhaignore に関連付けが無い環境では notepad で開く
+                    // ⚠️ セキュリティ: "notepad.exe" 単独だと PATH 環境変数経由で悪意あるバイナリを掴むリスクがある
+                    // (例: %LocalAppData%\Microsoft\WindowsApps はユーザー書込可で PATH に入っている)
+                    // System32 のフルパス + ArgumentList で防御深度を確保する。
+                    var systemDir = Environment.GetFolderPath(Environment.SpecialFolder.System);
+                    var notepadPath = Path.Combine(systemDir, "notepad.exe");
+                    var fallbackInfo = new ProcessStartInfo
+                    {
+                        FileName = notepadPath,
+                        UseShellExecute = false,
+                    };
+                    fallbackInfo.ArgumentList.Add(path);
+                    using var _ = Process.Start(fallbackInfo);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($".lhaignore のオープンに失敗: {ex.Message}", LogLevel.Warning);
+        }
+    }
+
+    /// <summary>
+    /// .lhaignore からパターンを読み直して ObservableCollection を更新する。
+    /// </summary>
+    /// <summary>
+    /// .lhaignore からパターンを読み直して ObservableCollection を更新する。
+    /// FileSystemWatcher 経由で UI スレッドから呼ばれるため、読込失敗で UI 例外にならないよう
+    /// 一旦テンポラリに読んでから差し替える（失敗時は現在のリストを温存してログに残す）。
+    /// </summary>
+    internal void ReloadExcludedFilePatternsFromFile()
+    {
+        List<string> latest;
+        try
+        {
+            latest = LhaignoreFile.ReadPatterns();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            try { Logger.Log($".lhaignore の再読込に失敗: {ex.Message}", LogLevel.Warning); }
+            catch { /* Logger 未初期化のケース */ }
+            return;
+        }
+
         CompressionExcludedFilePatterns.Clear();
-        foreach (var pattern in Settings.NormalizeExcludedFilePatterns(patterns ?? Settings.CreateDefaultExcludedFilePatterns()))
+        foreach (var pattern in latest)
             CompressionExcludedFilePatterns.Add(pattern);
         SelectedExcludedFilePattern = null;
     }
@@ -881,7 +1014,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true })?.Dispose();
+            // Issue #54 対策: Process.Start(UseShellExecute=true) を UI スレッドから直接呼ぶと、
+            // 環境次第で ShellExecuteEx の内部処理 (SmartScreen URL reputation, AV URL scanning,
+            // シェル拡張初期化等) が UI スレッドを blocking し、メッセージポンプが停止して
+            // 「アプリ全体が操作不能」に見える経路がある。ShellOpener が Task.Run で別スレッドへ
+            // 逃がすため、UI スレッドはすぐ next frame に戻れる。
+            await ShellOpener.OpenWithDefaultHandlerAsync(url);
         }
         catch (Exception ex)
         {

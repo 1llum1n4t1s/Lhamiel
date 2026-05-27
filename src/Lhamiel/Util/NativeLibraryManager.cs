@@ -7,37 +7,49 @@ namespace Lhamiel.Util;
 public static partial class NativeLibraryManager
 {
     private static IntPtr _hModule = IntPtr.Zero;
+    private static readonly object _initLock = new();
 
     /// <summary>
     /// 7z.dll をプロセスにロードして固定します。
     /// これにより、ライブラリの Dispose 時に DLL がアンロードされるのを防ぎ、
     /// 後から実行されるファイナライザによるアクセス違反を回避します。
+    /// <para>
+    /// 現状は <see cref="App"/> コンストラクタから 1 回だけ呼ばれるが、将来の経路追加で
+    /// 並列呼び出しが発生した場合に LoadLibrary が二重実行されてハンドル leak しないよう
+    /// double-checked locking で thread-safe 化している。RTK レビュー #C2-011 対応。
+    /// </para>
     /// </summary>
     public static void Initialize()
     {
         if (_hModule != IntPtr.Zero) return;
 
-        // 7z.dll のパスを取得（実行ファイルと同じディレクトリを想定）
-        // 単一ファイル公開時、ネイティブDLLは展開されず実行ファイルと同じ場所に配置される
-        var dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "7z.dll");
-
-        if (!File.Exists(dllPath))
+        lock (_initLock)
         {
-            Logger.Log($"7z.dll が見つかりません: {dllPath}", LogLevel.Warning);
-            return;
-        }
+            // ダブルチェック: 他スレッドが先に初期化を完了した場合を防止
+            if (_hModule != IntPtr.Zero) return;
 
-        // LoadLibrary を呼び出して参照カウントを増やす
-        _hModule = LoadLibrary(dllPath);
+            // 7z.dll のパスを取得（実行ファイルと同じディレクトリを想定）
+            // 単一ファイル公開時、ネイティブDLLは展開されず実行ファイルと同じ場所に配置される
+            var dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "7z.dll");
 
-        if (_hModule == IntPtr.Zero)
-        {
-            var errorCode = Marshal.GetLastWin32Error();
-            Logger.Log($"7z.dll のロードに失敗しました。エラーコード: {errorCode}", LogLevel.Error);
-        }
-        else
-        {
-            Logger.Log($"7z.dll をプロセスに固定しました: {dllPath}");
+            if (!File.Exists(dllPath))
+            {
+                Logger.Log($"7z.dll が見つかりません: {dllPath}", LogLevel.Warning);
+                return;
+            }
+
+            // LoadLibrary を呼び出して参照カウントを増やす
+            _hModule = LoadLibrary(dllPath);
+
+            if (_hModule == IntPtr.Zero)
+            {
+                var errorCode = Marshal.GetLastWin32Error();
+                Logger.Log($"7z.dll のロードに失敗しました。エラーコード: {errorCode}", LogLevel.Error);
+            }
+            else
+            {
+                Logger.Log($"7z.dll をプロセスに固定しました: {dllPath}");
+            }
         }
     }
 

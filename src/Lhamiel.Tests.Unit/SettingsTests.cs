@@ -40,15 +40,16 @@ public class SettingsTests
     }
 
     [Fact]
-    public void Settings_ExcludedFilePatterns_HasDefaults()
+    public void LhaignoreFile_DefaultContent_ContainsExpectedPatterns()
     {
-        var settings = new Settings();
+        // 旧 ExcludedFilePatterns プロパティの代替: .lhaignore のデフォルト内容に
+        // 主要なシステムパターンが含まれることを確認する。
+        var content = LhaignoreFile.CreateDefaultContent();
 
-        Assert.NotNull(settings.ExcludedFilePatterns);
-        Assert.Contains(".DS_Store", settings.ExcludedFilePatterns);
-        Assert.Contains("Thumbs.db", settings.ExcludedFilePatterns);
-        Assert.Contains("__MACOSX", settings.ExcludedFilePatterns);
-        Assert.Contains("desktop.ini", settings.ExcludedFilePatterns);
+        Assert.Contains(".DS_Store", content, StringComparison.Ordinal);
+        Assert.Contains("Thumbs.db", content, StringComparison.Ordinal);
+        Assert.Contains("__MACOSX", content, StringComparison.Ordinal);
+        Assert.Contains("desktop.ini", content, StringComparison.Ordinal);
     }
 
     [Fact]
