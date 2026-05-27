@@ -129,6 +129,18 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ## 更新履歴
 
+### v1.0.171 (2026-05-27)
+
+- **圧縮時の除外パターンを `.gitignore` 互換構文に刷新** — 旧 `ExcludedFilePatterns`（リテラルなファイル名/フォルダ名一致）を廃止し、`%LocalAppData%\Lhamiel\.lhaignore` に移行。`*` / `?` / `**` / `[abc]` / 否定 `!` / アンカー `/` / ディレクトリ限定（末尾 `/`）など `.gitignore` 仕様準拠のグロブ・否定・アンカー・ディレクトリ限定に対応。圧縮設定タブから「追加 / 削除 / 既定に戻す / 除外設定ファイルを開く」の 4 操作で管理し、`FileSystemWatcher` で外部編集も即時 UI 反映。圧縮実行ごとに `LhaignoreFile.LoadMatcher()` で最新パターンを読み直すので設定 UI を介さない手動編集も反映される
+- **ネスト `.gitignore` 取り込み（オプトイン）** — 「全般」設定の `RespectNestedGitignore` を ON にすると、圧縮対象のサブディレクトリ内に存在する `.gitignore` を `GitignoreMatcher.CompileLayered` で各スコープに追加。`.lhaignore` で枝刈り後のディレクトリのみ探索するため `node_modules/` 内の `.gitignore` は読まない。プロジェクトコードをそのまま圧縮するときに `.gitignore` で除外しているファイルもまとめて除けるようになった
+- **フィードバックボタン押下時の UI フリーズを修正 (Issue #54)** — `Process.Start(UseShellExecute=true)` を UI スレッドから synchronous 実行することで、環境次第で `ShellExecuteEx` 内部処理（SmartScreen URL レピュテーション / アンチウイルス URL スキャン / シェル拡張初期化 / 既定ブラウザのプロファイルロード）が UI スレッドを blocking していた経路を修正。外部プロセス起動を一手に引き受ける `ShellOpener` ユーティリティを新設し、内部で `Task.Run` 経由でバックグラウンドスレッドから起動するよう変更。同じ問題を起こしうる「展開後に explorer.exe でフォルダを開く」「除外設定ファイルを既定エディタで開く」処理も同じ仕組みに統一
+- **R2 配信時に旧バージョン nupkg を自動削除** — Velopack リリース時の R2 アップロード後、manifest (`releases.{channel}.json`) に含まれない `*.nupkg` を Cloudflare API V4 経由で自動削除する cleanup step を追加（Aggressive 保持戦略）。`Setup.exe` / `Portable.zip` / `RELEASES*` / `assets.*.json` / `releases.*.json` は固定ファイル名で毎リリース上書きされる Velopack 内部 & ランディング DL 用なので保護。ローカル `packages/` の manifest から keep set を構築することで CDN 伝播遅延に起因する新 nupkg の誤削除 race を回避。workflow level `concurrency: { group: release-r2, cancel-in-progress: false }` で複数 release run を直列化
+- **`Settings.UpdateBaseUrl` が空の場合の robustness 強化** — JSON 改竄等で `UpdateBaseUrl` が空文字列になった場合、`SimpleWebSource` 構築前にハードコードのキャノニカル URL (`https://lhamiel.nephilim.jp`) にフォールバックするよう修正
+- **HRESULT 定数の集約と USB 切断対応** — `WindowsHResults.cs` に Win32 HRESULT を一元化し、`ERROR_DEV_NOT_EXIST` (`0x80070037`) を正しい値で登録。USB ドライブ抜去時のエラー判定が安定
+- **その他 P2 / P3 修正** — Codex / CodeRabbit / `/rere` 10 人分隊レビューで指摘された多数の品質改善（GitignoreMatcher の `**` 境界仕様準拠 / `[!...]` ネゲート文字クラス / 中間 `**` の slash 保持 / positive char class の `/` 除外 / 否定ディレクトリルールの descendant 非伝播 / character class range `[.-0]` に潜む `/` の除外 / `Mutex` の `Local\` プレフィックス整合 / `LockedFileRetryPolicy` の CT 引数統一 / `Logger` の emergency log フォールバック / `Settings` 段階的フォールバック整理 / `ArchiveCompressor.outputPath` 削除タイミング / レガシー `ExcludedFilePatterns` 移行時の gitignore メタ文字 escape 等）
+- **ダウンロード導線を R2 直リンクに変更** — README の「インストール方法」と「自動更新が失敗する場合」のリンクを GitHub Releases から `https://lhamiel.nephilim.jp/Lhamiel-win[-arm64]-Setup.exe` 直リンクに変更（x64 / ARM64 両対応、固定 URL なので常に最新版が落ちる）
+- **テスト** — 750 / 750 pass (GitignoreMatcher / LhaignoreFile / ShellOpener / WindowsHResults 関連の新規テスト多数追加、xUnit 3、IpcService は並列フレーキーのため別 Collection)
+
 ### v1.0.170 (2026-05-20)
 
 - **自動更新の配信ドメインを中立ドメイン `lhamiel.nephilim.jp` に移行** — 旧 `lhamiel.1llum1n4t1.com` はクラウド/企業の egress セキュリティが SNI ベースのフィルタで誤検知し、更新確認時に `Received an unexpected EOF or 0 bytes from the transport stream` を引き起こす事例があったため、中立ドメインへ切替。配信元の R2 バケット (`lhamiel-updates`) は変更なし。旧ドメインは配信期間が短くクリーン廃止。超旧 `GithubSource` クライアント (v1.0.167 以下) 救済のため GitHub Releases には本バージョン (nephilim.jp 版) を踏み台として publish。アプリ機能の変更はなし
