@@ -131,15 +131,12 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ### v1.0.171 (2026-05-27)
 
-- **圧縮時の除外パターンを `.gitignore` 互換構文に刷新** — 旧 `ExcludedFilePatterns`（リテラルなファイル名/フォルダ名一致）を廃止し、`%LocalAppData%\Lhamiel\.lhaignore` に移行。`*` / `?` / `**` / `[abc]` / 否定 `!` / アンカー `/` / ディレクトリ限定（末尾 `/`）など `.gitignore` 仕様準拠のグロブ・否定・アンカー・ディレクトリ限定に対応。圧縮設定タブから「追加 / 削除 / 既定に戻す / 除外設定ファイルを開く」の 4 操作で管理し、`FileSystemWatcher` で外部編集も即時 UI 反映。圧縮実行ごとに `LhaignoreFile.LoadMatcher()` で最新パターンを読み直すので設定 UI を介さない手動編集も反映される
-- **ネスト `.gitignore` 取り込み（オプトイン）** — 「全般」設定の `RespectNestedGitignore` を ON にすると、圧縮対象のサブディレクトリ内に存在する `.gitignore` を `GitignoreMatcher.CompileLayered` で各スコープに追加。`.lhaignore` で枝刈り後のディレクトリのみ探索するため `node_modules/` 内の `.gitignore` は読まない。プロジェクトコードをそのまま圧縮するときに `.gitignore` で除外しているファイルもまとめて除けるようになった
-- **フィードバックボタン押下時の UI フリーズを修正 (Issue #54)** — `Process.Start(UseShellExecute=true)` を UI スレッドから synchronous 実行することで、環境次第で `ShellExecuteEx` 内部処理（SmartScreen URL レピュテーション / アンチウイルス URL スキャン / シェル拡張初期化 / 既定ブラウザのプロファイルロード）が UI スレッドを blocking していた経路を修正。外部プロセス起動を一手に引き受ける `ShellOpener` ユーティリティを新設し、内部で `Task.Run` 経由でバックグラウンドスレッドから起動するよう変更。同じ問題を起こしうる「展開後に explorer.exe でフォルダを開く」「除外設定ファイルを既定エディタで開く」処理も同じ仕組みに統一
-- **R2 配信時に旧バージョン nupkg を自動削除** — Velopack リリース時の R2 アップロード後、manifest (`releases.{channel}.json`) に含まれない `*.nupkg` を Cloudflare API V4 経由で自動削除する cleanup step を追加（Aggressive 保持戦略）。`Setup.exe` / `Portable.zip` / `RELEASES*` / `assets.*.json` / `releases.*.json` は固定ファイル名で毎リリース上書きされる Velopack 内部 & ランディング DL 用なので保護。ローカル `packages/` の manifest から keep set を構築することで CDN 伝播遅延に起因する新 nupkg の誤削除 race を回避。workflow level `concurrency: { group: release-r2, cancel-in-progress: false }` で複数 release run を直列化
-- **`Settings.UpdateBaseUrl` が空の場合の robustness 強化** — JSON 改竄等で `UpdateBaseUrl` が空文字列になった場合、`SimpleWebSource` 構築前にハードコードのキャノニカル URL (`https://lhamiel.nephilim.jp`) にフォールバックするよう修正
-- **HRESULT 定数の集約と USB 切断対応** — `WindowsHResults.cs` に Win32 HRESULT を一元化し、`ERROR_DEV_NOT_EXIST` (`0x80070037`) を正しい値で登録。USB ドライブ抜去時のエラー判定が安定
-- **その他 P2 / P3 修正** — Codex / CodeRabbit / `/rere` 10 人分隊レビューで指摘された多数の品質改善（GitignoreMatcher の `**` 境界仕様準拠 / `[!...]` ネゲート文字クラス / 中間 `**` の slash 保持 / positive char class の `/` 除外 / 否定ディレクトリルールの descendant 非伝播 / character class range `[.-0]` に潜む `/` の除外 / `Mutex` の `Local\` プレフィックス整合 / `LockedFileRetryPolicy` の CT 引数統一 / `Logger` の emergency log フォールバック / `Settings` 段階的フォールバック整理 / `ArchiveCompressor.outputPath` 削除タイミング / レガシー `ExcludedFilePatterns` 移行時の gitignore メタ文字 escape 等）
-- **ダウンロード導線を R2 直リンクに変更** — README の「インストール方法」と「自動更新が失敗する場合」のリンクを GitHub Releases から `https://lhamiel.nephilim.jp/Lhamiel-win[-arm64]-Setup.exe` 直リンクに変更（x64 / ARM64 両対応、固定 URL なので常に最新版が落ちる）
-- **テスト** — 750 / 750 pass (GitignoreMatcher / LhaignoreFile / ShellOpener / WindowsHResults 関連の新規テスト多数追加、xUnit 3、IpcService は並列フレーキーのため別 Collection)
+- **圧縮時の除外パターンを `.gitignore` 互換構文に刷新** — 従来のファイル名/フォルダ名のリテラル一致から、`.gitignore` 仕様のグロブ（`*` / `?` / `**` / `[abc]`）、否定（先頭 `!`）、アンカー（先頭 `/`）、ディレクトリ限定（末尾 `/`）に対応。除外設定は `%LocalAppData%\Lhamiel\.lhaignore` に保存され、圧縮設定タブから「追加 / 削除 / 既定に戻す / 除外設定ファイルを開く」の 4 操作で管理可能。お好きなテキストエディタで `.lhaignore` を直接編集しても即座に UI に反映される
+- **ネスト `.gitignore` 取り込み（オプトイン）** — 「全般」設定の「サブフォルダの `.gitignore` も尊重する」を ON にすると、圧縮対象のサブディレクトリ内にある `.gitignore` を自動で取り込んで除外判定に使用。プロジェクトコードをそのまま圧縮するときに `.gitignore` で除外しているファイルをまとめて外せる
+- **フィードバックボタン押下後の UI フリーズを修正 (Issue #54)** — 「バージョン」設定タブの「フィードバックを送る (GitHub)」を押下した直後にアプリ全体が操作不能になる事象を修正。「展開後にフォルダを開く」「除外設定ファイルを開く」など外部アプリを起動する他の経路も同じ仕組みで統一し、ブラウザ・エクスプローラー・エディタの起動時に UI が固まらなくなった
+- **USB ドライブ抜去時のエラー判定を安定化** — 展開・圧縮処理中に USB ドライブを抜いた際のエラー検出が誤判定するケースを修正
+- **ダウンロード導線を R2 直リンクに変更** — README の「インストール方法」と「自動更新が失敗する場合」のリンクを Cloudflare R2 配信元の直リンク（x64: `https://lhamiel.nephilim.jp/Lhamiel-win-Setup.exe` / ARM64: `Lhamiel-win-arm64-Setup.exe`）に変更。固定 URL なので常に最新版がダウンロードされる
+- **品質改善** — `.gitignore` パターン解釈の仕様準拠強化（`**` 境界、ネゲート文字クラス、character class range 内の `/` 除外、否定ディレクトリルールの挙動など）、設定ファイル破損時の段階的フォールバック整理、起動失敗時の緊急ログ書き出し、ロック中ファイルのリトライ動作改善など多数の内部品質改善
 
 ### v1.0.170 (2026-05-20)
 
