@@ -27,7 +27,9 @@ Lhamiel（ラミエル）は、Windows向けの使いやすいアーカイブ管
 
 ## インストール方法
 
-1. **[GitHub Releases](https://github.com/1llum1n4t1s/Lhamiel/releases)** から最新の `Setup.exe` をダウンロード
+1. 最新の `Setup.exe` をダウンロード（Cloudflare R2 配信、固定 URL のため常に最新版が落ちてきます）
+   - **x64**: <https://lhamiel.nephilim.jp/Lhamiel-win-Setup.exe>
+   - **ARM64**: <https://lhamiel.nephilim.jp/Lhamiel-win-arm64-Setup.exe>
 2. `Setup.exe` を実行してインストール
 3. デスクトップやスタートメニューから Lhamiel を起動
 
@@ -120,7 +122,7 @@ Windows の「設定」→「アプリ」→「インストールされている
 - **クラッシュダンプの場所** — `%LocalAppData%\Lhamiel\dumps\*.dmp`（未処理例外時に自動生成、最新 5 件まで保持）。サポート問い合わせ時に診断 ZIP に含まれる
 - **診断情報の取得方法** — サポート問い合わせの際は「バージョン」設定タブの「診断 ZIP を出力」ボタンを使用してください。マスク済み設定・ログ・環境情報・MiniDump がまとめて ZIP 化されます
 - **一時ファイルの自動削除** — アプリ起動時に `%TEMP%\Lhamiel_Temp_*` の 30 分以上前の残骸を自動で掃除します（前回クラッシュ時の中間ファイル等）
-- **自動更新が失敗する場合** — Velopack 自動更新が動かない場合は、[GitHub Releases](https://github.com/1llum1n4t1s/Lhamiel/releases) から最新の `Lhamiel-win-Setup.exe` を手動ダウンロードして上書きインストールしてください
+- **自動更新が失敗する場合** — Velopack 自動更新が動かない場合は、Cloudflare R2 配信元から最新の Setup.exe を手動ダウンロードして上書きインストールしてください（x64: <https://lhamiel.nephilim.jp/Lhamiel-win-Setup.exe> / ARM64: <https://lhamiel.nephilim.jp/Lhamiel-win-arm64-Setup.exe>）
 - **アップデートダイアログが起動毎に出る** — 「このバージョンをスキップ」を押すと該当タグが `settings.json` の `IgnoreUpdateTag` に保存され、次回以降の自動チェックではダイアログを表示しません。完全に無効化したい場合は「全般」設定の「起動時にアップデートを確認」を OFF にしてください
 - **スキップしたバージョンを取り消したい** — 「バージョン」設定タブにスキップ中のバージョン情報と「スキップを取り消す」ボタンが表示されます。ボタンを押すと即座に取り消され、次回起動時から再びアップデート通知が出ます
 - **手動でアップデートを確認したい** — 「バージョン」設定タブの「アップデート確認」ボタンを押すと、`VelopackUpdateDialog` ダイアログが開いて最新バージョンを確認できます（手動チェックは「このバージョンをスキップ」を無視して常に最新を表示します）
