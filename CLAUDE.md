@@ -179,7 +179,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 ## CI/CD
 
 - **PR builds**: `.github/workflows/dotnet-build.yml` — restore, build, test + code coverage on every PR
-- **Release**: `.github/workflows/velopack-release.yml` — `release/*` ブランチへの push でトリガー。`vpk pack` で win + win-arm64 を並列ビルド後、`r2-upload` job が `wrangler@4.x` (Node.js 22) で Cloudflare R2 バケット `lhamiel-updates` にアップロード + `curl --fail` で配信確認 (`releases.{channel}.json` HTTP 200 検証)。**R2 単独配信** (GitHub Releases への継続 publish はしない。旧クライアント救済の踏み台は `/transfer-cf` 移行作業で publish 済み)。必要 Secrets: `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`
+- **Release**: `.github/workflows/velopack-release.yml` — `release/*` ブランチへの push でトリガー。`vpk pack` で win + win-arm64 を並列ビルド後、`r2-upload` job が `wrangler@4.x` (Node.js 22) で Cloudflare R2 バケット `lhamiel-updates` にアップロード + `curl --fail` で配信確認 (`releases.{channel}.json` HTTP 200 検証) + **manifest 外の旧 `*.nupkg` を Cloudflare API V4 で自動削除する cleanup step** (Aggressive 保持戦略: `releases.{channel}.json` に書かれない nupkg は削除、Setup.exe / Portable.zip / RELEASES* / assets.*.json / releases.*.json は固定ファイル名で上書きされる Velopack 内部ファイル & ランディング DL 用なので保護)。**R2 単独配信** (GitHub Releases への継続 publish はしない。旧クライアント救済の踏み台は `/transfer-cf` 移行作業で publish 済み)。必要 Secrets: `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`
 - **CodeQL**: `.github/workflows/codeql.yml` — C# security analysis on PR + weekly
 - **Dependabot**: `.github/dependabot.yml` — NuGet weekly + github-actions monthly
 
