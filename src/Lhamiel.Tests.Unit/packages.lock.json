@@ -425,8 +425,8 @@
       },
       "VelopackUpdateDialog.Avalonia": {
         "type": "Transitive",
-        "resolved": "1.0.4",
-        "contentHash": "WolGv+l/PWj8QVJHNIGSzqeSu9orgrgcQaY951FGE3aQ0uqVq0iibZJND04yA/GhVAWoVp5n0+6vbEF7gtM0xg==",
+        "resolved": "1.0.5",
+        "contentHash": "K9eZ3vbnqZWkdWkgMYpcZo+C79aXpaypCZWF0WgLEGQqmean0xv+2FHnW9O+AxTmcRI7f6kmWci8euRtNZrgjQ==",
         "dependencies": {
           "Avalonia": "12.0.4",
           "CommunityToolkit.Mvvm": "8.4.2",
@@ -515,7 +515,7 @@
           "MessageBox.Avalonia": "[12.0.0, )",
           "SuperLightLogger": "[1.0.7, )",
           "Tmds.DBus.Protocol": "[0.94.1, )",
-          "VelopackUpdateDialog.Avalonia": "[1.0.4, )"
+          "VelopackUpdateDialog.Avalonia": "[1.0.5, )"
         }
       }
     }

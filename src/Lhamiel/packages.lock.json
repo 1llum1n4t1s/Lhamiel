@@ -119,9 +119,9 @@
       },
       "VelopackUpdateDialog.Avalonia": {
         "type": "Direct",
-        "requested": "[1.0.4, )",
-        "resolved": "1.0.4",
-        "contentHash": "WolGv+l/PWj8QVJHNIGSzqeSu9orgrgcQaY951FGE3aQ0uqVq0iibZJND04yA/GhVAWoVp5n0+6vbEF7gtM0xg==",
+        "requested": "[1.0.5, )",
+        "resolved": "1.0.5",
+        "contentHash": "K9eZ3vbnqZWkdWkgMYpcZo+C79aXpaypCZWF0WgLEGQqmean0xv+2FHnW9O+AxTmcRI7f6kmWci8euRtNZrgjQ==",
         "dependencies": {
           "Avalonia": "12.0.4",
           "CommunityToolkit.Mvvm": "8.4.2",
