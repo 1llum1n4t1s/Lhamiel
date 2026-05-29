@@ -51,11 +51,11 @@
   <!-- .axaml は Avalonia SDK が自動インクルードするため明示不要 -->
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.3" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.3" />
+    <PackageReference Include="Avalonia" Version="12.0.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.4" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.0.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.4" />
     <!-- CRDebugger.Avalonia はデバッグツール。リリースバイナリには同梱しないため Debug 限定参照。
          App.axaml.cs:181-183 の DebugHelper.InitializeCRDebugger は #if DEBUG ガード済みで、
          この PackageReference 自体も Configuration=Debug でのみ復元される。 -->
@@ -64,10 +64,9 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.73" />
     <PackageReference Include="SuperLightLogger" Version="1.0.7" />
-    <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.0" />
+    <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
-    <PackageReference Include="Velopack" Version="1.0.1" />
-    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.3" />
+    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.4" />
   </ItemGroup>
 
   <ItemGroup>
