@@ -130,11 +130,13 @@ public partial class App : Application
                     Logger.Log("アプリケーションは既に起動しています。既存のインスタンスをアクティブ化します。");
                     ActivateExistingInstance();
 
-                    if (startupArgs.Length > 0)
-                    {
-                        Logger.Log("コマンドライン引数を既存のインスタンスに送信します。");
-                        await IpcService.SendArgsToExistingInstanceAsync(startupArgs);
-                    }
+                    // 引数の有無に関わらず IPC を送る。空配列 = 「メイン画面を表示して前面化して」という
+                    // 活性化要求として既存インスタンスに伝わる。関連付け / アイコンドロップ起動の圧縮中は
+                    // 既存インスタンスに MainWindow が存在しないため、この経路だけがメイン画面を生成・表示できる。
+                    Logger.Log(startupArgs.Length > 0
+                        ? "コマンドライン引数を既存のインスタンスに送信します。"
+                        : "活性化要求（引数なし）を既存のインスタンスに送信します。");
+                    await IpcService.SendArgsToExistingInstanceAsync(startupArgs);
 
                     if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
                     {
@@ -209,13 +211,9 @@ public partial class App : Application
                 // メイン画面起動
                 if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
                 {
-                    try
+                    // 起動直後は Avalonia が desktop.MainWindow を自動表示するため showExplicitly:false。
+                    if (!EnsureMainWindowShown(lifetime, showExplicitly: false))
                     {
-                        lifetime.MainWindow = new MainWindow();
-                    }
-                    catch (Exception windowEx)
-                    {
-                        Logger.LogException("メインウィンドウの作成に失敗しました（グラフィックス初期化などの可能性）", windowEx);
                         TryShutdownSafely(lifetime);
                         return;
                     }
@@ -306,6 +304,14 @@ public partial class App : Application
                 // メインウィンドウをアクティブ化（NativeMethods を使用）
                 try
                 {
+                    // 既存インスタンスに「自分自身を前面化する権利」を付与する。
+                    // ユーザー操作（ダブルクリック）直後の本プロセスはフォアグラウンド権を持つため、
+                    // ここで付与しておくと、既存インスタンス側が IPC 受信後に行う SetForegroundWindow /
+                    // Activate が Win32 フォアグラウンドロックで空振りせず確実に前面化できる。
+                    // MainWindowHandle がまだ無い headless 圧縮中インスタンスでも、メイン画面生成後の
+                    // 前面化を有効にするため、ハンドルの有無に関わらず先に付与する。
+                    NativeMethods.AllowSetForegroundWindow((uint)otherProcess.Id);
+
                     if (otherProcess.MainWindowHandle != IntPtr.Zero)
                     {
                         NativeMethods.SetForegroundWindow(otherProcess.MainWindowHandle);
@@ -687,23 +693,17 @@ public partial class App : Application
             {
                 Logger.Log("IPC経由でコマンドライン引数を受信しました。");
 
+                // 引数の有無に関わらず、まずメイン画面を前面化する（存在しなければ生成する）。
+                // 関連付け / アイコンドロップ起動の圧縮中は既存インスタンスに MainWindow が無いため、
+                // ここで生成しないと「圧縮中にショートカットを再起動してもメイン画面が出ない」状態になる。
+                EnsureMainWindowShown(desktop, showExplicitly: true);
+
                 if (args.Length > 0)
                 {
                     var (compressionFormat, filePaths) = ParseCommandLineArgs(args);
 
-                    // メインウィンドウを前面に出す
-                    if (desktop.MainWindow != null)
-                    {
-                        if (desktop.MainWindow.WindowState == WindowState.Minimized)
-                        {
-                            desktop.MainWindow.WindowState = WindowState.Normal;
-                        }
-                        desktop.MainWindow.Activate();
-                        desktop.MainWindow.Focus();
-                    }
-
-                    // 受信した引数で処理を実行
-                    // IPC 経由の場合は処理終了後にアプリを終了させないようにする
+                    // 受信した引数で処理を実行。
+                    // IPC 経由の場合は処理終了後にアプリを終了させないようにする（shouldShutdown:false）。
                     _ = ProcessCommandLineFiles(filePaths, compressionFormat, false).ContinueWith(t =>
                     {
                         if (t.IsFaulted)
@@ -712,6 +712,59 @@ public partial class App : Application
                 }
             });
         }
+    }
+
+    /// <summary>
+    /// メインウィンドウを確実に表示・前面化する。存在しなければ生成する。
+    /// 起動時（引数なし）と、IPC 経由の活性化要求の両方から共用される。
+    /// </summary>
+    /// <param name="desktop">デスクトップライフタイム</param>
+    /// <param name="showExplicitly">
+    /// 新規生成した MainWindow を明示的に Show + 前面化するか。
+    /// 起動直後（OnFrameworkInitializationCompleted 内）は Avalonia が自動表示するため false、
+    /// ライフタイム開始後（IPC 受信時など）は自動表示されないため true を渡す。
+    /// </param>
+    /// <returns>メインウィンドウが利用可能（生成成功 or 既存）なら true、生成失敗なら false</returns>
+    private bool EnsureMainWindowShown(IClassicDesktopStyleApplicationLifetime desktop, bool showExplicitly)
+    {
+        // メインウィンドウが未生成（headless な関連付け圧縮中インスタンスなど）の場合は生成する。
+        if (desktop.MainWindow == null)
+        {
+            try
+            {
+                desktop.MainWindow = new MainWindow();
+            }
+            catch (Exception windowEx)
+            {
+                Logger.LogException("メインウィンドウの作成に失敗しました（グラフィックス初期化などの可能性）", windowEx);
+                return false;
+            }
+
+            // 起動直後（OnFrameworkInitializationCompleted 内）は Avalonia が desktop.MainWindow を
+            // 自動表示するため、二重 Show を避けて showExplicitly:false で早期 return する。
+            // ライフタイム開始後（IPC 受信時など）は自動表示されないため、以降の Show + 前面化を行う。
+            if (!showExplicitly)
+                return true;
+        }
+
+        // 既存 or 生成直後のメインウィンドウを復元・前面化する。
+        var window = desktop.MainWindow!;
+        if (!window.IsVisible)
+            window.Show();
+        if (window.WindowState == WindowState.Minimized)
+            window.WindowState = WindowState.Normal;
+        window.Activate();
+        window.Focus();
+
+        // 第 2 インスタンスが AllowSetForegroundWindow で前面化権を付与済みの前提で、
+        // 自プロセスのウィンドウハンドルに対して明示的に SetForegroundWindow を撃つ。
+        // Avalonia の Activate だけでは環境によってフォアグラウンドロックで空振りするため、
+        // ネイティブ呼び出しを併用して確実に前面化する。
+        var handle = window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+        if (handle != IntPtr.Zero)
+            NativeMethods.SetForegroundWindow(handle);
+
+        return true;
     }
 
 

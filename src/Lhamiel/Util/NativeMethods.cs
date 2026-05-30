@@ -18,6 +18,19 @@ internal static partial class NativeMethods
     internal static partial bool SetForegroundWindow(IntPtr hWnd);
 
     /// <summary>
+    /// 指定プロセスに「フォアグラウンドウィンドウを設定する権利」を付与する。
+    /// 単一インスタンス起動時、ユーザー操作（ダブルクリック）直後でフォアグラウンド権を持つ
+    /// 第 2 インスタンスが既存インスタンスの PID にこの権利を渡すことで、既存インスタンス側の
+    /// <see cref="SetForegroundWindow"/> / Avalonia の Activate が Win32 フォアグラウンドロック
+    /// （タスクバー点滅止まりで実際には前面化しない）で空振りするのを防ぐ。
+    /// </summary>
+    /// <param name="dwProcessId">前面化を許可するプロセス ID</param>
+    /// <returns>成功した場合は true</returns>
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool AllowSetForegroundWindow(uint dwProcessId);
+
+    /// <summary>
     /// シェルに関連する変更を通知する
     /// </summary>
     /// <param name="eventId">通知するイベント ID</param>
