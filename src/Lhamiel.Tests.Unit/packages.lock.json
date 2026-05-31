@@ -420,18 +420,18 @@
       },
       "Velopack": {
         "type": "Transitive",
-        "resolved": "1.0.1",
-        "contentHash": "LlmymFeEYBGNQfNiG89buDUT6C09MgqJnLzkvQz997fk/+KfmlyXlwbxOBFxt24HL4B8TQAFmNa6Oy9K4XlH0Q=="
+        "resolved": "1.1.1",
+        "contentHash": "NvPcAHnGj97qFToV4HZIEs05UfWYMXo0BAFUVmsf+/Xb1Bxqvk7H09CXanCqb5Vpd42tN5h7dz/qHLvWnTMpzw=="
       },
       "VelopackUpdateDialog.Avalonia": {
         "type": "Transitive",
-        "resolved": "1.0.5",
-        "contentHash": "K9eZ3vbnqZWkdWkgMYpcZo+C79aXpaypCZWF0WgLEGQqmean0xv+2FHnW9O+AxTmcRI7f6kmWci8euRtNZrgjQ==",
+        "resolved": "1.0.6",
+        "contentHash": "opmQKfNpAdoGwonna1udO1I6bkNfFmaIGVZtE3vEvIMJk8qeWotPCZ+B2YOVIgOPkEbC1UAf+TpzJsM2SR8thQ==",
         "dependencies": {
           "Avalonia": "12.0.4",
           "CommunityToolkit.Mvvm": "8.4.2",
           "SuperLightLogger": "1.0.7",
-          "Velopack": "1.0.1"
+          "Velopack": "1.1.1"
         }
       },
       "xunit.analyzers": {
@@ -515,7 +515,7 @@
           "MessageBox.Avalonia": "[12.0.0, )",
           "SuperLightLogger": "[1.0.7, )",
           "Tmds.DBus.Protocol": "[0.94.1, )",
-          "VelopackUpdateDialog.Avalonia": "[1.0.5, )"
+          "VelopackUpdateDialog.Avalonia": "[1.0.6, )"
         }
       }
     }
