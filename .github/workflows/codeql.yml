@@ -29,7 +29,7 @@ jobs:
 
       - name: CodeQL を初期化
         # github/codeql-action/init@v4.35.3
-        uses: github/codeql-action/init@e46ed2cbd01164d986452f91f178727624ae40d7
+        uses: github/codeql-action/init@7211b7c8077ea37d8641b6271f6a365a22a5fbfa
         with:
           languages: csharp
           build-mode: manual
@@ -39,6 +39,6 @@ jobs:
 
       - name: CodeQL 解析を実行
         # github/codeql-action/analyze@v4.35.3
-        uses: github/codeql-action/analyze@e46ed2cbd01164d986452f91f178727624ae40d7
+        uses: github/codeql-action/analyze@7211b7c8077ea37d8641b6271f6a365a22a5fbfa
         with:
           category: /language:csharp
