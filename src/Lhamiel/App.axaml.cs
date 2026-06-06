@@ -93,6 +93,11 @@ public partial class App : Application
 
         // 7z.dll をプロセスに固定して、アンロード時のクラッシュを防止
         NativeLibraryManager.Initialize();
+
+        // ライブラリ (1llum1n4t1s.Sevenzip / Cube.*) 内部ログを Lhamiel のログに転送する。
+        // 既定では NullLoggerSource で捨てられるため、Configure しないと Open 失敗・圧縮リトライ等の
+        // 診断が完全に失われる。Logger.Initialize は上の SettingsManager 初期化で完了済み。RTK レビュー #14 対応。
+        Cube.Logger.Configure(new CubeLoggerBridge());
     }
 
     /// <summary>

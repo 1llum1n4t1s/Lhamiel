@@ -224,7 +224,7 @@ internal static partial class DiagnosticsCollector
         {
             try
             {
-                CopyFileWithSharedRead(fi.FullName, Path.Combine(logsDir, fi.Name));
+                CopyLogFileMasked(fi.FullName, Path.Combine(logsDir, fi.Name));
             }
             catch (FileNotFoundException)
             {
@@ -290,4 +290,33 @@ internal static partial class DiagnosticsCollector
         using var dst = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None);
         src.CopyTo(dst);
     }
+
+    /// <summary>
+    /// ログファイルを読み取り、本文に含まれる個人情報（Windows ユーザー名）をマスクしてコピーする。
+    /// 診断 ZIP はサポート担当に共有されるため、ログに残る <c>C:\Users\&lt;name&gt;\…</c> の
+    /// ユーザー名セグメントを伏せる。settings.json は別途 <see cref="MaskSensitiveValues"/> でマスク済み。
+    /// </summary>
+    private static void CopyLogFileMasked(string sourcePath, string destPath)
+    {
+        string content;
+        using (var src = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        using (var reader = new StreamReader(src))
+            content = reader.ReadToEnd();
+
+        File.WriteAllText(destPath, MaskLogPaths(content));
+    }
+
+    /// <summary>
+    /// ログ本文の <c>X:\Users\&lt;name&gt;\</c> のユーザー名セグメントを <c>&lt;user&gt;</c> に置換する。
+    /// パス構造（ドライブ・配下のディレクトリ）は診断価値のため残す。アーカイブ内のエントリ名
+    /// （macOS 由来の <c>/Users/...</c> 等、スラッシュ区切り）はローカル PII ではないので対象外。
+    /// </summary>
+    internal static string MaskLogPaths(string content)
+    {
+        if (string.IsNullOrEmpty(content)) return content;
+        return UsersPathRegex().Replace(content, "$1<user>");
+    }
+
+    [GeneratedRegex(@"(?i)([A-Za-z]:\\Users\\)[^\\\r\n]+")]
+    private static partial Regex UsersPathRegex();
 }

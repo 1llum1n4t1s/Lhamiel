@@ -106,6 +106,8 @@ public static class ArchiveCompressor
         var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
 
         var outputCreated = false;
+        // 空ディレクトリエントリ用の空マーカーディレクトリ（遅延作成）。後段 finally で必ず掃除する。
+        string? emptyDirMarker = null;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -131,6 +133,12 @@ public static class ArchiveCompressor
 
             try
             {
+                // ネイティブ 7z.dll 直列化ゲート: ライブラリ (1llum1n4t1s.Sevenzip) の共有シングルトン
+                // SevenZipLibrary は ArchiveWriter の並行動作をサポートしないため、writer の
+                // 生成 → Add → Save → Dispose 全体を 1 スロットに直列化する（バッチ圧縮の
+                // IoBoundParallelism 並列実行時もネイティブ接触が重ならないよう保証）。
+                using var nativeGate = await NativeArchiveGate.EnterAsync(cancellationToken);
+
                 // 重い処理全体を Task.Run で実行
                 await Task.Run(() =>
                 {
@@ -143,7 +151,19 @@ public static class ArchiveCompressor
                     foreach (var (fullPath, relativePath) in filesToCompress)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        if (!relativePath.EndsWith('/') && !File.Exists(fullPath))
+                        if (relativePath.EndsWith('/'))
+                        {
+                            // 空ディレクトリエントリ: 実ディレクトリを writer.Add(realDir, "rel/") で渡すと
+                            // ライブラリの AddRecursive が realDir を再走査し、スキャンで除外したはず
+                            // （隠し/システム属性・.lhaignore 該当）のファイルを復活させてしまう
+                            // （中身ゼロ判定のディレクトリでも実体には除外ファイルが残るため）。
+                            // 空のマーカーディレクトリを src に渡すと再走査しても中身が無いので、
+                            // 意図したディレクトリエントリだけがアーカイブに追加される。
+                            emptyDirMarker ??= CreateEmptyDirectoryMarker();
+                            writer.Add(emptyDirMarker, relativePath);
+                            continue;
+                        }
+                        if (!File.Exists(fullPath))
                         {
                             Logger.Log($"ファイルが見つかりません（スキップ）: {fullPath}");
                             continue;
@@ -191,6 +211,17 @@ public static class ArchiveCompressor
 
             Logger.Log($"圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
         }
+        catch (OperationCanceledException oce) when (!cancellationToken.IsCancellationRequested && oce.InnerException is not null)
+        {
+            // ユーザー主導でないキャンセル。ライブラリ (1llum1n4t1s.Sevenzip 1.0.73) には
+            // I/O 失敗 (ディスク満杯・デバイス切断等) を OperationCanceledException で包んで返す
+            // 経路があり、これをキャンセル扱いすると本当の失敗が握り潰される。内側の実例外を
+            // 昇格させてエラーとして処理する（修正済みライブラリでは SevenZipException で返るため
+            // この経路には入らない）。
+            Logger.Log($"非キャンセル要因の中断を検出、内部例外へ昇格: {oce.InnerException.Message}");
+            TryDeletePartialOutput(outputPath, outputCreated, "圧縮エラー");
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(oce.InnerException);
+        }
         catch (OperationCanceledException)
         {
             // キャンセル時: 書きかけの出力ファイルを掃除する。
@@ -207,6 +238,25 @@ public static class ArchiveCompressor
             TryDeletePartialOutput(outputPath, outputCreated, "圧縮エラー");
             throw;
         }
+        finally
+        {
+            // 空ディレクトリマーカーを掃除する（best-effort）。成功・失敗・キャンセルいずれでも実行。
+            if (emptyDirMarker is not null)
+                FileOperations.CleanupTemporaryPath(emptyDirMarker, m => Logger.Log(m, LogLevel.Warning));
+        }
+    }
+
+    /// <summary>
+    /// 空ディレクトリエントリ追加用の「空のマーカーディレクトリ」を %TEMP% に作成して返す。
+    /// 中身が常に空であることが重要（<see cref="ArchiveWriter.Add(string, string)"/> に渡すと
+    /// ライブラリが src を再走査するため、実ディレクトリではなく空マーカーを使うことで
+    /// 除外済みファイルの混入を防ぐ）。
+    /// </summary>
+    private static string CreateEmptyDirectoryMarker()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), $"Lhamiel_emptydir_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(dir);
+        return dir;
     }
 
     /// <summary>
@@ -561,8 +611,17 @@ public static class ArchiveCompressor
     /// <returns>ArchiveWriterインスタンス</returns>
     private static ArchiveWriter CreateArchiveWriter(Format format, Settings settings, int maxThreads = -1)
     {
-        // デフォルトはプロセッサ数、制限がある場合はその値
-        var threadCount = maxThreads > 0 ? maxThreads : Environment.ProcessorCount;
+        // スレッド数を [1, 論理プロセッサ数] に丸める。
+        // ・maxThreads が未指定/0以下のときは論理プロセッサ数を既定とする。
+        // ・将来 maxThreads を設定値から渡す場合でも、コア数を超える oversubscribe や
+        //   0/負値（ライブラリ側 CompressionOption.Validate が ArgumentOutOfRangeException を
+        //   投げる）が 7z.dll に届かないようにする。
+        // ・7z (LZMA2) の実効並列度とメモリ使用量はメソッド毎に 7z.dll 側で内部制限されるため、
+        //   ここでは論理コア数を上限とするに留め、実機での圧縮性能は据え置く。
+        var threadCount = Math.Clamp(
+            maxThreads > 0 ? maxThreads : Environment.ProcessorCount,
+            1,
+            Environment.ProcessorCount);
 
         // 形式に応じたオプションを設定
         if (format == Format.SevenZip)
@@ -607,12 +666,19 @@ public static class ArchiveCompressor
 
         try
         {
+            // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→使用→Dispose を覆う）
+            using var nativeGate = NativeArchiveGate.Enter();
             using var reader = new ArchiveReader(archivePath);
+
+            // アーカイブ内のディレクトリエントリは "folder/" のように末尾区切り文字を伴うことが
+            // あるため、比較前に両者の末尾 '/' '\' を除去して突き合わせる（末尾区切りの有無だけで
+            // 同名フォルダ判定が外れるのを防ぐ）。
+            var normalizedTarget = folderName.TrimEnd('/', '\\');
 
             // Items プロパティを使用してアーカイブ内容をチェック
             return reader.Items.Any(item =>
                 item.IsDirectory &&
-                string.Equals(item.FullName, folderName, StringComparison.OrdinalIgnoreCase));
+                string.Equals(item.FullName.TrimEnd('/', '\\'), normalizedTarget, StringComparison.OrdinalIgnoreCase));
         }
         catch (Exception ex)
         {

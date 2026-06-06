@@ -706,4 +706,66 @@ public class ArchiveCompressorTests
                 Directory.Delete(parent, true);
         }
     }
+
+    // === 生成アーカイブの内容検証（スキャン出力ではなく成果物を ArchiveReader.Items で確認） ===
+
+    [Fact]
+    public async Task CompressFilesAsync_EmptyDirectoryWithExcludedFiles_DoesNotReviveExcludedFilesInArchive()
+    {
+        // RTK レビュー #1 (EMPTY-DIR-LEAK) 回帰テスト。
+        // スキャンで「空」と判定されたディレクトリ（実体には除外ファイルだけが残る）を
+        // writer.Add(realDir, "rel/") で渡すと、ライブラリの AddRecursive がフィルタなしに再走査して
+        // 除外ファイルを復活させていた。空マーカー経由の追加でこれが起きないことを、
+        // スキャン出力ではなく「生成アーカイブの ArchiveReader.Items」レベルで検証する（#16 SCAN-TEST-GAP）。
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testRoot, "Source");
+        var logsDir = Path.Combine(sourceDir, "logs");
+        try
+        {
+            Directory.CreateDirectory(logsDir);
+            File.WriteAllText(Path.Combine(sourceDir, "keep.txt"), "keep me");
+            // logs/ の中身は除外対象 (*.log) のみ → スキャン的には「空ディレクトリ」になる。
+            File.WriteAllText(Path.Combine(logsDir, "secret.log"), "should NOT be in archive");
+
+            var matcher = GitignoreMatcher.Compile(["*.log"]);
+
+            // スキャンで解決済みリストを得る（*.log は除外、logs/ は空ディレクトリエントリとして残る）。
+            var resolved = await ArchiveCompressor.ScanSourceFiles(
+                [sourceDir],
+                matcher,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot);
+
+            // サニティ: スキャン段階で secret.log は除外され、logs/ は空ディレクトリとして残る。
+            Assert.DoesNotContain(resolved, r => r.relativePath.EndsWith("secret.log"));
+            Assert.Contains(resolved, r => r.relativePath.EndsWith("logs/"));
+            Assert.Contains(resolved, r => r.relativePath.EndsWith("keep.txt"));
+
+            // 解決済みリストをそのまま渡して圧縮（内部 .lhaignore 読み込みをバイパスし、上の matcher 結果で固定）。
+            var zipPath = Path.Combine(testRoot, "out.zip");
+            await ArchiveCompressor.CompressFilesAsync(
+                [sourceDir], zipPath, Format.Zip,
+                new Progress<ProgressInfo>(),
+                TestContext.Current.CancellationToken,
+                resolvedFiles: resolved);
+
+            Assert.True(File.Exists(zipPath), "アーカイブが生成されていない");
+
+            // 生成アーカイブの中身を検証する（ここが本丸: 成果物に除外ファイルが復活していないこと）。
+            using var reader = new ArchiveReader(zipPath);
+            var names = reader.Items.Select(i => (i.FullName ?? string.Empty).Replace('\\', '/')).ToList();
+
+            // 除外した secret.log がアーカイブに復活していないこと（#1 の回帰防止）。
+            Assert.DoesNotContain(names, n => n.EndsWith("secret.log"));
+            // 含めるべき keep.txt は存在すること。
+            Assert.Contains(names, n => n.EndsWith("keep.txt"));
+            // 空ディレクトリ logs/ のエントリは保持されること。
+            Assert.Contains(names, n => n.TrimEnd('/').EndsWith("logs"));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
 }

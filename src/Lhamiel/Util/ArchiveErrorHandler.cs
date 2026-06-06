@@ -146,43 +146,20 @@ public static class ArchiveErrorHandler
                 errorInfo.IsRecoverable = true;
                 break;
 
-            // 7z.dll 由来の HRESULT ベース例外。EncryptionException は SevenZipException の
-            // 派生であるため、必ず EncryptionException ケースの後ろに配置する。
-            case SevenZipException:
-                errorInfo.ErrorType = ArchiveErrorType.CorruptedFile;
-                errorInfo.Message = App.Text("ErrorHandler.Corrupted");
-                errorInfo.Details = GetCorruptionDetails(ex, archivePath);
-                errorInfo.RecommendedAction = App.Text("ErrorHandler.CorruptedAction");
-                errorInfo.IsRecoverable = false;
+            // 7z.dll 由来の HRESULT ベース例外。SevenZipException と EncryptionException は
+            // どちらも IOException の直接の派生（互いに兄弟であり、EncryptionException は
+            // SevenZipException の派生ではない）なので、両者とも IOException ケースより前に置く。
+            // 旧実装は SevenZipException を一律 CorruptedFile としていたが、SevenZipCode には
+            // 非対応形式 (UnsupportedMethod) やパスワード誤り (WrongPassword) も含まれるため、
+            // Code と内部例外 (ディスク満杯 / デバイス切断 / 使用中) で細分類して誤表示を防ぐ。
+            case SevenZipException sevenZipEx:
+                AnalyzeSevenZipException(sevenZipEx, errorInfo, archivePath, outputPath);
                 break;
 
             case IOException ioEx:
-                if (IsDiskSpaceError(ioEx))
-                {
-                    errorInfo.ErrorType = ArchiveErrorType.InsufficientDiskSpace;
-                    errorInfo.Message = App.Text("ErrorHandler.DiskFull");
-                    errorInfo.Details = App.Text("ErrorHandler.DiskFullDetail", outputPath);
-                    errorInfo.RecommendedAction = App.Text("ErrorHandler.DiskFullAction");
-                    errorInfo.IsRecoverable = true;
-                }
-                else if (IsDeviceDisconnectedError(ioEx))
-                {
-                    // USB SSD のスリープ / NAS タイムアウト / リムーバブルメディア取り外し
-                    // → リトライ不能、ユーザーに再接続を促す。RTK レビュー #F-003 対応。
-                    errorInfo.ErrorType = ArchiveErrorType.DeviceDisconnected;
-                    errorInfo.Message = App.Text("ErrorHandler.DeviceDisconnected");
-                    errorInfo.Details = App.Text("ErrorHandler.DeviceDisconnectedDetail", outputPath);
-                    errorInfo.RecommendedAction = App.Text("ErrorHandler.DeviceDisconnectedAction");
-                    errorInfo.IsRecoverable = true;
-                }
-                else if (IsFileInUseError(ioEx))
-                {
-                    errorInfo.ErrorType = ArchiveErrorType.FileInUse;
-                    errorInfo.Message = App.Text("ErrorHandler.FileInUse");
-                    errorInfo.Details = App.Text("ErrorHandler.FileInUseDetail", archivePath);
-                    errorInfo.RecommendedAction = App.Text("ErrorHandler.FileInUseAction");
-                    errorInfo.IsRecoverable = true;
-                }
+                if (IsDiskSpaceError(ioEx)) ApplyDiskSpace(errorInfo, outputPath);
+                else if (IsDeviceDisconnectedError(ioEx)) ApplyDeviceDisconnected(errorInfo, outputPath);
+                else if (IsFileInUseError(ioEx)) ApplyFileInUse(errorInfo, archivePath);
                 else
                 {
                     errorInfo.ErrorType = ArchiveErrorType.Unknown;
@@ -233,6 +210,87 @@ public static class ArchiveErrorHandler
     }
 
     /// <summary>
+    /// SevenZipException (7z.dll 由来) を <see cref="SevenZipCode"/> と内部例外から細分類する。
+    /// 旧実装はすべて「アーカイブ破損」と扱っていたため、非対応形式・パスワード誤り・
+    /// ディスク満杯 / デバイス切断 / 使用中といった本来別カテゴリのエラーが破損として
+    /// 誤表示されていた。内部に I/O 起因の例外がラップされている場合はそちらを優先する。
+    /// </summary>
+    private static void AnalyzeSevenZipException(SevenZipException ex, ArchiveErrorInfo errorInfo, string archivePath, string outputPath)
+    {
+        // ① SevenZipException(code, inner) で本当の原因 (ディスク満杯 / デバイス切断 / 使用中) が
+        //    ラップされているケースを救済する。自前の例外型 (SevenZip/Encryption) は除外する。
+        if (ex.InnerException is IOException inner and not (SevenZipException or EncryptionException))
+        {
+            if (IsDiskSpaceError(inner)) { ApplyDiskSpace(errorInfo, outputPath); return; }
+            if (IsDeviceDisconnectedError(inner)) { ApplyDeviceDisconnected(errorInfo, outputPath); return; }
+            if (IsFileInUseError(inner)) { ApplyFileInUse(errorInfo, archivePath); return; }
+        }
+
+        // ② SevenZipCode で分類。WrongPassword / UnsupportedMethod を破損から切り分ける。
+        switch (ex.Code)
+        {
+            case SevenZipCode.WrongPassword:
+                errorInfo.ErrorType = ArchiveErrorType.EncryptedOrWrongPassword;
+                errorInfo.Message = App.Text("ErrorHandler.EncryptedOrWrongPassword");
+                errorInfo.Details = App.Text("ErrorHandler.EncryptedOrWrongPasswordDetail", archivePath);
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.EncryptedOrWrongPasswordAction");
+                errorInfo.IsRecoverable = true;
+                break;
+
+            case SevenZipCode.UnsupportedMethod:
+                errorInfo.ErrorType = ArchiveErrorType.UnsupportedFormat;
+                errorInfo.Message = App.Text("ErrorHandler.UnsupportedFormat");
+                errorInfo.Details = App.Text("ErrorHandler.UnsupportedFormatDetail", Path.GetExtension(archivePath));
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.UnsupportedFormatAction");
+                errorInfo.IsRecoverable = false;
+                break;
+
+            default:
+                // DataError / CrcError / HeadersError / IsNotArc / UnexpectedEnd / DataAfterEnd /
+                // Unavailable / UnknownError → アーカイブ破損として扱う。
+                errorInfo.ErrorType = ArchiveErrorType.CorruptedFile;
+                errorInfo.Message = App.Text("ErrorHandler.Corrupted");
+                errorInfo.Details = GetCorruptionDetails(ex, archivePath);
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.CorruptedAction");
+                errorInfo.IsRecoverable = false;
+                break;
+        }
+    }
+
+    /// <summary>ディスク容量不足としてエラー情報を設定する。</summary>
+    private static void ApplyDiskSpace(ArchiveErrorInfo errorInfo, string outputPath)
+    {
+        errorInfo.ErrorType = ArchiveErrorType.InsufficientDiskSpace;
+        errorInfo.Message = App.Text("ErrorHandler.DiskFull");
+        errorInfo.Details = App.Text("ErrorHandler.DiskFullDetail", outputPath);
+        errorInfo.RecommendedAction = App.Text("ErrorHandler.DiskFullAction");
+        errorInfo.IsRecoverable = true;
+    }
+
+    /// <summary>
+    /// 外部デバイス切断としてエラー情報を設定する。USB SSD のスリープ / NAS タイムアウト /
+    /// リムーバブルメディア取り外しが主因で、リトライ不能・再接続が必要。RTK レビュー #F-003 対応。
+    /// </summary>
+    private static void ApplyDeviceDisconnected(ArchiveErrorInfo errorInfo, string outputPath)
+    {
+        errorInfo.ErrorType = ArchiveErrorType.DeviceDisconnected;
+        errorInfo.Message = App.Text("ErrorHandler.DeviceDisconnected");
+        errorInfo.Details = App.Text("ErrorHandler.DeviceDisconnectedDetail", outputPath);
+        errorInfo.RecommendedAction = App.Text("ErrorHandler.DeviceDisconnectedAction");
+        errorInfo.IsRecoverable = true;
+    }
+
+    /// <summary>ファイル使用中としてエラー情報を設定する。</summary>
+    private static void ApplyFileInUse(ArchiveErrorInfo errorInfo, string archivePath)
+    {
+        errorInfo.ErrorType = ArchiveErrorType.FileInUse;
+        errorInfo.Message = App.Text("ErrorHandler.FileInUse");
+        errorInfo.Details = App.Text("ErrorHandler.FileInUseDetail", archivePath);
+        errorInfo.RecommendedAction = App.Text("ErrorHandler.FileInUseAction");
+        errorInfo.IsRecoverable = true;
+    }
+
+    /// <summary>
     /// アーカイブファイルの破損状況を詳細に分析
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
@@ -251,6 +309,8 @@ public static class ArchiveErrorHandler
 
         try
         {
+            // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→使用→Dispose を覆う）
+            using var nativeGate = NativeArchiveGate.Enter();
             using var reader = new ArchiveReader(archivePath);
 
             // アーカイブの基本情報を取得

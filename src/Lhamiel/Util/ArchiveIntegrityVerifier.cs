@@ -14,8 +14,9 @@ internal static class ArchiveIntegrityVerifier
 
     /// <summary>
     /// アーカイブの整合性を検証する（展開完了後に呼び出すことを想定）。
-    /// 7z.dll の Test モードで全エントリをメモリ上に展開し、CRC 検証を行う。
-    /// ディスクには書き込まない。
+    /// 7z.dll の Test モードで各エントリを順次デコードしながら CRC を照合する。
+    /// データはストリーム的に処理され、全エントリをメモリ上に同時展開することも、
+    /// ディスクへ書き出すこともしない。
     /// </summary>
     internal static async Task<VerificationResult> VerifyArchiveAsync(
         string archivePath, CancellationToken cancellationToken = default)
@@ -30,6 +31,8 @@ internal static class ArchiveIntegrityVerifier
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→Test→Dispose を覆う）
+                using var nativeGate = NativeArchiveGate.Enter(cancellationToken);
                 using var reader = LockedFileRetryPolicy.Execute(() => new ArchiveReader(PathValidator.EnsureLongPathPrefix(archivePath)), archivePath);
 
                 // パスワード保護アーカイブはパスワードなしで Test() すると失敗するためスキップ。

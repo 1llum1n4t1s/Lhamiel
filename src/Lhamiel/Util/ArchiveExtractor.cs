@@ -170,6 +170,8 @@ public static class ArchiveExtractor
 
         try
         {
+            // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→使用→Dispose を覆う）
+            using var nativeGate = NativeArchiveGate.Enter();
             using var reader = new ArchiveReader(archivePath);
             var structure = ParseArchiveRootLevel(reader);
 
@@ -236,6 +238,37 @@ public static class ArchiveExtractor
         var dir = Path.Combine(basePath ?? Path.GetTempPath(), $"{TempDirPrefix}{suffix}_{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
         return dir;
+    }
+
+    /// <summary>
+    /// 展開用の一時ディレクトリを、可能なら <paramref name="outputPath"/> と同一ボリューム
+    /// （その親ディレクトリ）に作成する。
+    /// </summary>
+    /// <remarks>
+    /// 一時ディレクトリの中身は最終的に <see cref="MoveDirectoryContents"/> で
+    /// <paramref name="outputPath"/> へ移動される。<see cref="Directory.Move"/> は<b>同一ボリューム内
+    /// でのみ</b>機能し、別ボリュームだと <c>ERROR_NOT_SAME_DEVICE</c> (IOException) を投げる。
+    /// さらに別ボリュームではコピーになり 2 倍の空き容量と時間を要する。出力ボリュームに
+    /// 一時ディレクトリを置くことで、移動を高速・確実なリネームにする。
+    /// 出力ボリュームへの作成に失敗した場合のみ %TEMP% にフォールバックする
+    /// （その場合はサブディレクトリを含む書庫で移動が失敗しうるが、従来挙動を踏襲）。
+    /// </remarks>
+    private static string CreateExtractionTempDirectory(string outputPath)
+    {
+        var baseDir = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(outputPath));
+        if (!string.IsNullOrEmpty(baseDir))
+        {
+            try
+            {
+                if (!Directory.Exists(baseDir)) Directory.CreateDirectory(baseDir);
+                return CreateTempDirectory("Extract", baseDir);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                Logger.Log($"出力ボリュームへの一時ディレクトリ作成に失敗、%TEMP% にフォールバック: {baseDir}, {ex.Message}", LogLevel.Warning);
+            }
+        }
+        return CreateTempDirectory("Extract");
     }
 
     /// <summary>
@@ -466,6 +499,8 @@ public static class ArchiveExtractor
 
         try
         {
+            // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→使用→Dispose を覆う）
+            using var nativeGate = NativeArchiveGate.Enter();
             using var reader = new ArchiveReader(archivePath);
             // outputPath の絶対化はループ外で 1 回だけ行い、ループ内は正規化済み版を使う
             var normalizedOutputBase = NormalizeBaseDirectory(outputPath);
@@ -491,6 +526,20 @@ public static class ArchiveExtractor
                 // 旧実装の File.Exists + new FileInfo で 2 回 stat していたのを 1 回にまとめる。
                 // 数千ファイルのアーカイブで I/O コール数を半減できる。
                 var destInfo = new FileInfo(destFilePath);
+
+                // NFC 正規化 ON の場合、destFilePath は NFC 形のパスになる。一方、ライブラリの
+                // reader.Save は生のエントリ名 (macOS 由来は NFD) でファイルを書くため、過去に展開した
+                // 既存ファイルは NFD 形で残っていることがある。NFC 形だけで存在チェックすると、その
+                // NFD 既存ファイルとの衝突を取りこぼし「上書き確認なし」で消えてしまう。生エントリ形でも
+                // 突き合わせて、NFD/NFC のズレで衝突警告が抜けないようにする（MotW 伝播は実体列挙のため影響なし）。
+                if (!destInfo.Exists && normalizeUnicode &&
+                    TryResolveSafeEntryPathFromNormalized(normalizedOutputBase, relativePath, out var rawDestPath, normalizeUnicode: false) &&
+                    !string.Equals(rawDestPath, destFilePath, StringComparison.Ordinal))
+                {
+                    var rawInfo = new FileInfo(rawDestPath);
+                    if (rawInfo.Exists) destInfo = rawInfo;
+                }
+
                 if (!destInfo.Exists) continue;
 
                 // 衝突発見: 左=アーカイブ内ファイル（ソース）、右=既存ファイル（宛先）
@@ -955,11 +1004,12 @@ public static class ArchiveExtractor
             }
         }
 
-        var tempOutputPath = CreateTempDirectory("Extract");
+        var tempOutputPath = CreateExtractionTempDirectory(outputPath);
 
-        // tempOutputPath は %TEMP% 配下に作られるため、outputPath と別ドライブの場合に
-        // TEMP 側の空き容量枯渇を外側の periodicCheck（outputPath 監視）では検出できない。
-        // 両者が別ドライブのときのみ TEMP 側も並行監視する（同一ドライブなら冗長なので省略）。
+        // 通常 tempOutputPath は outputPath と同一ボリュームに作られる（CreateExtractionTempDirectory）。
+        // ただし出力ボリュームへの作成に失敗して %TEMP% にフォールバックした場合は別ドライブに
+        // なりうる。その場合に TEMP 側の空き容量枯渇を外側の periodicCheck（outputPath 監視）では
+        // 検出できないため、両者が別ドライブのときのみ TEMP 側も並行監視する（同一ドライブなら省略）。
         // requiredBytes は上位で確保済みなので 0 を渡し、絶対閾値のみで判定。
         using var innerCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var tempDriveRoot = Path.GetPathRoot(tempOutputPath);
@@ -1043,6 +1093,12 @@ public static class ArchiveExtractor
             // 圧縮直後の自プロセスロックや Defender / Indexer の瞬間ロックで
             // SHARING_VIOLATION (0x80070020) が出ることがあるので OpenArchiveReaderWithRetry で
             // 指数バックオフリトライする（200ms → 400ms、計 3 回）。
+            // ネイティブ 7z.dll 直列化ゲート: ライブラリ (1llum1n4t1s.Sevenzip) の共有シングルトン
+            // SevenZipLibrary は ArchiveReader の並行動作をサポートしないため、reader の
+            // 生成 → Save → Dispose 全体を 1 スロットに直列化する（バッチ展開の IoBoundParallelism
+            // 並列実行時もネイティブ接触が重ならないよう保証）。reader 生成前に取得し、reader の
+            // using より外側で取得することで「Acquire → 使用 → Dispose」全体を覆う。
+            using (var nativeGate = await NativeArchiveGate.EnterAsync(cancellationToken))
             using (var reader = await OpenArchiveReaderWithRetry(archivePath, passwordQuery, extractOption, cancellationToken))
             {
                 Logger.Log($"一時ディレクトリへの展開処理開始: {archivePath} -> {tempOutputPath}");
@@ -1232,6 +1288,28 @@ public static class ArchiveExtractor
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
 
         }
+        catch (OperationCanceledException oce) when (!cancellationToken.IsCancellationRequested && oce.InnerException is not null)
+        {
+            // ユーザー主導でないキャンセル。ライブラリ (1llum1n4t1s.Sevenzip 1.0.73) が I/O 失敗
+            // (ディスク満杯・デバイス切断等) を OperationCanceledException で包んで返す経路があり、
+            // これをキャンセル扱いすると本当の失敗が握り潰される。一時ディレクトリを掃除した上で
+            // 内側の実例外を昇格させてエラーとして処理する（修正済みライブラリでは
+            // SevenZipException で返るためこの経路には入らない）。
+            Logger.Log($"非キャンセル要因の中断を検出、内部例外へ昇格: {oce.InnerException.Message}");
+            try
+            {
+                if (Directory.Exists(tempOutputPath))
+                {
+                    RemoveReadOnlyAttributes(tempOutputPath);
+                    Directory.Delete(tempOutputPath, true);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                Logger.Log($"中断時の一時ディレクトリ削除に失敗しました: {tempOutputPath}, {ex.Message}", LogLevel.Warning);
+            }
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(oce.InnerException);
+        }
         catch (OperationCanceledException)
         {
             Logger.Log($"展開処理がキャンセルされました。一時ディレクトリを削除: {tempOutputPath}");
@@ -1276,6 +1354,25 @@ public static class ArchiveExtractor
         {
             // TEMP ドライブ監視を停止（開始していない場合は no-op）
             tempPeriodicCheck?.Dispose();
+
+            // 一時展開ディレクトリを確実に掃除する。CreateExtractionTempDirectory は temp を
+            // outputPath と同一ボリューム（その親 = outputPath の親ディレクトリ）に作るため、
+            // 成功時に MoveDirectoryContents で中身を移しても空の temp ディレクトリが残る。
+            // これを放置すると出力先に `<prefix>Extract<guid>` の空フォルダが溜まる（バッチ展開時は
+            // 出力ディレクトリ直下に展開数だけ残る）。成功・失敗・キャンセルいずれの経路でも
+            // ここで best-effort 削除する（エラー/キャンセル経路の catch が先に削除済みなら no-op）。
+            try
+            {
+                if (Directory.Exists(tempOutputPath))
+                {
+                    RemoveReadOnlyAttributes(tempOutputPath);
+                    Directory.Delete(tempOutputPath, true);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                Logger.Log($"一時展開ディレクトリの最終掃除に失敗しました（手動削除可能）: {tempOutputPath}, {ex.Message}", LogLevel.Warning);
+            }
         }
     }
 

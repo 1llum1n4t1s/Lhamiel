@@ -46,6 +46,8 @@ public static class DiskSpaceChecker
     {
         try
         {
+            // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→使用→Dispose を覆う）
+            using var nativeGate = NativeArchiveGate.Enter();
             using var reader = new ArchiveReader(archivePath);
             // item.Length の型に依存せず必ず long 加算するためキャストを明示。
             // 2GB 超の展開時に int Sum でのオーバーフローを防ぐ。

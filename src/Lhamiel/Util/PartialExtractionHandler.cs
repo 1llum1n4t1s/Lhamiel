@@ -139,6 +139,11 @@ public class PartialExtractionHandler
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→Save→Dispose を覆う）。
+            // reader はメソッド全体で保持され、ExtractArchiveToTemporaryPath の Save がネイティブ接触。
+            // 以降の TryExtractEntryAsync は temp ディレクトリからのファイルコピー、AnalyzeError は
+            // 例外分類のみでいずれもネイティブ archive を開かないため、ゲートの入れ子は発生しない。
+            using var nativeGate = await NativeArchiveGate.EnterAsync(cancellationToken);
             using var reader = new ArchiveReader(archivePath);
             var items = reader.Items.ToList();
             result.TotalFiles = items.Count;
