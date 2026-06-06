@@ -464,6 +464,100 @@ public class ArchiveCompressorTests
     }
 
     [Fact]
+    public async Task ScanSourceFiles_NestedGitignore_XcodeDirectoryReinclude_KeepsSharedFiles()
+    {
+        // バグ B の end-to-end 回帰テスト。標準 Xcode .gitignore（`*.xcodeproj/*` で潰し、
+        // `!*.xcodeproj/xcshareddata/` 等のディレクトリ否定で共有メタを再包含）を実 DFS に通し、
+        // git と同じく「再包含ディレクトリ配下の共有ファイルが含まれる」ことを保証する。
+        // 構造（writingtoolsjp/macos/ を再現）。すべて実 git の挙動（git check-ignore で検証済）と一致する:
+        //   testRoot/macos/.gitignore
+        //   testRoot/macos/app.xcodeproj/project.pbxproj                                  → 含む（直接ファイル否定）
+        //   testRoot/macos/app.xcodeproj/xcshareddata/xcschemes/App.xcscheme              → 含む（★修正点: dir 否定再包含）
+        //   testRoot/macos/app.xcodeproj/xcshareddata/WorkspaceSettings.xcsettings        → 除外（再包含 dir 配下でも個別 re-exclude が効く）
+        //   testRoot/macos/app.xcodeproj/project.xcworkspace/contents.xcworkspacedata     → 含む（★修正点: dir 否定再包含 + file 否定）
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var macos = Path.Combine(testRoot, "macos");
+        var proj = Path.Combine(macos, "app.xcodeproj");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(proj, "xcshareddata", "xcschemes"));
+            Directory.CreateDirectory(Path.Combine(proj, "project.xcworkspace"));
+            File.WriteAllText(Path.Combine(macos, ".gitignore"), string.Join('\n',
+            [
+                "*.xcworkspace",
+                "*.xcodeproj/*",
+                "!*.xcodeproj/project.pbxproj",
+                "!*.xcodeproj/xcshareddata/",
+                "!*.xcodeproj/project.xcworkspace/",
+                "!*.xcworkspace/contents.xcworkspacedata",
+                "**/xcshareddata/WorkspaceSettings.xcsettings",
+            ]));
+            File.WriteAllText(Path.Combine(proj, "project.pbxproj"), "x");
+            File.WriteAllText(Path.Combine(proj, "xcshareddata", "xcschemes", "App.xcscheme"), "x");
+            File.WriteAllText(Path.Combine(proj, "xcshareddata", "WorkspaceSettings.xcsettings"), "x");
+            File.WriteAllText(Path.Combine(proj, "project.xcworkspace", "contents.xcworkspacedata"), "x");
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [testRoot],
+                GitignoreMatcher.Empty,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true,
+                globalIgnoreLines: Array.Empty<string>());
+
+            // 直接ファイル否定（従来も OK）
+            Assert.Contains(result, r => r.fullPath.EndsWith(Path.Combine("app.xcodeproj", "project.pbxproj")));
+            // ★ バグ B 修正: ディレクトリ否定再包含の配下が含まれる
+            Assert.Contains(result, r => r.fullPath.EndsWith(Path.Combine("xcschemes", "App.xcscheme")));
+            Assert.Contains(result, r => r.fullPath.EndsWith(Path.Combine("project.xcworkspace", "contents.xcworkspacedata")));
+            // 再包含ディレクトリ配下でも、個別 re-exclude パターンに当たるファイルは除外されたまま（git と一致）
+            Assert.DoesNotContain(result, r => r.fullPath.EndsWith("WorkspaceSettings.xcsettings"));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
+    public async Task ScanSourceFiles_NestedGitignore_AllowListStarBangSrc_StillExcludesSubtree()
+    {
+        // Codex P2 の end-to-end 回帰防止。`*` + `!src/` の allow-list で、再包含された src の
+        // 配下サブディレクトリ src/sub は枝刈りされ、その配下ファイルがアーカイブに混入しないことを保証する
+        // （git と一致: src/keep.txt も src/sub/file.txt も top.txt も全て除外）。
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var proj = Path.Combine(testRoot, "proj");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(proj, "src", "sub"));
+            File.WriteAllText(Path.Combine(proj, ".gitignore"), string.Join('\n', ["*", "!src/"]));
+            File.WriteAllText(Path.Combine(proj, "top.txt"), "x");
+            File.WriteAllText(Path.Combine(proj, "src", "keep.txt"), "x");
+            File.WriteAllText(Path.Combine(proj, "src", "sub", "file.txt"), "x");
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [testRoot],
+                GitignoreMatcher.Empty,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true,
+                globalIgnoreLines: Array.Empty<string>());
+
+            // ★ Codex P2: 枝刈りされた src/sub 配下は混入しない
+            Assert.DoesNotContain(result, r => r.fullPath.EndsWith(Path.Combine("sub", "file.txt")));
+            // src 直下のファイルも top.txt も `*` で除外されたまま
+            Assert.DoesNotContain(result, r => r.fullPath.EndsWith(Path.Combine("src", "keep.txt")));
+            Assert.DoesNotContain(result, r => r.fullPath.EndsWith("top.txt"));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
     public async Task CompressFilesAsync_WhenSevenZipExceptionThrown_DeletesPartialOutput()
     {
         // Windows 固有: 「存在しないドライブレター」を出力先にして例外を誘発する。

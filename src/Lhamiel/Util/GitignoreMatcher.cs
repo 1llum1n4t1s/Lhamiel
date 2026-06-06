@@ -19,9 +19,19 @@ namespace Lhamiel.Util;
 ///   <item>マッチは大小区別なし（Windows ファイルシステム互換）。</item>
 /// </list>
 ///
-/// .gitignore の挙動と異なる点:
+/// .gitignore の挙動との対応:
 /// <list type="bullet">
-///   <item>ディレクトリのリインクルードは行わない（除外ディレクトリ配下は枝刈りされるため、否定で取り戻せない）。</item>
+///   <item>
+///     ディレクトリのリインクルード（<c>*.xcodeproj/*</c> + <c>!*.xcodeproj/xcshareddata/</c> のような
+///     「中身を潰してから一部ディレクトリを否定で取り戻す」構文）は、<c>traversalMode: true</c> で評価したときに
+///     git と同じ結果になる。この経路では各エントリを「自分自身のレベル」だけで照合し、除外の推移性
+///     （親が除外なら配下も除外）は呼び出し側の DFS 枝刈り（除外ディレクトリには降りない）が担保する。
+///     これにより、否定で再包含されたディレクトリの配下が正しく救われる。
+///   </item>
+///   <item>
+///     <c>traversalMode: false</c>（既定）は単一パスを推移マッチ（<c>foo</c> は <c>foo/bar</c> にも一致）で評価する
+///     フラットモード。DFS で枝刈りしない単発ファイル判定向け。
+///   </item>
 ///   <item>パス区切りは <c>/</c> に正規化済みであることを前提とする（呼び出し側で <see cref="NormalizePath"/> を使用）。</item>
 /// </list>
 ///
@@ -140,7 +150,13 @@ public sealed class GitignoreMatcher
     /// 単一ファイル判定用のフラグ。<c>true</c> を渡すとアンカードルール（先頭 <c>/</c> や中間 <c>/</c> を持つルール）を
     /// スキップする。<c>relativePath</c> がファイル名のみで「ルートからの相対構造」が無い場合に使う。
     /// </param>
-    public bool IsExcluded(string relativePath, bool isDirectory, bool singleFileMode = false)
+    /// <param name="traversalMode">
+    /// DFS 枝刈りと併用する走査モード。<c>true</c> のとき各エントリを「自分自身のレベル」だけで照合し、
+    /// 親→子孫への推移マッチを行わない（除外の推移性は呼び出し側の DFS 枝刈りが担保する）。これにより
+    /// 中間ディレクトリの否定再包含（<c>*.xcodeproj/*</c> + <c>!*.xcodeproj/xcshareddata/</c> など）が git と同じく
+    /// 配下を救えるようになる。<c>false</c>（既定）は従来どおりの推移マッチ（フラットモード）。
+    /// </param>
+    public bool IsExcluded(string relativePath, bool isDirectory, bool singleFileMode = false, bool traversalMode = false)
     {
         if (_layers.Length == 0)
             return false;
@@ -164,6 +180,30 @@ public sealed class GitignoreMatcher
                 if (singleFileMode && rule.Anchored)
                     continue;
 
+                if (traversalMode)
+                {
+                    // ── traversal 経路（DFS 枝刈り併用）──
+                    // 各エントリを「自分自身のレベル」だけで照合する（推移マッチ無し = ExactPathRegex を使う）。
+                    // 除外の推移性は呼び出し側の DFS（除外ディレクトリには降りない）が担保するため、ここで
+                    // 親パターンを子孫へ波及させない。これにより git 仕様どおり、中間ディレクトリの否定再包含
+                    // （`*.xcodeproj/*` + `!*.xcodeproj/xcshareddata/` 等）が配下ファイルを正しく救える。
+                    // globstar ルール（`foo/**`）は `/` を跨ぐのが正しい挙動なので ExactPathRegex を持たず、通常 Regex を使う。
+                    var regexForMatch = rule.ExactPathRegex ?? rule.Regex;
+                    if (rule.DirectoryOnly)
+                    {
+                        // ディレクトリ限定ルールはディレクトリにのみ自身レベルで一致する。
+                        // ファイルへの波及は DFS 枝刈りが担当するため、ここでは扱わない。
+                        if (isDirectory && SafeIsMatch(regexForMatch, localPath))
+                            excluded = !rule.Negated;
+                    }
+                    else if (SafeIsMatch(regexForMatch, localPath))
+                    {
+                        excluded = !rule.Negated;
+                    }
+                    continue;
+                }
+
+                // ── flat 経路（単一パス照合・従来挙動）──
                 // MatchTimeout 超過時は ReDoS パターンとして「マッチしない」扱いに倒す（安全側）。
                 // ユーザー編集の `.lhaignore` / nested `.gitignore` で catastrophic backtracking を
                 // 起こすパターンが書かれても圧縮スキャンが固まらないように保護する。
@@ -178,8 +218,8 @@ public sealed class GitignoreMatcher
                         // 通常 regex は descendant にもマッチするが、Git 仕様では "!src/" は
                         // src ディレクトリそのものだけを traversable にし、src/sub 等の descendant
                         // は parent excluded の状態のまま (re-include は伝播しない)。
-                        var regexToUse = rule.Negated && rule.DirectoryExactRegex is not null
-                            ? rule.DirectoryExactRegex
+                        var regexToUse = rule.Negated && rule.ExactPathRegex is not null
+                            ? rule.ExactPathRegex
                             : rule.Regex;
                         if (SafeIsMatch(regexToUse, localPath))
                             excluded = !rule.Negated;
@@ -319,11 +359,13 @@ public sealed class GitignoreMatcher
         if (regex is null)
             return null;
 
-        // Codex P2 指摘対応: negated + directoryOnly のときは「対象ディレクトリそのもの」だけ
-        // 再包含するために exact 用 regex も生成する。Git 仕様で親ディレクトリが除外されている
-        // 場合は descendant に traversal を伝播させないため (詳細は Rule.DirectoryExactRegex)。
+        // 各エントリを「自分自身のレベル」だけで照合する exact 用 regex（末尾 $）を生成する。
+        // traversalMode（DFS 枝刈り併用）で親→子孫への推移マッチを断ち、中間ディレクトリの否定再包含を
+        // 正しく機能させるために、globstar 以外の全ルールで作る。flat 経路の negated + directoryOnly でも
+        // 従来どおりこの regex で「対象ディレクトリそのものだけ再包含」する。
+        // globstar（`foo/**`）は `/` を跨ぐのが正しいので exact 版は作らず、traversal でも通常 Regex を使う。
         Regex? exactRegex = null;
-        if (negated && directoryOnly && !endsWithDoubleStar)
+        if (!endsWithDoubleStar)
         {
             exactRegex = TryBuildRegex(body, anchored, endsWithDoubleStar, exactMatch: true);
         }
@@ -565,19 +607,20 @@ public sealed class GitignoreMatcher
         sb.Append(c);
     }
 
-    /// <param name="Regex">通常マッチ用の regex (末尾 <c>(?:/.*)?$</c> 付きで descendant も巻き込む)。</param>
-    /// <param name="DirectoryExactRegex">
-    /// negated + directoryOnly ルールのときだけ生成される、対象ディレクトリそのものだけを exact match
-    /// する regex (末尾 <c>$</c> のみ、descendant を巻き込まない)。
+    /// <param name="Regex">通常マッチ用の regex (末尾 <c>(?:/.*)?$</c> 付きで descendant も巻き込む)。flat 経路で使用。</param>
+    /// <param name="ExactPathRegex">
+    /// globstar 以外のルールで生成される、対象パスそのものだけを exact match する regex (末尾 <c>$</c> のみ、
+    /// descendant を巻き込まない)。<c>traversalMode</c>（DFS 枝刈り併用）で各エントリを自身レベルだけ照合し、
+    /// 親パターンの子孫への推移マッチを断つために使う。これにより git 仕様どおり、中間ディレクトリの否定再包含
+    /// （<c>*.xcodeproj/*</c> + <c>!*.xcodeproj/xcshareddata/</c> 等）で配下ファイルが正しく救われる。
     /// <para>
-    /// Codex P2 指摘対応: Git 仕様では「親ディレクトリが除外されているとき内部ファイル / サブディレクトリ
-    /// は re-include できない」。例: <c>*</c> + <c>!src/</c> + <c>!src/sub/file</c> の allow-list 構成で
-    /// 旧実装は <c>src/sub</c> も <c>!src/</c> でマッチして scanning を継続し、後の file 再包含で
-    /// <c>src/sub/file</c> がアーカイブに入ってしまった。negated directory rule は対象 dir そのものだけ
-    /// 再包含し、descendant への伝播を断つ必要がある。
+    /// flat 経路の negated + directoryOnly でも「対象ディレクトリそのものだけ再包含」に流用する（Codex P2 指摘対応:
+    /// <c>*</c> + <c>!src/</c> の allow-list 構成で、再包含された <c>src</c> 配下の <c>src/sub</c> 等が枝刈りされ続け、
+    /// 配下ファイルがアーカイブに入らないようにする）。globstar（<c>foo/**</c>）は <c>/</c> を跨ぐのが正しいので
+    /// 生成されず（<c>null</c>）、traversal でも通常 Regex を使う。
     /// </para>
     /// </param>
-    private sealed record Rule(Regex Regex, Regex? DirectoryExactRegex, bool Negated, bool DirectoryOnly, bool Anchored);
+    private sealed record Rule(Regex Regex, Regex? ExactPathRegex, bool Negated, bool DirectoryOnly, bool Anchored);
 
     /// <summary>
     /// 1 つの <c>.gitignore</c> ファイル（または <c>.lhaignore</c>）のスコープを表す layer。

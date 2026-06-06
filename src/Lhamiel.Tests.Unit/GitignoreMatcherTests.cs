@@ -556,4 +556,118 @@ public class GitignoreMatcherTests
         Assert.True(middle.IsExcluded("foo/x/bar", false));
         Assert.True(middle.IsExcluded("foo/x/y/z/bar", false));
     }
+
+    // === traversalMode: DFS 枝刈り併用の git 忠実な「ディレクトリ否定再包含」===
+    // すべて実 git の挙動（git check-ignore で検証済）と一致することを保証する。
+    // traversalMode では各エントリを「自分自身のレベル」だけで照合し、除外の推移性は
+    // 呼び出し側の DFS 枝刈り（除外ディレクトリには降りない）が担保する。
+
+    // 標準 Xcode .gitignore（github/gitignore の Swift/Xcode テンプレートと同型）。
+    // これがバグ B の現場: `*.xcodeproj/*` で潰し、`!...xcshareddata/` 等で再包含する。
+    private static readonly string[] XcodeGitignore =
+    [
+        "*.xcworkspace",
+        "*.xcodeproj/*",
+        "!*.xcodeproj/project.pbxproj",
+        "!*.xcodeproj/xcshareddata/",
+        "!*.xcodeproj/project.xcworkspace/",
+        "!*.xcworkspace/contents.xcworkspacedata",
+    ];
+
+    [Fact]
+    public void TraversalMode_XcodeReinclude_DescendantsOfReincludedDirectoryAreNotPruned()
+    {
+        // バグ B の修正検証: 否定で再包含されたディレクトリ（xcshareddata / project.xcworkspace）
+        // の配下が、git と同じく救われる。DFS が降りる前提の「ディレクトリは枝刈りされない／
+        // ファイルは除外されない」を per-level で確認する。
+        var m = GitignoreMatcher.Compile(XcodeGitignore);
+
+        // xcodeproj 自身は降りる
+        Assert.False(m.IsExcluded("app.xcodeproj", isDirectory: true, traversalMode: true));
+
+        // 直接ファイル否定: project.pbxproj は再包含される（従来も OK な経路）
+        Assert.False(m.IsExcluded("app.xcodeproj/project.pbxproj", isDirectory: false, traversalMode: true));
+
+        // ディレクトリ否定再包含: xcshareddata と配下 xcschemes は枝刈りされず降りる
+        Assert.False(m.IsExcluded("app.xcodeproj/xcshareddata", isDirectory: true, traversalMode: true));
+        Assert.False(m.IsExcluded("app.xcodeproj/xcshareddata/xcschemes", isDirectory: true, traversalMode: true));
+        // ★ バグ B の本体: 再包含ディレクトリ配下のスキームファイルが含まれる
+        Assert.False(m.IsExcluded("app.xcodeproj/xcshareddata/xcschemes/App.xcscheme", isDirectory: false, traversalMode: true));
+
+        // project.xcworkspace も再包含されて降り、contents.xcworkspacedata が含まれる
+        Assert.False(m.IsExcluded("app.xcodeproj/project.xcworkspace", isDirectory: true, traversalMode: true));
+        Assert.False(m.IsExcluded("app.xcodeproj/project.xcworkspace/contents.xcworkspacedata", isDirectory: false, traversalMode: true));
+    }
+
+    [Fact]
+    public void FlatMode_XcodeReinclude_DescendantFilesStillExcluded_DocumentsOldTransitiveBehavior()
+    {
+        // 対照: flat モード（既定）は従来どおり推移マッチするため、再包含ディレクトリ配下の
+        // 深いファイルは依然除外される（バグ B の挙動）。traversalMode との差分を固定する。
+        var m = GitignoreMatcher.Compile(XcodeGitignore);
+
+        // 直接ファイル否定は flat でも効く
+        Assert.False(m.IsExcluded("app.xcodeproj/project.pbxproj", isDirectory: false));
+        // しかしディレクトリ否定経由の深いファイルは flat では `*.xcodeproj/*` の推移マッチで除外されたまま
+        Assert.True(m.IsExcluded("app.xcodeproj/xcshareddata/xcschemes/App.xcscheme", isDirectory: false));
+    }
+
+    [Fact]
+    public void TraversalMode_CodexP2_AllowListStillExcludesSubtree()
+    {
+        // 回帰防止: `*` + `!src/` の allow-list では、再包含された src の配下サブディレクトリ
+        // src/sub は own-level で `*` に一致して枝刈りされ、その配下ファイルは含まれない（git と一致）。
+        var m = GitignoreMatcher.Compile(["*", "!src/"]);
+
+        // src 自身は再包含されて降りる
+        Assert.False(m.IsExcluded("src", isDirectory: true, traversalMode: true));
+        // src 直下のファイルは `*` で除外（再包含は dir のみ・file には及ばない）
+        Assert.True(m.IsExcluded("src/keep.txt", isDirectory: false, traversalMode: true));
+        // ★ Codex P2 の核: src/sub は枝刈りされる（配下 file は DFS で到達せず除外）
+        Assert.True(m.IsExcluded("src/sub", isDirectory: true, traversalMode: true));
+        // トップレベルの他ファイルも除外
+        Assert.True(m.IsExcluded("top.txt", isDirectory: false, traversalMode: true));
+    }
+
+    [Fact]
+    public void TraversalMode_DirContentsGlob_vs_DirItself_Distinction()
+    {
+        // git の重要な区別:
+        //  `d/*` は d 自体に一致しない → d に降りられる → `!d/sub/` で sub 配下が救われる
+        //  `d/`  は d 自体に一致する   → d ごと枝刈り       → `!d/sub/` は無効（親が除外）
+        var contents = GitignoreMatcher.Compile(["d/*", "!d/sub/"]);
+        Assert.False(contents.IsExcluded("d", isDirectory: true, traversalMode: true));            // d は降りる
+        Assert.True(contents.IsExcluded("d/a.txt", isDirectory: false, traversalMode: true));      // 直下ファイルは除外
+        Assert.False(contents.IsExcluded("d/sub", isDirectory: true, traversalMode: true));        // sub は再包含
+        Assert.False(contents.IsExcluded("d/sub/b.txt", isDirectory: false, traversalMode: true)); // sub 配下は救われる
+
+        var dirItself = GitignoreMatcher.Compile(["d/", "!d/sub/"]);
+        // d 自体が枝刈りされる → 配下は到達不能（git も d/sub/b.txt を ignore）
+        Assert.True(dirItself.IsExcluded("d", isDirectory: true, traversalMode: true));
+    }
+
+    [Fact]
+    public void TraversalMode_GlobstarReinclude_DescendantFilesStillExcluded()
+    {
+        // git: `foo/**` + `!foo/keep/` では、keep ディレクトリは再包含されるが `foo/**` は
+        // `/` を跨ぐので foo/keep/k.txt 自体に一致し続け、ファイルは依然 ignore。
+        var m = GitignoreMatcher.Compile(["foo/**", "!foo/keep/"]);
+
+        Assert.False(m.IsExcluded("foo", isDirectory: true, traversalMode: true));        // foo は降りる
+        Assert.False(m.IsExcluded("foo/keep", isDirectory: true, traversalMode: true));   // keep は再包含されて降りる
+        Assert.True(m.IsExcluded("foo/keep/k.txt", isDirectory: false, traversalMode: true)); // だが配下 file は globstar で除外
+        Assert.True(m.IsExcluded("foo/other", isDirectory: true, traversalMode: true));   // other は枝刈り
+    }
+
+    [Fact]
+    public void TraversalMode_PlainDirectoryRule_PrunesDirectory()
+    {
+        // 通常の `node_modules/` は traversalMode でもディレクトリ自体に一致して枝刈りされる
+        // （配下ファイルは DFS が到達せず除外）。回帰防止。
+        var m = GitignoreMatcher.Compile(["node_modules/"]);
+        Assert.True(m.IsExcluded("node_modules", isDirectory: true, traversalMode: true));
+        Assert.True(m.IsExcluded("a/node_modules", isDirectory: true, traversalMode: true));
+        // ファイル名が node_modules でも directoryOnly なので（traversal でも）一致しない
+        Assert.False(m.IsExcluded("node_modules", isDirectory: false, traversalMode: true));
+    }
 }

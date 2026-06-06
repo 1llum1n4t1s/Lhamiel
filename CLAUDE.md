@@ -91,7 +91,7 @@ Drag-and-drop drives the app:
 | `ArchiveProcessor` | Orchestrator — decides extract vs compress, manages workflow |
 | `ArchiveExtractor` | Extraction with `ShouldSkipFolderCreation`, `TryExtractEntryAsync` (retry with exponential backoff) |
 | `ArchiveCompressor` | Compression with Unicode NFC normalization, Hidden/System enumeration control, and `.gitignore` 互換除外マッチ (`GitignoreMatcher` + ディレクトリ枝刈り DFS) |
-| `GitignoreMatcher` | `.gitignore` 互換のパターンコンパイラ／マッチャ（`*` / `?` / `**` / `[abc]` / 否定 `!` / アンカー `/` / ディレクトリ限定 `/` 末尾） |
+| `GitignoreMatcher` | `.gitignore` 互換のパターンコンパイラ／マッチャ（`*` / `?` / `**` / `[abc]` / 否定 `!` / アンカー `/` / ディレクトリ限定 `/` 末尾）。`IsExcluded(..., traversalMode)` の 2 経路: **traversal**（DFS 枝刈り併用・各エントリを自身レベルだけで照合し、除外の推移性は DFS が担保）と **flat**（単発ファイル判定用・推移マッチ）。traversal では非 globstar ルールに末尾 `$` の `ExactPathRegex` を使い、git 同様に**ディレクトリ否定再包含**（`*.xcodeproj/*` + `!*.xcodeproj/xcshareddata/` 等で配下を救う）を正しく扱う。globstar（`foo/**`）は `/` を跨ぐので通常 `Regex` を使う |
 | `LhaignoreFile` | `%LocalAppData%\Lhamiel\.lhaignore` の I/O（読込・追記・削除・既定値リセット・移行）。`LoadMatcher()` で `GitignoreMatcher` を返す |
 | `ArchiveErrorHandler` | HResult-based error classification (二段判定: HResult → メッセージ走査フォールバック) |
 | `ArchiveIntegrityVerifier` | Post-extraction CRC verification via `reader.Test()` |
@@ -177,7 +177,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - **Mark of the Web**: 元アーカイブの Zone.Identifier ADS を展開ファイルに伝播（`Settings.PropagateMarkOfTheWeb`）
 - **Compression scan attributes**: `Settings.IncludeHiddenAndSystemEntries` が圧縮スキャン時の `EnumerationOptions.AttributesToSkip` を制御する。
 - **Compression exclusions**: `%LocalAppData%\Lhamiel\.lhaignore` に `.gitignore` 互換構文で記述。`GitignoreMatcher` が compile して `ArchiveCompressor` 側でディレクトリ枝刈り付きマッチを行う。UI 追加・削除・既定値リセット + 「除外設定ファイルを開く」（既定エディタで開く）の 4 操作で管理し、`FileSystemWatcher` が外部編集を検知して UI を再同期する。
-- **Nested .gitignore**: `Settings.RespectNestedGitignore` (default **false / オプトイン**) が ON なら、圧縮対象のサブディレクトリ内の `.gitignore` をスキャン前に発見し、各 `.gitignore` をそのスコープで `GitignoreMatcher.CompileLayered` に追加。`.lhaignore` の枝刈り後のディレクトリのみ探索する（node_modules 内の .gitignore は読まない）。
+- **Nested .gitignore**: `Settings.RespectNestedGitignore` (default **false / オプトイン**) が ON なら、圧縮対象のサブディレクトリ内の `.gitignore` をスキャン前に発見し、各 `.gitignore` をそのスコープで `GitignoreMatcher.CompileLayered` に追加。`.lhaignore` の枝刈り後のディレクトリのみ探索する（node_modules 内の .gitignore は読まない）。除外判定は DFS 枝刈り + `IsExcluded(traversalMode: true)` の「自身レベル照合」で行うため、git と同様に**ディレクトリ否定再包含**（`*.xcodeproj/*` + `!*.xcodeproj/xcshareddata/` で配下の共有ファイルを救い、`d/*`+`!d/sub/` と `d/`+`!d/sub/` の差も区別）を正しく扱う。なお `.gitignore` パターン一致のみで判定するため、git の「追跡済みファイルは ignore に勝つ」例外（`git add -f` した除外パターン該当ファイル）は再現しない。
 
 ## CI/CD
 

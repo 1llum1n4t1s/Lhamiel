@@ -697,8 +697,13 @@ public static class ArchiveCompressor
     /// <param name="matcher"><see cref="GitignoreMatcher"/>（.lhaignore および各 .gitignore から構築済）</param>
     /// <param name="rootDir">ソースルート（指定時は path をルート相対化）。<c>null</c> で単一ファイルモード</param>
     /// <param name="isDirectory">対象がディレクトリの場合は <c>true</c></param>
+    /// <param name="traversalMode">
+    /// DFS 枝刈りと併用する走査モード。<c>true</c> のとき各エントリを「自分自身のレベル」だけで照合し、
+    /// 除外の推移性は DFS 側の枝刈りに委ねる（中間ディレクトリの否定再包含を git 同等に扱うため）。
+    /// 単発ファイル判定など DFS を伴わない呼び出しは <c>false</c>（既定）。
+    /// </param>
     /// <returns>除外すべき場合は <c>true</c></returns>
-    internal static bool ShouldExcludeFile(string path, GitignoreMatcher matcher, string? rootDir = null, bool isDirectory = false)
+    internal static bool ShouldExcludeFile(string path, GitignoreMatcher matcher, string? rootDir = null, bool isDirectory = false, bool traversalMode = false)
     {
         if (!matcher.HasRules)
             return false;
@@ -724,7 +729,7 @@ public static class ArchiveCompressor
             singleFileMode = false;
         }
 
-        return matcher.IsExcluded(GitignoreMatcher.NormalizePath(relative), isDirectory, singleFileMode);
+        return matcher.IsExcluded(GitignoreMatcher.NormalizePath(relative), isDirectory, singleFileMode, traversalMode);
     }
 
     /// <summary>
@@ -946,7 +951,7 @@ public static class ArchiveCompressor
 
             foreach (var dir in dirs)
             {
-                if (ShouldExcludeFile(dir, matcher, root, isDirectory: true))
+                if (ShouldExcludeFile(dir, matcher, root, isDirectory: true, traversalMode: true))
                     continue;
                 yield return dir;
                 stack.Push(dir);
@@ -1006,13 +1011,13 @@ public static class ArchiveCompressor
 
             foreach (var file in files)
             {
-                if (!ShouldExcludeFile(file, matcher, root, isDirectory: false))
+                if (!ShouldExcludeFile(file, matcher, root, isDirectory: false, traversalMode: true))
                     yield return file;
             }
 
             foreach (var dir in dirs)
             {
-                if (!ShouldExcludeFile(dir, matcher, root, isDirectory: true))
+                if (!ShouldExcludeFile(dir, matcher, root, isDirectory: true, traversalMode: true))
                     stack.Push(dir);
             }
         }
