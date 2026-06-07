@@ -72,7 +72,7 @@ Drag-and-drop drives the app:
 
 **展開後にフォルダを開く**: フォルダ決定ロジックは `FolderOpener.GetExtractionFolderToOpen` に集約。呼び出し側は展開時の `createArchiveNameFolder` 設定値を渡す（展開中の設定変更による不整合を防止）
 
-**圧縮時のロック中ファイル対応**: ソースファイルは元パスのまま `ArchiveWriter.Add()` に渡す。ロック中のファイルはライブラリ（`1llum1n4t1s.Sevenzip`）の `UpdateCallback` が自動的に一時コピーして処理する。スキャン後に削除されたファイルは `File.Exists()` チェックでスキップし、残りのファイルで圧縮を続行する。
+**圧縮時のロック中ファイル対応**: ソースファイルは元パスのまま `ArchiveWriter.Add()` に渡す。ロック中のファイルはライブラリ（`1llum1n4t1s.Sevenzip`）の `UpdateCallback` が自動的に一時コピーして処理する。スキャン後に削除されたファイルは `File.Exists()` チェックでスキップし、残りのファイルで圧縮を続行する。**`writer.Add()` が `AccessException` を投げた場合（VS の `.vsidx` のように `FileShare.None` で握られていてライブラリの 2 段試行（`FileShare.Read` → `FileShare.ReadWrite|Delete`）で両方失敗するケース）は、当該ファイルのみログに warning を出してスキップし、残りで圧縮を続行する**（1 ファイルアクセス不能で全体を死なせない）。スキップ件数は完了直前に集約ログを残す。
 
 **圧縮時のファイル列挙・除外設定**:
 - `ArchiveCompressor.ScanSourceFiles` は `Settings` スナップショットと `GitignoreMatcher` を元に対象一覧を構築する。

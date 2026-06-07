@@ -148,6 +148,7 @@ public static class ArchiveCompressor
 
                     // ファイルとディレクトリを圧縮アーカイブに追加
                     // スキャン後にファイルが削除されている場合はスキップする
+                    var inaccessibleSkipped = 0;
                     foreach (var (fullPath, relativePath) in filesToCompress)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -168,7 +169,28 @@ public static class ArchiveCompressor
                             Logger.Log($"ファイルが見つかりません（スキップ）: {fullPath}");
                             continue;
                         }
-                        writer.Add(fullPath, relativePath);
+                        try
+                        {
+                            writer.Add(fullPath, relativePath);
+                        }
+                        catch (AccessException ex)
+                        {
+                            // ライブラリ (1llum1n4t1s.Sevenzip) の ArchiveWriter.AddItem は
+                            // FileShare.Read → FileShare.ReadWrite|Delete の 2 段階で読み取り試行し、
+                            // 両方失敗すると AccessException を投げる。Visual Studio の .vsidx 等
+                            // FileShare.None で握られたファイルはここに該当する。
+                            // 1 ファイルアクセス不能で圧縮全体を死なせず、ログに残してスキップ続行する。
+                            inaccessibleSkipped++;
+                            Logger.Log(
+                                $"ファイルにアクセスできません（スキップ）: {fullPath} - {ex.Message}",
+                                LogLevel.Warning);
+                        }
+                    }
+                    if (inaccessibleSkipped > 0)
+                    {
+                        Logger.Log(
+                            $"アクセス不能でスキップしたファイル: {inaccessibleSkipped}個（ログを確認してください）",
+                            LogLevel.Warning);
                     }
 
                     // 進捗スロットリング（UIスレッド負荷軽減用）

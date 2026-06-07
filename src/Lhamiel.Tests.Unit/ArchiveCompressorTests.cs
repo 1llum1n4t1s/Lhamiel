@@ -862,4 +862,46 @@ public class ArchiveCompressorTests
                 Directory.Delete(testRoot, true);
         }
     }
+
+    [Fact]
+    public async Task CompressFilesAsync_FileLockedWithFileShareNone_SkipsAndContinues()
+    {
+        // Visual Studio の .vsidx 等、FileShare.None で他プロセスが握っているファイルは
+        // ライブラリの ArchiveWriter.AddItem の fail-fast (FileShare.Read → FileShare.ReadWrite|Delete
+        // の 2 段試行) で両方失敗して AccessException が飛ぶ。1 ファイル不能で圧縮全体を
+        // 死なせず、残りのファイルで圧縮を続行することを検証する。
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testRoot, "Source");
+        try
+        {
+            Directory.CreateDirectory(sourceDir);
+            var readablePath = Path.Combine(sourceDir, "readable.txt");
+            var lockedPath = Path.Combine(sourceDir, "locked.bin");
+            File.WriteAllText(readablePath, "ok");
+            File.WriteAllText(lockedPath, "you cannot read me");
+
+            // FileShare.None で握る（VS の .vsidx 相当の共有モード）。
+            using var lockHandle = new FileStream(
+                lockedPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+            var zipPath = Path.Combine(testRoot, "out.zip");
+            await ArchiveCompressor.CompressFilesAsync(
+                [sourceDir], zipPath, Format.Zip,
+                new Progress<ProgressInfo>(),
+                TestContext.Current.CancellationToken);
+
+            Assert.True(File.Exists(zipPath), "アーカイブが生成されていない");
+
+            // 読めるファイルだけが入っていて、ロック中ファイルは抜けていること。
+            using var reader = new ArchiveReader(zipPath);
+            var names = reader.Items.Select(i => (i.FullName ?? string.Empty).Replace('\\', '/')).ToList();
+            Assert.Contains(names, n => n.EndsWith("readable.txt"));
+            Assert.DoesNotContain(names, n => n.EndsWith("locked.bin"));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
 }
