@@ -300,7 +300,12 @@ public static class Logger
     private static string ApplyRedaction(string message)
     {
         if (_redactionTokens.IsEmpty || string.IsNullOrEmpty(message)) return message;
-        foreach (var t in _redactionTokens.Keys)
+        // codex P2 #3382065857: 長い token を先に置換する。
+        // `abcd` と `abcdef` が同時にアクティブな状態で `abcdef` を含むメッセージを処理するとき、
+        // 辞書順任意で `abcd` を先に Replace すると "***ef" になり、ef が平文で残る。
+        // 降順 length でソートしてから置換すれば、長い prefix から先に当てて部分露出を防げる。
+        var orderedTokens = _redactionTokens.Keys.OrderByDescending(t => t.Length);
+        foreach (var t in orderedTokens)
         {
             if (!string.IsNullOrEmpty(t) && message.Contains(t, StringComparison.Ordinal))
                 message = message.Replace(t, "***", StringComparison.Ordinal);

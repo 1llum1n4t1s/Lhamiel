@@ -654,16 +654,45 @@ public static class ArchiveProcessor
                 // atomic swap: 圧縮が成功して初めて既存ファイルを破壊する
                 if (targetExists && !string.Equals(tempOutputPath, outputPath, StringComparison.OrdinalIgnoreCase))
                 {
+                    // codex P2 #3382065860: 既存削除→Move の途中で Move が AV ロック等で失敗すると
+                    // 既存が永久に失われる。バックアップ rename を挟んで、Move 失敗時に restore する。
+                    string? backupPath = null;
                     try
                     {
-                        if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
-                        else if (File.Exists(outputPath)) File.Delete(outputPath);
+                        backupPath = outputPath + ".lhamiel-bak-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                        if (Directory.Exists(outputPath)) Directory.Move(outputPath, backupPath);
+                        else if (File.Exists(outputPath)) File.Move(outputPath, backupPath);
                         File.Move(tempOutputPath, outputPath);
+                        // 成功: バックアップを削除
+                        try
+                        {
+                            if (File.Exists(backupPath)) File.Delete(backupPath);
+                            else if (Directory.Exists(backupPath)) Directory.Delete(backupPath, true);
+                        }
+                        catch (Exception cleanupEx)
+                        {
+                            Logger.Log($"バックアップ削除に失敗 (圧縮成功): {backupPath} ({cleanupEx.Message})", LogLevel.Warning);
+                        }
                         Logger.Log($"既存対象を圧縮成功後に置き換えました: {outputPath}");
                     }
                     catch (Exception ex)
                     {
                         Logger.Log($"atomic swap 失敗: {tempOutputPath} -> {outputPath} ({ex.Message})", LogLevel.Warning);
+                        // バックアップを元に戻す best-effort restore
+                        try
+                        {
+                            if (backupPath is not null)
+                            {
+                                if (File.Exists(backupPath) && !File.Exists(outputPath))
+                                    File.Move(backupPath, outputPath);
+                                else if (Directory.Exists(backupPath) && !Directory.Exists(outputPath))
+                                    Directory.Move(backupPath, outputPath);
+                            }
+                        }
+                        catch (Exception restoreEx)
+                        {
+                            Logger.Log($"バックアップ復元失敗: {backupPath} -> {outputPath} ({restoreEx.Message})", LogLevel.Error);
+                        }
                         try { if (File.Exists(tempOutputPath)) File.Delete(tempOutputPath); } catch { /* best-effort */ }
                         throw new InvalidOperationException(App.Text("Error.FileLocked", Path.GetFileName(outputPath)), ex);
                     }
@@ -1139,17 +1168,29 @@ public static class ArchiveProcessor
                     resolvedFiles, settingsOverride: settings,
                     password: mergedPasswordState.Password, encryptFileNames: mergedPasswordState.EncryptFileNames);
 
-                // atomic swap (codex P1 #3381582647)
+                // atomic swap (codex P1 #3381582647 / P2 #3382065860)
                 if (targetExists && !string.Equals(tempMergedOutputPath, outputPath, StringComparison.OrdinalIgnoreCase))
                 {
+                    string? backupPath = null;
                     try
                     {
-                        if (File.Exists(outputPath)) File.Delete(outputPath);
+                        backupPath = outputPath + ".lhamiel-bak-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                        if (File.Exists(outputPath)) File.Move(outputPath, backupPath);
                         File.Move(tempMergedOutputPath, outputPath);
+                        try { if (File.Exists(backupPath)) File.Delete(backupPath); } catch (Exception ce) { Logger.Log($"バックアップ削除に失敗: {backupPath} ({ce.Message})", LogLevel.Warning); }
                     }
                     catch (Exception ex)
                     {
                         Logger.Log($"まとめ圧縮 atomic swap 失敗: {tempMergedOutputPath} -> {outputPath} ({ex.Message})", LogLevel.Warning);
+                        try
+                        {
+                            if (backupPath is not null && File.Exists(backupPath) && !File.Exists(outputPath))
+                                File.Move(backupPath, outputPath);
+                        }
+                        catch (Exception restoreEx)
+                        {
+                            Logger.Log($"バックアップ復元失敗: {backupPath} -> {outputPath} ({restoreEx.Message})", LogLevel.Error);
+                        }
                         try { if (File.Exists(tempMergedOutputPath)) File.Delete(tempMergedOutputPath); } catch { /* best-effort */ }
                         throw new InvalidOperationException(App.Text("Error.FileLocked", Path.GetFileName(outputPath)), ex);
                     }
