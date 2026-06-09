@@ -98,6 +98,12 @@ public static class ArchiveProcessor
                 {
                     var ciphertext = CompressionPasswordSession.Protect(plaintext);
                     SettingsManager.Instance.MutateAndSave(s => s.EncryptedCompressionPassword = ciphertext);
+                    // codex P2 #3382276703: 設定パネルの「設定済 / 未設定」表示と
+                    // 「Clear」ボタンの enable 状態を即時更新する。
+                    // MainWindowViewModel.HasSavedPassword / SavedPasswordStatusText は
+                    // SettingsManager.Current 直読みのため、PropertyChanged を明示発火しないと
+                    // 次回起動まで UI が古い (Remember 初回保存後も「未設定」のまま、Clear 不可)。
+                    ViewModels.MainWindowViewModel.RaiseSavedPasswordExternallyChanged();
                 }
                 catch (Exception ex)
                 {

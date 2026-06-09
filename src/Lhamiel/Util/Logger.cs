@@ -328,7 +328,10 @@ public static class Logger
                 if (hit < 0) break;
                 anyHit = true;
                 for (var i = hit; i < hit + t.Length; i++) maskBits[i] = true;
-                idx = hit + t.Length;
+                // codex #3382276697: 自己 overlap する token (e.g. `aaa` in `aaaa`) を取りこぼさないよう
+                // `hit + t.Length` ではなく `hit + 1` で次の検索位置を 1 文字だけ進める。
+                // 既に hit 範囲は maskBits=true なので、その内側で再 hit しても結果は冪等。
+                idx = hit + 1;
             }
         }
         if (!anyHit) return message;

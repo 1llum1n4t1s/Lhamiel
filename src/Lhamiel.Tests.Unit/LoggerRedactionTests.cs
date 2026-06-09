@@ -60,6 +60,16 @@ public sealed class LoggerRedactionTests : IDisposable
     }
 
     [Fact]
+    public void ApplyRedaction_SelfOverlappingToken_FullyMasked()
+    {
+        // codex #3382276697: 自己 overlap する短い繰り返し token (`aaa` in `aaaa`) は
+        // advance を `+ t.Length` にすると 2 文字目から始まる出現を skip → 最後の `a` が残る。
+        // `+ 1` 進める実装なら全 4 文字が mask される。
+        Register("aaa");
+        Assert.Equal("***", Logger.ApplyRedaction("aaaa"));
+    }
+
+    [Fact]
     public void ApplyRedaction_SameLengthOverlapping_FullyMasked()
     {
         // round 6 adversarial: `abcd` + `cdef` (どちらも 4 文字、message=`abcdef`) で

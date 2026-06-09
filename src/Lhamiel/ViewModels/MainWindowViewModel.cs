@@ -156,6 +156,20 @@ public sealed partial class MainWindowViewModel : ObservableObject
         : App.Text("Settings.Compression.SavedPasswordStatus.NotSet");
 
     /// <summary>
+    /// VM 外 (ArchiveProcessor の Remember 初回保存等) で
+    /// <see cref="Settings.EncryptedCompressionPassword"/> が変化したとき発火する内部 event。
+    /// VM コンストラクタで購読し、<see cref="HasSavedPassword"/> /
+    /// <see cref="SavedPasswordStatusText"/> の PropertyChanged を再発火して
+    /// 設定パネルの「設定済 / 未設定」と「Clear」ボタンの enable 状態を即時更新する
+    /// (codex P2 #3382276703)。
+    /// </summary>
+    internal static event Action? SavedPasswordExternallyChanged;
+
+    /// <summary>VM 外から ciphertext 更新を通知するためのトリガー。</summary>
+    internal static void RaiseSavedPasswordExternallyChanged()
+        => SavedPasswordExternallyChanged?.Invoke();
+
+    /// <summary>
     /// MainWindow から drop ハンドリングする際に呼ぶ排他取得。同時 drop を 1 件目だけ処理し、2 件目以降は false で弾く。
     /// 戻り値の <see cref="IDisposable.Dispose"/> でガード解放。
     /// </summary>
@@ -633,6 +647,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         App.UpdateCheckStateChanged += OnAppUpdateCheckStateChanged;
         IsCheckingUpdate = App.IsUpdateCheckInProgress;
 
+        // ArchiveProcessor (Remember 初回保存) で SettingsManager の
+        // EncryptedCompressionPassword が外部更新されたとき、設定パネルの
+        // 「設定済 / 未設定」と Clear ボタン enable 状態を即時更新する
+        // (codex P2 #3382276703)。UI スレッドに必ず post する。
+        // round 7 adversarial: 再構築シナリオでの duplicate handler 蓄積を防ぐため
+        // -= してから += で idempotent に subscribe する。
+        SavedPasswordExternallyChanged -= OnSavedPasswordExternallyChanged;
+        SavedPasswordExternallyChanged += OnSavedPasswordExternallyChanged;
+
         // 初期選択状態を設定
         OnZipCompressionLevelChanged(ZipCompressionLevel);
         OnSevenZipCompressionLevelChanged(SevenZipCompressionLevel);
@@ -697,6 +720,34 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private void OnAppUpdateCheckStateChanged(bool inProgress)
     {
         Dispatcher.UIThread.Post(() => IsCheckingUpdate = inProgress);
+    }
+
+    /// <summary>
+    /// VM 外で <see cref="Settings.EncryptedCompressionPassword"/> が変化したとき UI に反映する。
+    /// 設定パネルの「設定済 / 未設定」表示と「Clear」ボタンの enable 状態を即時更新する
+    /// (codex P2 #3382276703)。<see cref="HasSavedPassword"/> /
+    /// <see cref="SavedPasswordStatusText"/> はどちらも <see cref="SettingsManager"/> を直読み
+    /// する派生値なので、PropertyChanged を発火するだけで OK。
+    /// </summary>
+    /// <remarks>
+    /// round 7 adversarial: Avalonia 未初期化のテスト環境 (Dispatcher.UIThread が
+    /// null の状況) で <see cref="Dispatcher.UIThread"/> 参照が throw する可能性がある
+    /// ので try-catch で防御する。プロダクション経路では起こらない。
+    /// </remarks>
+    private void OnSavedPasswordExternallyChanged()
+    {
+        try
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                OnPropertyChanged(nameof(HasSavedPassword));
+                OnPropertyChanged(nameof(SavedPasswordStatusText));
+            });
+        }
+        catch
+        {
+            // Avalonia 未初期化 (テスト環境等) では UI 更新を諦める。
+        }
     }
 
     /// <summary>
