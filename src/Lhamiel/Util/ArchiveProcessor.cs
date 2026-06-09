@@ -678,15 +678,36 @@ public static class ArchiveProcessor
                     catch (Exception ex)
                     {
                         Logger.Log($"atomic swap 失敗: {tempOutputPath} -> {outputPath} ({ex.Message})", LogLevel.Warning);
-                        // バックアップを元に戻す best-effort restore
+                        // バックアップを元に戻す best-effort restore (round 6 adversarial: partial Move 残骸を考慮)。
+                        //
+                        // Adversarial シナリオ: `File.Move(temp, outputPath)` が途中で例外を投げた場合、
+                        // outputPath には残骸 (部分的に作成されたファイル) が残る可能性がある。
+                        // 単純に `!File.Exists(outputPath)` で restore をスキップすると、bak だけ残って outputPath は壊れた状態。
+                        // 残骸を先に削除してから bak から restore する。
                         try
                         {
                             if (backupPath is not null)
                             {
-                                if (File.Exists(backupPath) && !File.Exists(outputPath))
-                                    File.Move(backupPath, outputPath);
-                                else if (Directory.Exists(backupPath) && !Directory.Exists(outputPath))
-                                    Directory.Move(backupPath, outputPath);
+                                // 残骸削除を試みる (best-effort)
+                                try
+                                {
+                                    if (File.Exists(outputPath)) File.Delete(outputPath);
+                                    else if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
+                                }
+                                catch (Exception partialEx)
+                                {
+                                    Logger.Log($"swap 失敗時の残骸削除失敗: {outputPath} ({partialEx.Message})", LogLevel.Warning);
+                                }
+                                // 残骸削除に成功した場合のみ restore (残骸が残ったまま上書き move は失敗するので)
+                                if (!File.Exists(outputPath) && !Directory.Exists(outputPath))
+                                {
+                                    if (File.Exists(backupPath)) File.Move(backupPath, outputPath);
+                                    else if (Directory.Exists(backupPath)) Directory.Move(backupPath, outputPath);
+                                }
+                                else
+                                {
+                                    Logger.Log($"バックアップ復元不能: outputPath に残骸が残存、bak={backupPath} を維持", LogLevel.Error);
+                                }
                             }
                         }
                         catch (Exception restoreEx)
@@ -1182,10 +1203,18 @@ public static class ArchiveProcessor
                     catch (Exception ex)
                     {
                         Logger.Log($"まとめ圧縮 atomic swap 失敗: {tempMergedOutputPath} -> {outputPath} ({ex.Message})", LogLevel.Warning);
+                        // round 6 adversarial: partial Move 残骸を先に削除してから bak restore (CompressItemAsync と同じ)
                         try
                         {
-                            if (backupPath is not null && File.Exists(backupPath) && !File.Exists(outputPath))
-                                File.Move(backupPath, outputPath);
+                            if (backupPath is not null)
+                            {
+                                try { if (File.Exists(outputPath)) File.Delete(outputPath); }
+                                catch (Exception partialEx) { Logger.Log($"swap 失敗時の残骸削除失敗: {outputPath} ({partialEx.Message})", LogLevel.Warning); }
+                                if (!File.Exists(outputPath) && File.Exists(backupPath))
+                                    File.Move(backupPath, outputPath);
+                                else if (File.Exists(outputPath))
+                                    Logger.Log($"バックアップ復元不能: outputPath に残骸が残存、bak={backupPath} を維持", LogLevel.Error);
+                            }
                         }
                         catch (Exception restoreEx)
                         {

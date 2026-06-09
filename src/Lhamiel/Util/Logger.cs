@@ -297,20 +297,58 @@ public static class Logger
         return new RedactionScope(token);
     }
 
-    private static string ApplyRedaction(string message)
+    /// <summary>
+    /// 内部 redaction ロジック。テストから直接呼べるよう internal で公開する。
+    /// 通常ロガー経路 (<see cref="Log"/> / <see cref="LogException"/>) はここを通る。
+    /// </summary>
+    internal static string ApplyRedaction(string message)
     {
         if (_redactionTokens.IsEmpty || string.IsNullOrEmpty(message)) return message;
-        // codex P2 #3382065857: 長い token を先に置換する。
-        // `abcd` と `abcdef` が同時にアクティブな状態で `abcdef` を含むメッセージを処理するとき、
-        // 辞書順任意で `abcd` を先に Replace すると "***ef" になり、ef が平文で残る。
-        // 降順 length でソートしてから置換すれば、長い prefix から先に当てて部分露出を防げる。
-        var orderedTokens = _redactionTokens.Keys.OrderByDescending(t => t.Length);
-        foreach (var t in orderedTokens)
+
+        // Adversarial review (round 6): 単純な順次 Replace は、たとえ降順 length でソートしても
+        // 「同長の overlapping token」(e.g. `abcd` + `cdef` が同時アクティブで message=`abcdef`) で
+        // tie-breaking が不定。`abcd` を先に Replace すると "***ef" となり ef が平文で残る。
+        // 解決策: 全 token の出現位置を非破壊的に bool 配列にマークし、最後にまとめて連続区間を "***" に圧縮する。
+        // これにより token 順序・長さ・重複に関わらず「マッチした 1 文字でも残らない」ことを保証する。
+        var tokens = new List<string>();
+        foreach (var t in _redactionTokens.Keys)
         {
-            if (!string.IsNullOrEmpty(t) && message.Contains(t, StringComparison.Ordinal))
-                message = message.Replace(t, "***", StringComparison.Ordinal);
+            if (!string.IsNullOrEmpty(t)) tokens.Add(t);
         }
-        return message;
+        if (tokens.Count == 0) return message;
+
+        var maskBits = new bool[message.Length];
+        var anyHit = false;
+        foreach (var t in tokens)
+        {
+            var idx = 0;
+            while (idx <= message.Length - t.Length)
+            {
+                var hit = message.IndexOf(t, idx, StringComparison.Ordinal);
+                if (hit < 0) break;
+                anyHit = true;
+                for (var i = hit; i < hit + t.Length; i++) maskBits[i] = true;
+                idx = hit + t.Length;
+            }
+        }
+        if (!anyHit) return message;
+
+        var sb = new System.Text.StringBuilder(message.Length);
+        var pos = 0;
+        while (pos < message.Length)
+        {
+            if (maskBits[pos])
+            {
+                sb.Append("***");
+                while (pos < message.Length && maskBits[pos]) pos++;
+            }
+            else
+            {
+                sb.Append(message[pos]);
+                pos++;
+            }
+        }
+        return sb.ToString();
     }
 
     private sealed class RedactionScope(string token) : IDisposable

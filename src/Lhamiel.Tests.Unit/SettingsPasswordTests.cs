@@ -37,10 +37,14 @@ public class SettingsPasswordTests
     }
 
     [Theory]
-    [InlineData("REMEMBER")]
-    [InlineData("prompteachtime")]
-    public void SanitizeAfterLoad_PasswordModeCaseInsensitive_Normalized(string input)
+    [InlineData("REMEMBER", "Remember")]
+    [InlineData("prompteachtime", "PromptEachTime")]
+    public void SanitizeAfterLoad_PasswordModeCaseInsensitive_Normalized(string input, string expected)
     {
+        // CodeRabbit (outside-diff Review Run 6d98e252): Assert.Contains だけだと
+        // 「SupportedPasswordModes のいずれかに含まれる」 (= 大文字小文字を保ったまま OK)
+        // とも誤読されうるので、SanitizeAfterLoad が「PromptEachTime / Remember の正規綴り」
+        // に厳密に揃えることを Assert.Equal で明示する。
         var s = new Settings
         {
             PasswordMode = input,
@@ -49,7 +53,7 @@ public class SettingsPasswordTests
                 ? new byte[] { 0x01 } : null,
         };
         s.SanitizeAfterLoad();
-        Assert.Contains(s.PasswordMode, Settings.SupportedPasswordModes);
+        Assert.Equal(expected, s.PasswordMode);
     }
 
     [Fact]
