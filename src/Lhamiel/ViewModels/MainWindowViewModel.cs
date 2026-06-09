@@ -43,6 +43,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly Func<Task<string?>> _pickExtractionFolder;
     private readonly Func<Task<string?>> _pickCompressionFolder;
     private readonly Action<ProgressWindow> _showProgressWindow;
+
+    /// <summary>
+    /// VM 主導でパスワードモードのラジオボタン UI を更新するためのコールバック (MainWindow が設定)。
+    /// 主に <see cref="HandlePromptEachTimeTransitionAsync"/> の wipe キャンセル時に、
+    /// VM 値を Remember に戻すと同時に UI 上の選択も Remember に戻すために使う
+    /// (radio button は手動初期化のみで two-way binding がないため、codex P2 #3381085184 対応)。
+    /// </summary>
+    internal Action<string>? PasswordModeRadioSyncCallback { get; set; }
     private bool _isLoading;
     private CancellationTokenSource? _autoSaveCts;
 
@@ -397,6 +405,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _suppressPasswordModeWipe = true;
             try { PasswordMode = "Remember"; }
             finally { _suppressPasswordModeWipe = false; }
+            // UI 上の radio button も同期して戻す (codex P2 #3381085184)。
+            // VM 値だけ戻しても radio は two-way binding が無いので PromptEachTime のままになる。
+            PasswordModeRadioSyncCallback?.Invoke("Remember");
         }
     }
 
@@ -946,9 +957,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var cancellationToken = progressWindow.GetCancellationToken();
             // 並列処理中にUIスレッドが設定を書き換えても影響を受けないよう、処理開始時点で
             // スナップショットを取って以降は固定値として使う（/rere P0 #3 対応）。
-            // EncryptFileNames は永続化しない（decision #4）ので、Snapshot 取得直前に VM の現在値を
-            // Settings へ同期させて Snapshot 経由で ArchiveProcessor まで伝播させる。
-            _settingsManager.Mutate(s => s.EncryptFileNames = EncryptFileNames);
+            // パスワード保護関連 (IsPasswordProtectionEnabled / PasswordMode / EncryptFileNames) は
+            // 300ms debounce の AutoSave に依存していると、ON にして即ドロップしたとき
+            // Snapshot が古い値を見て「パスワード無しのアーカイブ」が作られる事故が起きる。
+            // ここで全部 VM の現在値を Settings に同期してから Snapshot を取る (codex P1 #3381085181)。
+            //
+            // TAR 形式は仕様上パスワード保護を持たない。UI は checkbox を disable するだけで
+            // VM の IsPasswordProtectionEnabled 自体は ZIP/7z の設定を保持する設計だが、
+            // そのまま Snapshot に流すと「TAR なのにパスワード入力ダイアログが出て CreateArchiveWriter
+            // で InvalidOperationException」になる。Snapshot 段で TAR なら強制 false に押し下げる
+            // (VM 側の値は保持されるので ZIP/7z に戻せば自動復活、codex P2 #3381085177)。
+            var isTar = string.Equals(SelectedCompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase);
+            _settingsManager.Mutate(s =>
+            {
+                s.IsPasswordProtectionEnabled = IsPasswordProtectionEnabled && !isTar;
+                s.PasswordMode = PasswordMode;
+                s.EncryptFileNames = EncryptFileNames;
+            });
             var settings = _settingsManager.CreateSnapshot();
 
             if (validPaths.Count == 1)

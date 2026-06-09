@@ -46,10 +46,13 @@ public static class Logger
 
     // 一時的なログマスク対象トークンの集合 (defense-in-depth、v1.0.181+)。
     // 圧縮パスワードなど機密性の高い文字列を <see cref="RegisterRedactionToken"/> で登録すると、
-    // <see cref="Log"/> の出力時に "***" に置換される。
+    // <see cref="Log"/> / <see cref="LogException"/> の出力時に "***" に置換される。
     // 通常 Lhamiel のコードはパスワードを直接ログに流さない設計だが、ライブラリ例外の
     // <c>ex.Message</c> 等で偶発的に混入するリスクへの保険として用意する。
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _redactionTokens = new();
+    // value は refcount: バッチで同じパスワードを複数回登録するケースに対応し、
+    // 各 RedactionScope.Dispose が refcount を 1 ずつ減らして 0 で remove する
+    // (codex P2 #3381085196 対応、同一 token を共有する別 scope を巻き添えにしない)。
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> _redactionTokens = new();
 
     /// <summary>
     /// 現在の処理ジョブを識別する相関 ID。<see cref="BeginScope(string)"/> で
@@ -281,7 +284,8 @@ public static class Logger
     {
         if (string.IsNullOrEmpty(token) || token.Length < 4)
             return NoopDisposable.Instance;
-        _redactionTokens.TryAdd(token, 0);
+        // Refcount を 1 増やす (同一 token を別 scope が共有しても安全)。
+        _redactionTokens.AddOrUpdate(token, 1, (_, current) => current + 1);
         return new RedactionScope(token);
     }
 
@@ -301,8 +305,27 @@ public static class Logger
         private int _disposed;
         public void Dispose()
         {
-            if (System.Threading.Interlocked.Exchange(ref _disposed, 1) == 0)
-                _redactionTokens.TryRemove(token, out _);
+            if (System.Threading.Interlocked.Exchange(ref _disposed, 1) != 0) return;
+            // Refcount を 1 減らす。0 になったら entry を削除する。
+            // ConcurrentDictionary の TryUpdate(new, current) と
+            // TryRemove(KeyValuePair) を CAS ループで使うことで refcount 更新 + remove を
+            // atomic に行い、別 thread の RegisterRedactionToken と race しても安全
+            // (codex P2 #3381085196)。
+            while (true)
+            {
+                if (!_redactionTokens.TryGetValue(token, out var current)) return;
+                var next = current - 1;
+                if (next <= 0)
+                {
+                    if (_redactionTokens.TryRemove(
+                            new KeyValuePair<string, int>(token, current))) return;
+                }
+                else
+                {
+                    if (_redactionTokens.TryUpdate(token, next, current)) return;
+                }
+                // CAS 失敗 → retry
+            }
         }
     }
 
@@ -334,16 +357,30 @@ public static class Logger
     /// <param name="exception">例外オブジェクト</param>
     public static void LogException(string message, Exception exception)
     {
+        var redactedMessage = ApplyRedaction(message);
         if (_logger != null)
         {
-            _logger.Error(message, exception);
+            if (_redactionTokens.IsEmpty)
+            {
+                // 通常経路: 構造化ログのまま渡す (StackTrace 保持)。
+                _logger.Error(redactedMessage, exception);
+            }
+            else
+            {
+                // Redaction token が登録されているとき: 例外オブジェクトをそのまま渡すと
+                // SuperLightLogger 内部で ToString() を呼んで Message/StackTrace を出すため
+                // password 平文が漏れる経路が残る。平文化してから redaction を通し、Error 1 行で出す
+                // (codex P2 #3381085189 対応、構造化ログとのトレードオフだが安全側に倒す)。
+                var redactedException = ApplyRedaction(exception.ToString());
+                _logger.Error($"{redactedMessage}{Environment.NewLine}{redactedException}");
+            }
             return;
         }
 
         // Logger 初期化前 / 初期化失敗時の緊急フォールバック。
         // Avalonia 起動失敗・LogManager.Configure 例外などでロガーが
         // 立ち上がらないケースでも例外情報を失わないよう、直接ファイルに追記する。
-        WriteEmergencyLog(message, exception);
+        WriteEmergencyLog(redactedMessage, exception);
     }
 
     /// <summary>
@@ -364,8 +401,11 @@ public static class Logger
             // CodeRabbit 指摘対応 (Outside diff): 緊急ログ経路でも MaskUserPath を適用する。
             // 設定破損・起動失敗時のログには StackTrace 経由でユーザー実名フォルダパスが含まれやすく、
             // 通常ロガー経路と同じ <USER> マスクを通すことでサポート ZIP の PII 露出を防ぐ。
-            var maskedMessage = MaskUserPath(message) + GetCorrelationSuffix();
-            var maskedException = MaskUserPath(exception.ToString());
+            // ApplyRedaction を MaskUserPath より先に通す: Logger 経路と同じく
+            // 圧縮パスワード等の token を "***" に置換してから PII マスクをかける
+            // (codex P2 #3381085189 の緊急ログ経路も同様に保護)。
+            var maskedMessage = MaskUserPath(ApplyRedaction(message)) + GetCorrelationSuffix();
+            var maskedException = MaskUserPath(ApplyRedaction(exception.ToString()));
             var line =
                 $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [ERROR] {maskedMessage}{Environment.NewLine}{maskedException}{Environment.NewLine}";
             File.AppendAllText(path, line);

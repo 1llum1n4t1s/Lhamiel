@@ -514,7 +514,22 @@ public static class ArchiveProcessor
                         Logger.Log("ユーザーが圧縮処理をキャンセルしました");
                         return false;
                     }
+                }
 
+                // パスワード解決 (バッチからの override がなければ内部で解決)。
+                // 既存ファイル削除より前に行うことが重要: ここでキャンセルされたとき
+                // 既に上書き対象を消した状態だと「元ファイルも新ファイルも無い」状態になる。
+                // CodeRabbit/codex P1 指摘 #3381085172 対応。
+                var passwordState = resolvedPasswordState
+                    ?? await TryResolveCompressionPasswordAsync(settings, Path.GetFileName(outputPath), progressWindow, actualCancellationToken);
+                if (passwordState is null)
+                {
+                    Logger.Log("ユーザーがパスワード入力をキャンセルしたため圧縮を中止します");
+                    return false;
+                }
+
+                if (targetExists)
+                {
                     // 上書きが許可された場合は既存の対象を削除。
                     // 保護されたパス（デスクトップ・マイドキュメント等の shell folder や
                     // ドライブルート）を outputPath として指定された場合の削除を拒否する。
@@ -547,17 +562,6 @@ public static class ArchiveProcessor
                         Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
                         throw new InvalidOperationException(App.Text("Error.FileLocked", Path.GetFileName(outputPath)), ex);
                     }
-                }
-
-                // パスワード解決 (バッチからの override がなければ内部で解決)。
-                // ディスク容量チェックや scan の前に行うことで、ユーザーがパスワード入力を
-                // キャンセルしたときに無駄な I/O や追加ダイアログを出さない。
-                var passwordState = resolvedPasswordState
-                    ?? await TryResolveCompressionPasswordAsync(settings, Path.GetFileName(outputPath), progressWindow, actualCancellationToken);
-                if (passwordState is null)
-                {
-                    Logger.Log("ユーザーがパスワード入力をキャンセルしたため圧縮を中止します");
-                    return false;
                 }
 
                 // 圧縮前のディスク容量チェック
@@ -959,8 +963,12 @@ public static class ArchiveProcessor
         {
             try
             {
+                // 設定は処理開始時点でスナップショット化して以降の race を避ける。
+                var settings = SettingsManager.Instance.CreateSnapshot();
+
                 // 出力先が既に存在する場合は上書き確認
-                if (File.Exists(outputPath))
+                var targetExists = File.Exists(outputPath);
+                if (targetExists)
                 {
                     var canOverwrite = await ConflictDialogImpl.CanOverwriteFromBackgroundAsync(sourcePaths[0], outputPath, progressWindow);
                     if (!canOverwrite)
@@ -968,20 +976,21 @@ public static class ArchiveProcessor
                         Logger.Log("ユーザーがまとめ圧縮をキャンセルしました");
                         return false;
                     }
-
-                    File.Delete(outputPath);
                 }
 
-                // 設定は処理開始時点でスナップショット化して以降の race を避ける。
-                var settings = SettingsManager.Instance.CreateSnapshot();
-
                 // パスワード解決 (まとめ圧縮: 出力アーカイブ 1 個に対して 1 回プロンプト)。
+                // 既存ファイル削除より前に行う (codex P1 #3381085172)。
                 var mergedPasswordState = await TryResolveCompressionPasswordAsync(
                     settings, Path.GetFileName(outputPath), progressWindow, actualCancellationToken);
                 if (mergedPasswordState is null)
                 {
                     Logger.Log("まとめ圧縮: ユーザーがパスワード入力をキャンセルしました");
                     return false;
+                }
+
+                if (targetExists)
+                {
+                    File.Delete(outputPath);
                 }
 
                 // ファイルリストをスキャン。
