@@ -1,6 +1,12 @@
 #pragma warning disable CS0618 // PartialExtractionHandler は [Obsolete] だが移行完了まで使用（参照が複数メソッドに分散するためファイルレベルで抑制）
+using Avalonia.Controls;
 using Lhamiel.View;
 namespace Lhamiel.Util;
+
+/// <summary>
+/// 圧縮パスワード解決結果（<see cref="ArchiveProcessor.TryResolveCompressionPasswordAsync"/> の戻り値）。
+/// </summary>
+internal sealed record PasswordResolutionState(string? Password, bool EncryptFileNames);
 
 /// <summary>
 /// アーカイブ処理を共通化するクラス
@@ -13,6 +19,83 @@ public static class ArchiveProcessor
     internal static IMessageService MessageServiceImpl { get; set; } = new DefaultMessageService();
     internal static IUiDispatcher UiDispatcherImpl { get; set; } = new DefaultUiDispatcher();
     internal static IConflictDialogService ConflictDialogImpl { get; set; } = new DefaultConflictDialogService();
+    internal static IPasswordDialogService PasswordDialogImpl { get; set; } = new DefaultPasswordDialogService();
+
+    /// <summary>
+    /// 設定の <see cref="Settings.IsPasswordProtectionEnabled"/> / <see cref="Settings.PasswordMode"/> /
+    /// <see cref="Settings.EncryptedCompressionPassword"/> を元に圧縮パスワードを解決する。
+    /// <para>
+    /// 戻り値:
+    /// <list type="bullet">
+    /// <item><description>保護 OFF: <see cref="PasswordResolutionState"/>(Password=null, EncryptFileNames=false)。</description></item>
+    /// <item><description>保護 ON で解決成功: <see cref="PasswordResolutionState"/>(Password=平文, EncryptFileNames=設定値)。</description></item>
+    /// <item><description>保護 ON でユーザーキャンセル: <c>null</c>。</description></item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <c>PasswordMode="Remember"</c> + 保存済み ciphertext あり: DPAPI 復号を試み、成功すればそれを使う。
+    /// 失敗 (別ユーザー/PC コピー等) や ciphertext 未保存のときは <see cref="PasswordDialogMode.CompressNew"/>
+    /// で再プロンプトし、入力された平文を新たな ciphertext として永続化する。
+    /// </para>
+    /// <para>
+    /// <c>PasswordMode="PromptEachTime"</c>: 毎回 <see cref="PasswordDialogMode.CompressNew"/> で入力。
+    /// 設定は変更しない。
+    /// </para>
+    /// </summary>
+    internal static async Task<PasswordResolutionState?> TryResolveCompressionPasswordAsync(
+        Settings settings,
+        string archiveDisplayName,
+        Window? parentWindow,
+        CancellationToken cancellationToken)
+    {
+        if (!settings.IsPasswordProtectionEnabled)
+            return new PasswordResolutionState(null, false);
+
+        var encryptFileNames = settings.EncryptFileNames;
+        string? plaintext;
+
+        if (string.Equals(settings.PasswordMode, "Remember", StringComparison.Ordinal))
+        {
+            // 保存済み ciphertext があれば復号を試行
+            plaintext = CompressionPasswordSession.TryUnprotect(settings.EncryptedCompressionPassword);
+            if (plaintext is null)
+            {
+                // 復号失敗 (別ユーザー/PC コピー等) → ユーザーに通知して再プロンプト。
+                // ciphertext 未保存 (初回 Remember 利用) との区別はユーザー視点では不要なので
+                // 通知は ciphertext があった場合のみ表示する。
+                if (settings.EncryptedCompressionPassword is { Length: > 0 })
+                {
+                    await UiDispatcherImpl.InvokeAsync(() =>
+                        MessageServiceImpl.ShowError(App.Text("Notify.SavedPasswordDecryptFailed")));
+                }
+
+                plaintext = await PasswordDialogImpl.PromptForPasswordAsync(
+                    archiveDisplayName, PasswordDialogMode.CompressNew, isRetry: false, parentWindow, cancellationToken);
+                if (plaintext is null) return null; // user cancelled
+
+                // 新パスワードを DPAPI 暗号化して永続化 (Remember モードの初回保存 / 再設定)。
+                // 保存失敗時は圧縮自体は継続する (UI/UX 上、パスワード保護はあくまでオプション機能なので)。
+                try
+                {
+                    var ciphertext = CompressionPasswordSession.Protect(plaintext);
+                    SettingsManager.Instance.MutateAndSave(s => s.EncryptedCompressionPassword = ciphertext);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log($"パスワードの DPAPI 暗号化保存に失敗 (圧縮は継続): {ex.Message}", LogLevel.Warning);
+                }
+            }
+        }
+        else
+        {
+            // PromptEachTime: 毎回入力。設定は変更しない。
+            plaintext = await PasswordDialogImpl.PromptForPasswordAsync(
+                archiveDisplayName, PasswordDialogMode.CompressNew, isRetry: false, parentWindow, cancellationToken);
+            if (plaintext is null) return null; // user cancelled
+        }
+
+        return new PasswordResolutionState(plaintext, encryptFileNames);
+    }
 
     /// <summary>
     /// アーカイブファイルの展開処理を実行
@@ -373,8 +456,9 @@ public static class ArchiveProcessor
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <param name="overrideOutputPath">出力パスを明示的に指定する場合（衝突回避で事前計算済みのパス）</param>
     /// <param name="settingsSnapshot">設定のスナップショット（バッチ処理時に呼び出し側で 1 回だけ取得して渡すと、各ファイルごとのロック競合＆アロケを削減できる）</param>
+    /// <param name="resolvedPasswordState">バッチ呼び出し側で解決済みのパスワード状態。<c>null</c> なら内部で <see cref="TryResolveCompressionPasswordAsync"/> を呼んで解決する（単発呼び出し時の経路）。</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true, string? overrideOutputPath = null, Settings? settingsSnapshot = null)
+    internal static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true, string? overrideOutputPath = null, Settings? settingsSnapshot = null, PasswordResolutionState? resolvedPasswordState = null)
     {
         Logger.Log($"ArchiveProcessor.CompressItemAsync開始: sourcePath={sourcePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}");
 
@@ -407,6 +491,11 @@ public static class ArchiveProcessor
             try
             {
                 Logger.Log($"圧縮処理を開始: {sourcePath}");
+
+                // 設定スナップショットを Task.Run の先頭で 1 回だけ取って以降の race を防ぐ。
+                // バッチから渡された settingsSnapshot があれば再利用 (ロック競合回避)。
+                // パスワード解決にも使うため early に確保する必要がある。
+                var settings = settingsSnapshot ?? SettingsManager.Instance.CreateSnapshot();
 
                 // 出力ファイル名の取得（overrideOutputPath が指定されている場合はそちらを使用）
                 var outputPath = overrideOutputPath ?? ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
@@ -460,6 +549,17 @@ public static class ArchiveProcessor
                     }
                 }
 
+                // パスワード解決 (バッチからの override がなければ内部で解決)。
+                // ディスク容量チェックや scan の前に行うことで、ユーザーがパスワード入力を
+                // キャンセルしたときに無駄な I/O や追加ダイアログを出さない。
+                var passwordState = resolvedPasswordState
+                    ?? await TryResolveCompressionPasswordAsync(settings, Path.GetFileName(outputPath), progressWindow, actualCancellationToken);
+                if (passwordState is null)
+                {
+                    Logger.Log("ユーザーがパスワード入力をキャンセルしたため圧縮を中止します");
+                    return false;
+                }
+
                 // 圧縮前のディスク容量チェック
                 var estimatedSize = DiskSpaceChecker.GetTotalFileSize([sourcePath]);
                 if (estimatedSize > 0)
@@ -482,9 +582,7 @@ public static class ArchiveProcessor
                     ?? new Progress<ProgressInfo>(info => ArchiveProgressHelper.DispatchProgress(progressWindow, info));
 
                 // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示。
-                // 設定は処理開始時点でスナップショット化し、以降の処理全体で一貫性を保つ。
-                // バッチから渡された settingsSnapshot があれば再利用する（ロック競合回避）。
-                var settings = settingsSnapshot ?? SettingsManager.Instance.CreateSnapshot();
+                // settings はメソッド冒頭で確保済み。
                 List<(string fullPath, string relativePath)>? resolvedFiles = null;
                 if (settings.DirectoryStructureMode == DirectoryStructureMode.Flat && Directory.Exists(sourcePath))
                 {
@@ -526,7 +624,10 @@ public static class ArchiveProcessor
                     }
                 }
 
-                await ArchiveCompressor.CompressFilesAsync([sourcePath], outputPath, parsedFormat, compressionProgress, actualCancellationToken, resolvedFiles, settingsOverride: settings);
+                await ArchiveCompressor.CompressFilesAsync(
+                    [sourcePath], outputPath, parsedFormat, compressionProgress, actualCancellationToken,
+                    resolvedFiles, settingsOverride: settings,
+                    password: passwordState.Password, encryptFileNames: passwordState.EncryptFileNames);
 
                 Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
 
@@ -699,6 +800,23 @@ public static class ArchiveProcessor
             // バッチ開始時点で 1 回だけスナップショットを取って全タスクに配る（ロック競合回避）
             var sharedSettings = SettingsManager.Instance.CreateSnapshot();
 
+            // パスワード解決をバッチ単位で 1 回だけ行う。
+            // 「ドロップごとに確認」モードでも 1 ドロップ操作 = 1 バッチなので 1 回の入力で済む。
+            // ユーザーがキャンセルしたら全バッチをキャンセル。
+            // 表示名は先頭ファイル + "（他 N 件）" を仮で渡し、ダイアログ側でアーカイブ名表示として使う。
+            var firstArchiveName = Path.GetFileName(resolvedOutputPaths[0]);
+            var batchDisplayName = totalCount > 1
+                ? $"{firstArchiveName} (+{totalCount - 1})"
+                : firstArchiveName;
+            var batchPasswordState = await TryResolveCompressionPasswordAsync(
+                sharedSettings, batchDisplayName, progressWindow, actualCancellationToken);
+            if (batchPasswordState is null)
+            {
+                Logger.Log("バッチ圧縮: ユーザーがパスワード入力をキャンセルしたため中止します");
+                if (closeWindowOnCompletion) progressWindow?.CloseSafe();
+                return false;
+            }
+
             var tasks = resolvedSourcePaths.Select(async (sourcePath, index) =>
             {
                 var acquired = false;
@@ -711,8 +829,8 @@ public static class ArchiveProcessor
                     var innerProgress = ArchiveProgressHelper.CreateMappedProgress(
                         totalCount, lockObject, () => successCount + failedPaths.Count, progressWindow, sharedThrottler);
 
-                    // 事前計算された出力パスを使用して圧縮処理を実行（共有スナップショットを再利用）
-                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false, overrideOutputPath: resolvedOutputPaths[index], settingsSnapshot: sharedSettings);
+                    // 事前計算された出力パスを使用して圧縮処理を実行（共有スナップショット + バッチ解決済みパスワードを再利用）
+                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false, overrideOutputPath: resolvedOutputPaths[index], settingsSnapshot: sharedSettings, resolvedPasswordState: batchPasswordState);
 
                     // lock 内で状態のみ更新し、Dispatcher への通知は lock 外で実行
                     var completedProgress = 0;
@@ -854,11 +972,21 @@ public static class ArchiveProcessor
                     File.Delete(outputPath);
                 }
 
-                // ファイルリストをスキャン。
                 // 設定は処理開始時点でスナップショット化して以降の race を避ける。
+                var settings = SettingsManager.Instance.CreateSnapshot();
+
+                // パスワード解決 (まとめ圧縮: 出力アーカイブ 1 個に対して 1 回プロンプト)。
+                var mergedPasswordState = await TryResolveCompressionPasswordAsync(
+                    settings, Path.GetFileName(outputPath), progressWindow, actualCancellationToken);
+                if (mergedPasswordState is null)
+                {
+                    Logger.Log("まとめ圧縮: ユーザーがパスワード入力をキャンセルしました");
+                    return false;
+                }
+
+                // ファイルリストをスキャン。
                 // 除外パターンは .lhaignore（gitignore 互換）から圧縮実行毎に読み直す。
                 // RespectNestedGitignore=true なら各サブツリーの .gitignore も layered matcher として合成する。
-                var settings = SettingsManager.Instance.CreateSnapshot();
                 var lhaignoreLines = LhaignoreFile.ReadLines();
                 var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
                 var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
@@ -927,7 +1055,10 @@ public static class ArchiveProcessor
 
                 // 解決済みリストで圧縮
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
-                await ArchiveCompressor.CompressFilesAsync(sourcePaths, outputPath, parsedFormat, progress, actualCancellationToken, resolvedFiles, settingsOverride: settings);
+                await ArchiveCompressor.CompressFilesAsync(
+                    sourcePaths, outputPath, parsedFormat, progress, actualCancellationToken,
+                    resolvedFiles, settingsOverride: settings,
+                    password: mergedPasswordState.Password, encryptFileNames: mergedPasswordState.EncryptFileNames);
 
                 Logger.Log($"まとめ圧縮完了: {outputPath}（{resolvedFiles.Count}個のファイル）");
 

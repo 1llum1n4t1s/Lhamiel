@@ -1077,7 +1077,9 @@ public static class ArchiveExtractor
                 }
 
                 // cancellationToken を渡し、展開キャンセル時に PasswordDialog が画面に残らないようにする。
-                var pw = await View.PasswordDialog.ShowFromBackgroundAsync(archiveName, isRetry, parentWindow, cancellationToken);
+                // ArchiveProcessor.PasswordDialogImpl 経由でテスト時に差し替え可能。
+                var pw = await ArchiveProcessor.PasswordDialogImpl.PromptForPasswordAsync(
+                    archiveName, View.PasswordDialogMode.Extract, isRetry, parentWindow, cancellationToken);
                 if (pw is null)
                 {
                     System.Threading.Interlocked.Exchange(ref passwordAcquisitionCancelled, 1);

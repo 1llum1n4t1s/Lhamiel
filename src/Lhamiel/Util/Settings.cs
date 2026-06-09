@@ -187,6 +187,13 @@ public class Settings
     public static readonly string[] SupportedUpdateChannels = ["release", "prerelease"];
 
     /// <summary>
+    /// 圧縮パスワード入力モードの canonical 一覧。
+    /// <c>"PromptEachTime"</c> = ドロップごとにダイアログで確認。
+    /// <c>"Remember"</c> = DPAPI 暗号化して settings.json に保存し再利用。
+    /// </summary>
+    public static readonly string[] SupportedPasswordModes = ["PromptEachTime", "Remember"];
+
+    /// <summary>
     /// サポートされている展開形式の一覧
     /// </summary>
     public static readonly string[] SupportedExtractionFormats = ["ZIP", "7z", "TAR", "GZ", "BZ2", "LZMA", "XZ", "RAR", "LZH", "CAB", "ARJ", "Z"];
@@ -250,6 +257,49 @@ public class Settings
     /// </summary>
     public bool RespectNestedGitignore { get; set; } = false;
 
+    // ──────────────────────────────────────────────────────────
+    // パスワード保護（v1.0.181+）
+    // ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 圧縮アーカイブをパスワードで保護するかどうか。
+    /// ON のとき ZIP=AES-256（WinZip AE-2）、7z=AES-256 で暗号化。TAR は非対応（UI でガード）。
+    /// パスワード平文は <see cref="EncryptedCompressionPassword"/>（DPAPI 暗号化バイト列）のみ永続化し、
+    /// 解決後の平文は <see cref="CompressionPasswordSession"/> 経由で短寿命ローカル変数に閉じる。
+    /// </summary>
+    public bool IsPasswordProtectionEnabled { get; set; }
+
+    /// <summary>
+    /// パスワード入力モード: <c>"PromptEachTime"</c>（ドロップごとに確認）または <c>"Remember"</c>（DPAPI で保存）。
+    /// 未知値は <see cref="SanitizeAfterLoad"/> で <c>"PromptEachTime"</c> に矯正される。
+    /// </summary>
+    public string PasswordMode { get; set; } = "PromptEachTime";
+
+    /// <summary>
+    /// 圧縮パスワードを DPAPI（<see cref="System.Security.Cryptography.DataProtectionScope.CurrentUser"/>）で
+    /// 暗号化したバイト列。<see cref="PasswordMode"/> が <c>"Remember"</c> のときだけ書き込まれ、
+    /// <c>"PromptEachTime"</c> 切替で null 化される。System.Text.Json は byte[] を Base64 文字列として
+    /// シリアライズする（AOT 安全）。別ユーザー / 別 PC / Windows パスワードリセット後は復号失敗 →
+    /// 呼出側（<see cref="CompressionPasswordSession.TryUnprotect"/>）が null を返し、UI 側で再設定を要求する。
+    /// 長さは 4096 バイト上限とし <see cref="SanitizeAfterLoad"/> でクランプ。
+    /// ⚠️ 値は wholesale-replace 限定。<c>Array.Clear</c> でその場破壊しないこと（共有 byte[] 参照が
+    /// 並行 <see cref="Snapshot"/> を巻き添えにする恐れがあるため）。
+    /// </summary>
+    public byte[]? EncryptedCompressionPassword { get; set; }
+
+    /// <summary>
+    /// 圧縮時にファイル名（アーカイブヘッダ）も暗号化するかどうか（7z の <c>he=on</c> 相当）。
+    /// ZIP は仕様上ファイル名を暗号化できないので無視される。
+    /// <para>
+    /// この値は <see cref="JsonIgnore"/> で永続化対象外（decision #4: パスワード ON のたびに ON 強制リセット）。
+    /// VM 側で <see cref="ObservableProperty"/> として保持し、ドロップ直前に
+    /// <see cref="SettingsManager.Mutate"/> でこのフィールドへ同期させて Snapshot 経由で
+    /// <see cref="ArchiveProcessor.TryResolveCompressionPasswordAsync"/> まで伝播させる。
+    /// </para>
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool EncryptFileNames { get; set; } = true;
+
     /// <summary>
     /// 並列アクセスに対して安全なスナップショット（浅いコピー）を返す。
     /// 呼び出し元は処理開始時に1回だけ呼び出し、その後はスナップショットを使うことで
@@ -268,6 +318,9 @@ public class Settings
         var copy = (Settings)MemberwiseClone();
         // 参照型コレクションは明示的に深コピー（新しく追加した場合は下に追記すること）
         // 除外パターンは .lhaignore ファイルが真の源なので Settings 上に状態は持たない。
+        // EncryptedCompressionPassword (byte[]?) は wholesale-replace 規約のため参照共有で安全
+        //   （Array.Clear 等で in-place 破壊しない、必ず別の byte[] を代入する。CompressionPasswordSession
+        //   経由の運用でこれが保証される）。
         return copy;
     }
 
@@ -474,6 +527,32 @@ public class Settings
         // RTK レビュー #F-005 対応。
         LogMaxSizeMB = Math.Clamp(LogMaxSizeMB, 1, 200);
         LogRetentionDays = Math.Clamp(LogRetentionDays, 0, 365);
+
+        // PasswordMode の allow-list 化（未知値は PromptEachTime に矯正）。
+        PasswordMode = Array.Find(SupportedPasswordModes,
+                          m => string.Equals(m, PasswordMode, StringComparison.OrdinalIgnoreCase))
+                      ?? "PromptEachTime";
+
+        // EncryptedCompressionPassword の長さ Clamp（異常巨大化を防御）。
+        // DPAPI ciphertext は通常 256〜512 bytes 程度。1024 chars 上限 plaintext + DPAPI metadata でも 2KB に収まる。
+        // 4096 を超えるサイズは明らかに改竄や破損。null 化して UI 側で再設定を要求する。
+        if (EncryptedCompressionPassword is { Length: > 4096 })
+        {
+            try { Logger.Log($"EncryptedCompressionPassword が異常な長さ ({EncryptedCompressionPassword.Length} bytes) のため破棄しました。", LogLevel.Warning); }
+            catch { /* Logger 未初期化のケース */ }
+            EncryptedCompressionPassword = null;
+        }
+
+        // 整合性 degrade: 「Remember + ciphertext なし」状態は次回ドロップで保存できないので
+        // PromptEachTime に倒し、UI 側で初回保存フローを発火させる。
+        if (IsPasswordProtectionEnabled
+            && string.Equals(PasswordMode, "Remember", StringComparison.Ordinal)
+            && (EncryptedCompressionPassword is null || EncryptedCompressionPassword.Length == 0))
+        {
+            PasswordMode = "PromptEachTime";
+            try { Logger.Log("PasswordMode=Remember ですが保存パスワードが空のため PromptEachTime に degrade しました。", LogLevel.Warning); }
+            catch { /* Logger 未初期化のケース */ }
+        }
     }
 
     private static bool IsUsableOutputDirectory(string? path)
@@ -601,6 +680,9 @@ public class Settings
         NormalizeUnicodeFileNames = true;
         PropagateMarkOfTheWeb = true;
         RespectNestedGitignore = false;
+        IsPasswordProtectionEnabled = false;
+        PasswordMode = "PromptEachTime";
+        EncryptedCompressionPassword = null;
         // 除外パターンは .lhaignore ファイルが真の源なので、リセット時もそちらを更新する。
         LhaignoreFile.ResetToDefaults();
         // NOTE: 新しいプロパティを追加したら必ずここにも追加すること（リセット漏れ防止）
@@ -663,6 +745,22 @@ public class Settings
             {
                 s.DirectoryStructureMode = dsm;
                 recoveredCount++;
+            }
+
+            // パスワード保護関連の救出（v1.0.181+）。
+            // 他プロパティの型不整合で stage-2 に落ちても DPAPI ciphertext が消えないよう、
+            // ここで明示的に拾い上げる（critique security blocker #1 対応）。
+            if (TryGetBool(root, nameof(IsPasswordProtectionEnabled), out var ipe)) { s.IsPasswordProtectionEnabled = ipe; recoveredCount++; }
+            if (TryGetString(root, nameof(PasswordMode), out var pmStr)) { s.PasswordMode = pmStr!; recoveredCount++; }
+            if (root.TryGetProperty(nameof(EncryptedCompressionPassword), out var ecpEl) && ecpEl.ValueKind == JsonValueKind.String)
+            {
+                try
+                {
+                    s.EncryptedCompressionPassword = ecpEl.GetBytesFromBase64();
+                    recoveredCount++;
+                }
+                catch (FormatException) { /* Base64 破損 → null のまま（UI 側で再設定要求） */ }
+                catch (InvalidOperationException) { /* ValueKind 不一致（理論上ここには来ない） */ }
             }
 
             // レガシー ExcludedFilePatterns 配列があれば .lhaignore 移行用にキャッシュする。

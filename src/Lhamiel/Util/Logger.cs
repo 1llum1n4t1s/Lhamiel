@@ -44,6 +44,13 @@ public static class Logger
     private static readonly object _initLock = new();
     private static string _appName = "App";
 
+    // 一時的なログマスク対象トークンの集合 (defense-in-depth、v1.0.181+)。
+    // 圧縮パスワードなど機密性の高い文字列を <see cref="RegisterRedactionToken"/> で登録すると、
+    // <see cref="Log"/> の出力時に "***" に置換される。
+    // 通常 Lhamiel のコードはパスワードを直接ログに流さない設計だが、ライブラリ例外の
+    // <c>ex.Message</c> 等で偶発的に混入するリスクへの保険として用意する。
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _redactionTokens = new();
+
     /// <summary>
     /// 現在の処理ジョブを識別する相関 ID。<see cref="BeginScope(string)"/> で
     /// 並列圧縮/展開ジョブのログを後追跡可能にするための AsyncLocal スコープ。
@@ -255,7 +262,54 @@ public static class Logger
         if (level < MinLogLevel)
             return;
 
-        WriteToLogger(message, level);
+        WriteToLogger(ApplyRedaction(message), level);
+    }
+
+    /// <summary>
+    /// 一時的にログ出力からマスクすべき文字列を登録する。返り値の <see cref="IDisposable.Dispose"/> で登録解除される
+    /// （<c>using</c> スコープで利用する）。
+    /// </summary>
+    /// <param name="token">マスク対象文字列（通常はパスワード平文）。null/空文字列、または 4 文字未満は no-op
+    /// （正規ログを誤マスクするリスクを避けるため最小長を設けている）。</param>
+    /// <returns>Dispose で登録解除される <see cref="IDisposable"/>。</returns>
+    /// <remarks>
+    /// defense-in-depth: Lhamiel コード自体はパスワードを直接ログに流さない設計だが、ライブラリ例外メッセージや
+    /// 将来の改修ミスで混入した場合の保険。性能影響は登録 token が無いとき <see cref="ConcurrentDictionary{TKey,TValue}.IsEmpty"/>
+    /// による即座 return で最小化される。
+    /// </remarks>
+    public static IDisposable RegisterRedactionToken(string? token)
+    {
+        if (string.IsNullOrEmpty(token) || token.Length < 4)
+            return NoopDisposable.Instance;
+        _redactionTokens.TryAdd(token, 0);
+        return new RedactionScope(token);
+    }
+
+    private static string ApplyRedaction(string message)
+    {
+        if (_redactionTokens.IsEmpty || string.IsNullOrEmpty(message)) return message;
+        foreach (var t in _redactionTokens.Keys)
+        {
+            if (!string.IsNullOrEmpty(t) && message.Contains(t, StringComparison.Ordinal))
+                message = message.Replace(t, "***", StringComparison.Ordinal);
+        }
+        return message;
+    }
+
+    private sealed class RedactionScope(string token) : IDisposable
+    {
+        private int _disposed;
+        public void Dispose()
+        {
+            if (System.Threading.Interlocked.Exchange(ref _disposed, 1) == 0)
+                _redactionTokens.TryRemove(token, out _);
+        }
+    }
+
+    private sealed class NoopDisposable : IDisposable
+    {
+        internal static readonly NoopDisposable Instance = new();
+        public void Dispose() { }
     }
 
     /// <summary>

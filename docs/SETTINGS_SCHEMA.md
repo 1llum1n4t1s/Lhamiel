@@ -29,6 +29,9 @@
   "PropagateMarkOfTheWeb": true,
   "ZipCompressionLevel": 5,
   "SevenZipCompressionLevel": 5,
+  "IsPasswordProtectionEnabled": false,
+  "PasswordMode": "PromptEachTime",
+  "EncryptedCompressionPassword": null,
   "LogMaxSizeMB": 10,
   "LogRetentionDays": 7,
   "UpdateChannel": "release",
@@ -73,6 +76,13 @@
 | `IncludeHiddenAndSystemEntries` | bool | `true` | 圧縮時に Hidden/System 属性のファイル・フォルダも列挙対象に含める |
 | `ZipCompressionLevel` | int | `5` | ZIP圧縮レベル（0-9） |
 | `SevenZipCompressionLevel` | int | `5` | 7z圧縮レベル（0-9） |
+| `IsPasswordProtectionEnabled` | bool | `false` | パスワード保護を有効化（ZIP=AES-256 / 7z=AES-256、TAR は非対応で UI ガード）。`v1.0.181+` |
+| `PasswordMode` | string | `"PromptEachTime"` | パスワード入力モード。`"PromptEachTime"`（ドロップごとに確認）または `"Remember"`（DPAPI で保存）。`v1.0.181+` |
+| `EncryptedCompressionPassword` | byte[]? (Base64) | `null` | DPAPI（CurrentUser scope）で暗号化された圧縮パスワード。`PasswordMode="Remember"` のときのみ書込み。4096 バイト超は破棄。`v1.0.181+` |
+
+> **`EncryptFileNames` は永続化されない**: 7z のヘッダ暗号化（`-mhe=on` 相当）を制御する `EncryptFileNames` は **`[JsonIgnore]` で `settings.json` には保存されない**。`IsPasswordProtectionEnabled` を OFF→ON にする度に既定値 `true` に強制リセットされる仕様（誤って OFF にしたまま放置されるリスクを避けるため）。
+
+> **`EncryptedCompressionPassword` の取り扱い**: DPAPI scope は `CurrentUser`。同じ Windows ユーザー + 同じ PC でのみ復号可能。別 PC への `settings.json` コピーや Windows パスワードリセット後は復号失敗 → UI で「再設定してください」と促す。Settings 側は自動 wipe しない（OneDrive 同期等の一時的失敗でパスワードを失わないため）。`PasswordMode="Remember"` で ciphertext 空の場合は起動時に `"PromptEachTime"` へ自動 degrade される。
 
 > **除外パターンは別ファイル**: 圧縮時の除外パターンは `settings.json` ではなく [`%LocalAppData%\Lhamiel\.lhaignore`](#圧縮時の除外パターン-lhaignore) に保存される。`v1.0.171` 以降、`.gitignore` 互換構文に対応。
 

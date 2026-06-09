@@ -327,6 +327,109 @@
                                 </Grid>
                             </primitives:HeaderedContentControl>
 
+                            <!--  パスワード保護 (v1.0.181+)  -->
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Compression.PasswordHeader}">
+                                <StackPanel Spacing="8">
+                                    <!--  親チェックボックス (TAR では IsEnabled=false)  -->
+                                    <CheckBox
+                                        x:Name="EnablePasswordCheckBox"
+                                        Content="{DynamicResource Text.Settings.Compression.EnablePassword}"
+                                        IsChecked="{Binding IsPasswordProtectionEnabled}"
+                                        IsEnabled="{Binding IsZipOrSevenZipFormat}" />
+                                    <TextBlock
+                                        Margin="28,-4,0,0"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="{DynamicResource Text.Settings.Compression.EnablePasswordDescription}"
+                                        TextWrapping="Wrap" />
+
+                                    <!--  TAR 警告 (format = TAR のときだけ表示)  -->
+                                    <TextBlock
+                                        Margin="28,-2,0,0"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
+                                        IsVisible="{Binding IsTarFormat}"
+                                        Text="{DynamicResource Text.Settings.Compression.TarNoEncryptionNote}"
+                                        TextWrapping="Wrap" />
+
+                                    <!--  ZIP Explorer 非互換注意 (format = ZIP かつ ON のときだけ表示)  -->
+                                    <TextBlock
+                                        Margin="28,-2,0,0"
+                                        FontSize="12"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        IsVisible="{Binding ShowZipExplorerWarning}"
+                                        Text="{DynamicResource Text.Settings.Compression.ZipAesExplorerNote}"
+                                        TextWrapping="Wrap" />
+
+                                    <!--  サブパネル: ON + format が ZIP/7z のときのみ可視  -->
+                                    <StackPanel
+                                        Margin="24,4,0,0"
+                                        IsVisible="{Binding IsPasswordSubPanelVisible}"
+                                        Spacing="6">
+
+                                        <!--  ファイル名暗号化 (7z 専用、ZIP では disabled + 説明)  -->
+                                        <CheckBox
+                                            x:Name="EncryptFileNamesCheckBox"
+                                            Content="{DynamicResource Text.Settings.Compression.EncryptFileNames}"
+                                            IsChecked="{Binding EncryptFileNames}"
+                                            IsEnabled="{Binding EncryptFileNamesEnabled}" />
+                                        <TextBlock
+                                            Margin="28,-4,0,0"
+                                            FontSize="12"
+                                            Foreground="{DynamicResource Brush.FG2}"
+                                            Text="{DynamicResource Text.Settings.Compression.EncryptFileNamesDescription}"
+                                            TextWrapping="Wrap" />
+                                        <TextBlock
+                                            Margin="28,-2,0,0"
+                                            FontSize="12"
+                                            Foreground="{DynamicResource Brush.FG2}"
+                                            IsVisible="{Binding IsZipFormatAndPasswordOn}"
+                                            Text="{DynamicResource Text.Settings.Compression.EncryptFileNamesZipUnsupported}"
+                                            TextWrapping="Wrap" />
+
+                                        <Separator Margin="0,4,0,4" />
+
+                                        <!--  パスワード入力モード  -->
+                                        <TextBlock
+                                            Margin="0,0,0,2"
+                                            FontWeight="SemiBold"
+                                            Text="{DynamicResource Text.Settings.Compression.PasswordMode.GroupLabel}" />
+                                        <RadioButton
+                                            x:Name="PromptEachTimeRadio"
+                                            Content="{DynamicResource Text.Settings.Compression.PasswordMode.PromptEachTime}"
+                                            GroupName="PasswordMode"
+                                            IsCheckedChanged="PasswordModeRadio_Changed"
+                                            Tag="PromptEachTime" />
+                                        <RadioButton
+                                            x:Name="RememberPasswordRadio"
+                                            Content="{DynamicResource Text.Settings.Compression.PasswordMode.Remember}"
+                                            GroupName="PasswordMode"
+                                            IsCheckedChanged="PasswordModeRadio_Changed"
+                                            Tag="Remember" />
+
+                                        <!--  保存済みパスワードの状態 + 変更/削除ボタン (Remember モード時のみ)  -->
+                                        <StackPanel
+                                            Margin="24,4,0,0"
+                                            IsVisible="{Binding IsRememberModeActive}"
+                                            Spacing="4">
+                                            <TextBlock
+                                                FontSize="12"
+                                                Foreground="{DynamicResource Brush.FG2}"
+                                                Text="{Binding SavedPasswordStatusText}" />
+                                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                                <Button
+                                                    Command="{Binding ChangeSavedPasswordCommand}"
+                                                    Content="{DynamicResource Text.Settings.Compression.ChangeSavedPassword}" />
+                                                <Button
+                                                    Command="{Binding ClearSavedPasswordCommand}"
+                                                    Content="{DynamicResource Text.Settings.Compression.ClearSavedPassword}"
+                                                    IsEnabled="{Binding HasSavedPassword}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
+
                             <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.ExcludedPatterns.Header}">
                                 <StackPanel Spacing="8">
                                     <TextBlock
