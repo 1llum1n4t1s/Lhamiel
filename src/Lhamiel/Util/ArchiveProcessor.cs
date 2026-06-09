@@ -101,13 +101,37 @@ public static class ArchiveProcessor
                 try
                 {
                     var ciphertext = CompressionPasswordSession.Protect(plaintext);
-                    SettingsManager.Instance.MutateAndSave(s => s.EncryptedCompressionPassword = ciphertext);
-                    // codex P2 #3382276703: 設定パネルの「設定済 / 未設定」表示と
-                    // 「Clear」ボタンの enable 状態を即時更新する。
-                    // MainWindowViewModel.HasSavedPassword / SavedPasswordStatusText は
-                    // SettingsManager.Current 直読みのため、PropertyChanged を明示発火しないと
-                    // 次回起動まで UI が古い (Remember 初回保存後も「未設定」のまま、Clear 不可)。
-                    ViewModels.MainWindowViewModel.RaiseSavedPasswordExternallyChanged();
+                    // codex P2 #3384569058: ダイアログ表示中に設定パネルで PromptEachTime へ
+                    // 切替・保護 OFF された場合は保存しない。PasswordDialog の ShowDialog は
+                    // owner (進捗ウィンドウ) だけを無効化し MainWindow は操作可能なため、
+                    // snapshot 時点の Remember 判定と live 設定が乖離しうる。MutateAndSave は
+                    // _lock 内で mutator を実行するので、mutator 内の再チェックで「mode 確認 →
+                    // 保存」が atomic になる (AutoSave の Mutate とも直列化)。保存しなかった
+                    // 場合も今回の圧縮自体は入力されたパスワードで継続する (PromptEachTime の
+                    // 意味論と一致)。
+                    var saved = false;
+                    SettingsManager.Instance.MutateAndSave(s =>
+                    {
+                        if (s.IsPasswordProtectionEnabled
+                            && string.Equals(s.PasswordMode, "Remember", StringComparison.Ordinal))
+                        {
+                            s.EncryptedCompressionPassword = ciphertext;
+                            saved = true;
+                        }
+                    });
+                    if (saved)
+                    {
+                        // codex P2 #3382276703: 設定パネルの「設定済 / 未設定」表示と
+                        // 「Clear」ボタンの enable 状態を即時更新する。
+                        // MainWindowViewModel.HasSavedPassword / SavedPasswordStatusText は
+                        // SettingsManager.Current 直読みのため、PropertyChanged を明示発火しないと
+                        // 次回起動まで UI が古い (Remember 初回保存後も「未設定」のまま、Clear 不可)。
+                        ViewModels.MainWindowViewModel.RaiseSavedPasswordExternallyChanged();
+                    }
+                    else
+                    {
+                        Logger.Log("パスワード入力中に Remember モードが解除されたため保存をスキップ (今回の圧縮には使用)", LogLevel.Info);
+                    }
                 }
                 catch (Exception ex)
                 {
