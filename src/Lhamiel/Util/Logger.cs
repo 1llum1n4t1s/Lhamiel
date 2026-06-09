@@ -272,17 +272,25 @@ public static class Logger
     /// 一時的にログ出力からマスクすべき文字列を登録する。返り値の <see cref="IDisposable.Dispose"/> で登録解除される
     /// （<c>using</c> スコープで利用する）。
     /// </summary>
-    /// <param name="token">マスク対象文字列（通常はパスワード平文）。null/空文字列、または 4 文字未満は no-op
-    /// （正規ログを誤マスクするリスクを避けるため最小長を設けている）。</param>
+    /// <param name="token">マスク対象文字列（通常はパスワード平文）。null/空文字列は no-op。</param>
     /// <returns>Dispose で登録解除される <see cref="IDisposable"/>。</returns>
     /// <remarks>
+    /// <para>
     /// defense-in-depth: Lhamiel コード自体はパスワードを直接ログに流さない設計だが、ライブラリ例外メッセージや
     /// 将来の改修ミスで混入した場合の保険。性能影響は登録 token が無いとき <see cref="ConcurrentDictionary{TKey,TValue}.IsEmpty"/>
     /// による即座 return で最小化される。
+    /// </para>
+    /// <para>
+    /// 1〜3 文字の短い token でもマスクする (codex P2 #3381905948)。`PasswordDialog` 側で
+    /// `CompressNew` モードは空入力のみ拒否するため、ユーザーが短いパスワードを設定する
+    /// ことは仕様上ありうる。短い token は正常ログ中の偶然一致を起こしやすいが、
+    /// パスワード保護が有効なシナリオに限定された redaction なので副作用は限定的、
+    /// 「短いパスワードだけ平文露出」の方が遥かに悪い。
+    /// </para>
     /// </remarks>
     public static IDisposable RegisterRedactionToken(string? token)
     {
-        if (string.IsNullOrEmpty(token) || token.Length < 4)
+        if (string.IsNullOrEmpty(token))
             return NoopDisposable.Instance;
         // Refcount を 1 増やす (同一 token を別 scope が共有しても安全)。
         _redactionTokens.AddOrUpdate(token, 1, (_, current) => current + 1);

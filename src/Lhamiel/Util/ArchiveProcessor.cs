@@ -520,6 +520,11 @@ public static class ArchiveProcessor
         // 重い処理全体を Task.Run でバックグラウンドへ移動
         return await Task.Run(async () =>
         {
+            // codex P2 #3381905952: redaction scope を try/catch の外で保持する。
+            // using var を try 内に置くと unwinding 時 (catch 到達前) に Dispose が走り、
+            // catch 内 LogException でライブラリ例外メッセージ中の password 平文が漏れる。
+            // 自分が解決した場合のみ dispose 責任を持つ (バッチ親由来は親が保持)。
+            PasswordResolutionState? passwordStateForCleanup = null;
             try
             {
                 Logger.Log($"圧縮処理を開始: {sourcePath}");
@@ -556,9 +561,10 @@ public static class ArchiveProcessor
                     Logger.Log("ユーザーがパスワード入力をキャンセルしたため圧縮を中止します");
                     return false;
                 }
-                // 自分が解決した場合のみ Dispose (バッチ親から渡された場合は親が using で保持)。
-                // CodeRabbit #3381138424: redaction scope を抜けて漏れないように。
-                using var _passwordStateOwner = ownsPasswordState ? passwordState : null;
+                // 自分が解決した場合のみ Dispose 責任を持つ (バッチ親由来は親が using で保持)。
+                // CodeRabbit #3381138424 + codex #3381905952: try 外スコープに保存して
+                // catch 内 LogException が redaction 適用中に走るようにする。
+                passwordStateForCleanup = ownsPasswordState ? passwordState : null;
 
                 // 上書き対象が「保護されたパス」(shell folder / ドライブルート 等) の場合は事前拒否。
                 // 実際の削除は CompressFilesAsync 成功直前まで遅らせる (codex P1 #3381582647) ので、
@@ -695,6 +701,8 @@ public static class ArchiveProcessor
                 }
                 // OperationCanceledException 経路の温存も含めた最終クリーンアップ
                 try { if (targetExists && !string.Equals(tempOutputPath, outputPath, StringComparison.OrdinalIgnoreCase) && File.Exists(tempOutputPath)) File.Delete(tempOutputPath); } catch { /* best-effort */ }
+                // redaction scope を最後に解放 (catch 内 LogException 実行後に Dispose されるよう保証)。
+                passwordStateForCleanup?.Dispose();
             }
         }, actualCancellationToken);
     }
@@ -801,6 +809,9 @@ public static class ArchiveProcessor
     /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
     public static async Task<bool> CompressItemsAsync(string[] sourcePaths, string outputDir, bool outputToSameDirectory, string format, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
     {
+        // codex P2 #3381905952: catch 内 LogException が redaction 適用中に走るよう、
+        // batchPasswordState を try/catch 外スコープで保持する。
+        PasswordResolutionState? batchPasswordForCleanup = null;
         try
         {
             var totalCount = sourcePaths.Length;
@@ -857,7 +868,8 @@ public static class ArchiveProcessor
             // バッチ全体で redaction scope を保持。
             // 各 CompressItemAsync(resolvedPasswordState: batchPasswordState) は親が dispose する前提で
             // 自分では dispose しない (PasswordResolutionState IDisposable、CodeRabbit #3381138424)。
-            using var _batchPasswordRedaction = batchPasswordState;
+            // codex #3381905952: try 外スコープに保存 → finally で Dispose する。
+            batchPasswordForCleanup = batchPasswordState;
 
             var tasks = resolvedSourcePaths.Select(async (sourcePath, index) =>
             {
@@ -953,6 +965,11 @@ public static class ArchiveProcessor
 
             return false;
         }
+        finally
+        {
+            // catch 内 LogException 完了後に redaction を解除する (codex #3381905952)
+            batchPasswordForCleanup?.Dispose();
+        }
     }
 
     /// <summary>
@@ -1007,6 +1024,9 @@ public static class ArchiveProcessor
 
         return await Task.Run(async () =>
         {
+            // codex P2 #3381905952: redaction scope を try/catch の外で保持して、catch 内
+            // LogException 実行中も平文 password を mask し続ける。
+            PasswordResolutionState? mergedPasswordForCleanup = null;
             try
             {
                 // 設定は処理開始時点でスナップショット化して以降の race を避ける。
@@ -1033,7 +1053,9 @@ public static class ArchiveProcessor
                     return false;
                 }
                 // 後段の全 log を redaction 保護下に置く (CodeRabbit #3381138424)。
-                using var _mergedPasswordRedaction = mergedPasswordState;
+                // codex P2 #3381905952: try 外スコープに保存 → finally で Dispose、
+                // catch 内 LogException 実行時もマスクが効くようにする。
+                mergedPasswordForCleanup = mergedPasswordState;
 
                 // 既存ファイルは atomic swap 直前まで残す (codex P1 #3381582647)。
                 if (targetExists)
@@ -1153,6 +1175,8 @@ public static class ArchiveProcessor
             {
                 if (closeWindowOnCompletion)
                     progressWindow?.CloseSafe();
+                // catch 内 LogException 完了後に redaction を解除する (codex P2 #3381905952)
+                mergedPasswordForCleanup?.Dispose();
             }
         }, actualCancellationToken);
     }
