@@ -272,7 +272,7 @@ public static class Logger
     /// 一時的にログ出力からマスクすべき文字列を登録する。返り値の <see cref="IDisposable.Dispose"/> で登録解除される
     /// （<c>using</c> スコープで利用する）。
     /// </summary>
-    /// <param name="token">マスク対象文字列（通常はパスワード平文）。null/空文字列は no-op。</param>
+    /// <param name="token">マスク対象文字列（通常はパスワード平文）。4 文字未満・null・空文字列は no-op。</param>
     /// <returns>Dispose で登録解除される <see cref="IDisposable"/>。</returns>
     /// <remarks>
     /// <para>
@@ -281,16 +281,18 @@ public static class Logger
     /// による即座 return で最小化される。
     /// </para>
     /// <para>
-    /// 1〜3 文字の短い token でもマスクする (codex P2 #3381905948)。`PasswordDialog` 側で
-    /// `CompressNew` モードは空入力のみ拒否するため、ユーザーが短いパスワードを設定する
-    /// ことは仕様上ありうる。短い token は正常ログ中の偶然一致を起こしやすいが、
-    /// パスワード保護が有効なシナリオに限定された redaction なので副作用は限定的、
-    /// 「短いパスワードだけ平文露出」の方が遥かに悪い。
+    /// 4 文字以上の token のみ登録する (CLAUDE.md 契約 / CodeRabbit #3382682610)。
+    /// 1〜3 文字を登録すると、その文字を含む通常ログやスタックトレース全体が `***` に潰れ、
+    /// 障害時の診断性が大きく落ちる。3 文字以下のパスワードは暗号学的にほぼ無価値で
+    /// redaction の defense-in-depth 効果も乏しいため、ログ可読性を優先して no-op にする
+    /// (「短いパスワードだけ redaction されない」損失より「全ログが *** で潰れる」被害の方が遥かに大きい)。
+    /// なお過去の codex #3381905948 で一旦この下限を撤去したが、ログ破壊の副作用が大きく
+    /// CLAUDE.md の明文契約とも矛盾するため復元した。
     /// </para>
     /// </remarks>
     public static IDisposable RegisterRedactionToken(string? token)
     {
-        if (string.IsNullOrEmpty(token))
+        if (string.IsNullOrEmpty(token) || token.Length < 4)
             return NoopDisposable.Instance;
         // Refcount を 1 増やす (同一 token を別 scope が共有しても安全)。
         _redactionTokens.AddOrUpdate(token, 1, (_, current) => current + 1);

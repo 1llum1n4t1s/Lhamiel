@@ -95,6 +95,29 @@ public class ArchiveProcessorPasswordTests : IDisposable
     }
 
     [Fact]
+    public async Task TarFormatHint_WithProtectionEnabled_Throws_NotSilentDowngrade()
+    {
+        // CodeRabbit 指摘: 保護 ON + TAR をサイレントに「無保護 TAR」へダウングレードせず、
+        // fail-loud で InvalidOperationException を投げる (CLAUDE.md「TAR は guard」)。
+        // パスワードプロンプトは出さない (フォーマット非対応なので入力させる意味がない)。
+        var pwdStub = new StubPasswordDialog { Plaintext = "should-not-be-asked" };
+        ArchiveProcessor.PasswordDialogImpl = pwdStub;
+        ArchiveProcessor.MessageServiceImpl = new StubMsg();
+        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+
+        var settings = new Settings
+        {
+            IsPasswordProtectionEnabled = true,
+            PasswordMode = "PromptEachTime",
+        };
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            ArchiveProcessor.TryResolveCompressionPasswordAsync(
+                settings, "test.tar", null, TestContext.Current.CancellationToken, "TAR"));
+        Assert.Empty(pwdStub.Calls); // プロンプトは出ない
+    }
+
+    [Fact]
     public async Task PromptEachTime_UserEntersPassword_ReturnsResolvedState()
     {
         var pwdStub = new StubPasswordDialog { Plaintext = "mypassword" };

@@ -62,13 +62,17 @@ public static class ArchiveProcessor
         if (!settings.IsPasswordProtectionEnabled)
             return new PasswordResolutionState(null, false);
 
-        // TAR はパスワード保護非対応 (ArchiveCompressor.CreateArchiveWriter で reject)。
-        // 設定上 IsPasswordProtectionEnabled=true でも、CLI/コンテキストメニュー経由で
-        // TAR を指定された場合は password 解決をスキップして 'password なし' で続行する
-        // (codex P2 #3381313186)。UI 側のドロップフローは MainWindow で TAR 選択時に
-        // checkbox を disable しているが、ここでも防御線を引く。
+        // TAR はパスワード保護非対応。ここに来る時点で IsPasswordProtectionEnabled=true なので、
+        // 「保護要求 + TAR」という矛盾状態。サイレントに 'password なし' へダウングレードすると、
+        // ユーザーが暗号化されたと思い込んだまま無保護の TAR が生成される footgun になる
+        // (CodeRabbit 指摘 / CLAUDE.md「TAR は InvalidOperationException guard」)。
+        // ArchiveCompressor.CreateArchiveWriter と同じ Error.PasswordNotSupportedByFormat で fail-loud にする。
+        // UI のドロップ経路は MainWindowViewModel で TAR 選択時に IsPasswordProtectionEnabled を
+        // 強制 false にするためここには到達せず、CLI/設定直書き等の非 UI 経路でのみ発火する。
+        // この例外は MainWindowViewModel の圧縮 try/catch (Error.ProcessFiles) で捕捉されダイアログ表示される
+        // (codex P2 #3381313186 のサイレント解除を fail-loud へ是正)。
         if (formatHint is { } fmt && string.Equals(fmt, "TAR", StringComparison.OrdinalIgnoreCase))
-            return new PasswordResolutionState(null, false);
+            throw new InvalidOperationException(App.Text("Error.PasswordNotSupportedByFormat", "TAR"));
 
         var encryptFileNames = settings.EncryptFileNames;
         string? plaintext;

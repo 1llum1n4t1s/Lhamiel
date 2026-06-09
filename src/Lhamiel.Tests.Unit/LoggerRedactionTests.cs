@@ -42,11 +42,30 @@ public sealed class LoggerRedactionTests : IDisposable
     }
 
     [Fact]
-    public void ApplyRedaction_ShortToken_IsAlsoMasked()
+    public void ApplyRedaction_ShortToken_IsNotMasked()
     {
-        // codex #3381905948: 1〜3 文字も登録されたらマスクする
+        // CodeRabbit #3382682610 / CLAUDE.md 契約: 4 文字未満の token は登録されない (no-op)。
+        // 短い token を masking すると、その文字を含む通常ログ全体が *** に潰れて
+        // 障害診断が壊れるため。3 文字以下のパスワードは暗号学的に無価値で redaction 効果も乏しい。
         Register("ab");
-        Assert.Equal("=*** =", Logger.ApplyRedaction("=ab ="));
+        Register("xyz");
+        Assert.Equal("=ab xyz=", Logger.ApplyRedaction("=ab xyz="));
+    }
+
+    [Fact]
+    public void RegisterRedactionToken_TokenExactly3_IsNoOp()
+    {
+        // 境界値: 3 文字はマスクされない。
+        Register("abc");
+        Assert.Equal("Xabc Y", Logger.ApplyRedaction("Xabc Y"));
+    }
+
+    [Fact]
+    public void RegisterRedactionToken_TokenExactly4_IsMasked()
+    {
+        // 境界値: 4 文字はマスクされる。
+        Register("abcd");
+        Assert.Equal("X*** Y", Logger.ApplyRedaction("Xabcd Y"));
     }
 
     [Fact]
@@ -62,11 +81,11 @@ public sealed class LoggerRedactionTests : IDisposable
     [Fact]
     public void ApplyRedaction_SelfOverlappingToken_FullyMasked()
     {
-        // codex #3382276697: 自己 overlap する短い繰り返し token (`aaa` in `aaaa`) は
+        // codex #3382276697: 自己 overlap する繰り返し token (`aaaa` in `aaaaa`) は
         // advance を `+ t.Length` にすると 2 文字目から始まる出現を skip → 最後の `a` が残る。
-        // `+ 1` 進める実装なら全 4 文字が mask される。
-        Register("aaa");
-        Assert.Equal("***", Logger.ApplyRedaction("aaaa"));
+        // `+ 1` 進める実装なら全 5 文字が mask される (token は 4 文字以上契約に合わせる)。
+        Register("aaaa");
+        Assert.Equal("***", Logger.ApplyRedaction("aaaaa"));
     }
 
     [Fact]
@@ -91,10 +110,10 @@ public sealed class LoggerRedactionTests : IDisposable
     [Fact]
     public void ApplyRedaction_AdjacentTokens_CollapseIntoSingleStar()
     {
-        // 隣接した 2 token もまとめて 1 つの *** に圧縮される。
-        Register("foo");
-        Register("bar");
-        Assert.Equal("***", Logger.ApplyRedaction("foobar"));
+        // 隣接した 2 token もまとめて 1 つの *** に圧縮される (token は 4 文字以上契約に合わせる)。
+        Register("food");
+        Register("bark");
+        Assert.Equal("***", Logger.ApplyRedaction("foodbark"));
     }
 
     [Fact]
