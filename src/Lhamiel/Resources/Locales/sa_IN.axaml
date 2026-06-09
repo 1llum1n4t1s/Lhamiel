@@ -321,38 +321,38 @@
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">इदं सङ्ग्रहं गोप्यशब्देन रक्षितम्। गोप्यशब्दः न प्रदत्तः अथवा न मेलिष्यति: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">निष्कर्षणं पुनः प्रयतस्व, सम्यक् गोप्यशब्दं च प्रविशतु।</x:String>
 
-  <!-- Password protection (v1.0.181+) 窶・TODO: localize from en_US baseline -->
-  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Password Protection</x:String>
-  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Protect with password</x:String>
-  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Encrypts with AES-256 (WinZip AE-2) for ZIP, AES-256 for 7z.</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR does not support password protection. Choose ZIP or 7z.</x:String>
-  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Note: AES-256 encrypted ZIPs cannot be opened by the built-in Windows Explorer. Recipients need 7-Zip, WinRAR, or another compatible tool.</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Encrypt file names too</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Encrypts the file-name listing (header) inside the archive. Without the password, even the contents cannot be browsed.</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">The ZIP format cannot encrypt file names (central directory). Switch to 7z to enable this option.</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">How to enter the password</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">Prompt on every drop</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">Save and reuse (DPAPI encrypted)</x:String>
-  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">Password: set</x:String>
-  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">Password: not set (you will be asked on the next compression)</x:String>
-  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">Change Password</x:String>
-  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">Clear Password</x:String>
+  <!-- गुप्तशब्द-रक्षा (v1.0.181+) -->
+  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">गुप्तशब्द-रक्षा</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">गुप्तशब्देन रक्षतु</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP-कृते AES-256 (WinZip AE-2), 7z-कृते AES-256 इत्यनेन गोपयति।</x:String>
+  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR-रूपं गुप्तशब्द-रक्षां न समर्थयति। ZIP वा 7z वा चिनोतु।</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">सूचना: AES-256-गुप्तीकृताः ZIP-सञ्चिकाः Windows-स्य अन्तर्गतेन Explorer-इत्यनेन उद्घाटयितुं न शक्यन्ते। ग्राहकेभ्यः 7-Zip, WinRAR वा अन्यः अनुकूलः उपकरणः आवश्यकः।</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">सञ्चिकानामान्यपि गोपयतु</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">सञ्चयस्य अन्तर्भागे सञ्चिकानाम-सूचीम् (शीर्षकम्) अपि गोपयति। गुप्तशब्दं विना अन्तर्वस्तुनोऽपि अवलोकनं न शक्यम्।</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">ZIP-रूपस्य निर्देशानुसारं सञ्चिकानामानि (केन्द्रनिर्देशिका) गोपयितुं न शक्यन्ते। एतद्विकल्पं समर्थयितुं 7z-रूपं चिनोतु।</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">गुप्तशब्दं प्रविशन्तु इति प्रकारः</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">प्रतिप्रयोगे पृच्छतु</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">सञ्चयतु पुनः उपयुङ्क्ताम् (DPAPI-गुप्तीकृतः)</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">गुप्तशब्दः: स्थापितः</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">गुप्तशब्दः: न स्थापितः (आगामि-सङ्कोचने पृष्टं भविष्यति)</x:String>
+  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">गुप्तशब्दं परिवर्तयतु</x:String>
+  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">गुप्तशब्दं लोपयतु</x:String>
 
-  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">Set a Password</x:String>
-  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">Set a password to encrypt the archive. Enter it twice for confirmation.</x:String>
-  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Password (confirm)</x:String>
-  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Passwords do not match. Please re-enter the confirmation.</x:String>
-  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Please enter a password.</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">You can paste from a password manager (Ctrl+V).</x:String>
+  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">गुप्तशब्दं स्थापयतु</x:String>
+  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">सञ्चयस्य गोपनार्थं गुप्तशब्दं स्थापयतु। पुष्ट्यर्थं द्विवारं प्रविशन्तु।</x:String>
+  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">गुप्तशब्दः (पुष्टिः)</x:String>
+  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">गुप्तशब्दौ न समानौ। पुनः पुष्टिं प्रविशन्तु।</x:String>
+  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">गुप्तशब्दं प्रविशन्तु।</x:String>
+  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">गुप्तशब्द-व्यवस्थापकात् लेपयितुं शक्नुथ (Ctrl+V)।</x:String>
 
-  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Delete the saved password?</x:String>
-  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Switching to "Prompt on every drop" will delete the currently saved password. Continue?</x:String>
-  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">Delete the saved password?</x:String>
-  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">The saved password will be deleted. You will be asked to enter it again on the next compression. Continue?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">सञ्चितं गुप्तशब्दं लोपयन्तु वा?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">"प्रतिप्रयोगे पृच्छतु" इत्यत्र परिवर्तनेन साम्प्रतं सञ्चितं गुप्तशब्दं लोपयिष्यते। अनुवर्तताम् वा?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">सञ्चितं गुप्तशब्दं लोपयन्तु वा?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">सञ्चितः गुप्तशब्दः लोप्स्यते। आगामि-सङ्कोचने पुनः प्रवेशनम् आवश्यकं भविष्यति। अनुवर्तताम् वा?</x:String>
 
-  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">The saved password could not be restored (likely caused by copying settings from another PC or a Windows password reset). Please set the password again.</x:String>
-  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} file(s) were skipped because they were inaccessible. A password-protected archive was created with the remaining files.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">सञ्चितं गुप्तशब्दं प्रत्यानेतुं न शक्तम् (अन्यस्मात् कणित्रात् व्यवस्थानां प्रतिलेखनं Windows-गुप्तशब्द-पुनः स्थापनं वा कारणं स्यात्)। गुप्तशब्दं पुनः स्थापयतु।</x:String>
+  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} सञ्चिकाः अप्राप्यत्वात् त्यक्ताः। शेषाभिः सञ्चिकाभिः गुप्तशब्द-रक्षितः सञ्चयः कृतः।</x:String>
 
-  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">All source files were inaccessible, so compression was aborted. An empty archive was not created.</x:String>
-  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">The {0} format does not support password protection. Choose ZIP or 7z.</x:String>
+  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">सर्वाः मूलसञ्चिकाः अप्राप्याः आसन्, अतः सङ्कोचनं विरतम्। रिक्तः सञ्चयः न रचितः।</x:String>
+  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} रूपं गुप्तशब्द-रक्षां न समर्थयति। ZIP वा 7z वा चिनोतु।</x:String>
 </ResourceDictionary>

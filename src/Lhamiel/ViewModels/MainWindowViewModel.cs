@@ -44,13 +44,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly Func<Task<string?>> _pickCompressionFolder;
     private readonly Action<ProgressWindow> _showProgressWindow;
 
-    /// <summary>
-    /// VM 主導でパスワードモードのラジオボタン UI を更新するためのコールバック (MainWindow が設定)。
-    /// 主に <see cref="HandlePromptEachTimeTransitionAsync"/> の wipe キャンセル時に、
-    /// VM 値を Remember に戻すと同時に UI 上の選択も Remember に戻すために使う
-    /// (radio button は手動初期化のみで two-way binding がないため、codex P2 #3381085184 対応)。
-    /// </summary>
-    internal Action<string>? PasswordModeRadioSyncCallback { get; set; }
+    // PasswordModeRadioSyncCallback は CodeRabbit #3381138457 を受けて廃止し、
+    // MainWindow 側で INotifyPropertyChanged を購読する一般化された方式へ移行した。
     private bool _isLoading;
     private CancellationTokenSource? _autoSaveCts;
 
@@ -304,6 +299,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         // ロケール変更後、App.Text() で動的に表示名を取得するドロップダウンを再描画
         OnPropertyChanged(nameof(ThemeOptions));
         RefreshCompressionLevels();
+        // 保存済みパスワード状態ラベル ("設定済み" / "未設定 (次回...)") も App.Text() ベースなので
+        // ロケール変更で再評価が必要 (CodeRabbit outside-diff、MainWindowViewModel.cs:292-300)。
+        OnPropertyChanged(nameof(SavedPasswordStatusText));
 
         AutoSave();
     }
@@ -402,12 +400,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
         else
         {
             // RadioButton を Remember に戻す（_suppressPasswordModeWipe で再帰防止）
+            // PasswordMode セッターは ObservableProperty が PropertyChanged を発火するので、
+            // MainWindow 側で購読している InitPasswordModeRadioButtons が UI 上の radio も Remember に戻す
+            // (CodeRabbit #3381138457: PropertyChanged 購読方式に統一)。
             _suppressPasswordModeWipe = true;
             try { PasswordMode = "Remember"; }
             finally { _suppressPasswordModeWipe = false; }
-            // UI 上の radio button も同期して戻す (codex P2 #3381085184)。
-            // VM 値だけ戻しても radio は two-way binding が無いので PromptEachTime のままになる。
-            PasswordModeRadioSyncCallback?.Invoke("Remember");
         }
     }
 
@@ -448,6 +446,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         try
         {
+            // 平文を扱う try スコープでログ redaction を掛ける (CodeRabbit #3381138482)。
+            // Protect 内部やこの try の catch で平文混入経路があってもマスクされる。
+            using var _ = Logger.RegisterRedactionToken(newPassword);
             var ciphertext = CompressionPasswordSession.Protect(newPassword);
             SettingsManager.Instance.MutateAndSave(s => s.EncryptedCompressionPassword = ciphertext);
             OnPropertyChanged(nameof(HasSavedPassword));

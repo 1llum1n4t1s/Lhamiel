@@ -683,6 +683,7 @@ public class Settings
         IsPasswordProtectionEnabled = false;
         PasswordMode = "PromptEachTime";
         EncryptedCompressionPassword = null;
+        EncryptFileNames = true; // CodeRabbit #3381138447: ResetToDefaults でもデフォルトに戻す。
         // 除外パターンは .lhaignore ファイルが真の源なので、リセット時もそちらを更新する。
         LhaignoreFile.ResetToDefaults();
         // NOTE: 新しいプロパティを追加したら必ずここにも追加すること（リセット漏れ防止）

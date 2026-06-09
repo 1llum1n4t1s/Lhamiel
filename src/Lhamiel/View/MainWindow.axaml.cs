@@ -65,10 +65,17 @@ public partial class MainWindow : Window
             DataContext = viewModel;
             InitDirModeRadioButtons(viewModel.SelectedDirectoryStructureMode);
             InitPasswordModeRadioButtons(viewModel.PasswordMode);
-            // VM が wipe キャンセル時に PasswordMode を rollback したら radio button もここで戻す
-            // (codex P2 #3381085184。radio button は two-way binding 無しの手動制御なので)。
-            viewModel.PasswordModeRadioSyncCallback = mode =>
-                Avalonia.Threading.Dispatcher.UIThread.Post(() => InitPasswordModeRadioButtons(mode));
+            // VM の PasswordMode 変化を購読して radio button を同期する (CodeRabbit #3381138457)。
+            // wipe キャンセル時の rollback だけでなく、将来 LoadFromSettings 経由で外部から
+            // PasswordMode が変わる経路でも自動追従する一般化された方式。
+            viewModel.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainWindowViewModel.PasswordMode))
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(
+                        () => InitPasswordModeRadioButtons(viewModel.PasswordMode));
+                }
+            };
         }
         catch (Exception ex)
         {

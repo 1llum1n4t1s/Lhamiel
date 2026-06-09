@@ -297,10 +297,11 @@ public class DirectPathCompressionAdversarialTests
 
     /// <summary>
     /// @adversarial @category state @severity medium
-    /// 空のディレクトリのみを圧縮した場合、空のアーカイブが正しく作成される
+    /// 空のディレクトリのみを圧縮した場合、空アーカイブを作らずに InvalidOperationException で中止する。
+    /// v1.0.181+: 空アーカイブの誤生成を防ぐため addedCount==0 で例外を投げる仕様。
     /// </summary>
     [Fact]
-    public async Task EmptyDirectoryOnly_CreatesValidArchive()
+    public async Task EmptyDirectoryOnly_ThrowsInvalidOperation()
     {
         await WithTempDir(async dir =>
         {
@@ -308,9 +309,11 @@ public class DirectPathCompressionAdversarialTests
             Directory.CreateDirectory(emptySubDir);
             var archivePath = Path.Combine(dir, "out.zip");
 
-            await ArchiveCompressor.CompressFilesAsync([emptySubDir], archivePath, Format.Zip);
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await ArchiveCompressor.CompressFilesAsync([emptySubDir], archivePath, Format.Zip));
 
-            Assert.True(File.Exists(archivePath));
+            Assert.Contains("AllSourcesInaccessible", ex.Message);
+            Assert.False(File.Exists(archivePath));
         });
     }
 

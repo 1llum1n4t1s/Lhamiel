@@ -321,38 +321,38 @@
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">Dieses Archiv ist passwortgeschützt. Es wurde entweder kein Passwort angegeben oder das Passwort stimmt nicht überein: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">Wiederholen Sie die Extraktion und geben Sie das richtige Passwort ein.</x:String>
 
-  <!-- Password protection (v1.0.181+) 窶・TODO: localize from en_US baseline -->
-  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Password Protection</x:String>
-  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Protect with password</x:String>
-  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Encrypts with AES-256 (WinZip AE-2) for ZIP, AES-256 for 7z.</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR does not support password protection. Choose ZIP or 7z.</x:String>
-  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Note: AES-256 encrypted ZIPs cannot be opened by the built-in Windows Explorer. Recipients need 7-Zip, WinRAR, or another compatible tool.</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Encrypt file names too</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Encrypts the file-name listing (header) inside the archive. Without the password, even the contents cannot be browsed.</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">The ZIP format cannot encrypt file names (central directory). Switch to 7z to enable this option.</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">How to enter the password</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">Prompt on every drop</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">Save and reuse (DPAPI encrypted)</x:String>
-  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">Password: set</x:String>
-  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">Password: not set (you will be asked on the next compression)</x:String>
-  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">Change Password</x:String>
-  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">Clear Password</x:String>
+  <!-- Passwortschutz (v1.0.181+) -->
+  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Passwortschutz</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Mit Passwort schützen</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Verschlüsselt ZIP mit AES-256 (WinZip AE-2) und 7z mit AES-256.</x:String>
+  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR unterstützt keinen Passwortschutz. Wählen Sie ZIP oder 7z.</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Hinweis: AES-256-verschlüsselte ZIPs können nicht mit dem in Windows integrierten Explorer geöffnet werden. Empfänger benötigen 7-Zip, WinRAR oder ein kompatibles Tool.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Auch Dateinamen verschlüsseln</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Verschlüsselt die Dateinamenliste (Header) im Archiv. Ohne Passwort kann nicht einmal der Inhalt eingesehen werden.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">Das ZIP-Format kann Dateinamen (Zentralverzeichnis) nicht verschlüsseln. Wechseln Sie zu 7z, um diese Option zu aktivieren.</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">Eingabe des Passworts</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">Bei jedem Ablegen abfragen</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">Speichern und wiederverwenden (DPAPI-verschlüsselt)</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">Passwort: gesetzt</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">Passwort: nicht gesetzt (wird beim nächsten Komprimieren abgefragt)</x:String>
+  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">Passwort ändern</x:String>
+  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">Passwort löschen</x:String>
 
-  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">Set a Password</x:String>
-  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">Set a password to encrypt the archive. Enter it twice for confirmation.</x:String>
-  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Password (confirm)</x:String>
-  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Passwords do not match. Please re-enter the confirmation.</x:String>
-  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Please enter a password.</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">You can paste from a password manager (Ctrl+V).</x:String>
+  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">Passwort festlegen</x:String>
+  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">Legen Sie ein Passwort zur Verschlüsselung des Archivs fest. Geben Sie es zur Bestätigung zweimal ein.</x:String>
+  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Passwort (Bestätigung)</x:String>
+  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Passwörter stimmen nicht überein. Bitte erneut bestätigen.</x:String>
+  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Bitte geben Sie ein Passwort ein.</x:String>
+  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Sie können aus einem Passwortmanager einfügen (Strg+V).</x:String>
 
-  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Delete the saved password?</x:String>
-  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Switching to "Prompt on every drop" will delete the currently saved password. Continue?</x:String>
-  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">Delete the saved password?</x:String>
-  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">The saved password will be deleted. You will be asked to enter it again on the next compression. Continue?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Gespeichertes Passwort löschen?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Wenn Sie auf "Bei jedem Ablegen abfragen" wechseln, wird das aktuell gespeicherte Passwort gelöscht. Fortfahren?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">Gespeichertes Passwort löschen?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">Das gespeicherte Passwort wird gelöscht. Beim nächsten Komprimieren müssen Sie es erneut eingeben. Fortfahren?</x:String>
 
-  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">The saved password could not be restored (likely caused by copying settings from another PC or a Windows password reset). Please set the password again.</x:String>
-  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} file(s) were skipped because they were inaccessible. A password-protected archive was created with the remaining files.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Das gespeicherte Passwort konnte nicht wiederhergestellt werden (möglicherweise durch Übernahme der Einstellungen von einem anderen PC oder Zurücksetzen des Windows-Passworts). Bitte legen Sie das Passwort erneut fest.</x:String>
+  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} Datei(en) wurden übersprungen, da sie nicht zugänglich waren. Mit den restlichen Dateien wurde ein passwortgeschütztes Archiv erstellt.</x:String>
 
-  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">All source files were inaccessible, so compression was aborted. An empty archive was not created.</x:String>
-  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">The {0} format does not support password protection. Choose ZIP or 7z.</x:String>
+  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Alle Quelldateien waren nicht zugänglich, daher wurde die Komprimierung abgebrochen. Es wurde kein leeres Archiv erstellt.</x:String>
+  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Das Format {0} unterstützt keinen Passwortschutz. Wählen Sie ZIP oder 7z.</x:String>
 </ResourceDictionary>

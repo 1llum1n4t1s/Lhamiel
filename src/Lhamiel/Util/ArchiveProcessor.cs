@@ -5,8 +5,18 @@ namespace Lhamiel.Util;
 
 /// <summary>
 /// 圧縮パスワード解決結果（<see cref="ArchiveProcessor.TryResolveCompressionPasswordAsync"/> の戻り値）。
+/// <para>
+/// <see cref="RedactionScope"/> は <see cref="Logger.RegisterRedactionToken"/> の戻り IDisposable を保持しており、
+/// このオブジェクト自体を <c>using</c> で受けると、解決直後から後段の log 経路 (削除確認・ディスク容量・scan 等) で
+/// 平文パスワードが自動マスクされる (CodeRabbit #3381138424 対応)。
+/// </para>
 /// </summary>
-internal sealed record PasswordResolutionState(string? Password, bool EncryptFileNames);
+internal sealed record PasswordResolutionState(string? Password, bool EncryptFileNames) : IDisposable
+{
+    internal IDisposable? RedactionScope { get; init; }
+
+    public void Dispose() => RedactionScope?.Dispose();
+}
 
 /// <summary>
 /// アーカイブ処理を共通化するクラス
@@ -94,7 +104,14 @@ public static class ArchiveProcessor
             if (plaintext is null) return null; // user cancelled
         }
 
-        return new PasswordResolutionState(plaintext, encryptFileNames);
+        // 平文を解決した瞬間にログ redaction を発火 (CodeRabbit #3381138424)。
+        // 後段の log (削除確認・scan・ディスク容量・圧縮実行・後処理) を全て保護する。
+        // 戻り値の PasswordResolutionState は IDisposable で、using 解放時に refcount が 1 減る
+        // (refcount 化済みなので CompressFilesAsync 内側の using と重複しても安全)。
+        return new PasswordResolutionState(plaintext, encryptFileNames)
+        {
+            RedactionScope = Logger.RegisterRedactionToken(plaintext),
+        };
     }
 
     /// <summary>
@@ -520,6 +537,7 @@ public static class ArchiveProcessor
                 // 既存ファイル削除より前に行うことが重要: ここでキャンセルされたとき
                 // 既に上書き対象を消した状態だと「元ファイルも新ファイルも無い」状態になる。
                 // CodeRabbit/codex P1 指摘 #3381085172 対応。
+                var ownsPasswordState = resolvedPasswordState is null;
                 var passwordState = resolvedPasswordState
                     ?? await TryResolveCompressionPasswordAsync(settings, Path.GetFileName(outputPath), progressWindow, actualCancellationToken);
                 if (passwordState is null)
@@ -527,6 +545,9 @@ public static class ArchiveProcessor
                     Logger.Log("ユーザーがパスワード入力をキャンセルしたため圧縮を中止します");
                     return false;
                 }
+                // 自分が解決した場合のみ Dispose (バッチ親から渡された場合は親が using で保持)。
+                // CodeRabbit #3381138424: redaction scope を抜けて漏れないように。
+                using var _passwordStateOwner = ownsPasswordState ? passwordState : null;
 
                 if (targetExists)
                 {
@@ -820,6 +841,10 @@ public static class ArchiveProcessor
                 if (closeWindowOnCompletion) progressWindow?.CloseSafe();
                 return false;
             }
+            // バッチ全体で redaction scope を保持。
+            // 各 CompressItemAsync(resolvedPasswordState: batchPasswordState) は親が dispose する前提で
+            // 自分では dispose しない (PasswordResolutionState IDisposable、CodeRabbit #3381138424)。
+            using var _batchPasswordRedaction = batchPasswordState;
 
             var tasks = resolvedSourcePaths.Select(async (sourcePath, index) =>
             {
@@ -956,8 +981,12 @@ public static class ArchiveProcessor
         var lowerFormat = format.ToLowerInvariant();
         var outputPath = Path.Combine(baseDir, $"{archiveName}.{lowerFormat}");
 
-        // ProgressWindow からキャンセルトークンを取得
-        var actualCancellationToken = progressWindow?.GetCancellationToken() ?? cancellationToken;
+        // ProgressWindow のキャンセルと呼び出し元キャンセルを両方尊重するためリンクする
+        // (CodeRabbit #3381138436: 旧実装は progressWindow != null のとき外部 cancellationToken を無視していた)。
+        using var linkedCts = progressWindow != null
+            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, progressWindow.GetCancellationToken())
+            : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var actualCancellationToken = linkedCts.Token;
 
         return await Task.Run(async () =>
         {
@@ -987,6 +1016,8 @@ public static class ArchiveProcessor
                     Logger.Log("まとめ圧縮: ユーザーがパスワード入力をキャンセルしました");
                     return false;
                 }
+                // 後段の全 log を redaction 保護下に置く (CodeRabbit #3381138424)。
+                using var _mergedPasswordRedaction = mergedPasswordState;
 
                 if (targetExists)
                 {

@@ -107,7 +107,8 @@ public partial class PasswordDialog : Window
 
         // ウィンドウタイトルもモードで切り替え。DynamicResource を XAML で動的差し替えするより
         // App.Text() の現在値を 1 回読むほうが簡素（短寿命モーダルで locale 切替に追従不要のため）。
-        Title = App.Text(isCompressNew ? "Text.Password.SetTitle" : "Text.Password.Title");
+        // App.Text() は "Text." prefix を自動付加するので、引数からは prefix を抜く (CodeRabbit #3381138460)。
+        Title = App.Text(isCompressNew ? "Password.SetTitle" : "Password.Title");
 
         DataContext = this;
     }

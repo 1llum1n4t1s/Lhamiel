@@ -321,38 +321,38 @@
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">இந்த காப்பகம் கடவுச்சொல்லால் பாதுகாக்கப்பட்டுள்ளது. கடவுச்சொல் வழங்கப்படவில்லை அல்லது பொருந்தவில்லை: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">பிரித்தெடுப்பதை மீண்டும் முயற்சித்து சரியான கடவுச்சொல்லை உள்ளிடவும்.</x:String>
 
-  <!-- Password protection (v1.0.181+) 窶・TODO: localize from en_US baseline -->
-  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Password Protection</x:String>
-  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Protect with password</x:String>
-  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Encrypts with AES-256 (WinZip AE-2) for ZIP, AES-256 for 7z.</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR does not support password protection. Choose ZIP or 7z.</x:String>
-  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Note: AES-256 encrypted ZIPs cannot be opened by the built-in Windows Explorer. Recipients need 7-Zip, WinRAR, or another compatible tool.</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Encrypt file names too</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Encrypts the file-name listing (header) inside the archive. Without the password, even the contents cannot be browsed.</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">The ZIP format cannot encrypt file names (central directory). Switch to 7z to enable this option.</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">How to enter the password</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">Prompt on every drop</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">Save and reuse (DPAPI encrypted)</x:String>
-  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">Password: set</x:String>
-  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">Password: not set (you will be asked on the next compression)</x:String>
-  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">Change Password</x:String>
-  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">Clear Password</x:String>
+  <!-- கடவுச்சொல் பாதுகாப்பு (v1.0.181+) -->
+  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">கடவுச்சொல் பாதுகாப்பு</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">கடவுச்சொல்லால் பாதுகாக்கவும்</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP-க்கு AES-256 (WinZip AE-2), 7z-க்கு AES-256 மூலம் குறியாக்குகிறது.</x:String>
+  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR கடவுச்சொல் பாதுகாப்பை ஆதரிக்காது. ZIP அல்லது 7z-ஐ தேர்வுசெய்க.</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">குறிப்பு: AES-256 மூலம் குறியாக்கப்பட்ட ZIP-ஐ Windows-இன் உள்ளமைக்கப்பட்ட Explorer மூலம் திறக்க முடியாது. பெறுபவர்களுக்கு 7-Zip, WinRAR அல்லது இணக்கமான கருவி தேவை.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">கோப்பு பெயர்களையும் குறியாக்கு</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">காப்பகத்தினுள் உள்ள கோப்பு பெயர்கள் பட்டியலையும் (தலைப்பு) குறியாக்குகிறது. கடவுச்சொல் இல்லாமல் உள்ளடக்கத்தைக் கூட பார்க்க முடியாது.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">ZIP வடிவத்தின் விவரக்குறிப்புப்படி கோப்பு பெயர்களை (மைய அடைவு) குறியாக்க முடியாது. இந்த விருப்பத்தை இயக்க 7z-க்கு மாறவும்.</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">கடவுச்சொல் உள்ளீட்டு முறை</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">ஒவ்வொரு போடுதலிலும் கேள்</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">சேமித்து மீண்டும் பயன்படுத்து (DPAPI குறியாக்கம்)</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">கடவுச்சொல்: அமைக்கப்பட்டது</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">கடவுச்சொல்: அமைக்கப்படவில்லை (அடுத்த அமுக்கத்தில் கேட்கப்படும்)</x:String>
+  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">கடவுச்சொல்லை மாற்று</x:String>
+  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">கடவுச்சொல்லை அழி</x:String>
 
-  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">Set a Password</x:String>
-  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">Set a password to encrypt the archive. Enter it twice for confirmation.</x:String>
-  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Password (confirm)</x:String>
-  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Passwords do not match. Please re-enter the confirmation.</x:String>
-  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Please enter a password.</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">You can paste from a password manager (Ctrl+V).</x:String>
+  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">கடவுச்சொல்லை அமை</x:String>
+  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">காப்பகத்தை குறியாக்க கடவுச்சொல்லை அமைக்கவும். உறுதிப்படுத்த இருமுறை உள்ளிடவும்.</x:String>
+  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">கடவுச்சொல் (உறுதிப்படுத்தல்)</x:String>
+  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">கடவுச்சொற்கள் பொருந்தவில்லை. உறுதிப்படுத்தலை மீண்டும் உள்ளிடவும்.</x:String>
+  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">கடவுச்சொல்லை உள்ளிடவும்.</x:String>
+  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">கடவுச்சொல் மேலாளரிலிருந்து ஒட்டலாம் (Ctrl+V).</x:String>
 
-  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Delete the saved password?</x:String>
-  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Switching to "Prompt on every drop" will delete the currently saved password. Continue?</x:String>
-  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">Delete the saved password?</x:String>
-  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">The saved password will be deleted. You will be asked to enter it again on the next compression. Continue?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">சேமிக்கப்பட்ட கடவுச்சொல்லை அழிக்கவா?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">"ஒவ்வொரு போடுதலிலும் கேள்" என்பதற்கு மாறுவது தற்போது சேமிக்கப்பட்டுள்ள கடவுச்சொல்லை அழிக்கும். தொடரவா?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">சேமிக்கப்பட்ட கடவுச்சொல்லை அழிக்கவா?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">சேமிக்கப்பட்ட கடவுச்சொல் அழிக்கப்படும். அடுத்த அமுக்கத்தில் மீண்டும் உள்ளிட வேண்டியிருக்கும். தொடரவா?</x:String>
 
-  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">The saved password could not be restored (likely caused by copying settings from another PC or a Windows password reset). Please set the password again.</x:String>
-  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} file(s) were skipped because they were inaccessible. A password-protected archive was created with the remaining files.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">சேமிக்கப்பட்ட கடவுச்சொல்லை மீட்டெடுக்க முடியவில்லை (வேறு கணினியிலிருந்து அமைப்புகளை நகலெடுத்தது அல்லது Windows கடவுச்சொல் மீட்டமைப்பு காரணமாக இருக்கலாம்). கடவுச்சொல்லை மீண்டும் அமைக்கவும்.</x:String>
+  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">அணுக முடியாததால் {0} கோப்புகள் தவிர்க்கப்பட்டன. மீதமுள்ள கோப்புகளுடன் கடவுச்சொல்லால் பாதுகாக்கப்பட்ட காப்பகம் உருவாக்கப்பட்டது.</x:String>
 
-  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">All source files were inaccessible, so compression was aborted. An empty archive was not created.</x:String>
-  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">The {0} format does not support password protection. Choose ZIP or 7z.</x:String>
+  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">அனைத்து மூல கோப்புகளும் அணுக முடியாதவை, எனவே அமுக்கம் இரத்து செய்யப்பட்டது. வெற்று காப்பகம் உருவாக்கப்படவில்லை.</x:String>
+  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} வடிவம் கடவுச்சொல் பாதுகாப்பை ஆதரிக்காது. ZIP அல்லது 7z-ஐ தேர்வுசெய்க.</x:String>
 </ResourceDictionary>

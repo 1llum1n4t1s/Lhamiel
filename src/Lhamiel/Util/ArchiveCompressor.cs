@@ -206,11 +206,10 @@ public static class ArchiveCompressor
                             LogLevel.Warning);
                     }
 
-                    // 空アーカイブ生成防止: 1 件もエントリを追加できず、かつ最低 1 件が
-                    // アクセス不能でスキップされていた場合は throw する。パスワード保護 ON のとき
-                    // 「全ファイル読めなかったのに空の暗号化アーカイブだけ残る」事故を防ぐ。
-                    // 真に空のソース（filesToCompress が初めから 0 件）は throw せず既存挙動を維持する。
-                    if (addedCount == 0 && inaccessibleSkipped > 0)
+                    // 空アーカイブ生成防止 (codex P1 / CodeRabbit #3381138394): 1 件もエントリを追加
+                    // できなければ fail-fast。スキャン 0 件 / 除外フィルタで全件落ち / 全件アクセス不能、
+                    // どの経路でも「中身ゼロの (暗号化された) アーカイブだけが残る」のは仕様違反。
+                    if (addedCount == 0)
                     {
                         throw new InvalidOperationException(App.Text("Error.AllSourcesInaccessible"));
                     }
