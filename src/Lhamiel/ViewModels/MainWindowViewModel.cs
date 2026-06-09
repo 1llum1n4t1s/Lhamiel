@@ -971,6 +971,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var isTar = string.Equals(SelectedCompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase);
             _settingsManager.Mutate(s =>
             {
+                // codex P2 #3381582652: 同じ mutation で CompressionFormat も UI 選択値で上書きする。
+                // debounced AutoSave 前に drop された場合、settings.CompressionFormat が古い値のまま
+                // isTar の計算結果と矛盾するスナップショットを作ると「TAR なのにパスワード保護 OFF が
+                // 効くが、フォーマットは ZIP/7z」という誤った非保護アーカイブを生成しうる。
+                s.CompressionFormat = SelectedCompressionFormat;
                 s.IsPasswordProtectionEnabled = IsPasswordProtectionEnabled && !isTar;
                 s.PasswordMode = PasswordMode;
                 s.EncryptFileNames = EncryptFileNames;

@@ -511,6 +511,12 @@ public static class ArchiveProcessor
             : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var actualCancellationToken = linkedCts.Token;
 
+        // catch/finally から見えるよう、上書き判定 / temp パスを Task.Run 外スコープで宣言する。
+        // 圧縮成功時の atomic swap (codex P1 #3381582647) と例外時の temp 削除に必要。
+        var outputPath = overrideOutputPath ?? ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
+        var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
+        var tempOutputPath = outputPath;
+
         // 重い処理全体を Task.Run でバックグラウンドへ移動
         return await Task.Run(async () =>
         {
@@ -523,11 +529,7 @@ public static class ArchiveProcessor
                 // パスワード解決にも使うため early に確保する必要がある。
                 var settings = settingsSnapshot ?? SettingsManager.Instance.CreateSnapshot();
 
-                // 出力ファイル名の取得（overrideOutputPath が指定されている場合はそちらを使用）
-                var outputPath = overrideOutputPath ?? ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
-
-                // 出力先が既に存在する場合は上書き確認
-                var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
+                // 上書き対象の存在は事前判定済み (targetExists)。
                 if (targetExists)
                 {
                     Logger.Log($"出力先が既に存在します: {outputPath}");
@@ -558,40 +560,20 @@ public static class ArchiveProcessor
                 // CodeRabbit #3381138424: redaction scope を抜けて漏れないように。
                 using var _passwordStateOwner = ownsPasswordState ? passwordState : null;
 
+                // 上書き対象が「保護されたパス」(shell folder / ドライブルート 等) の場合は事前拒否。
+                // 実際の削除は CompressFilesAsync 成功直前まで遅らせる (codex P1 #3381582647) ので、
+                // ここでは「削除可否の事前バリデーション」だけ行う。
+                if (targetExists && PathValidator.IsProtectedDirectory(outputPath))
+                {
+                    Logger.Log($"圧縮上書き: 保護されたパスへの削除を拒否: {outputPath}", LogLevel.Warning);
+                    throw new InvalidOperationException(App.Text("Error.ProtectedDirectory", outputPath));
+                }
+
+                // 既存ファイルを失わないため、圧縮は一時パスに対して行い、成功時に atomic swap する
+                // (codex P1 #3381582647: 旧パスに直接書くと addedCount==0 早期 throw 等で既存が消える)。
                 if (targetExists)
                 {
-                    // 上書きが許可された場合は既存の対象を削除。
-                    // 保護されたパス（デスクトップ・マイドキュメント等の shell folder や
-                    // ドライブルート）を outputPath として指定された場合の削除を拒否する。
-                    // ディレクトリ削除は再帰削除のため特に危険だが、File.Delete 経路でも
-                    // outputPath 自体が保護対象（エッジケース）の場合は拒否しておく。
-                    try
-                    {
-                        if (PathValidator.IsProtectedDirectory(outputPath))
-                        {
-                            Logger.Log($"圧縮上書き: 保護されたパスへの削除を拒否: {outputPath}", LogLevel.Warning);
-                            throw new InvalidOperationException(App.Text("Error.ProtectedDirectory", outputPath));
-                        }
-                        if (Directory.Exists(outputPath))
-                        {
-                            Directory.Delete(outputPath, true);
-                        }
-                        else
-                        {
-                            File.Delete(outputPath);
-                        }
-                        Logger.Log($"既存の対象を削除しました: {outputPath}");
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        // 保護ディレクトリエラーはそのまま再スロー
-                        throw;
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Log($"既存対象の削除に失敗しました: {outputPath}, {ex.Message}");
-                        throw new InvalidOperationException(App.Text("Error.FileLocked", Path.GetFileName(outputPath)), ex);
-                    }
+                    tempOutputPath = outputPath + ".lhamiel-tmp-" + Guid.NewGuid().ToString("N").Substring(0, 8);
                 }
 
                 // 圧縮前のディスク容量チェック
@@ -659,9 +641,27 @@ public static class ArchiveProcessor
                 }
 
                 await ArchiveCompressor.CompressFilesAsync(
-                    [sourcePath], outputPath, parsedFormat, compressionProgress, actualCancellationToken,
+                    [sourcePath], tempOutputPath, parsedFormat, compressionProgress, actualCancellationToken,
                     resolvedFiles, settingsOverride: settings,
                     password: passwordState.Password, encryptFileNames: passwordState.EncryptFileNames);
+
+                // atomic swap: 圧縮が成功して初めて既存ファイルを破壊する
+                if (targetExists && !string.Equals(tempOutputPath, outputPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        if (Directory.Exists(outputPath)) Directory.Delete(outputPath, true);
+                        else if (File.Exists(outputPath)) File.Delete(outputPath);
+                        File.Move(tempOutputPath, outputPath);
+                        Logger.Log($"既存対象を圧縮成功後に置き換えました: {outputPath}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log($"atomic swap 失敗: {tempOutputPath} -> {outputPath} ({ex.Message})", LogLevel.Warning);
+                        try { if (File.Exists(tempOutputPath)) File.Delete(tempOutputPath); } catch { /* best-effort */ }
+                        throw new InvalidOperationException(App.Text("Error.FileLocked", Path.GetFileName(outputPath)), ex);
+                    }
+                }
 
                 Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
 
@@ -681,6 +681,8 @@ public static class ArchiveProcessor
                 {
                     progressWindow?.CloseSafe();
                 }
+                // atomic swap 用 temp ファイルが残っていれば削除 (codex P1 #3381582647)
+                try { if (targetExists && !string.Equals(tempOutputPath, outputPath, StringComparison.OrdinalIgnoreCase) && File.Exists(tempOutputPath)) File.Delete(tempOutputPath); } catch { /* best-effort */ }
                 await UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message)));
                 return false;
             }
@@ -691,6 +693,8 @@ public static class ArchiveProcessor
                 {
                     progressWindow?.CloseSafe();
                 }
+                // OperationCanceledException 経路の温存も含めた最終クリーンアップ
+                try { if (targetExists && !string.Equals(tempOutputPath, outputPath, StringComparison.OrdinalIgnoreCase) && File.Exists(tempOutputPath)) File.Delete(tempOutputPath); } catch { /* best-effort */ }
             }
         }, actualCancellationToken);
     }
@@ -997,6 +1001,10 @@ public static class ArchiveProcessor
             : CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var actualCancellationToken = linkedCts.Token;
 
+        // catch/finally から見えるよう、temp パスを Task.Run 外スコープで宣言する (codex P1 #3381582647)。
+        var targetExists = File.Exists(outputPath);
+        var tempMergedOutputPath = outputPath;
+
         return await Task.Run(async () =>
         {
             try
@@ -1004,8 +1012,7 @@ public static class ArchiveProcessor
                 // 設定は処理開始時点でスナップショット化して以降の race を避ける。
                 var settings = SettingsManager.Instance.CreateSnapshot();
 
-                // 出力先が既に存在する場合は上書き確認
-                var targetExists = File.Exists(outputPath);
+                // 上書き対象の存在は事前判定済み (targetExists)。
                 if (targetExists)
                 {
                     var canOverwrite = await ConflictDialogImpl.CanOverwriteFromBackgroundAsync(sourcePaths[0], outputPath, progressWindow);
@@ -1028,9 +1035,10 @@ public static class ArchiveProcessor
                 // 後段の全 log を redaction 保護下に置く (CodeRabbit #3381138424)。
                 using var _mergedPasswordRedaction = mergedPasswordState;
 
+                // 既存ファイルは atomic swap 直前まで残す (codex P1 #3381582647)。
                 if (targetExists)
                 {
-                    File.Delete(outputPath);
+                    tempMergedOutputPath = outputPath + ".lhamiel-tmp-" + Guid.NewGuid().ToString("N").Substring(0, 8);
                 }
 
                 // ファイルリストをスキャン。
@@ -1102,12 +1110,28 @@ public static class ArchiveProcessor
                     return false;
                 }
 
-                // 解決済みリストで圧縮
+                // 解決済みリストで圧縮 (一時パスに書く)
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
                 await ArchiveCompressor.CompressFilesAsync(
-                    sourcePaths, outputPath, parsedFormat, progress, actualCancellationToken,
+                    sourcePaths, tempMergedOutputPath, parsedFormat, progress, actualCancellationToken,
                     resolvedFiles, settingsOverride: settings,
                     password: mergedPasswordState.Password, encryptFileNames: mergedPasswordState.EncryptFileNames);
+
+                // atomic swap (codex P1 #3381582647)
+                if (targetExists && !string.Equals(tempMergedOutputPath, outputPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        if (File.Exists(outputPath)) File.Delete(outputPath);
+                        File.Move(tempMergedOutputPath, outputPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log($"まとめ圧縮 atomic swap 失敗: {tempMergedOutputPath} -> {outputPath} ({ex.Message})", LogLevel.Warning);
+                        try { if (File.Exists(tempMergedOutputPath)) File.Delete(tempMergedOutputPath); } catch { /* best-effort */ }
+                        throw new InvalidOperationException(App.Text("Error.FileLocked", Path.GetFileName(outputPath)), ex);
+                    }
+                }
 
                 Logger.Log($"まとめ圧縮完了: {outputPath}（{resolvedFiles.Count}個のファイル）");
 
@@ -1116,6 +1140,7 @@ public static class ArchiveProcessor
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 Logger.LogException("まとめ圧縮でエラーが発生", ex);
+                try { if (targetExists && !string.Equals(tempMergedOutputPath, outputPath, StringComparison.OrdinalIgnoreCase) && File.Exists(tempMergedOutputPath)) File.Delete(tempMergedOutputPath); } catch { /* best-effort */ }
                 // 進捗ウィンドウを先に閉じてから await でダイアログ表示完了を待つ
                 if (closeWindowOnCompletion)
                 {

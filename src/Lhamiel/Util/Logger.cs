@@ -357,22 +357,26 @@ public static class Logger
     /// <param name="exception">例外オブジェクト</param>
     public static void LogException(string message, Exception exception)
     {
-        var redactedMessage = ApplyRedaction(message);
+        // 平文 redaction → ユーザーパス mask → 相関 ID suffix の順で常に適用する。
+        // CodeRabbit #3381597792: 通常経路 (構造化 Error) でも redaction 経路 (1 行 Error) でも
+        // MaskUserPath / GetCorrelationSuffix を統一的に通す。WriteToLogger は exception 引数を
+        // 取らないので LogException 専用に同じ前処理を直接呼ぶ。
+        var maskedMessage = MaskUserPath(ApplyRedaction(message)) + GetCorrelationSuffix();
         if (_logger != null)
         {
             if (_redactionTokens.IsEmpty)
             {
                 // 通常経路: 構造化ログのまま渡す (StackTrace 保持)。
-                _logger.Error(redactedMessage, exception);
+                _logger.Error(maskedMessage, exception);
             }
             else
             {
                 // Redaction token が登録されているとき: 例外オブジェクトをそのまま渡すと
                 // SuperLightLogger 内部で ToString() を呼んで Message/StackTrace を出すため
-                // password 平文が漏れる経路が残る。平文化してから redaction を通し、Error 1 行で出す
+                // password 平文が漏れる経路が残る。平文化してから redaction → mask を通し、Error 1 行で出す
                 // (codex P2 #3381085189 対応、構造化ログとのトレードオフだが安全側に倒す)。
-                var redactedException = ApplyRedaction(exception.ToString());
-                _logger.Error($"{redactedMessage}{Environment.NewLine}{redactedException}");
+                var maskedException = MaskUserPath(ApplyRedaction(exception.ToString()));
+                _logger.Error($"{maskedMessage}{Environment.NewLine}{maskedException}");
             }
             return;
         }
@@ -380,7 +384,9 @@ public static class Logger
         // Logger 初期化前 / 初期化失敗時の緊急フォールバック。
         // Avalonia 起動失敗・LogManager.Configure 例外などでロガーが
         // 立ち上がらないケースでも例外情報を失わないよう、直接ファイルに追記する。
-        WriteEmergencyLog(redactedMessage, exception);
+        // 緊急ログ側でも MaskUserPath / Redaction を再度適用するので二重マスクになるが
+        // 冪等 (regex の no-op マッチ) なので問題ない。
+        WriteEmergencyLog(message, exception);
     }
 
     /// <summary>
