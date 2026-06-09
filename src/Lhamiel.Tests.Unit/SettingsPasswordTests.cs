@@ -71,8 +71,12 @@ public class SettingsPasswordTests
     }
 
     [Fact]
-    public void SanitizeAfterLoad_RememberWithoutCiphertext_DegradesToPromptEachTime()
+    public void SanitizeAfterLoad_RememberWithoutCiphertext_PreservesRemember()
     {
+        // codex P2 #3381313190: Remember を選んで初回圧縮前にアプリを閉じた場合や
+        // 保存パスワードを削除した直後でも、Remember 選好を保持する。
+        // TryResolveCompressionPasswordAsync 側で null ciphertext を「初回プロンプト → 保存」
+        // として扱うので、ここで PromptEachTime に巻き戻さない。
         var s = new Settings
         {
             IsPasswordProtectionEnabled = true,
@@ -80,12 +84,13 @@ public class SettingsPasswordTests
             EncryptedCompressionPassword = null,
         };
         s.SanitizeAfterLoad();
-        Assert.Equal("PromptEachTime", s.PasswordMode);
+        Assert.Equal("Remember", s.PasswordMode);
     }
 
     [Fact]
-    public void SanitizeAfterLoad_RememberWithEmptyCiphertext_DegradesToPromptEachTime()
+    public void SanitizeAfterLoad_RememberWithEmptyCiphertext_PreservesRemember()
     {
+        // 空 byte[] も null と同じく「未保存」として扱う。Remember は保持。
         var s = new Settings
         {
             IsPasswordProtectionEnabled = true,
@@ -93,7 +98,7 @@ public class SettingsPasswordTests
             EncryptedCompressionPassword = [],
         };
         s.SanitizeAfterLoad();
-        Assert.Equal("PromptEachTime", s.PasswordMode);
+        Assert.Equal("Remember", s.PasswordMode);
     }
 
     [Fact]

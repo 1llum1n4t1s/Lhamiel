@@ -56,9 +56,18 @@ public static class ArchiveProcessor
         Settings settings,
         string archiveDisplayName,
         Window? parentWindow,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? formatHint = null)
     {
         if (!settings.IsPasswordProtectionEnabled)
+            return new PasswordResolutionState(null, false);
+
+        // TAR はパスワード保護非対応 (ArchiveCompressor.CreateArchiveWriter で reject)。
+        // 設定上 IsPasswordProtectionEnabled=true でも、CLI/コンテキストメニュー経由で
+        // TAR を指定された場合は password 解決をスキップして 'password なし' で続行する
+        // (codex P2 #3381313186)。UI 側のドロップフローは MainWindow で TAR 選択時に
+        // checkbox を disable しているが、ここでも防御線を引く。
+        if (formatHint is { } fmt && string.Equals(fmt, "TAR", StringComparison.OrdinalIgnoreCase))
             return new PasswordResolutionState(null, false);
 
         var encryptFileNames = settings.EncryptFileNames;
@@ -539,7 +548,7 @@ public static class ArchiveProcessor
                 // CodeRabbit/codex P1 指摘 #3381085172 対応。
                 var ownsPasswordState = resolvedPasswordState is null;
                 var passwordState = resolvedPasswordState
-                    ?? await TryResolveCompressionPasswordAsync(settings, Path.GetFileName(outputPath), progressWindow, actualCancellationToken);
+                    ?? await TryResolveCompressionPasswordAsync(settings, Path.GetFileName(outputPath), progressWindow, actualCancellationToken, format);
                 if (passwordState is null)
                 {
                     Logger.Log("ユーザーがパスワード入力をキャンセルしたため圧縮を中止します");
@@ -834,7 +843,7 @@ public static class ArchiveProcessor
                 ? $"{firstArchiveName} (+{totalCount - 1})"
                 : firstArchiveName;
             var batchPasswordState = await TryResolveCompressionPasswordAsync(
-                sharedSettings, batchDisplayName, progressWindow, actualCancellationToken);
+                sharedSettings, batchDisplayName, progressWindow, actualCancellationToken, format);
             if (batchPasswordState is null)
             {
                 Logger.Log("バッチ圧縮: ユーザーがパスワード入力をキャンセルしたため中止します");
@@ -1010,7 +1019,7 @@ public static class ArchiveProcessor
                 // パスワード解決 (まとめ圧縮: 出力アーカイブ 1 個に対して 1 回プロンプト)。
                 // 既存ファイル削除より前に行う (codex P1 #3381085172)。
                 var mergedPasswordState = await TryResolveCompressionPasswordAsync(
-                    settings, Path.GetFileName(outputPath), progressWindow, actualCancellationToken);
+                    settings, Path.GetFileName(outputPath), progressWindow, actualCancellationToken, format);
                 if (mergedPasswordState is null)
                 {
                     Logger.Log("まとめ圧縮: ユーザーがパスワード入力をキャンセルしました");

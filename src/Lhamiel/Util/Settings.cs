@@ -543,16 +543,12 @@ public class Settings
             EncryptedCompressionPassword = null;
         }
 
-        // 整合性 degrade: 「Remember + ciphertext なし」状態は次回ドロップで保存できないので
-        // PromptEachTime に倒し、UI 側で初回保存フローを発火させる。
-        if (IsPasswordProtectionEnabled
-            && string.Equals(PasswordMode, "Remember", StringComparison.Ordinal)
-            && (EncryptedCompressionPassword is null || EncryptedCompressionPassword.Length == 0))
-        {
-            PasswordMode = "PromptEachTime";
-            try { Logger.Log("PasswordMode=Remember ですが保存パスワードが空のため PromptEachTime に degrade しました。", LogLevel.Warning); }
-            catch { /* Logger 未初期化のケース */ }
-        }
+        // 「Remember + ciphertext なし」は中間状態として保持する。
+        // ユーザが「保存して再利用」を選んだ直後にアプリを閉じた場合や、
+        // ChangeSavedPassword から削除した直後でモード自体は Remember のままにしたい
+        // という意図をくむ。TryResolveCompressionPasswordAsync 側で null ciphertext を
+        // 「初回プロンプト → 保存」として正しく扱うため、ここで PromptEachTime に
+        // 巻き戻すと Remember 選好が失われる (CodeRabbit/codex #3381313190)。
     }
 
     private static bool IsUsableOutputDirectory(string? path)
