@@ -543,6 +543,18 @@ public class Settings
             EncryptedCompressionPassword = null;
         }
 
+        // 「TAR + 保護 ON」という矛盾状態を矯正する (codex P2 #3384524013)。
+        // TAR はパスワード保護非対応で、この状態が永続層にあるとシェル/CLI 圧縮が
+        // TryResolveCompressionPasswordAsync の fail-loud guard で必ず失敗する。
+        // 通常は ApplySettingsToManager 側の coerce で書き込まれないが、
+        // 旧ビルドが書いた settings.json や手書き編集への防御として load 時にも矯正する。
+        // PasswordMode / EncryptedCompressionPassword は ZIP/7z 用の選好として保持する。
+        if (IsPasswordProtectionEnabled
+            && string.Equals(CompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase))
+        {
+            IsPasswordProtectionEnabled = false;
+        }
+
         // 「Remember + ciphertext なし」は中間状態として保持する。
         // ユーザが「保存して再利用」を選んだ直後にアプリを閉じた場合や、
         // ChangeSavedPassword から削除した直後でモード自体は Remember のままにしたい

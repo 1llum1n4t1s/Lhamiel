@@ -279,7 +279,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
             // パスワード保護: 永続化するのは ON/OFF と Mode のみ。
             // EncryptFileNames は永続化せず（パスワード ON のたびに true 強制リセット、decision #4）。
             // EncryptedCompressionPassword は ArchiveProcessor 側で MutateAndSave 経由で更新する。
-            s.IsPasswordProtectionEnabled = IsPasswordProtectionEnabled;
+            //
+            // codex P2 #3384524013: TAR 選択中は false で永続化する (ドロップ経路の Snapshot 押し下げ
+            // と同じ coerce を永続層にも適用)。永続層に「TAR + 保護 ON」という矛盾状態を残すと、
+            // シェル/CLI 圧縮 (App.axaml.cs) が永続設定をそのまま使い、
+            // TryResolveCompressionPasswordAsync の TAR fail-loud guard に当たって
+            // アーカイブ作成前に必ず失敗する。VM 側の値は保持されるので、セッション内で
+            // ZIP/7z に戻せば次の AutoSave で true が復活する (TAR 選択のままアプリを
+            // 再起動した場合のみ保護 OFF からの再有効化が必要になる、許容トレードオフ)。
+            s.IsPasswordProtectionEnabled = IsPasswordProtectionEnabled
+                && !string.Equals(SelectedCompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase);
             s.PasswordMode = PasswordMode;
             // 除外パターンは .lhaignore ファイルが真の源なので、settings.json には書き出さない。
         });
