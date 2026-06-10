@@ -21,17 +21,23 @@ public class HeaderEncryptedArchiveTests : IDisposable
     private const string Password = "he-test-password";
 
     private readonly IPasswordDialogService _origPwd;
+    private readonly IMessageService _origMsg;
+    private readonly IUiDispatcher _origUi;
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "LhamielHeTests_" + Guid.NewGuid().ToString("N"));
 
     public HeaderEncryptedArchiveTests()
     {
         _origPwd = ArchiveProcessor.PasswordDialogImpl;
+        _origMsg = ArchiveProcessor.MessageServiceImpl;
+        _origUi = ArchiveProcessor.UiDispatcherImpl;
         Directory.CreateDirectory(_dir);
     }
 
     public void Dispose()
     {
         ArchiveProcessor.PasswordDialogImpl = _origPwd;
+        ArchiveProcessor.MessageServiceImpl = _origMsg;
+        ArchiveProcessor.UiDispatcherImpl = _origUi;
         try { Directory.Delete(_dir, recursive: true); } catch { /* best effort */ }
     }
 
@@ -102,6 +108,47 @@ public class HeaderEncryptedArchiveTests : IDisposable
             Interlocked.Decrement(ref _active);
             return null;
         }
+    }
+
+    /// <summary>
+    /// 常に正しいパスワードを返すスタブ (呼び出し回数を記録)。
+    /// 展開中 AsyncPasswordQuery 経路の成功パターン検証に使う。
+    /// </summary>
+    private sealed class CorrectPasswordDialog : IPasswordDialogService
+    {
+        public int CallCount;
+
+        public Task<string?> PromptForPasswordAsync(
+            string archiveDisplayName,
+            PasswordDialogMode mode,
+            bool isRetry,
+            Window? parentWindow,
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref CallCount);
+            return Task.FromResult<string?>(Password);
+        }
+    }
+
+    /// <summary>エラー通知を記録するメッセージサービスのスタブ。</summary>
+    private sealed class RecordingMessageService : IMessageService
+    {
+        public List<string> Errors { get; } = [];
+
+        public Task ShowError(string message, string? title = null)
+        {
+            lock (Errors)
+                Errors.Add(message);
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>UI ディスパッチを同期実行するスタブ (headless テスト用)。</summary>
+    private sealed class SyncUiDispatcher : IUiDispatcher
+    {
+        public void Post(Action action) => action();
+        public Task InvokeAsync(Func<Task> callback) => callback();
+        public Task<T> InvokeAsync<T>(Func<Task<T>> callback) => callback();
     }
 
     /// <summary>
@@ -265,6 +312,59 @@ public class HeaderEncryptedArchiveTests : IDisposable
 
         Assert.Equal(2, stub.CallCount); // 構造解析側 1 回 + 展開中クエリ側 1 回
         Assert.Equal(1, stub.MaxObservedConcurrency); // 経路をまたいでも積み重ならない
+    }
+
+    [Fact]
+    public async Task ExtractArchive_HeaderVisibleEncrypted_PromptedPassword_InvokesCallback()
+    {
+        // codex P2 #3386876537/#3386876542: ヘッダ可視の暗号化アーカイブ (パスワード ZIP /
+        // he=off 7z) は展開中の AsyncPasswordQuery が平文パスワードを知る唯一の経路。
+        // 入力されたパスワードが onPasswordPrompted で呼び出し側に通知される
+        // (上位層での redaction 登録 + CRC 検証用パスワードの捕捉に使う)。
+        var archive = await CreateHeaderEncryptedArchiveAsync("data14", encryptFileNames: false);
+        var stub = new CorrectPasswordDialog();
+        ArchiveProcessor.PasswordDialogImpl = stub;
+
+        var prompted = new List<string>();
+        var outDir = Path.Combine(_dir, "out14");
+        await ArchiveExtractor.ExtractArchive(
+            archive, outDir,
+            cancellationToken: TestContext.Current.CancellationToken,
+            onPasswordPrompted: pw => { lock (prompted) prompted.Add(pw); });
+
+        Assert.Equal(1, stub.CallCount);
+        Assert.Single(prompted);
+        Assert.Equal(Password, prompted[0]);
+        var extracted = Path.Combine(outDir, "data14", "secret.txt");
+        Assert.True(File.Exists(extracted));
+        Assert.Equal("hello-he", await File.ReadAllTextAsync(extracted, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task ExtractArchiveAsync_HeaderVisibleEncrypted_PromptedPassword_CrcVerificationSucceeds()
+    {
+        // codex P2 #3386876542: knownPassword (構造解析で検証済み) を持たないヘッダ可視の
+        // 暗号化アーカイブでも、展開中プロンプトで受理されたパスワードが CRC 検証へ
+        // 引き回され、VerifyAfterExtraction=true で検証が完走する。誤った値が渡れば
+        // reader.Test() が WrongPassword で失敗してエラー通知が出るため、Errors が
+        // 空であること = 受理されたパスワードで検証されたことの裏付けになる。
+        var archive = await CreateHeaderEncryptedArchiveAsync("data15", encryptFileNames: false);
+        var pwdStub = new CorrectPasswordDialog();
+        var msgStub = new RecordingMessageService();
+        ArchiveProcessor.PasswordDialogImpl = pwdStub;
+        ArchiveProcessor.MessageServiceImpl = msgStub;
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
+
+        var outDir = Path.Combine(_dir, "out15");
+        var snapshot = new Settings { VerifyAfterExtraction = true };
+        var (outputPath, _) = await ArchiveProcessor.ExtractArchiveAsync(
+            archive, outDir, outputToSameDirectory: false, progressWindow: null,
+            settingsSnapshot: snapshot);
+
+        Assert.NotNull(outputPath);
+        Assert.True(File.Exists(Path.Combine(outputPath!, "data15", "secret.txt")));
+        Assert.Empty(msgStub.Errors); // CRC 検証失敗・展開エラーのいずれも発生していない
+        Assert.Equal(1, pwdStub.CallCount); // 展開中の 1 回のみ (ヘッダ可視なので構造解析プロンプトは不要)
     }
 
     [Fact]

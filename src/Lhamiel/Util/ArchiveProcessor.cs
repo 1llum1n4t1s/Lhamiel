@@ -299,6 +299,25 @@ public static class ArchiveProcessor
             // 例外詳細を生ログしない分岐、codex P2 #3386732834) ため try の外で宣言する。
             IDisposable? knownPasswordRedaction = null;
             string? knownPassword = null;
+            // 展開中の AsyncPasswordQuery でユーザーが入力したパスワードの捕捉
+            // (codex P2 #3386876537 / #3386876542)。ヘッダ可視の暗号化アーカイブ (パスワード
+            // ZIP / he=off 7z) は構造解析プロンプトを通らず knownPassword が null のままなので、
+            // ExtractArchive からのコールバックで (1) この層の catch/finally 寿命の redaction
+            // scope を登録し、(2) CRC 検証へ渡す検証済みパスワードを捕捉する。
+            // コールバックは 7z.dll 由来のスレッドから呼ばれるためリスト自身を lock に使う。
+            var promptedPasswordRedactions = new List<IDisposable>();
+            string? lastPromptedPassword = null;
+            var hasUnredactablePromptedPassword = false;
+            void OnPasswordPrompted(string pw)
+            {
+                lock (promptedPasswordRedactions)
+                {
+                    promptedPasswordRedactions.Add(Logger.RegisterRedactionToken(pw));
+                    lastPromptedPassword = pw;
+                    if (!Logger.CanRedactToken(pw))
+                        hasUnredactablePromptedPassword = true;
+                }
+            }
             try
             {
                 // UIスレッドからアクセスが必要なプログレス表示用のラッパー
@@ -499,13 +518,25 @@ public static class ArchiveProcessor
                         structureInfo.TotalUncompressedSize,
                         snapshot.NormalizeUnicodeFileNames,
                         knownPassword,
-                        structurePromptExhausted);
+                        structurePromptExhausted,
+                        OnPasswordPrompted);
 
                     // 展開後 CRC 整合性検証（設定で有効な場合のみ）
                     if (snapshot.VerifyAfterExtraction)
                     {
                         UiDispatcherImpl.Post(() => progressWindow?.SetIndeterminate(App.Text("Progress.VerifyingIntegrity")));
-                        var verification = await ArchiveIntegrityVerifier.VerifyArchiveAsync(filePath, cancellationToken, knownPassword);
+                        // 展開が成功した時点で、プロンプト経由の最後の入力 = 7z.dll に受理された
+                        // パスワード。knownPassword (構造解析で検証済み) を持たないヘッダ可視の
+                        // 暗号化アーカイブ (パスワード ZIP / he=off 7z) でも CRC 検証を実際に実行
+                        // できるようにする (codex P2 #3386876542)。両方あるときはプロンプト側を
+                        // 優先する (プロンプトが出た = knownPassword が展開中に通らなかった場合のみ)。
+                        string? verificationPassword;
+                        lock (promptedPasswordRedactions)
+                        {
+                            verificationPassword = lastPromptedPassword;
+                        }
+                        verificationPassword ??= knownPassword;
+                        var verification = await ArchiveIntegrityVerifier.VerifyArchiveAsync(filePath, cancellationToken, verificationPassword);
                         if (!verification.IsValid)
                         {
                             Logger.Log($"展開後 CRC 検証失敗: {filePath} - {verification.ErrorMessage}", LogLevel.Warning);
@@ -557,9 +588,15 @@ public static class ArchiveProcessor
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                // 1〜3 文字の knownPassword は redaction 対象外のため、例外の全文 (スタックトレース・
-                // ライブラリ例外メッセージ) を生ログしない (codex P2 #3386732834)。
-                if (knownPassword is null || Logger.CanRedactToken(knownPassword))
+                // 1〜3 文字のパスワード (knownPassword / 展開中プロンプト入力) は redaction
+                // 対象外のため、例外の全文 (スタックトレース・ライブラリ例外メッセージ) を
+                // 生ログしない (codex P2 #3386732834 / #3386876537)。
+                bool promptedUnredactable;
+                lock (promptedPasswordRedactions)
+                {
+                    promptedUnredactable = hasUnredactablePromptedPassword;
+                }
+                if ((knownPassword is null || Logger.CanRedactToken(knownPassword)) && !promptedUnredactable)
                     Logger.LogException($"展開処理でエラーが発生: {filePath}", ex);
                 else
                     Logger.Log($"展開処理でエラーが発生 (パスワード付き・詳細抑止): {filePath} - {ex.GetType().Name} (HResult=0x{ex.HResult:X8})", LogLevel.Error);
@@ -586,6 +623,12 @@ public static class ArchiveProcessor
                 }
                 // redaction は catch の LogException 完了まで有効にするため最後に解放する。
                 knownPasswordRedaction?.Dispose();
+                lock (promptedPasswordRedactions)
+                {
+                    foreach (var scope in promptedPasswordRedactions)
+                        scope.Dispose();
+                    promptedPasswordRedactions.Clear();
+                }
             }
         }, cancellationToken);
     }
@@ -887,7 +930,7 @@ public static class ArchiveProcessor
                     }
                 }
 
-                await ArchiveCompressor.CompressFilesAsync(
+                var inaccessibleSkipped = await ArchiveCompressor.CompressFilesAsync(
                     [sourcePath], tempOutputPath, parsedFormat, compressionProgress, actualCancellationToken,
                     resolvedFiles, settingsOverride: settings,
                     password: passwordState.Password, encryptFileNames: passwordState.EncryptFileNames);
@@ -979,6 +1022,19 @@ public static class ArchiveProcessor
                 {
                     // UIスレッド上で安全にクローズ
                     progressWindow?.CloseSafe();
+                }
+
+                // パスワード保護圧縮でアクセス不能スキップが発生した場合は UI でも警告する
+                // (codex P2 #3386876544)。スキップされたファイルは暗号化アーカイブに含まれず
+                // 平文のまま元の場所に残るため、ログのみだと「全て保護された」と誤認しうる。
+                // 非保護圧縮は従来どおりログのみ (1 ファイル不能で全体を死なせない resilience は維持)。
+                // 進捗ウィンドウを閉じた後に表示する (クローズ遷移との競合で背面に隠れるのを防ぐ)。
+                if (passwordState.Password is not null && inaccessibleSkipped > 0)
+                {
+                    await UiDispatcherImpl.InvokeAsync(() =>
+                        MessageServiceImpl.ShowError(
+                            App.Text("Notify.PartialSkipWithPassword", inaccessibleSkipped),
+                            Path.GetFileName(outputPath)));
                 }
 
                 return true;
@@ -1438,7 +1494,7 @@ public static class ArchiveProcessor
 
                 // 解決済みリストで圧縮 (一時パスに書く)
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
-                await ArchiveCompressor.CompressFilesAsync(
+                var inaccessibleSkipped = await ArchiveCompressor.CompressFilesAsync(
                     sourcePaths, tempMergedOutputPath, parsedFormat, progress, actualCancellationToken,
                     resolvedFiles, settingsOverride: settings,
                     password: mergedPasswordState.Password, encryptFileNames: mergedPasswordState.EncryptFileNames);
@@ -1487,6 +1543,16 @@ public static class ArchiveProcessor
                 }
 
                 Logger.Log($"まとめ圧縮完了: {outputPath}（{resolvedFiles.Count}個のファイル）");
+
+                // パスワード保護圧縮のアクセス不能スキップ警告 (codex P2 #3386876544)。
+                // 詳細は CompressItemAsync の同処理コメント参照。
+                if (mergedPasswordState.Password is not null && inaccessibleSkipped > 0)
+                {
+                    await UiDispatcherImpl.InvokeAsync(() =>
+                        MessageServiceImpl.ShowError(
+                            App.Text("Notify.PartialSkipWithPassword", inaccessibleSkipped),
+                            Path.GetFileName(outputPath)));
+                }
 
                 return true;
             }

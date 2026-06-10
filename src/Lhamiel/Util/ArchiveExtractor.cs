@@ -611,8 +611,9 @@ public static class ArchiveExtractor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
     /// <param name="knownPassword">構造解析時に検証済みのパスワード (he=on 7z 等)。初回のパスワード要求をダイアログなしでこの値で応答する</param>
+    /// <param name="onPasswordPrompted">展開中の AsyncPasswordQuery でユーザーがパスワードを入力するたびに呼ばれるコールバック (7z.dll 由来のスレッドから呼ばれる)。呼び出し側 (ArchiveProcessor) が自身の catch/finally 寿命での redaction 登録と CRC 検証用パスワードの捕捉に使う (codex P2 #3386876537/#3386876542)</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null, long precomputedUncompressedSize = -1, bool normalizeUnicode = true, string? knownPassword = null, bool suppressPasswordPrompt = false)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null, long precomputedUncompressedSize = -1, bool normalizeUnicode = true, string? knownPassword = null, bool suppressPasswordPrompt = false, Action<string>? onPasswordPrompted = null)
     {
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}");
         cancellationToken.ThrowIfCancellationRequested();
@@ -655,7 +656,7 @@ public static class ArchiveExtractor
         if (hasExistingFiles && parentWindow != null)
         {
             // 一時フォルダ方式: 一時展開 → 衝突検出 → ダイアログ → 移動
-            await ExtractViaTempFolderAsync(archivePath, outputPath, progress, parentWindow, cancellationToken, progressWindow, normalizeUnicode, knownPassword, suppressPasswordPrompt);
+            await ExtractViaTempFolderAsync(archivePath, outputPath, progress, parentWindow, cancellationToken, progressWindow, normalizeUnicode, knownPassword, suppressPasswordPrompt, onPasswordPrompted);
         }
         else
         {
@@ -665,7 +666,7 @@ public static class ArchiveExtractor
                 var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
                 try
                 {
-                    await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, false, cancellationToken, overwriteCheckPaths, null, normalizeUnicode, knownPassword, suppressPasswordPrompt);
+                    await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, false, cancellationToken, overwriteCheckPaths, null, normalizeUnicode, knownPassword, suppressPasswordPrompt, onPasswordPrompted);
                 }
                 finally
                 {
@@ -679,7 +680,7 @@ public static class ArchiveExtractor
     /// 一時フォルダ方式で展開する。
     /// ①一時フォルダに全展開 → ②衝突検出 → ③ダイアログ表示 → ④選択結果に基づいて移動
     /// </summary>
-    private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, View.ProgressWindow? progressWindow, bool normalizeUnicode = true, string? knownPassword = null, bool suppressPasswordPrompt = false)
+    private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, View.ProgressWindow? progressWindow, bool normalizeUnicode = true, string? knownPassword = null, bool suppressPasswordPrompt = false, Action<string>? onPasswordPrompted = null)
     {
         // 一時フォルダを出力先ディレクトリ直下に作成（同一ドライブでFile.Moveが高速、かつ書き込み権限が確実）
         // outputPathがファイルの場合は親ディレクトリを使用
@@ -697,7 +698,7 @@ public static class ArchiveExtractor
                 var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
                 try
                 {
-                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, null, null, normalizeUnicode, knownPassword, suppressPasswordPrompt);
+                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, null, null, normalizeUnicode, knownPassword, suppressPasswordPrompt, onPasswordPrompted);
                 }
                 finally
                 {
@@ -986,7 +987,7 @@ public static class ArchiveExtractor
         return reader!;
     }
 
-    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null, bool normalizeUnicode = true, string? knownPassword = null, bool suppressPasswordPrompt = false)
+    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null, bool normalizeUnicode = true, string? knownPassword = null, bool suppressPasswordPrompt = false, Action<string>? onPasswordPrompted = null)
     {
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}");
 
@@ -1054,6 +1055,16 @@ public static class ArchiveExtractor
         // open 時 (he=on) の EncryptionException を OCE に変換する catch フィルタから
         // 参照するため、try ブロックの外で宣言する (try 内宣言は catch 句から見えない)。
         var passwordAcquisitionCancelled = 0;
+
+        // 展開中プロンプトで入力されたパスワードの redaction scope (codex P2 #3386876537)。
+        // ヘッダ可視の暗号化アーカイブ (パスワード ZIP / he=off 7z) は AsyncPasswordQuery が
+        // 平文パスワードを知る唯一の経路で、登録しないと下の generic catch がライブラリ例外
+        // 由来の詳細 (errorInfo.Details = ex.Message 等) を生ログしてしまう。
+        // 7z.dll 由来のコールバックスレッドから追加し finally (catch のログ後) で解放するため、
+        // リスト自身を lock に使う。redaction 不能な 1〜3 文字入力 (Extract は既存書庫互換で
+        // 受理) は hasUnredactablePromptedPassword 経由で catch 側のログ詳細を抑止する。
+        var promptedPasswordRedactions = new List<IDisposable>();
+        var hasUnredactablePromptedPassword = false;
 
         try
         {
@@ -1149,6 +1160,17 @@ public static class ArchiveExtractor
                     // 空文字を返すと AsyncPasswordQuery 側で Cancel=true にマップされる
                     return string.Empty;
                 }
+                // 入力パスワードを 7z.dll に渡す前に redaction 登録する (codex P2 #3386876537)。
+                // 誤入力でもライブラリ例外メッセージ経由でログに混入しうるため全試行を登録する。
+                lock (promptedPasswordRedactions)
+                {
+                    promptedPasswordRedactions.Add(Logger.RegisterRedactionToken(pw));
+                    if (!Logger.CanRedactToken(pw))
+                        hasUnredactablePromptedPassword = true;
+                }
+                // 呼び出し側 (ArchiveProcessor) にも通知し、上位 catch/finally 寿命での
+                // redaction 登録と CRC 検証用パスワードの捕捉を可能にする (codex P2 #3386876542)。
+                onPasswordPrompted?.Invoke(pw);
                 return pw;
             }, cancellationToken);
 
@@ -1423,10 +1445,16 @@ public static class ArchiveExtractor
             }
 
             var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath);
-            // 1〜3 文字の knownPassword は Logger redaction (4 文字下限) の対象外のため、
-            // ライブラリ例外由来の詳細 (errorInfo.Details = ex.Message 等) を生ログしない
-            // (codex P2 #3386732834)。redaction 可能なら従来どおり (ログ側でマスクされる)。
-            if (knownPassword is null || Logger.CanRedactToken(knownPassword))
+            // 1〜3 文字のパスワード (knownPassword / 展開中プロンプト入力) は Logger redaction
+            // (4 文字下限) の対象外のため、ライブラリ例外由来の詳細 (errorInfo.Details =
+            // ex.Message 等) を生ログしない (codex P2 #3386732834 / #3386876537)。
+            // redaction 可能なら従来どおり (ログ側でマスクされる)。
+            bool promptedUnredactable;
+            lock (promptedPasswordRedactions)
+            {
+                promptedUnredactable = hasUnredactablePromptedPassword;
+            }
+            if ((knownPassword is null || Logger.CanRedactToken(knownPassword)) && !promptedUnredactable)
             {
                 Logger.Log($"アーカイブ展開でエラーが発生しました: {errorInfo.Message}");
                 Logger.Log($"エラー詳細: {errorInfo.Details}");
@@ -1460,6 +1488,16 @@ public static class ArchiveExtractor
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 Logger.Log($"一時展開ディレクトリの最終掃除に失敗しました（手動削除可能）: {tempOutputPath}, {ex.Message}", LogLevel.Warning);
+            }
+
+            // 展開中プロンプト入力パスワードの redaction を解放する。finally は同レベル catch の
+            // ログ出力後に走るため、ここのエラーログはマスク済みで出力されている。呼び出し元
+            // (ArchiveProcessor) の catch は onPasswordPrompted 経由で登録された自前の scope が守る。
+            lock (promptedPasswordRedactions)
+            {
+                foreach (var scope in promptedPasswordRedactions)
+                    scope.Dispose();
+                promptedPasswordRedactions.Clear();
             }
         }
     }

@@ -88,7 +88,10 @@ public static class ArchiveCompressor
     /// TAR/GZ/BZ2/XZ では非 null を渡すと <see cref="InvalidOperationException"/> を投げる。</param>
     /// <param name="encryptFileNames">7z 形式でアーカイブ内ファイル名（ヘッダ）も暗号化するか（<c>-mhe=on</c> 相当）。
     /// ZIP では仕様上ヘッダ暗号化が存在しないので無視される。<paramref name="password"/> が null/空のときは無視される。</param>
-    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null, Settings? settingsOverride = null, string? password = null, bool encryptFileNames = true)
+    /// <returns>アクセス不能 (AccessException) でスキップしたファイル数。パスワード保護圧縮で
+    /// 「アーカイブに含まれず平文のまま残ったファイルがある」ことを呼び出し側が UI 警告
+    /// できるようにする (codex P2 #3386876544)。</returns>
+    public static async Task<int> CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null, Settings? settingsOverride = null, string? password = null, bool encryptFileNames = true)
     {
         var sourceList = sourcePaths.ToList();
         if (sourceList.Count == 0)
@@ -116,6 +119,9 @@ public static class ArchiveCompressor
         var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
 
         var outputCreated = false;
+        // アクセス不能でスキップしたファイル数 (戻り値)。Task.Run ラムダ内で加算するため
+        // メソッドスコープで宣言する (codex P2 #3386876544)。
+        var inaccessibleSkipped = 0;
         // 空ディレクトリエントリ用の空マーカーディレクトリ（遅延作成）。後段 finally で必ず掃除する。
         string? emptyDirMarker = null;
         try
@@ -158,7 +164,6 @@ public static class ArchiveCompressor
 
                     // ファイルとディレクトリを圧縮アーカイブに追加
                     // スキャン後にファイルが削除されている場合はスキップする
-                    var inaccessibleSkipped = 0;
                     var addedCount = 0;
                     foreach (var (fullPath, relativePath) in filesToCompress)
                     {
@@ -258,6 +263,7 @@ public static class ArchiveCompressor
             }
 
             Logger.Log($"圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
+            return inaccessibleSkipped;
         }
         catch (OperationCanceledException oce) when (!cancellationToken.IsCancellationRequested && oce.InnerException is not null)
         {
@@ -269,6 +275,9 @@ public static class ArchiveCompressor
             Logger.Log($"非キャンセル要因の中断を検出、内部例外へ昇格: {oce.InnerException.Message}");
             TryDeletePartialOutput(outputPath, outputCreated, "圧縮エラー");
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(oce.InnerException);
+            // 上の Throw が常に送出するため到達しないが、Task<int> 化に伴い
+            // コンパイラの全経路 return/throw 要求 (CS0161) を満たすために明示する。
+            throw;
         }
         catch (OperationCanceledException)
         {

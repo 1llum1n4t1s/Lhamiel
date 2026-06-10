@@ -885,15 +885,62 @@ public class ArchiveCompressorTests
                 lockedPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
             var zipPath = Path.Combine(testRoot, "out.zip");
-            await ArchiveCompressor.CompressFilesAsync(
+            var skipped = await ArchiveCompressor.CompressFilesAsync(
                 [sourceDir], zipPath, Format.Zip,
                 new Progress<ProgressInfo>(),
                 TestContext.Current.CancellationToken);
 
             Assert.True(File.Exists(zipPath), "アーカイブが生成されていない");
+            // 呼び出し側 (ArchiveProcessor) がパスワード保護圧縮の UI 警告に使う戻り値 (codex P2 #3386876544)
+            Assert.Equal(1, skipped);
 
             // 読めるファイルだけが入っていて、ロック中ファイルは抜けていること。
             using var reader = new ArchiveReader(zipPath);
+            var names = reader.Items.Select(i => (i.FullName ?? string.Empty).Replace('\\', '/')).ToList();
+            Assert.Contains(names, n => n.EndsWith("readable.txt"));
+            Assert.DoesNotContain(names, n => n.EndsWith("locked.bin"));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
+    public async Task CompressFilesAsync_PasswordProtectedWithLockedFile_ReturnsSkippedCount()
+    {
+        // codex P2 #3386876544: パスワード保護圧縮でロック中ファイルがスキップされた場合、
+        // 「アーカイブに含まれず平文のまま残ったファイルがある」ことを呼び出し側
+        // (ArchiveProcessor) が UI 警告できるよう、スキップ件数を戻り値で返す。
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testRoot, "Source");
+        try
+        {
+            Directory.CreateDirectory(sourceDir);
+            File.WriteAllText(Path.Combine(sourceDir, "readable.txt"), "ok");
+            var lockedPath = Path.Combine(sourceDir, "locked.bin");
+            File.WriteAllText(lockedPath, "you cannot read me");
+
+            // スキップが無ければ 0 を返す
+            var cleanZip = Path.Combine(testRoot, "clean.zip");
+            var noSkip = await ArchiveCompressor.CompressFilesAsync(
+                [sourceDir], cleanZip, Format.Zip, null,
+                TestContext.Current.CancellationToken, password: "secret-pass");
+            Assert.Equal(0, noSkip);
+
+            // FileShare.None で握る（VS の .vsidx 相当の共有モード）
+            using var lockHandle = new FileStream(
+                lockedPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+            var zipPath = Path.Combine(testRoot, "out.zip");
+            var skipped = await ArchiveCompressor.CompressFilesAsync(
+                [sourceDir], zipPath, Format.Zip, null,
+                TestContext.Current.CancellationToken, password: "secret-pass");
+
+            Assert.Equal(1, skipped);
+            // 残りのファイルでパスワード付きアーカイブ自体は正しく作られていること
+            using var reader = new ArchiveReader(zipPath, "secret-pass", new ArchiveOption());
             var names = reader.Items.Select(i => (i.FullName ?? string.Empty).Replace('\\', '/')).ToList();
             Assert.Contains(names, n => n.EndsWith("readable.txt"));
             Assert.DoesNotContain(names, n => n.EndsWith("locked.bin"));
