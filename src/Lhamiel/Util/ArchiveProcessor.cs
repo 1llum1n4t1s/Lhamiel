@@ -43,6 +43,18 @@ public static class ArchiveProcessor
     private static readonly SemaphoreSlim StructurePasswordPromptGate = new(1, 1);
 
     /// <summary>
+    /// 展開系パスワードダイアログの「表示そのもの」をプロセス全体で 1 つに直列化する葉ゲート。
+    /// 構造解析プロンプト (本クラス) と展開中の AsyncPasswordQuery プロンプト (ArchiveExtractor)
+    /// は別経路のため、StructurePasswordPromptGate だけでは he=on アーカイブと通常の暗号化
+    /// アーカイブが混在するバッチでモーダルが積み重なる (codex P2 #3386575715)。
+    /// 取得規約: <b>保持中に他のゲートを取得しない (葉)</b>。取得順は
+    /// StructurePasswordPromptGate → NativeArchiveGate → 本ゲート の一貫階層
+    /// (構造プロンプトはダイアログ後に本ゲートを解放してから NativeArchiveGate 配下の再解析へ、
+    /// 展開中プロンプトは NativeArchiveGate 保持中に本ゲートを取得) のためデッドロックしない。
+    /// </summary>
+    internal static readonly SemaphoreSlim ExtractionPasswordDialogGate = new(1, 1);
+
+    /// <summary>
     /// 設定の <see cref="Settings.IsPasswordProtectionEnabled"/> / <see cref="Settings.PasswordMode"/> /
     /// <see cref="Settings.EncryptedCompressionPassword"/> を元に圧縮パスワードを解決する。
     /// <para>
@@ -281,6 +293,9 @@ public static class ArchiveProcessor
         {
             string? outputPath = null;
             ArchiveExtractor.ArchiveStructureInfo? structureInfo = null;
+            // he=on 構造解析で確定したパスワードの redaction 登録。catch の LogException 時にも
+            // 有効なように try の外で保持し finally で解放する (codex P2 #3386575721)。
+            IDisposable? knownPasswordRedaction = null;
             try
             {
                 // UIスレッドからアクセスが必要なプログレス表示用のラッパー
@@ -315,9 +330,12 @@ public static class ArchiveProcessor
                 // 常に false になり「Foo/Foo」二重ネストが起きる (codex P2 #3384706128)。
                 // 該当拡張子ならここでパスワードを確認して再解析し、検証済みパスワードは
                 // 展開・CRC 検証にも引き回す (展開中の再ダイアログを回避)。
-                // 全試行失敗時は従来経路 (パスワード無し) に合流し、本当に破損したアーカイブの
-                // UX (展開時エラー表示) を変えない。明示キャンセルは展開ごと中止する。
+                // 全試行失敗時は従来経路 (パスワード無し) に合流するが、展開中の再プロンプトは
+                // 抑止する (suppressPasswordPrompt)。本当に破損したアーカイブはパスワード
+                // コールバック自体が呼ばれずエラー表示経路に進むため UX は変わらない。
+                // 明示キャンセルは展開ごと中止する。
                 string? knownPassword = null;
+                var structurePromptExhausted = false;
                 if (rawStructureInfo.OpenFailed && extension is ".7z" or ".rar")
                 {
                     const int MaxStructurePasswordAttempts = 3;
@@ -330,8 +348,19 @@ public static class ArchiveProcessor
                         for (var attempt = 1; attempt <= MaxStructurePasswordAttempts; attempt++)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
-                            var pw = await PasswordDialogImpl.PromptForPasswordAsync(
-                                archiveDisplayName, View.PasswordDialogMode.Extract, attempt > 1, progressWindow, cancellationToken);
+                            // ダイアログ表示そのものは展開中プロンプトと共有の葉ゲートで直列化する
+                            // (codex P2 #3386575715)。保持中に他のゲートを取得しないこと。
+                            string? pw;
+                            await ExtractionPasswordDialogGate.WaitAsync(cancellationToken);
+                            try
+                            {
+                                pw = await PasswordDialogImpl.PromptForPasswordAsync(
+                                    archiveDisplayName, View.PasswordDialogMode.Extract, attempt > 1, progressWindow, cancellationToken);
+                            }
+                            finally
+                            {
+                                ExtractionPasswordDialogGate.Release();
+                            }
                             if (pw is null)
                             {
                                 // 明示キャンセルはこのアーカイブの展開ごと中止する (codex P2 #3385210131)。
@@ -365,11 +394,20 @@ public static class ArchiveProcessor
                     }
 
                     if (knownPassword is null)
-                        Logger.Log($"パスワードでアーカイブ構造を解析できなかったため従来経路で続行します: {archiveDisplayName}", LogLevel.Warning);
+                    {
+                        // 試行上限まで失敗: 従来経路 (パスワード無し) には合流するが、展開中の
+                        // AsyncPasswordQuery で再びダイアログ一式を出さないよう抑止フラグを立てる
+                        // (codex P2 #3386575724)。本当に破損したアーカイブはパスワードコールバック
+                        // 自体が呼ばれないため、従来どおりエラー表示経路に進む。
+                        structurePromptExhausted = true;
+                        Logger.Log($"パスワードでアーカイブ構造を解析できませんでした (展開中の再プロンプトは抑止): {archiveDisplayName}", LogLevel.Warning);
+                    }
                 }
-                // 平文パスワードのログ混入防止 (defense-in-depth)。展開・検証が終わる
-                // このメソッドスコープの終端まで登録を維持する。
-                using var knownPasswordRedaction = Logger.RegisterRedactionToken(knownPassword);
+                // 平文パスワードのログ混入防止 (defense-in-depth)。catch の LogException でも
+                // 有効である必要があるため、try 内の using ではなく外側の変数に登録して
+                // finally で解放する (codex P2 #3386575721: using は unwind 時に catch より
+                // 先に dispose される)。
+                knownPasswordRedaction = Logger.RegisterRedactionToken(knownPassword);
                 // 設定は処理開始時点でスナップショットを取って一貫性を保つ（UIの設定変更と race しない）。
                 // バッチ処理から渡された settingsSnapshot があればそれを再利用し、各ファイルごとの
                 // ロック競合＆浅コピーアロケを回避する。
@@ -457,7 +495,8 @@ public static class ArchiveProcessor
                         progressWindow,
                         structureInfo.TotalUncompressedSize,
                         snapshot.NormalizeUnicodeFileNames,
-                        knownPassword);
+                        knownPassword,
+                        structurePromptExhausted);
 
                     // 展開後 CRC 整合性検証（設定で有効な場合のみ）
                     if (snapshot.VerifyAfterExtraction)
@@ -537,6 +576,8 @@ public static class ArchiveProcessor
                 {
                     progressWindow?.CloseSafe();
                 }
+                // redaction は catch の LogException 完了まで有効にするため最後に解放する。
+                knownPasswordRedaction?.Dispose();
             }
         }, cancellationToken);
     }

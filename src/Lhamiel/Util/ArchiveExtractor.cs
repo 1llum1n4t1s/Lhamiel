@@ -577,7 +577,12 @@ public static class ArchiveExtractor
         }
         catch (Exception ex)
         {
-            Logger.Log($"展開衝突検出でエラー: {ex.Message}");
+            // パスワード付きで開いた場合は例外メッセージをログへ出さない (GetArchiveStructureInfo の
+            // 同種対応 codex P2 #3385301557 と同じ契約: 1〜3 文字パスワードは redaction 対象外のため、
+            // ライブラリ例外テキスト経由の平文混入をログ出力側で構造的に防ぐ)。
+            Logger.Log(password is null
+                ? $"展開衝突検出でエラー: {ex.Message}"
+                : $"展開衝突検出でエラー (パスワード付き): {ex.GetType().Name} (HResult=0x{ex.HResult:X8})");
         }
 
         return conflicts;
@@ -607,7 +612,7 @@ public static class ArchiveExtractor
     /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
     /// <param name="knownPassword">構造解析時に検証済みのパスワード (he=on 7z 等)。初回のパスワード要求をダイアログなしでこの値で応答する</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null, long precomputedUncompressedSize = -1, bool normalizeUnicode = true, string? knownPassword = null)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null, long precomputedUncompressedSize = -1, bool normalizeUnicode = true, string? knownPassword = null, bool suppressPasswordPrompt = false)
     {
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}");
         cancellationToken.ThrowIfCancellationRequested();
@@ -650,7 +655,7 @@ public static class ArchiveExtractor
         if (hasExistingFiles && parentWindow != null)
         {
             // 一時フォルダ方式: 一時展開 → 衝突検出 → ダイアログ → 移動
-            await ExtractViaTempFolderAsync(archivePath, outputPath, progress, parentWindow, cancellationToken, progressWindow, normalizeUnicode, knownPassword);
+            await ExtractViaTempFolderAsync(archivePath, outputPath, progress, parentWindow, cancellationToken, progressWindow, normalizeUnicode, knownPassword, suppressPasswordPrompt);
         }
         else
         {
@@ -660,7 +665,7 @@ public static class ArchiveExtractor
                 var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
                 try
                 {
-                    await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, false, cancellationToken, overwriteCheckPaths, null, normalizeUnicode, knownPassword);
+                    await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, false, cancellationToken, overwriteCheckPaths, null, normalizeUnicode, knownPassword, suppressPasswordPrompt);
                 }
                 finally
                 {
@@ -674,7 +679,7 @@ public static class ArchiveExtractor
     /// 一時フォルダ方式で展開する。
     /// ①一時フォルダに全展開 → ②衝突検出 → ③ダイアログ表示 → ④選択結果に基づいて移動
     /// </summary>
-    private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, View.ProgressWindow? progressWindow, bool normalizeUnicode = true, string? knownPassword = null)
+    private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, View.ProgressWindow? progressWindow, bool normalizeUnicode = true, string? knownPassword = null, bool suppressPasswordPrompt = false)
     {
         // 一時フォルダを出力先ディレクトリ直下に作成（同一ドライブでFile.Moveが高速、かつ書き込み権限が確実）
         // outputPathがファイルの場合は親ディレクトリを使用
@@ -692,7 +697,7 @@ public static class ArchiveExtractor
                 var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
                 try
                 {
-                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, null, null, normalizeUnicode, knownPassword);
+                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, null, null, normalizeUnicode, knownPassword, suppressPasswordPrompt);
                 }
                 finally
                 {
@@ -981,7 +986,7 @@ public static class ArchiveExtractor
         return reader!;
     }
 
-    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null, bool normalizeUnicode = true, string? knownPassword = null)
+    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null, bool normalizeUnicode = true, string? knownPassword = null, bool suppressPasswordPrompt = false)
     {
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}");
 
@@ -1045,6 +1050,11 @@ public static class ArchiveExtractor
         }
         cancellationToken = innerCts.Token;
 
+        // パスワード取得の中止追跡フラグ。詳細コメントは下の passwordQuery 構築部を参照。
+        // open 時 (he=on) の EncryptionException を OCE に変換する catch フィルタから
+        // 参照するため、try ブロックの外で宣言する (try 内宣言は catch 句から見えない)。
+        var passwordAcquisitionCancelled = 0;
+
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1073,6 +1083,7 @@ public static class ArchiveExtractor
             // volatile 相当のメモリ可視性保証が必要。attemptCount と対称に Interlocked で扱う。
             // 命名: 「ユーザーキャンセル」だけでなく「再試行上限超過」も 1 で表す（パスワード取得が中止された
             //       原因を問わず追跡）。旧名 userCancelledPassword は前者だけを示唆するため改名。
+            // 宣言自体は open 時の catch フィルタから参照するため try の外にある（上記参照）。
             //
             // CS1628 について（レビュー bot の誤検知対策コメント）:
             // この変数は直下のラムダ（passwordQuery）にキャプチャされるため、コンパイラによって
@@ -1081,7 +1092,7 @@ public static class ArchiveExtractor
             // CS1628 は async メソッドの ref/out パラメータを await を跨いで使う場合の制限であり、
             // 「captured local への ref」とは別。Volatile.Read は同期 catch when フィルタ内で
             // 使われており、await を跨ぐ可能性もない。実ビルドも 0 errors / 0 warnings。
-            var passwordAcquisitionCancelled = 0;
+            //
             // 再試行上限: 悪意あるアーカイブや構造的に誤判定されるアーカイブでの無限ダイアログループを防ぐ
             const int MaxPasswordAttempts = 3;
             var passwordQuery = new AsyncPasswordQuery(async _ =>
@@ -1096,6 +1107,17 @@ public static class ArchiveExtractor
                     return knownPassword;
                 }
 
+                // 構造解析段階でパスワード試行上限まで失敗している場合、ここで再びダイアログを
+                // 出すと「上限 3 回 + さらに 3 回」の二重プロンプトになる (codex P2 #3386575724)。
+                // 追加ダイアログなしでキャンセル扱いにする (本当に破損したアーカイブはこの
+                // コールバック自体が呼ばれずエラー表示経路に進むため影響なし)。
+                if (suppressPasswordPrompt)
+                {
+                    Logger.Log("構造解析でパスワード試行上限に達しているため、追加ダイアログなしで展開を中止します", LogLevel.Warning);
+                    System.Threading.Interlocked.Exchange(ref passwordAcquisitionCancelled, 1);
+                    return string.Empty;
+                }
+
                 // 上限を超えたら自動キャンセル扱い（null 返しと同じ経路）
                 if (currentAttempt > MaxPasswordAttempts)
                 {
@@ -1106,8 +1128,21 @@ public static class ArchiveExtractor
 
                 // cancellationToken を渡し、展開キャンセル時に PasswordDialog が画面に残らないようにする。
                 // ArchiveProcessor.PasswordDialogImpl 経由でテスト時に差し替え可能。
-                var pw = await ArchiveProcessor.PasswordDialogImpl.PromptForPasswordAsync(
-                    archiveName, View.PasswordDialogMode.Extract, isRetry, parentWindow, cancellationToken);
+                // ダイアログ表示そのものは構造解析プロンプト (ArchiveProcessor) と共有の葉ゲートで
+                // 直列化し、混在バッチでモーダルが積み重ならないようにする (codex P2 #3386575715)。
+                // ここは NativeArchiveGate 保持中なので、取得順は常に
+                // 「NativeArchiveGate → ダイアログゲート (葉)」の一方向のみ。
+                string? pw;
+                await ArchiveProcessor.ExtractionPasswordDialogGate.WaitAsync(cancellationToken);
+                try
+                {
+                    pw = await ArchiveProcessor.PasswordDialogImpl.PromptForPasswordAsync(
+                        archiveName, View.PasswordDialogMode.Extract, isRetry, parentWindow, cancellationToken);
+                }
+                finally
+                {
+                    ArchiveProcessor.ExtractionPasswordDialogGate.Release();
+                }
                 if (pw is null)
                 {
                     System.Threading.Interlocked.Exchange(ref passwordAcquisitionCancelled, 1);
@@ -1317,6 +1352,19 @@ public static class ArchiveExtractor
 
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
 
+        }
+        catch (Exception ex) when (ex is EncryptionException or SevenZipException
+            && System.Threading.Volatile.Read(ref passwordAcquisitionCancelled) == 1)
+        {
+            // パスワード取得が中止された (ダイアログキャンセル / 再試行上限 / 構造解析上限による
+            // 抑止 codex P2 #3386575724) 結果の失敗。reader.Save 周りの EncryptionException catch は
+            // open 時 (he=on はヘッダ復号のため open 中にパスワードコールバックが走る) を覆わない上、
+            // open 時のキャンセルは CryptoGetTextPassword が SevenZipCode.Cancel を返すだけで
+            // cb.Exceptions に記録されず SevenZipException (IsNotArc) になる (EncryptionException
+            // ではない)。フラグが立っている = この失敗は中止に起因するので、種別を問わず通常の
+            // キャンセル扱いに変換する。一時ディレクトリは finally が掃除する。
+            Logger.Log("パスワード取得が中止されたため展開を中止します");
+            throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"), cancellationToken);
         }
         catch (OperationCanceledException oce) when (!cancellationToken.IsCancellationRequested && oce.InnerException is not null)
         {

@@ -56,6 +56,26 @@ public class HeaderEncryptedArchiveTests : IDisposable
     }
 
     /// <summary>
+    /// 常に間違ったパスワードを返すスタブ (呼び出し回数を記録)。
+    /// 構造解析の試行上限テストで「上限後に展開段の再プロンプトが出ない」ことの検証に使う。
+    /// </summary>
+    private sealed class WrongPasswordDialog : IPasswordDialogService
+    {
+        public int CallCount;
+
+        public Task<string?> PromptForPasswordAsync(
+            string archiveDisplayName,
+            PasswordDialogMode mode,
+            bool isRetry,
+            Window? parentWindow,
+            CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref CallCount);
+            return Task.FromResult<string?>("definitely-wrong-password");
+        }
+    }
+
+    /// <summary>
     /// 同時に開いているプロンプト数を追跡するスタブ。一定時間保持してから null (キャンセル) を返す。
     /// StructurePasswordPromptGate が機能していれば MaxObservedConcurrency は 1 を超えない。
     /// </summary>
@@ -86,9 +106,10 @@ public class HeaderEncryptedArchiveTests : IDisposable
 
     /// <summary>
     /// アーカイブ名と同名のルートフォルダ 1 つ (中にファイル 1 つ) を持つ
-    /// he=on ヘッダ暗号化 7z を作成する。
+    /// パスワード付き 7z を作成する。encryptFileNames=true で he=on (ヘッダ暗号化)、
+    /// false でヘッダ可視・中身のみ暗号化 (展開中の AsyncPasswordQuery 経路に入る)。
     /// </summary>
-    private async Task<string> CreateHeaderEncryptedArchiveAsync(string baseName)
+    private async Task<string> CreateHeaderEncryptedArchiveAsync(string baseName, bool encryptFileNames = true)
     {
         var folder = Path.Combine(_dir, baseName);
         Directory.CreateDirectory(folder);
@@ -100,7 +121,7 @@ public class HeaderEncryptedArchiveTests : IDisposable
             [folder], archive, Format.SevenZip,
             cancellationToken: TestContext.Current.CancellationToken,
             settingsOverride: new Settings { DirectoryStructureMode = DirectoryStructureMode.IncludeRoot },
-            password: Password, encryptFileNames: true);
+            password: Password, encryptFileNames: encryptFileNames);
         return archive;
     }
 
@@ -208,5 +229,41 @@ public class HeaderEncryptedArchiveTests : IDisposable
 
         Assert.Equal(2, stub.CallCount);
         Assert.Equal(1, stub.MaxObservedConcurrency); // ダイアログが積み重ならない
+    }
+
+    [Fact]
+    public async Task ExtractArchiveAsync_HeaderEncrypted_ExhaustedWrongPasswords_NoSecondPromptSet()
+    {
+        // codex P2 #3386575724: 構造解析で 3 回パスワードを間違えたら、従来経路の
+        // AsyncPasswordQuery でさらに 3 回プロンプトを出さず、キャンセル扱いで中止する。
+        var archive = await CreateHeaderEncryptedArchiveAsync("data10");
+        var stub = new WrongPasswordDialog();
+        ArchiveProcessor.PasswordDialogImpl = stub;
+
+        var outDir = Path.Combine(_dir, "out10");
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            ArchiveProcessor.ExtractArchiveAsync(archive, outDir, outputToSameDirectory: false, progressWindow: null));
+
+        Assert.Equal(3, stub.CallCount); // 構造解析の 3 回のみ。展開段の再プロンプト無し
+    }
+
+    [Fact]
+    public async Task ExtractArchiveAsync_MixedEncryptedBatch_DialogsAreSerialized()
+    {
+        // codex P2 #3386575715: he=on (構造解析プロンプト) とヘッダ可視の暗号化アーカイブ
+        // (展開中の AsyncPasswordQuery プロンプト) が並列バッチで混在しても、
+        // ExtractionPasswordDialogGate がダイアログ表示を 1 つずつに直列化する。
+        var heOn = await CreateHeaderEncryptedArchiveAsync("data11");
+        var heOff = await CreateHeaderEncryptedArchiveAsync("data12", encryptFileNames: false);
+        var stub = new ConcurrencyTrackingPasswordDialog();
+        ArchiveProcessor.PasswordDialogImpl = stub;
+
+        var t1 = ArchiveProcessor.ExtractArchiveAsync(heOn, Path.Combine(_dir, "out11"), outputToSameDirectory: false, progressWindow: null);
+        var t2 = ArchiveProcessor.ExtractArchiveAsync(heOff, Path.Combine(_dir, "out12"), outputToSameDirectory: false, progressWindow: null);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => t1);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => t2);
+
+        Assert.Equal(2, stub.CallCount); // 構造解析側 1 回 + 展開中クエリ側 1 回
+        Assert.Equal(1, stub.MaxObservedConcurrency); // 経路をまたいでも積み重ならない
     }
 }
