@@ -351,8 +351,10 @@
   <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">Das gespeicherte Passwort wird gelöscht. Beim nächsten Komprimieren müssen Sie es erneut eingeben. Fortfahren?</x:String>
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Das gespeicherte Passwort konnte nicht wiederhergestellt werden (möglicherweise durch Übernahme der Einstellungen von einem anderen PC oder Zurücksetzen des Windows-Passworts). Bitte legen Sie das Passwort erneut fest.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Das gespeicherte Passwort enthält Zeichen, die im ZIP-Format nicht verwendet werden können (nur ASCII). Geben Sie ein Passwort für diese Komprimierung ein (das gespeicherte Passwort wird nicht geändert).</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} Datei(en) wurden übersprungen, da sie nicht zugänglich waren. Mit den restlichen Dateien wurde ein passwortgeschütztes Archiv erstellt.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Alle Quelldateien waren nicht zugänglich, daher wurde die Komprimierung abgebrochen. Es wurde kein leeres Archiv erstellt.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Das Format {0} unterstützt keinen Passwortschutz. Wählen Sie ZIP oder 7z.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP-Passwörter dürfen nur ASCII-Zeichen enthalten (Buchstaben, Ziffern und Symbole). Für andere Zeichen (z. B. Umlaute oder japanische Zeichen) wählen Sie das 7z-Format.</x:String>
 </ResourceDictionary>

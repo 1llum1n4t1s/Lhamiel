@@ -351,8 +351,10 @@
   <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">将删除已保存的密码。下次压缩时需要重新输入。确定继续吗?</x:String>
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">无法恢复已保存的密码 (可能是从其他电脑复制设置或 Windows 密码被重置导致)。请重新设置密码。</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">已保存的密码包含 ZIP 格式无法使用的字符（仅支持 ASCII）。请输入本次压缩使用的密码（已保存的密码不会被更改）。</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} 个文件因无法访问被跳过。已使用其余文件创建了受密码保护的压缩包。</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">所有源文件都无法访问,因此已中止压缩。未创建空的压缩包。</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} 格式不支持密码保护。请选择 ZIP 或 7z。</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP 格式的密码只能包含 ASCII 字符（字母、数字和符号）。如需使用中文等其他字符，请选择 7z 格式。</x:String>
 </ResourceDictionary>

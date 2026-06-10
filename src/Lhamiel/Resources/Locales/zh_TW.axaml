@@ -351,8 +351,10 @@
   <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">將刪除已儲存的密碼。下次壓縮時需要重新輸入。確定要繼續嗎?</x:String>
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">無法還原已儲存的密碼 (可能是從其他電腦複製設定或 Windows 密碼重設所致)。請重新設定密碼。</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">已儲存的密碼包含 ZIP 格式無法使用的字元（僅支援 ASCII）。請輸入本次壓縮使用的密碼（已儲存的密碼不會被變更）。</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} 個檔案因無法存取而被跳過。已使用其餘檔案建立了受密碼保護的壓縮檔。</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">所有來源檔案皆無法存取,已中止壓縮。未建立空的壓縮檔。</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} 格式不支援密碼保護。請選擇 ZIP 或 7z。</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP 格式的密碼只能包含 ASCII 字元（字母、數字與符號）。如需使用中文等其他字元，請選擇 7z 格式。</x:String>
 </ResourceDictionary>

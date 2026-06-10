@@ -351,8 +351,10 @@
   <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">Сохранённый пароль будет удалён. При следующем сжатии его нужно будет ввести снова. Продолжить?</x:String>
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Не удалось восстановить сохранённый пароль (вероятно, из-за копирования настроек с другого ПК или сброса пароля Windows). Установите пароль заново.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Сохранённый пароль содержит символы, которые нельзя использовать в формате ZIP (только ASCII). Введите пароль для этого сжатия (сохранённый пароль не будет изменён).</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">Пропущено файлов: {0} из-за недоступности. Архив с защитой паролем создан из оставшихся файлов.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Все исходные файлы недоступны, поэтому сжатие отменено. Пустой архив не создан.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Формат {0} не поддерживает защиту паролем. Выберите ZIP или 7z.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Пароли ZIP могут содержать только символы ASCII (латинские буквы, цифры и знаки). Для других символов (например, кириллицы) выберите формат 7z.</x:String>
 </ResourceDictionary>

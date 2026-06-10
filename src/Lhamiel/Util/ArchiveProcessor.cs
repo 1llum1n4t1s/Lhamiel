@@ -83,26 +83,52 @@ public static class ArchiveProcessor
         }
 
         var encryptFileNames = settings.EncryptFileNames;
+        // 同梱 7-Zip 26.00 は ZIP 作成時に非 ASCII パスワードを E_INVALIDARG で拒否する
+        // (upstream regression、ライブラリ CLAUDE.md の既知問題。7z は非 ASCII でも正常動作)。
+        // ZIP のときはここで検証して再プロンプトし、ネイティブの不透明な失敗まで進ませない。
+        var isZip = formatHint is { } zipFmt && string.Equals(zipFmt, "ZIP", StringComparison.OrdinalIgnoreCase);
         string? plaintext;
 
         if (string.Equals(settings.PasswordMode, "Remember", StringComparison.Ordinal))
         {
             // 保存済み ciphertext があれば復号を試行
             plaintext = CompressionPasswordSession.TryUnprotect(settings.EncryptedCompressionPassword);
+
+            // 保存済みパスワードが復号できても、ZIP + 非 ASCII は使用不能 (7-Zip 26.00 regression)。
+            // 7z では引き続き有効なパスワードなので保存値は変更せず、
+            // この圧縮限りの一時パスワードを再プロンプトする。
+            var savedUnusableForZip = plaintext is not null && isZip && ArchiveCompressor.ContainsNonAscii(plaintext);
+            if (savedUnusableForZip)
+            {
+                plaintext = null;
+                await UiDispatcherImpl.InvokeAsync(() =>
+                    MessageServiceImpl.ShowError(App.Text("Notify.SavedPasswordZipAsciiOnly")));
+            }
+
             if (plaintext is null)
             {
                 // 復号失敗 (別ユーザー/PC コピー等) → ユーザーに通知して再プロンプト。
                 // ciphertext 未保存 (初回 Remember 利用) との区別はユーザー視点では不要なので
-                // 通知は ciphertext があった場合のみ表示する。
-                if (settings.EncryptedCompressionPassword is { Length: > 0 })
+                // 通知は ciphertext があった場合のみ表示する (ZIP 非対応文字の通知済みケースを除く)。
+                if (!savedUnusableForZip && settings.EncryptedCompressionPassword is { Length: > 0 })
                 {
                     await UiDispatcherImpl.InvokeAsync(() =>
                         MessageServiceImpl.ShowError(App.Text("Notify.SavedPasswordDecryptFailed")));
                 }
 
-                plaintext = await PasswordDialogImpl.PromptForPasswordAsync(
-                    archiveDisplayName, PasswordDialogMode.CompressNew, isRetry: false, parentWindow, cancellationToken);
+                plaintext = await PromptCompressionPasswordAsync(
+                    archiveDisplayName, isZip, parentWindow, cancellationToken);
                 if (plaintext is null) return null; // user cancelled
+
+                if (savedUnusableForZip)
+                {
+                    // 保存済みパスワード (7z 用に有効) は上書きせず、今回の圧縮限りで使用する。
+                    Logger.Log("ZIP 用の一時パスワードを使用します (保存済みパスワードは変更しません)", LogLevel.Info);
+                    return new PasswordResolutionState(plaintext, encryptFileNames)
+                    {
+                        RedactionScope = Logger.RegisterRedactionToken(plaintext),
+                    };
+                }
 
                 // 新パスワードを DPAPI 暗号化して永続化 (Remember モードの初回保存 / 再設定)。
                 // 保存失敗時は圧縮自体は継続する (UI/UX 上、パスワード保護はあくまでオプション機能なので)。
@@ -150,8 +176,8 @@ public static class ArchiveProcessor
         else
         {
             // PromptEachTime: 毎回入力。設定は変更しない。
-            plaintext = await PasswordDialogImpl.PromptForPasswordAsync(
-                archiveDisplayName, PasswordDialogMode.CompressNew, isRetry: false, parentWindow, cancellationToken);
+            plaintext = await PromptCompressionPasswordAsync(
+                archiveDisplayName, isZip, parentWindow, cancellationToken);
             if (plaintext is null) return null; // user cancelled
         }
 
@@ -163,6 +189,41 @@ public static class ArchiveProcessor
         {
             RedactionScope = Logger.RegisterRedactionToken(plaintext),
         };
+    }
+
+    private const int MaxZipPasswordAttempts = 5;
+
+    /// <summary>
+    /// 圧縮パスワードのプロンプトを表示し、ZIP のときは ASCII 制約を検証して再プロンプトする。
+    /// </summary>
+    /// <remarks>
+    /// 同梱 7-Zip 26.00 は ZIP 作成時に非 ASCII パスワードを E_INVALIDARG で拒否する
+    /// (upstream regression)。ZIP のときは入力直後に検証してエラー通知 + 再プロンプトし、
+    /// ユーザーがその場で打ち直せるようにする。再入力は <see cref="MaxZipPasswordAttempts"/>
+    /// 回まで (同じ非対応入力が続く場合の無限ループ防止)、超過時はキャンセル扱いで null を返す。
+    /// 7z は非 ASCII パスワードでも正常動作するため検証しない。
+    /// </remarks>
+    /// <returns>確定したパスワード平文。キャンセルまたは試行上限超過で null。</returns>
+    private static async Task<string?> PromptCompressionPasswordAsync(
+        string archiveDisplayName, bool isZip, Window? parentWindow, CancellationToken cancellationToken)
+    {
+        var isRetry = false;
+        for (var attempt = 0; attempt < MaxZipPasswordAttempts; attempt++)
+        {
+            var plaintext = await PasswordDialogImpl.PromptForPasswordAsync(
+                archiveDisplayName, PasswordDialogMode.CompressNew, isRetry, parentWindow, cancellationToken);
+            if (plaintext is null) return null; // user cancelled
+
+            if (!isZip || !ArchiveCompressor.ContainsNonAscii(plaintext))
+                return plaintext;
+
+            await UiDispatcherImpl.InvokeAsync(() =>
+                MessageServiceImpl.ShowError(App.Text("Error.ZipPasswordAsciiOnly")));
+            isRetry = true;
+        }
+
+        Logger.Log("ZIP 非対応文字を含むパスワード入力が上限回数を超えたため圧縮を中止します", LogLevel.Warning);
+        return null;
     }
 
     /// <summary>

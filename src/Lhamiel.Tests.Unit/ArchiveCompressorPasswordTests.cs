@@ -203,6 +203,59 @@ public class ArchiveCompressorPasswordTests : IDisposable
     }
 
     [Fact]
+    public async Task ZipFormat_WithNonAsciiPassword_FailsFastWithSpecificError()
+    {
+        // 同梱 7-Zip 26.00 は ZIP 作成時に非 ASCII パスワードを E_INVALIDARG で拒否する
+        // (upstream regression、実機確認済み)。ネイティブの不透明な SevenZipException ではなく、
+        // CreateArchiveWriter の guard が具体的なメッセージで fail-fast することを検証する。
+        Assert.SkipWhen(!OperatingSystem.IsWindows(), "7z.dll 経路は Windows 限定");
+        var src = CreateSourceFile();
+        var archive = Path.Combine(_testDir, "cjk.zip");
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            ArchiveCompressor.CompressFilesAsync(
+                [src], archive, Format.Zip,
+                cancellationToken: TestContext.Current.CancellationToken,
+                password: "にほんごパスワード"));
+
+        Assert.Contains("ZipPasswordAsciiOnly", ex.Message);
+        Assert.False(File.Exists(archive));
+    }
+
+    [Fact]
+    public async Task SevenZipFormat_WithNonAsciiPassword_Succeeds()
+    {
+        // 7z は非 ASCII パスワードで正常動作する (26.00 regression は ZIP 作成のみ)。
+        // 同梱 7z.dll を更新して 7z 側にも regression が波及した場合の sentinel。
+        Assert.SkipWhen(!OperatingSystem.IsWindows(), "7z.dll 経路は Windows 限定");
+        var src = CreateSourceFile();
+        var archive = Path.Combine(_testDir, "cjk.7z");
+
+        await ArchiveCompressor.CompressFilesAsync(
+            [src], archive, Format.SevenZip,
+            cancellationToken: TestContext.Current.CancellationToken,
+            password: "にほんごパスワード", encryptFileNames: true);
+
+        Assert.True(File.Exists(archive));
+        // 正しいパスワードで開けることまで確認 (書けたが読めない、を検出)
+        using var reader = new ArchiveReader(archive, "にほんごパスワード", new ArchiveOption());
+        Assert.Contains(reader.Items, e => e.Name == "secret.txt");
+    }
+
+    [Fact]
+    public void ContainsNonAscii_Boundaries()
+    {
+        // ASCII 全域 (0x20-0x7E) は false、0x7F (DEL) も ASCII 範囲内なので false。
+        Assert.False(ArchiveCompressor.ContainsNonAscii("abc XYZ 012 !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"));
+        Assert.False(ArchiveCompressor.ContainsNonAscii("\x7F"));
+        // 0x80 以上は true (全角・かな・アクセント付きラテン・キリル)
+        Assert.True(ArchiveCompressor.ContainsNonAscii("ｐａｓｓｗｏｒｄ"));
+        Assert.True(ArchiveCompressor.ContainsNonAscii("ぱすわーど"));
+        Assert.True(ArchiveCompressor.ContainsNonAscii("café"));
+        Assert.True(ArchiveCompressor.ContainsNonAscii("пароль"));
+    }
+
+    [Fact]
     public async Task EmptySourcePaths_Throws()
     {
         Assert.SkipWhen(!OperatingSystem.IsWindows(), "7z.dll 経路は Windows 限定");

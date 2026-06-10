@@ -351,8 +351,10 @@
   <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">சேமிக்கப்பட்ட கடவுச்சொல் அழிக்கப்படும். அடுத்த அமுக்கத்தில் மீண்டும் உள்ளிட வேண்டியிருக்கும். தொடரவா?</x:String>
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">சேமிக்கப்பட்ட கடவுச்சொல்லை மீட்டெடுக்க முடியவில்லை (வேறு கணினியிலிருந்து அமைப்புகளை நகலெடுத்தது அல்லது Windows கடவுச்சொல் மீட்டமைப்பு காரணமாக இருக்கலாம்). கடவுச்சொல்லை மீண்டும் அமைக்கவும்.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">சேமிக்கப்பட்ட கடவுச்சொல்லில் ZIP வடிவத்தில் பயன்படுத்த முடியாத எழுத்துகள் உள்ளன (ASCII மட்டும்). இந்தச் சுருக்கத்திற்கான கடவுச்சொல்லை உள்ளிடவும் (சேமிக்கப்பட்ட கடவுச்சொல் மாற்றப்படாது).</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">அணுக முடியாததால் {0} கோப்புகள் தவிர்க்கப்பட்டன. மீதமுள்ள கோப்புகளுடன் கடவுச்சொல்லால் பாதுகாக்கப்பட்ட காப்பகம் உருவாக்கப்பட்டது.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">அனைத்து மூல கோப்புகளும் அணுக முடியாதவை, எனவே அமுக்கம் இரத்து செய்யப்பட்டது. வெற்று காப்பகம் உருவாக்கப்படவில்லை.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} வடிவம் கடவுச்சொல் பாதுகாப்பை ஆதரிக்காது. ZIP அல்லது 7z-ஐ தேர்வுசெய்க.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP கடவுச்சொற்களில் ASCII எழுத்துகள் (லத்தீன் எழுத்துகள், எண்கள், குறியீடுகள்) மட்டுமே இருக்க முடியும். தமிழ் போன்ற பிற எழுத்துகளைப் பயன்படுத்த 7z வடிவத்தைத் தேர்ந்தெடுக்கவும்.</x:String>
 </ResourceDictionary>

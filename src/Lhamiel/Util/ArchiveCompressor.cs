@@ -711,6 +711,14 @@ public static class ArchiveCompressor
         }
         if (format == Format.Zip)
         {
+            // 同梱 7-Zip 26.00 は ZIP 作成時に非 ASCII パスワードを E_INVALIDARG で拒否する
+            // (upstream regression、ライブラリ CLAUDE.md の既知問題。7z は非 ASCII でも正常動作)。
+            // ネイティブまで届くと不透明な SevenZipException になるため、ここで fail-fast して
+            // 具体的なメッセージを返す。通常は TryResolveCompressionPasswordAsync 側の検証 +
+            // 再プロンプトで止まるので、ここはバッチ override 等で検証を迂回した場合の防御線。
+            if (hasPassword && ContainsNonAscii(password!))
+                throw new InvalidOperationException(App.Text("Error.ZipPasswordAsciiOnly"));
+
             // ZIP形式: UTF-8エンコーディング
             // ⚠️ パスワード指定時は **必ず** EncryptionMethod=Aes256 を明示する。
             // ライブラリの ZipOptionSetter は EncryptionMethod=Default のとき em プロパティを送らず、
@@ -737,6 +745,24 @@ public static class ArchiveCompressor
         if (hasPassword)
             throw new InvalidOperationException(App.Text("Error.PasswordNotSupportedByFormat", format.ToString()));
         return new ArchiveWriter(format);
+    }
+
+    /// <summary>
+    /// 文字列に ASCII 範囲外 (U+0080 以上) の文字が含まれるかを判定する。
+    /// </summary>
+    /// <remarks>
+    /// ZIP パスワードの ASCII 制約検証用 (同梱 7-Zip 26.00 が ZIP 作成時に
+    /// 非 ASCII パスワードを E_INVALIDARG で拒否する upstream regression への対応)。
+    /// <see cref="ArchiveProcessor"/> の入力時検証と <see cref="CreateArchiveWriter"/> の
+    /// fail-fast guard の両方から使う。
+    /// </remarks>
+    internal static bool ContainsNonAscii(string value)
+    {
+        foreach (var c in value)
+        {
+            if (c > '\x7F') return true;
+        }
+        return false;
     }
 
     /// <summary>

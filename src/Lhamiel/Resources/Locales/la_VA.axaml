@@ -351,8 +351,10 @@
   <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">Tessera servata delebitur. Proxima compressione iterum inserere debes. Pergere?</x:String>
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Tessera servata restitui non potuit (fortasse ob configurationes ex alio computatro descriptas vel ob tesseram Windows redintegratam). Tesseram iterum constitue.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Tessera servata litteras continet quae in forma ZIP adhiberi non possunt (ASCII solum). Tesseram huic compressioni inscribe (tessera servata non mutabitur).</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} fasciculus(i) praeteritus(i) sunt ob inaccessibilitatem. Archivum tessera tutum cum reliquis fasciculis creatum est.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Omnes fasciculi originales inaccessibiles erant, itaque compressio abrupta est. Archivum inane non creatum est.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Forma {0} tutelam tesserae non sustinet. ZIP vel 7z elige.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Tesserae ZIP solum litteras ASCII (litteras, numeros, signa) continere possunt. Ad alias litteras (ut litteras cum signis diacriticis aut Iaponicas) adhibendas formam 7z elige.</x:String>
 </ResourceDictionary>

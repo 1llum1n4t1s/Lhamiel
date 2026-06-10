@@ -351,8 +351,10 @@
   <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">저장된 암호를 삭제합니다. 다음 압축 시 다시 입력해야 합니다. 계속할까요?</x:String>
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">저장된 암호를 복원하지 못했습니다 (다른 PC에서 설정 복사 또는 Windows 암호 재설정이 원인일 수 있음). 암호를 다시 설정하세요.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">저장된 비밀번호에 ZIP 형식에서 사용할 수 없는 문자가 포함되어 있습니다(ASCII만 지원). 이번 압축에 사용할 비밀번호를 입력하세요(저장된 비밀번호는 변경되지 않습니다).</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0}개 파일이 접근 불가로 건너뛰어졌습니다. 나머지 파일로 암호 보호된 아카이브를 만들었습니다.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">모든 원본 파일에 접근할 수 없어 압축을 중단했습니다. 빈 아카이브는 생성되지 않았습니다.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} 형식은 암호 보호를 지원하지 않습니다. ZIP 또는 7z을 선택하세요.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP 형식의 비밀번호에는 ASCII 문자(영문, 숫자, 기호)만 사용할 수 있습니다. 한국어 등 다른 문자를 사용하려면 7z 형식을 선택하세요.</x:String>
 </ResourceDictionary>

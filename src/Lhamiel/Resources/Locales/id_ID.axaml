@@ -351,8 +351,10 @@
   <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">Kata sandi yang tersimpan akan dihapus. Anda perlu memasukkannya kembali pada kompresi berikutnya. Lanjutkan?</x:String>
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Kata sandi yang tersimpan tidak dapat dipulihkan (kemungkinan disebabkan oleh menyalin pengaturan dari PC lain atau reset kata sandi Windows). Silakan atur kata sandi lagi.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Kata sandi tersimpan mengandung karakter yang tidak dapat digunakan dengan format ZIP (hanya ASCII). Masukkan kata sandi untuk kompresi ini (kata sandi tersimpan tidak akan diubah).</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} berkas dilewati karena tidak dapat diakses. Arsip yang dilindungi kata sandi telah dibuat dari berkas yang tersisa.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Semua berkas sumber tidak dapat diakses, sehingga kompresi dibatalkan. Arsip kosong tidak dibuat.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Format {0} tidak mendukung perlindungan kata sandi. Pilih ZIP atau 7z.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Kata sandi ZIP hanya dapat berisi karakter ASCII (huruf, angka, dan simbol). Untuk menggunakan karakter lain (seperti huruf beraksen atau bahasa Jepang), pilih format 7z.</x:String>
 </ResourceDictionary>

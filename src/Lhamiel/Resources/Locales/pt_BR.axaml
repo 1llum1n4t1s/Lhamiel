@@ -351,8 +351,10 @@
   <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">A senha salva será excluída. Você precisará digitá-la novamente na próxima compactação. Continuar?</x:String>
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Não foi possível restaurar a senha salva (provavelmente por copiar configurações de outro PC ou redefinir a senha do Windows). Defina a senha novamente.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">A senha salva contém caracteres que não podem ser usados no formato ZIP (somente ASCII). Digite uma senha para esta compressão (a senha salva não será alterada).</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} arquivo(s) ignorado(s) por estarem inacessíveis. Um arquivo protegido por senha foi criado com os arquivos restantes.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Todos os arquivos de origem estavam inacessíveis, então a compactação foi abortada. Nenhum arquivo vazio foi criado.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">O formato {0} não oferece suporte à proteção por senha. Escolha ZIP ou 7z.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Senhas ZIP podem conter apenas caracteres ASCII (letras, dígitos e símbolos). Para usar outros caracteres (como letras acentuadas ou japonês), escolha o formato 7z.</x:String>
 </ResourceDictionary>
