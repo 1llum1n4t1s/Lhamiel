@@ -108,23 +108,66 @@ public static class Logger
     }
 
     /// <summary>
+    /// ユーザー名マスク用の事前コンパイル済みパターン。プロセス起動後の初回参照で 1 回だけ構築する。
+    /// <para>
+    /// <see cref="Environment.UserName"/> は使わない: 内部で GetUserNameExW (secur32 → LSA への
+    /// RPC) を呼び、RDP セッションやドメイン環境で LSA が応答しないと**無期限ブロック**する
+    /// (実機で再現・dump で確認済み: ログ 1 行ごとに呼んでいた旧実装では全ログ呼び出しスレッドが
+    /// ここに吸い込まれてプロセス全体が凍結し、テストの断続的ハングの原因だった)。
+    /// 代わりに環境変数 USERNAME (プロセス環境ブロックの読み取りのみ、ブロック不能) と
+    /// プロファイルフォルダ名 (SHGetKnownFolderPath ベース、LSA 非経由) の両方を候補にする。
+    /// アカウント名とプロファイルフォルダ名が異なるケース (アカウントリネーム等) も
+    /// 両方マスクできるため、旧実装より PII カバレッジも広い。
+    /// </para>
+    /// </summary>
+    private static readonly System.Text.RegularExpressions.Regex[] _userNameMaskPatterns = BuildUserNameMaskPatterns();
+
+    private static System.Text.RegularExpressions.Regex[] BuildUserNameMaskPatterns()
+    {
+        var candidates = new List<string>(2);
+        try
+        {
+            var envUser = Environment.GetEnvironmentVariable("USERNAME");
+            if (!string.IsNullOrEmpty(envUser))
+                candidates.Add(envUser);
+
+            var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var profileLeaf = Path.GetFileName(
+                profile.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            if (!string.IsNullOrEmpty(profileLeaf) &&
+                !candidates.Contains(profileLeaf, StringComparer.OrdinalIgnoreCase))
+            {
+                candidates.Add(profileLeaf);
+            }
+        }
+        catch
+        {
+            // 候補が取得できなくてもログ機能自体は止めない (マスクなしで続行)
+        }
+
+        var patterns = new System.Text.RegularExpressions.Regex[candidates.Count];
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            // case-insensitive 置換（Windows のパスは大小区別なし）。毎行呼ばれるので事前コンパイル
+            patterns[i] = new System.Text.RegularExpressions.Regex(
+                System.Text.RegularExpressions.Regex.Escape(candidates[i]),
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase |
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+        }
+        return patterns;
+    }
+
+    /// <summary>
     /// ユーザー名を含むパスを <c>&lt;USER&gt;</c> プレースホルダにマスクする。
     /// <c>C:\Users\田中太郎\...</c> のような PII 露出を Logger 経由のサポート ZIP で防ぐ。
-    /// RTK レビュー #F-014 対応。
+    /// RTK レビュー #F-014 対応。多言語ユーザー名にも対応するためユーザー名ベースの単純置換。
     /// </summary>
     private static string MaskUserPath(string input)
     {
         if (string.IsNullOrEmpty(input)) return input;
-        // 多言語ユーザー名にも対応するため UserName ベースの単純置換
-        var userName = Environment.UserName;
-        if (!string.IsNullOrEmpty(userName))
+        foreach (var pattern in _userNameMaskPatterns)
         {
-            // case-insensitive 置換（Windows のパスは大小区別なし）
-            input = System.Text.RegularExpressions.Regex.Replace(
-                input,
-                System.Text.RegularExpressions.Regex.Escape(userName),
-                "<USER>",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            input = pattern.Replace(input, "<USER>");
         }
         return input;
     }
