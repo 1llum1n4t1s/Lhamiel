@@ -1066,6 +1066,19 @@ public static class ArchiveExtractor
         var promptedPasswordRedactions = new List<IDisposable>();
         var hasUnredactablePromptedPassword = false;
 
+        // redaction 不能 (4 文字未満) のパスワードが scope にあるかの共通判定。
+        // 該当する catch (汎用 / 非キャンセル OCE 昇格) は例外詳細を生ログせず
+        // 型名 + HResult の要約に置換する (codex P2 #3386732834 / #3386876537 / #3390292697)。
+        bool HasUnredactablePasswordInScope()
+        {
+            bool prompted;
+            lock (promptedPasswordRedactions)
+            {
+                prompted = hasUnredactablePromptedPassword;
+            }
+            return (knownPassword is not null && !Logger.CanRedactToken(knownPassword)) || prompted;
+        }
+
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -1395,7 +1408,12 @@ public static class ArchiveExtractor
             // これをキャンセル扱いすると本当の失敗が握り潰される。一時ディレクトリを掃除した上で
             // 内側の実例外を昇格させてエラーとして処理する（修正済みライブラリでは
             // SevenZipException で返るためこの経路には入らない）。
-            Logger.Log($"非キャンセル要因の中断を検出、内部例外へ昇格: {oce.InnerException.Message}");
+            // redaction 不能な短パスワードが scope にあるときは InnerException.Message を
+            // 生ログしない (codex P2 #3390292697、汎用 catch と同じ契約)。
+            if (!HasUnredactablePasswordInScope())
+                Logger.Log($"非キャンセル要因の中断を検出、内部例外へ昇格: {oce.InnerException.Message}");
+            else
+                Logger.Log($"非キャンセル要因の中断を検出、内部例外へ昇格 (パスワード付き・詳細抑止): {oce.InnerException.GetType().Name} (HResult=0x{oce.InnerException.HResult:X8})");
             try
             {
                 if (Directory.Exists(tempOutputPath))
@@ -1449,12 +1467,7 @@ public static class ArchiveExtractor
             // (4 文字下限) の対象外のため、ライブラリ例外由来の詳細 (errorInfo.Details =
             // ex.Message 等) を生ログしない (codex P2 #3386732834 / #3386876537)。
             // redaction 可能なら従来どおり (ログ側でマスクされる)。
-            bool promptedUnredactable;
-            lock (promptedPasswordRedactions)
-            {
-                promptedUnredactable = hasUnredactablePromptedPassword;
-            }
-            if ((knownPassword is null || Logger.CanRedactToken(knownPassword)) && !promptedUnredactable)
+            if (!HasUnredactablePasswordInScope())
             {
                 Logger.Log($"アーカイブ展開でエラーが発生しました: {errorInfo.Message}");
                 Logger.Log($"エラー詳細: {errorInfo.Details}");
