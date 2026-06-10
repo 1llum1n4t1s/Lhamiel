@@ -186,4 +186,15 @@ public class SettingsPasswordTests
         var s = new Settings();
         Assert.True(s.EncryptFileNames);
     }
+
+    [Fact]
+    public void Snapshot_PreservesRuntimeOnlyEncryptFileNames()
+    {
+        // codex P2 #3385301556: シェル/IPC 圧縮は FlushPendingAutoSave で in-memory の
+        // Settings に同期した EncryptFileNames を CreateSnapshot 経由で読む。
+        // Snapshot (MemberwiseClone) が [JsonIgnore] の実行時のみ選択値を落とさないことを担保する。
+        var s = new Settings { EncryptFileNames = false };
+        var snap = s.Snapshot();
+        Assert.False(snap.EncryptFileNames);
+    }
 }

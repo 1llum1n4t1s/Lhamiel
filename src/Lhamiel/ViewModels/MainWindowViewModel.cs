@@ -277,7 +277,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.ZipCompressionLevel = ZipCompressionLevel;
             s.SevenZipCompressionLevel = SevenZipCompressionLevel;
             // パスワード保護: 永続化するのは ON/OFF と Mode のみ。
-            // EncryptFileNames は永続化せず（パスワード ON のたびに true 強制リセット、decision #4）。
+            // EncryptFileNames は実行時のみの選択値（パスワード ON のたびに true 強制リセット、
+            // decision #4）で、永続化は [JsonIgnore] が防ぐが、in-memory の Settings には同期する
+            // (codex P2 #3385301556)。シェル/IPC 圧縮 (App.ProcessCommandLineFiles) は
+            // FlushPendingAutoSave → CreateSnapshot (MemberwiseClone) で本メソッドの結果を
+            // そのまま見るため、ここで同期しないと UI でチェックを外しても snapshot が
+            // 古い値 (デフォルト true) を引きずり he=on で圧縮される。
             // EncryptedCompressionPassword は ArchiveProcessor 側で MutateAndSave 経由で更新する。
             //
             // codex P2 #3384524013: TAR 選択中は false で永続化する (ドロップ経路の Snapshot 押し下げ
@@ -290,6 +295,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.IsPasswordProtectionEnabled = IsPasswordProtectionEnabled
                 && !string.Equals(SelectedCompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase);
             s.PasswordMode = PasswordMode;
+            s.EncryptFileNames = EncryptFileNames;
             // 除外パターンは .lhaignore ファイルが真の源なので、settings.json には書き出さない。
         });
     }
@@ -370,6 +376,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         // 永続化しないので AutoSave は呼ばない（実行時のみの選択値）。
         // 派生 UI への通知は [ObservableProperty] が自動発行する。
+        // in-memory の Settings への同期は、ドロップ経路は snapshot 直前の Mutate、
+        // シェル/IPC 経路は FlushPendingAutoSave → ApplySettingsToManager が担う
+        // (codex P2 #3385301556)。どちらも圧縮開始時に必ず通るため、ここでの即時同期は不要。
     }
 
     partial void OnPasswordModeChanged(string value)

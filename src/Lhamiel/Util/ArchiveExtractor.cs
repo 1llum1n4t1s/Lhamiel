@@ -213,7 +213,13 @@ public static class ArchiveExtractor
         }
         catch (Exception ex)
         {
-            Logger.Log($"アーカイブ構造解析エラー: {ex.Message}");
+            // パスワード付き再解析の失敗時は例外メッセージをログへ出さない (codex P2 #3385301557)。
+            // ライブラリ例外のテキストに入力パスワードが混入する可能性があり、Extract は既存書庫
+            // 互換のため 1〜3 文字パスワードも受理する = Logger redaction (4 文字下限) では守れない。
+            // パスワード無し (通常経路) は従来どおりメッセージを残して破損診断に使う。
+            Logger.Log(password is null
+                ? $"アーカイブ構造解析エラー: {ex.Message}"
+                : $"アーカイブ構造解析エラー (パスワード付き再解析): {ex.GetType().Name} (HResult=0x{ex.HResult:X8})");
             return new ArchiveStructureInfo { OpenFailed = true };
         }
     }

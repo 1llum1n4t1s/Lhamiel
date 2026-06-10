@@ -345,6 +345,9 @@ public static class ArchiveProcessor
                             // 解析が例外メッセージ経由で平文パスワードをログに混入させないよう、
                             // パスワードを渡す前に redaction を登録する (codex P2 #3385210137)。
                             // using var は各 iteration 終端で解放され、確定後は下の knownPassword 登録が引き継ぐ。
+                            // redaction 対象外の 1〜3 文字パスワード (Extract は既存書庫互換で受理) は、
+                            // GetArchiveStructureInfo がパスワード付き失敗時に例外メッセージ自体を
+                            // ログへ出さないことで守る (codex P2 #3385301557)。
                             using var attemptRedaction = Logger.RegisterRedactionToken(pw);
                             var retried = ArchiveExtractor.GetArchiveStructureInfo(filePath, pw);
                             if (!retried.OpenFailed)
