@@ -458,12 +458,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private async Task ChangeSavedPasswordAsync()
     {
         var owner = GetMainWindowSafe();
-        var newPassword = await ArchiveProcessor.PasswordDialogImpl.PromptForPasswordAsync(
-            archiveName: App.Text("Settings.Compression.ChangeSavedPassword"),
-            mode: PasswordDialogMode.CompressNew,
-            isRetry: false,
-            parentWindow: owner,
-            cancellationToken: CancellationToken.None);
+        // codex P2 #3384761806: ZIP 選択中は圧縮時 (TryResolveCompressionPasswordAsync) と
+        // 同じ ASCII 制約を入力時に検証する。バイパスすると「設定済」表示なのに ZIP 圧縮の
+        // たびに一時パスワードを要求される使えない保存値ができる。7z 選択中は非 ASCII も
+        // 有効なので制限しない (後で ZIP に切り替えた場合は圧縮時の再プロンプトで救済される)。
+        var isZip = string.Equals(SelectedCompressionFormat, "ZIP", StringComparison.OrdinalIgnoreCase);
+        var newPassword = await ArchiveProcessor.PromptCompressionPasswordAsync(
+            App.Text("Settings.Compression.ChangeSavedPassword"), isZip, owner, CancellationToken.None);
 
         if (newPassword is null) return;
 
@@ -634,11 +635,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>
     /// コンストラクタ
     /// </summary>
+    /// <summary>
+    /// アクティブな MainWindowViewModel インスタンス (シングルウィンドウアプリなので 1 つ)。
+    /// ArchiveProcessor / App が「パスワード保存直前」「CLI/IPC 圧縮開始前」に
+    /// <see cref="FlushPendingAutoSave"/> を呼んで 300ms デバウンス中の設定変更を確定させる
+    /// (codex P2 #3384706123 / #3384706125)。UI スレッドからのみ参照すること。
+    /// テストは VM を構築しないため null のまま (null 条件演算子で安全にスキップされる)。
+    /// </summary>
+    internal static MainWindowViewModel? Current { get; private set; }
+
     public MainWindowViewModel(
         Func<Task<string?>> pickExtractionFolder,
         Func<Task<string?>> pickCompressionFolder,
         Action<ProgressWindow> showProgressWindow)
     {
+        Current = this;
         _settingsManager = SettingsManager.Instance;
         _pickExtractionFolder = pickExtractionFolder;
         _pickCompressionFolder = pickCompressionFolder;

@@ -135,6 +135,17 @@ public static class ArchiveProcessor
                 try
                 {
                     var ciphertext = CompressionPasswordSession.Protect(plaintext);
+                    // codex P2 #3384706123: VM の AutoSave は 300ms デバウンスされるため、
+                    // ダイアログ操作中の「PromptEachTime 切替 / 保護 OFF」がまだ永続層
+                    // (SettingsManager.Current) に届いていないことがある。下の MutateAndSave の
+                    // 再チェックが古い値を見て保存してしまわないよう、保存判定の直前に VM の
+                    // 保留中 AutoSave を UI スレッドでフラッシュして永続層を最新化する
+                    // (テスト等 VM 不在時は no-op)。
+                    await UiDispatcherImpl.InvokeAsync(() =>
+                    {
+                        ViewModels.MainWindowViewModel.Current?.FlushPendingAutoSave();
+                        return Task.CompletedTask;
+                    });
                     // codex P2 #3384569058: ダイアログ表示中に設定パネルで PromptEachTime へ
                     // 切替・保護 OFF された場合は保存しない。PasswordDialog の ShowDialog は
                     // owner (進捗ウィンドウ) だけを無効化し MainWindow は操作可能なため、
@@ -204,7 +215,11 @@ public static class ArchiveProcessor
     /// 7z は非 ASCII パスワードでも正常動作するため検証しない。
     /// </remarks>
     /// <returns>確定したパスワード平文。キャンセルまたは試行上限超過で null。</returns>
-    private static async Task<string?> PromptCompressionPasswordAsync(
+    /// <remarks>
+    /// internal: 設定パネルの「パスワード変更」(MainWindowViewModel.ChangeSavedPasswordAsync) も
+    /// 同じ ZIP ASCII 検証を通すために共用する (codex P2 #3384761806)。
+    /// </remarks>
+    internal static async Task<string?> PromptCompressionPasswordAsync(
         string archiveDisplayName, bool isZip, Window? parentWindow, CancellationToken cancellationToken)
     {
         var isRetry = false;
@@ -282,6 +297,47 @@ public static class ArchiveProcessor
 
                 // アーカイブの構造を一度だけ解析
                 var rawStructureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
+
+                // he=on (ヘッダ暗号化) の 7z/rar はパスワード無しだと開くこと自体に失敗し
+                // (7z.dll は「暗号化ヘッダ」と「破損」を ctor 時点で区別できない、実機確認済み)、
+                // 構造解析が空 (OpenFailed) になる。そのまま進むと ShouldSkipFolderCreation が
+                // 常に false になり「Foo/Foo」二重ネストが起きる (codex P2 #3384706128)。
+                // 該当拡張子ならここでパスワードを確認して再解析し、検証済みパスワードは
+                // 展開・CRC 検証にも引き回す (展開中の再ダイアログを回避)。
+                // キャンセル・全試行失敗時は従来経路 (パスワード無し) に合流し、本当に破損した
+                // アーカイブの UX (展開時エラー表示) を変えない。
+                string? knownPassword = null;
+                if (rawStructureInfo.OpenFailed && extension is ".7z" or ".rar")
+                {
+                    const int MaxStructurePasswordAttempts = 3;
+                    var archiveDisplayName = Path.GetFileName(filePath);
+                    for (var attempt = 1; attempt <= MaxStructurePasswordAttempts; attempt++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var pw = await PasswordDialogImpl.PromptForPasswordAsync(
+                            archiveDisplayName, View.PasswordDialogMode.Extract, attempt > 1, progressWindow, cancellationToken);
+                        if (pw is null)
+                        {
+                            Logger.Log("ヘッダ暗号化解析のパスワード入力がキャンセルされたため、従来経路で続行します");
+                            break;
+                        }
+
+                        var retried = ArchiveExtractor.GetArchiveStructureInfo(filePath, pw);
+                        if (!retried.OpenFailed)
+                        {
+                            rawStructureInfo = retried;
+                            knownPassword = pw;
+                            Logger.Log("検証済みパスワードでアーカイブ構造を再解析しました");
+                            break;
+                        }
+                    }
+
+                    if (knownPassword is null)
+                        Logger.Log($"パスワードでアーカイブ構造を解析できなかったため従来経路で続行します: {archiveDisplayName}", LogLevel.Warning);
+                }
+                // 平文パスワードのログ混入防止 (defense-in-depth)。展開・検証が終わる
+                // このメソッドスコープの終端まで登録を維持する。
+                using var knownPasswordRedaction = Logger.RegisterRedactionToken(knownPassword);
                 // 設定は処理開始時点でスナップショットを取って一貫性を保つ（UIの設定変更と race しない）。
                 // バッチ処理から渡された settingsSnapshot があればそれを再利用し、各ファイルごとの
                 // ロック競合＆浅コピーアロケを回避する。
@@ -368,13 +424,14 @@ public static class ArchiveProcessor
                         overwriteCheckPaths,
                         progressWindow,
                         structureInfo.TotalUncompressedSize,
-                        snapshot.NormalizeUnicodeFileNames);
+                        snapshot.NormalizeUnicodeFileNames,
+                        knownPassword);
 
                     // 展開後 CRC 整合性検証（設定で有効な場合のみ）
                     if (snapshot.VerifyAfterExtraction)
                     {
                         UiDispatcherImpl.Post(() => progressWindow?.SetIndeterminate(App.Text("Progress.VerifyingIntegrity")));
-                        var verification = await ArchiveIntegrityVerifier.VerifyArchiveAsync(filePath, cancellationToken);
+                        var verification = await ArchiveIntegrityVerifier.VerifyArchiveAsync(filePath, cancellationToken, knownPassword);
                         if (!verification.IsValid)
                         {
                             Logger.Log($"展開後 CRC 検証失敗: {filePath} - {verification.ErrorMessage}", LogLevel.Warning);
@@ -762,9 +819,22 @@ public static class ArchiveProcessor
                     string? backupPath = null;
                     try
                     {
-                        backupPath = outputPath + ".lhamiel-bak-" + Guid.NewGuid().ToString("N").Substring(0, 8);
-                        if (Directory.Exists(outputPath)) Directory.Move(outputPath, backupPath);
-                        else if (File.Exists(outputPath)) File.Move(outputPath, backupPath);
+                        // codex P2 #3384761808: backupPath への代入は move 成功後に行う。
+                        // move 自体が失敗 (ACL/AV/衝突) した時点では outputPath にはまだ
+                        // 元のファイルが無傷で残っており、ここで backupPath を non-null に
+                        // していると下の catch が元ファイルを「部分置換の残骸」とみなして
+                        // 削除してしまう (バックアップは存在しないので復元もできない)。
+                        var backupCandidate = outputPath + ".lhamiel-bak-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                        if (Directory.Exists(outputPath))
+                        {
+                            Directory.Move(outputPath, backupCandidate);
+                            backupPath = backupCandidate;
+                        }
+                        else if (File.Exists(outputPath))
+                        {
+                            File.Move(outputPath, backupCandidate);
+                            backupPath = backupCandidate;
+                        }
                         File.Move(tempOutputPath, outputPath);
                         // 成功: バックアップを削除
                         try
@@ -1298,8 +1368,15 @@ public static class ArchiveProcessor
                     string? backupPath = null;
                     try
                     {
-                        backupPath = outputPath + ".lhamiel-bak-" + Guid.NewGuid().ToString("N").Substring(0, 8);
-                        if (File.Exists(outputPath)) File.Move(outputPath, backupPath);
+                        // codex P2 #3384761808: backupPath への代入は move 成功後に行う
+                        // (元ファイルが無傷のまま catch の残骸削除で消えるのを防ぐ。
+                        //  詳細は CompressItemAsync の同処理コメント参照)。
+                        var backupCandidate = outputPath + ".lhamiel-bak-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                        if (File.Exists(outputPath))
+                        {
+                            File.Move(outputPath, backupCandidate);
+                            backupPath = backupCandidate;
+                        }
                         File.Move(tempMergedOutputPath, outputPath);
                         try { if (File.Exists(backupPath)) File.Delete(backupPath); } catch (Exception ce) { Logger.Log($"バックアップ削除に失敗: {backupPath} ({ce.Message})", LogLevel.Warning); }
                     }

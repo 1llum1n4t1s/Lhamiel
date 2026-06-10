@@ -343,6 +343,7 @@
   <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">密碼 (確認)</x:String>
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">兩次輸入的密碼不一致,請重新輸入。</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">請輸入密碼。</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">密碼長度至少需 4 個字元。</x:String>
   <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">可以從密碼管理工具貼上 (Ctrl+V)。</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">要刪除已儲存的密碼嗎?</x:String>

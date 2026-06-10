@@ -343,6 +343,7 @@
   <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Пароль (підтвердження)</x:String>
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Паролі не збігаються. Повторно введіть підтвердження.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Введіть пароль.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">Пароль має містити щонайменше 4 символи.</x:String>
   <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Можна вставити з менеджера паролів (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Видалити збережений пароль?</x:String>

@@ -39,6 +39,18 @@ public partial class PasswordDialog : Window
     private TextBlock? _compressNewMessage;
     private TextBlock? _mismatchWarning;
     private TextBlock? _emptyWarning;
+    private TextBlock? _tooShortWarning;
+
+    /// <summary>
+    /// 新規圧縮パスワードの最小文字数 (codex P2 #3384761804)。
+    /// Logger.RegisterRedactionToken は 4 文字未満の token を登録しない契約
+    /// ("on"/"to" 等の部分一致による全ログ過剰マスク防止) のため、それより短い
+    /// パスワードを受理するとログ redaction の対象外になる。入力時点で 4 文字以上を
+    /// 強制して「マスクされない圧縮パスワード」の存在自体をなくす (1〜3 文字の
+    /// アーカイブパスワードは保護強度的にも無意味)。Extract モードは既存書庫との
+    /// 互換のため制限しない。
+    /// </summary>
+    internal const int MinCompressPasswordLength = 4;
 
     /// <summary>アーカイブ名（バインディング用、コンストラクタで決定し以後不変）</summary>
     public string ArchiveName { get; }
@@ -98,6 +110,7 @@ public partial class PasswordDialog : Window
         _compressNewMessage = this.FindControl<TextBlock>("CompressNewMessage");
         _mismatchWarning = this.FindControl<TextBlock>("MismatchWarning");
         _emptyWarning = this.FindControl<TextBlock>("EmptyWarning");
+        _tooShortWarning = this.FindControl<TextBlock>("TooShortWarning");
 
         // モードに応じて要素の表示切替（locale 動的切替は短寿命モーダルなので追従不要）。
         var isCompressNew = Mode == PasswordDialogMode.CompressNew;
@@ -122,8 +135,15 @@ public partial class PasswordDialog : Window
             // 空入力拒否（CompressNew モードのみ。Extract はライブラリ仕様により空文字列も valid な「パスワードなし」入力）。
             if (string.IsNullOrEmpty(pwd))
             {
-                if (_emptyWarning != null) _emptyWarning.IsVisible = true;
-                if (_mismatchWarning != null) _mismatchWarning.IsVisible = false;
+                ShowSingleWarning(_emptyWarning);
+                _passwordBox?.Focus();
+                return;
+            }
+
+            // 最小文字数 (理由は MinCompressPasswordLength の doc コメント参照)。
+            if (pwd.Length < MinCompressPasswordLength)
+            {
+                ShowSingleWarning(_tooShortWarning);
                 _passwordBox?.Focus();
                 return;
             }
@@ -132,8 +152,7 @@ public partial class PasswordDialog : Window
             var confirm = _confirmBox?.Text ?? string.Empty;
             if (!string.Equals(pwd, confirm, System.StringComparison.Ordinal))
             {
-                if (_mismatchWarning != null) _mismatchWarning.IsVisible = true;
-                if (_emptyWarning != null) _emptyWarning.IsVisible = false;
+                ShowSingleWarning(_mismatchWarning);
                 if (_confirmBox != null)
                 {
                     _confirmBox.Text = string.Empty;
@@ -148,6 +167,14 @@ public partial class PasswordDialog : Window
         if (_passwordBox != null) _passwordBox.Text = string.Empty;
         if (_confirmBox != null) _confirmBox.Text = string.Empty;
         Close(true);
+    }
+
+    /// <summary>検証警告 3 種のうち指定したものだけを表示する（他は非表示に揃える）。</summary>
+    private void ShowSingleWarning(TextBlock? target)
+    {
+        if (_emptyWarning != null) _emptyWarning.IsVisible = ReferenceEquals(_emptyWarning, target);
+        if (_tooShortWarning != null) _tooShortWarning.IsVisible = ReferenceEquals(_tooShortWarning, target);
+        if (_mismatchWarning != null) _mismatchWarning.IsVisible = ReferenceEquals(_mismatchWarning, target);
     }
 
     private void CancelButton_Click(object? sender, RoutedEventArgs e)

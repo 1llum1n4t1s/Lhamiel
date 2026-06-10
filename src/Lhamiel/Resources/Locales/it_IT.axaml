@@ -343,6 +343,7 @@
   <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Password (conferma)</x:String>
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Le password non corrispondono. Reinserisci la conferma.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Inserisci una password.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">La password deve contenere almeno 4 caratteri.</x:String>
   <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Puoi incollare da un gestore di password (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Eliminare la password salvata?</x:String>

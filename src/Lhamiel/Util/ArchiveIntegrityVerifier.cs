@@ -18,8 +18,9 @@ internal static class ArchiveIntegrityVerifier
     /// データはストリーム的に処理され、全エントリをメモリ上に同時展開することも、
     /// ディスクへ書き出すこともしない。
     /// </summary>
+    /// <param name="password">展開時に検証済みのパスワード (he=on 7z 等)。指定があれば暗号化アーカイブも CRC 検証を実行する</param>
     internal static async Task<VerificationResult> VerifyArchiveAsync(
-        string archivePath, CancellationToken cancellationToken = default)
+        string archivePath, CancellationToken cancellationToken = default, string? password = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -33,7 +34,14 @@ internal static class ArchiveIntegrityVerifier
                 cancellationToken.ThrowIfCancellationRequested();
                 // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→Test→Dispose を覆う）
                 using var nativeGate = NativeArchiveGate.Enter(cancellationToken);
-                using var reader = LockedFileRetryPolicy.Execute(() => new ArchiveReader(PathValidator.EnsureLongPathPrefix(archivePath)), archivePath);
+                var longPath = PathValidator.EnsureLongPathPrefix(archivePath);
+                // he=on (ヘッダ暗号化) はパスワード無しだと ctor 自体が失敗して外側 catch で
+                // 「検証失敗」になるため、検証済みパスワードがあれば reader に渡して開く。
+                using var reader = LockedFileRetryPolicy.Execute(
+                    () => password is null
+                        ? new ArchiveReader(longPath)
+                        : new ArchiveReader(longPath, password, new ArchiveOption()),
+                    archivePath);
 
                 // パスワード保護アーカイブはパスワードなしで Test() すると失敗するためスキップ。
                 // ヘッダー暗号化(-mhe=on)の場合は reader.Items 自体がアクセス不可。
@@ -59,7 +67,7 @@ internal static class ArchiveIntegrityVerifier
                     return new VerificationResult(true);
                 }
 
-                if (hasEncryptedItems)
+                if (hasEncryptedItems && password is null)
                 {
                     Logger.Log($"パスワード保護アーカイブのため CRC 検証をスキップ: {archivePath}");
                     return new VerificationResult(true);

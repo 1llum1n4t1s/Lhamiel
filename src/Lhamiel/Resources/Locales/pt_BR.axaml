@@ -343,6 +343,7 @@
   <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Senha (confirmação)</x:String>
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">As senhas não conferem. Reinsira a confirmação.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Insira uma senha.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">A senha deve ter pelo menos 4 caracteres.</x:String>
   <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Você pode colar de um gerenciador de senhas (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Excluir a senha salva?</x:String>

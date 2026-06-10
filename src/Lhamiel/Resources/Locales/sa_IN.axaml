@@ -343,6 +343,7 @@
   <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">गुप्तशब्दः (पुष्टिः)</x:String>
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">गुप्तशब्दौ न समानौ। पुनः पुष्टिं प्रविशन्तु।</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">गुप्तशब्दं प्रविशन्तु।</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">कूटशब्दः न्यूनातिन्यूनं ४ वर्णाः भवेयुः।</x:String>
   <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">गुप्तशब्द-व्यवस्थापकात् लेपयितुं शक्नुथ (Ctrl+V)।</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">सञ्चितं गुप्तशब्दं लोपयन्तु वा?</x:String>

@@ -343,6 +343,7 @@
   <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Tessera (confirmatio)</x:String>
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Tesserae non congruunt. Confirmationem iterum insere.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Tesseram insere.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">Tessera saltem 4 characteres habere debet.</x:String>
   <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Ex tesserarum administro inserere potes (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Tesseram servatam delere?</x:String>

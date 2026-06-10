@@ -343,6 +343,7 @@
   <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">கடவுச்சொல் (உறுதிப்படுத்தல்)</x:String>
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">கடவுச்சொற்கள் பொருந்தவில்லை. உறுதிப்படுத்தலை மீண்டும் உள்ளிடவும்.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">கடவுச்சொல்லை உள்ளிடவும்.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">கடவுச்சொல் குறைந்தது 4 எழுத்துகள் கொண்டிருக்க வேண்டும்.</x:String>
   <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">கடவுச்சொல் மேலாளரிலிருந்து ஒட்டலாம் (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">சேமிக்கப்பட்ட கடவுச்சொல்லை அழிக்கவா?</x:String>

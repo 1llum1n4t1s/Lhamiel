@@ -363,6 +363,15 @@ public partial class App : Application
     {
         if (filePaths.Length == 0) return;
 
+        // codex P2 #3384706125: VM の AutoSave は 300ms デバウンスされるため、設定パネル操作の
+        // 直後にシェル/IPC 経由で圧縮・展開が始まると、下の CreateSnapshot が変更前の古い設定を
+        // 掴むことがある (ドロップ経路は VM が直接スナップショットを押し下げるのに対し、この経路は
+        // 永続層だけを見る)。スナップショット取得前に保留中の AutoSave をフラッシュして揃える。
+        // 起動時 CLI・IPC ハンドラ (FromCurrentSynchronizationContext) とも UI スレッドで呼ばれる。
+        // 初回起動の CLI 経路では MainWindow 未生成 (Current=null) だが、その場合は
+        // デバウンス中の変更も存在しないので no-op で正しい。
+        ViewModels.MainWindowViewModel.Current?.FlushPendingAutoSave();
+
         // 単一ファイルの場合は従来の処理
         if (filePaths.Length == 1)
         {

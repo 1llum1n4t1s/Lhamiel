@@ -343,6 +343,7 @@
   <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">パスワード (確認)</x:String>
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">パスワードが一致しません。もう一度確認入力してください。</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">パスワードを入力してください。</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">パスワードは 4 文字以上で入力してください。</x:String>
   <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">パスワード管理ツールから貼り付けできます (Ctrl+V)。</x:String>
 
   <!-- Confirm ダイアログ -->

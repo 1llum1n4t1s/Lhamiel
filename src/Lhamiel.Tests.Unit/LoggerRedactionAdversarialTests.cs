@@ -45,6 +45,17 @@ public sealed class LoggerRedactionAdversarialTests : IDisposable
     }
 
     [Fact]
+    public void MinCompressPasswordLength_PasswordIsAlwaysRedactable()
+    {
+        // codex P2 #3384761804: PasswordDialog (CompressNew) が受理する最小長のパスワードが
+        // 必ず redaction の対象になることを担保する (UI の最小長と Logger の 4 文字下限の連動契約)。
+        // どちらかの定数を変えてこの連動が崩れると「マスクされない圧縮パスワード」が生まれる。
+        var pw = new string('x', Lhamiel.View.PasswordDialog.MinCompressPasswordLength);
+        Register(pw);
+        Assert.DoesNotContain(pw, Logger.ApplyRedaction($"password={pw};"), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ApplyRedaction_OverlappingDescendingLength_FullyMasked()
     {
         // codex #3382065857: `abcd` を先に置換すると "***ef" になる問題が、長さ降順では解消されている。

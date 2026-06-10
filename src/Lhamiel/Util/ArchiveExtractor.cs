@@ -154,14 +154,23 @@ public static class ArchiveExtractor
         /// ルートレベルの全アイテム名。MotW 伝播で multi-root アーカイブの各アイテムに個別適用するために使用。
         /// </summary>
         public IReadOnlyList<string> RootItemNames { get; init; } = [];
+
+        /// <summary>
+        /// アーカイブを開けず構造を解析できなかったことを示す (codex P2 #3384706128)。
+        /// 7z のヘッダ暗号化 (he=on) はパスワード無しだと ctor が SevenZipException (IsNotArc) を
+        /// 投げ、7z.dll 自体が「暗号化ヘッダ」と「破損」を区別できない (実機確認済み)。
+        /// 呼び出し側 (ArchiveProcessor) はこのフラグ + 拡張子 (7z/rar) でパスワード再試行を判断する。
+        /// </summary>
+        public bool OpenFailed { get; init; }
     }
 
     /// <summary>
     /// アーカイブの構造を一度の解析で取得する
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
+    /// <param name="password">ヘッダ暗号化 (he=on) アーカイブを開くためのパスワード (通常は null)</param>
     /// <returns>解析結果を格納したArchiveStructureInfo</returns>
-    public static ArchiveStructureInfo GetArchiveStructureInfo(string archivePath)
+    public static ArchiveStructureInfo GetArchiveStructureInfo(string archivePath, string? password = null)
     {
         if (!File.Exists(archivePath))
         {
@@ -172,7 +181,9 @@ public static class ArchiveExtractor
         {
             // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→使用→Dispose を覆う）
             using var nativeGate = NativeArchiveGate.Enter();
-            using var reader = new ArchiveReader(archivePath);
+            using var reader = password is null
+                ? new ArchiveReader(archivePath)
+                : new ArchiveReader(archivePath, password, new ArchiveOption());
             var structure = ParseArchiveRootLevel(reader);
 
             var rootFolders = structure.RootFolders;
@@ -203,7 +214,7 @@ public static class ArchiveExtractor
         catch (Exception ex)
         {
             Logger.Log($"アーカイブ構造解析エラー: {ex.Message}");
-            return new ArchiveStructureInfo();
+            return new ArchiveStructureInfo { OpenFailed = true };
         }
     }
 
@@ -492,8 +503,9 @@ public static class ArchiveExtractor
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
     /// <param name="outputPath">展開先ディレクトリのパス</param>
+    /// <param name="password">ヘッダ暗号化 (he=on) アーカイブの一覧取得に使うパスワード (通常は null)</param>
     /// <returns>衝突するファイルの競合グループリスト。衝突がなければ空リスト</returns>
-    public static List<Models.FileConflictGroup> DetectExtractionConflicts(string archivePath, string outputPath, bool normalizeUnicode = true)
+    public static List<Models.FileConflictGroup> DetectExtractionConflicts(string archivePath, string outputPath, bool normalizeUnicode = true, string? password = null)
     {
         var conflicts = new List<Models.FileConflictGroup>();
 
@@ -501,7 +513,9 @@ public static class ArchiveExtractor
         {
             // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→使用→Dispose を覆う）
             using var nativeGate = NativeArchiveGate.Enter();
-            using var reader = new ArchiveReader(archivePath);
+            using var reader = password is null
+                ? new ArchiveReader(archivePath)
+                : new ArchiveReader(archivePath, password, new ArchiveOption());
             // outputPath の絶対化はループ外で 1 回だけ行い、ループ内は正規化済み版を使う
             var normalizedOutputBase = NormalizeBaseDirectory(outputPath);
 
@@ -585,8 +599,9 @@ public static class ArchiveExtractor
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
+    /// <param name="knownPassword">構造解析時に検証済みのパスワード (he=on 7z 等)。初回のパスワード要求をダイアログなしでこの値で応答する</param>
     /// <returns>展開処理の完了を表すTask</returns>
-    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null, long precomputedUncompressedSize = -1, bool normalizeUnicode = true)
+    public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null, long precomputedUncompressedSize = -1, bool normalizeUnicode = true, string? knownPassword = null)
     {
         Logger.Log($"ExtractArchiveAsync開始: archivePath={archivePath}, outputPath={outputPath}");
         cancellationToken.ThrowIfCancellationRequested();
@@ -629,7 +644,7 @@ public static class ArchiveExtractor
         if (hasExistingFiles && parentWindow != null)
         {
             // 一時フォルダ方式: 一時展開 → 衝突検出 → ダイアログ → 移動
-            await ExtractViaTempFolderAsync(archivePath, outputPath, progress, parentWindow, cancellationToken, progressWindow, normalizeUnicode);
+            await ExtractViaTempFolderAsync(archivePath, outputPath, progress, parentWindow, cancellationToken, progressWindow, normalizeUnicode, knownPassword);
         }
         else
         {
@@ -639,7 +654,7 @@ public static class ArchiveExtractor
                 var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
                 try
                 {
-                    await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, false, cancellationToken, overwriteCheckPaths, null, normalizeUnicode);
+                    await ExtractArchive(archivePath, outputPath, progressCallback, parentWindow, false, cancellationToken, overwriteCheckPaths, null, normalizeUnicode, knownPassword);
                 }
                 finally
                 {
@@ -653,7 +668,7 @@ public static class ArchiveExtractor
     /// 一時フォルダ方式で展開する。
     /// ①一時フォルダに全展開 → ②衝突検出 → ③ダイアログ表示 → ④選択結果に基づいて移動
     /// </summary>
-    private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, View.ProgressWindow? progressWindow, bool normalizeUnicode = true)
+    private static async Task ExtractViaTempFolderAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress, Window parentWindow, CancellationToken cancellationToken, View.ProgressWindow? progressWindow, bool normalizeUnicode = true, string? knownPassword = null)
     {
         // 一時フォルダを出力先ディレクトリ直下に作成（同一ドライブでFile.Moveが高速、かつ書き込み権限が確実）
         // outputPathがファイルの場合は親ディレクトリを使用
@@ -671,7 +686,7 @@ public static class ArchiveExtractor
                 var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
                 try
                 {
-                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, null, null, normalizeUnicode);
+                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, null, null, normalizeUnicode, knownPassword);
                 }
                 finally
                 {
@@ -960,7 +975,7 @@ public static class ArchiveExtractor
         return reader!;
     }
 
-    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null, bool normalizeUnicode = true)
+    public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null, bool normalizeUnicode = true, string? knownPassword = null)
     {
         Logger.Log($"ExtractArchive開始: archivePath={archivePath}, outputPath={outputPath}, overwriteConfirmed={overwriteConfirmed}");
 
@@ -978,7 +993,7 @@ public static class ArchiveExtractor
         {
             if (!overwriteConfirmed)
             {
-                var conflicts = DetectExtractionConflicts(archivePath, outputPath, normalizeUnicode);
+                var conflicts = DetectExtractionConflicts(archivePath, outputPath, normalizeUnicode, knownPassword);
                 if (conflicts.Count > 0)
                 {
                     Logger.Log($"ExtractArchive内でファイル衝突を検出: {conflicts.Count}件");
@@ -1067,6 +1082,13 @@ public static class ArchiveExtractor
             {
                 var currentAttempt = System.Threading.Interlocked.Increment(ref attemptCount);
                 var isRetry = currentAttempt > 1;
+
+                // 構造解析時に検証済みのパスワード (he=on 7z) があれば初回はダイアログなしで応答する。
+                // 万一不一致なら 7z.dll が再度コールバックするので 2 回目以降は通常のダイアログに進む。
+                if (currentAttempt == 1 && knownPassword is not null)
+                {
+                    return knownPassword;
+                }
 
                 // 上限を超えたら自動キャンセル扱い（null 返しと同じ経路）
                 if (currentAttempt > MaxPasswordAttempts)

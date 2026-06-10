@@ -343,6 +343,7 @@
   <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Kata sandi (konfirmasi)</x:String>
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Kata sandi tidak cocok. Silakan masukkan ulang konfirmasi.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Silakan masukkan kata sandi.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">Kata sandi harus terdiri dari minimal 4 karakter.</x:String>
   <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Anda dapat menempel dari pengelola kata sandi (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Hapus kata sandi yang tersimpan?</x:String>

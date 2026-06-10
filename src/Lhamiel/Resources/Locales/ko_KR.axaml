@@ -343,6 +343,7 @@
   <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">암호 (확인)</x:String>
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">암호가 일치하지 않습니다. 확인란을 다시 입력하세요.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">암호를 입력하세요.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">비밀번호는 4자 이상이어야 합니다.</x:String>
   <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">암호 관리자에서 붙여넣기할 수 있습니다 (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">저장된 암호를 삭제할까요?</x:String>
