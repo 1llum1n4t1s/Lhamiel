@@ -368,6 +368,34 @@ public class HeaderEncryptedArchiveTests : IDisposable
     }
 
     [Fact]
+    public void SelectVerificationPassword_SingleSource_PicksAcceptedPassword()
+    {
+        // codex P2 #3389751072: 単一パスワード (または無し) なら従来どおり検証する。
+        // プロンプトが出た場合は最後の入力 = 受理されたパスワードを優先する。
+        Assert.Equal((null, false),
+            ArchiveProcessor.SelectVerificationPassword(null, null, []));
+        Assert.Equal(("known", false),
+            ArchiveProcessor.SelectVerificationPassword("known", null, []));
+        Assert.Equal(("typed", false),
+            ArchiveProcessor.SelectVerificationPassword(null, "typed", ["typed"]));
+        // knownPassword とプロンプト入力が同一文字列なら 1 種類なので検証する
+        Assert.Equal(("same", false),
+            ArchiveProcessor.SelectVerificationPassword("same", "same", ["same"]));
+    }
+
+    [Fact]
+    public void SelectVerificationPassword_MultipleDistinctPasswords_SkipsVerification()
+    {
+        // codex P2 #3389751072: 複数の異なるパスワードが 7z.dll に渡っていた場合、
+        // 単一パスワードの reader.Test() は別パスワードのエントリで CRC 失敗し
+        // 「破損」と誤表示されるため検証をスキップする。
+        Assert.Equal(((string?)null, true),
+            ArchiveProcessor.SelectVerificationPassword(null, "pw2", ["pw1", "pw2"]));
+        Assert.Equal(((string?)null, true),
+            ArchiveProcessor.SelectVerificationPassword("known", "typed", ["typed"]));
+    }
+
+    [Fact]
     public async Task VerifyArchiveAsync_UnredactableShortPassword_SanitizesErrorDetail()
     {
         // codex P2 #3386732834: 1〜3 文字パスワード (Extract は既存書庫互換で受理) は

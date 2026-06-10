@@ -265,6 +265,38 @@ public static class ArchiveProcessor
     }
 
     /// <summary>
+    /// 展開後 CRC 検証に使うパスワードを選択する。
+    /// プロンプト経由の最後の入力 = 7z.dll に受理されたパスワードを優先し
+    /// (プロンプトが出た = knownPassword が展開中に通らなかった場合のみ)、
+    /// 複数の異なるパスワードが 7z.dll に渡っていた場合は検証スキップを指示する。
+    /// <para>
+    /// エントリごとに異なるパスワードを持つアーカイブでは、単一パスワードの
+    /// reader.Test() が別パスワードのエントリで CRC 失敗し、展開成功直後に
+    /// 「破損」と誤表示されうる (codex P2 #3389751072)。どの入力がどのエントリで
+    /// 受理されたかは追跡できないため、複数の異なるパスワードが使われたときは
+    /// 検証をスキップする (誤った破損エラーを出すより安全側)。
+    /// なお現行ライブラリ (1llum1n4t1s.Sevenzip) は PasswordQuery が Save 単位で
+    /// パスワードをキャッシュし、誤パスワード (WrongPassword / DataError+PasswordTimes&gt;0)
+    /// は cache reset と同時に展開全体を中断するため、「複数の異なるパスワードを
+    /// 受理して展開成功」は現状到達不能 (実装確認済み)。ライブラリの再質問挙動が
+    /// 変わっても誤エラーを出さないための defense-in-depth として置く。
+    /// </para>
+    /// </summary>
+    /// <param name="knownPassword">構造解析 (he=on) で検証済みのパスワード</param>
+    /// <param name="lastPromptedPassword">展開中プロンプトの最後の入力</param>
+    /// <param name="promptedPasswords">展開中プロンプトで入力された全パスワード (重複なし)</param>
+    internal static (string? Password, bool SkipVerification) SelectVerificationPassword(
+        string? knownPassword, string? lastPromptedPassword, IReadOnlyCollection<string> promptedPasswords)
+    {
+        var distinct = new HashSet<string>(promptedPasswords, StringComparer.Ordinal);
+        if (knownPassword is not null)
+            distinct.Add(knownPassword);
+        if (distinct.Count >= 2)
+            return (null, true);
+        return (lastPromptedPassword ?? knownPassword, false);
+    }
+
+    /// <summary>
     /// アーカイブファイルの展開処理を実行
     /// </summary>
     /// <param name="filePath">展開するファイルのパス</param>
@@ -306,6 +338,7 @@ public static class ArchiveProcessor
             // scope を登録し、(2) CRC 検証へ渡す検証済みパスワードを捕捉する。
             // コールバックは 7z.dll 由来のスレッドから呼ばれるためリスト自身を lock に使う。
             var promptedPasswordRedactions = new List<IDisposable>();
+            var promptedPasswords = new HashSet<string>(StringComparer.Ordinal);
             string? lastPromptedPassword = null;
             var hasUnredactablePromptedPassword = false;
             void OnPasswordPrompted(string pw)
@@ -313,6 +346,7 @@ public static class ArchiveProcessor
                 lock (promptedPasswordRedactions)
                 {
                     promptedPasswordRedactions.Add(Logger.RegisterRedactionToken(pw));
+                    promptedPasswords.Add(pw);
                     lastPromptedPassword = pw;
                     if (!Logger.CanRedactToken(pw))
                         hasUnredactablePromptedPassword = true;
@@ -524,25 +558,35 @@ public static class ArchiveProcessor
                     // 展開後 CRC 整合性検証（設定で有効な場合のみ）
                     if (snapshot.VerifyAfterExtraction)
                     {
-                        UiDispatcherImpl.Post(() => progressWindow?.SetIndeterminate(App.Text("Progress.VerifyingIntegrity")));
                         // 展開が成功した時点で、プロンプト経由の最後の入力 = 7z.dll に受理された
                         // パスワード。knownPassword (構造解析で検証済み) を持たないヘッダ可視の
                         // 暗号化アーカイブ (パスワード ZIP / he=off 7z) でも CRC 検証を実際に実行
-                        // できるようにする (codex P2 #3386876542)。両方あるときはプロンプト側を
-                        // 優先する (プロンプトが出た = knownPassword が展開中に通らなかった場合のみ)。
-                        string? verificationPassword;
+                        // できるようにする (codex P2 #3386876542)。複数の異なるパスワードが
+                        // 使われていた場合の扱いは SelectVerificationPassword 参照 (codex P2 #3389751072)。
+                        string? lastPrompted;
+                        HashSet<string> usedPasswords;
                         lock (promptedPasswordRedactions)
                         {
-                            verificationPassword = lastPromptedPassword;
+                            lastPrompted = lastPromptedPassword;
+                            usedPasswords = new HashSet<string>(promptedPasswords, StringComparer.Ordinal);
                         }
-                        verificationPassword ??= knownPassword;
-                        var verification = await ArchiveIntegrityVerifier.VerifyArchiveAsync(filePath, cancellationToken, verificationPassword);
-                        if (!verification.IsValid)
+                        var (verificationPassword, skipVerification) =
+                            SelectVerificationPassword(knownPassword, lastPrompted, usedPasswords);
+                        if (skipVerification)
                         {
-                            Logger.Log($"展開後 CRC 検証失敗: {filePath} - {verification.ErrorMessage}", LogLevel.Warning);
-                            await UiDispatcherImpl.InvokeAsync(() =>
-                                MessageServiceImpl.ShowError(
-                                    App.Text("Error.CrcVerificationFailed", Path.GetFileName(filePath), verification.ErrorMessage ?? "")));
+                            Logger.Log($"複数の異なるパスワードが使用されたため展開後 CRC 検証をスキップ: {filePath}");
+                        }
+                        else
+                        {
+                            UiDispatcherImpl.Post(() => progressWindow?.SetIndeterminate(App.Text("Progress.VerifyingIntegrity")));
+                            var verification = await ArchiveIntegrityVerifier.VerifyArchiveAsync(filePath, cancellationToken, verificationPassword);
+                            if (!verification.IsValid)
+                            {
+                                Logger.Log($"展開後 CRC 検証失敗: {filePath} - {verification.ErrorMessage}", LogLevel.Warning);
+                                await UiDispatcherImpl.InvokeAsync(() =>
+                                    MessageServiceImpl.ShowError(
+                                        App.Text("Error.CrcVerificationFailed", Path.GetFileName(filePath), verification.ErrorMessage ?? "")));
+                            }
                         }
                     }
 
@@ -596,11 +640,21 @@ public static class ArchiveProcessor
                 {
                     promptedUnredactable = hasUnredactablePromptedPassword;
                 }
-                if ((knownPassword is null || Logger.CanRedactToken(knownPassword)) && !promptedUnredactable)
+                var sanitizeDetails =
+                    (knownPassword is not null && !Logger.CanRedactToken(knownPassword)) || promptedUnredactable;
+                if (!sanitizeDetails)
                     Logger.LogException($"展開処理でエラーが発生: {filePath}", ex);
                 else
                     Logger.Log($"展開処理でエラーが発生 (パスワード付き・詳細抑止): {filePath} - {ex.GetType().Name} (HResult=0x{ex.HResult:X8})", LogLevel.Error);
                 var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, filePath, outputPath ?? string.Empty);
+                // redaction 不能な短パスワードが scope にあるときは、ダイアログ本文の詳細も
+                // 型名 + HResult の要約に置換する。MessageService.ShowError はダイアログ本文を
+                // Logger.Log で永続化するため、上のログ抑止だけでは ex.Message 由来の
+                // errorInfo.Details 経由で平文が残る (codex P2 #3389751077)。
+                // errorInfo.Message は常にローカライズ済みカテゴリ文字列 (App.Text) なので安全。
+                var dialogDetails = sanitizeDetails
+                    ? $"{ex.GetType().Name} (HResult=0x{ex.HResult:X8})"
+                    : errorInfo.Details;
                 // 進捗ウィンドウを先に閉じてからダイアログを表示。Post + 破棄では進捗ウィンドウの
                 // クローズ遷移と競合し、ダイアログが背面に隠れる/表示されないことがあるため、
                 // ここで明示的に閉じてから await し、ダイアログの表示完了を待ってから return する。
@@ -610,7 +664,7 @@ public static class ArchiveProcessor
                 }
                 await UiDispatcherImpl.InvokeAsync(() =>
                     MessageServiceImpl.ShowError(
-                        $"{errorInfo.Message}\n\n{App.Text("Dialog.Details")}{errorInfo.Details}",
+                        $"{errorInfo.Message}\n\n{App.Text("Dialog.Details")}{dialogDetails}",
                         App.Text("Error.ExtractionTitle")));
                 return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
             }
