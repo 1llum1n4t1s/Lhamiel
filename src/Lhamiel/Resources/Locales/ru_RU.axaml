@@ -353,6 +353,7 @@
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Не удалось восстановить сохранённый пароль (вероятно, из-за копирования настроек с другого ПК или сброса пароля Windows). Установите пароль заново.</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Сохранённый пароль содержит символы, которые нельзя использовать в формате ZIP (только ASCII). Введите пароль для этого сжатия (сохранённый пароль не будет изменён).</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">Сохранённый пароль слишком короткий для использования (требуется не менее {0} символов). Установите новый пароль.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">Пропущено файлов: {0} из-за недоступности. Архив с защитой паролем создан из оставшихся файлов.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Все исходные файлы недоступны, поэтому сжатие отменено. Пустой архив не создан.</x:String>

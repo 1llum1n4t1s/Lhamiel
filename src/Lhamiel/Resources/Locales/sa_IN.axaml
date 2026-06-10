@@ -353,6 +353,7 @@
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">सञ्चितं गुप्तशब्दं प्रत्यानेतुं न शक्तम् (अन्यस्मात् कणित्रात् व्यवस्थानां प्रतिलेखनं Windows-गुप्तशब्द-पुनः स्थापनं वा कारणं स्यात्)। गुप्तशब्दं पुनः स्थापयतु।</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">संगृहीते गुप्तशब्दे ZIP-प्रारूपे अनुपयोज्याः वर्णाः सन्ति (केवलम् ASCII)। अस्य सम्पीडनस्य कृते गुप्तशब्दं लिखत (संगृहीतः गुप्तशब्दः न परिवर्तिष्यते)।</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">संगृहीतः गुप्तशब्दः उपयोगाय अतिह्रस्वः अस्ति (न्यूनातिन्यूनं {0} वर्णाः आवश्यकाः)। नूतनं गुप्तशब्दं स्थापयतु।</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} सञ्चिकाः अप्राप्यत्वात् त्यक्ताः। शेषाभिः सञ्चिकाभिः गुप्तशब्द-रक्षितः सञ्चयः कृतः।</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">सर्वाः मूलसञ्चिकाः अप्राप्याः आसन्, अतः सङ्कोचनं विरतम्। रिक्तः सञ्चयः न रचितः।</x:String>

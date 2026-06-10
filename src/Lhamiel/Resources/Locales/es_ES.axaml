@@ -353,6 +353,7 @@
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">No se pudo restaurar la contraseña guardada (posiblemente debido a una copia de la configuración desde otro PC o un restablecimiento de la contraseña de Windows). Vuelva a establecer la contraseña.</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">La contraseña guardada contiene caracteres que no se pueden usar con el formato ZIP (solo ASCII). Introduzca una contraseña para esta compresión (la contraseña guardada no se modificará).</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">La contraseña guardada es demasiado corta para usarse (se requieren al menos {0} caracteres). Establezca una nueva contraseña.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">Se omitieron {0} archivo(s) por ser inaccesibles. Se creó un archivo protegido con contraseña con los archivos restantes.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Todos los archivos de origen eran inaccesibles, por lo que se canceló la compresión. No se creó un archivo vacío.</x:String>

@@ -239,6 +239,38 @@ public class ArchiveProcessorPasswordTests : IDisposable
     }
 
     [Fact]
+    public async Task Remember_SavedPasswordBelowMinLength_NotifiesAndReprompts()
+    {
+        // codex P2 #3390183195: 4 文字フロア導入前のビルドで保存された 1〜3 文字の
+        // パスワードは redaction 不能 (RegisterRedactionToken が no-op) のまま圧縮スコープに
+        // 入るため、復号できても使用せず通知 + CompressNew 再プロンプトで移行する。
+        // MutateAndSave への副作用を避けるため、再プロンプトはキャンセルさせる (garbage テストと同じ)。
+        Assert.SkipWhen(!OperatingSystem.IsWindows(), "DPAPI は Windows 限定");
+
+        var legacyShort = CompressionPasswordSession.Protect("ab1"); // 3 文字 (redaction 下限未満)
+
+        var msgStub = new StubMsg();
+        var pwdStub = new StubPasswordDialog { Plaintext = null }; // ユーザーキャンセル
+        ArchiveProcessor.PasswordDialogImpl = pwdStub;
+        ArchiveProcessor.MessageServiceImpl = msgStub;
+        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+
+        var settings = new Settings
+        {
+            IsPasswordProtectionEnabled = true,
+            PasswordMode = "Remember",
+            EncryptedCompressionPassword = legacyShort,
+        };
+        var result = await ArchiveProcessor.TryResolveCompressionPasswordAsync(
+            settings, "test.7z", null, TestContext.Current.CancellationToken);
+
+        Assert.Null(result); // キャンセル → 短すぎる保存値が再利用されない
+        Assert.Single(msgStub.Errors); // SavedPasswordTooShort の通知 1 回 (DecryptFailed は出ない)
+        Assert.Single(pwdStub.Calls); // 通知後に CompressNew で再プロンプト
+        Assert.Equal(PasswordDialogMode.CompressNew, pwdStub.Calls[0]);
+    }
+
+    [Fact]
     public async Task Remember_NoCiphertextSaved_SilentlyPromptsWithoutErrorNotification()
     {
         // ciphertext 未保存 (初回 Remember 利用) なので、復号失敗の通知 (SavedPasswordDecryptFailed) は出さない。

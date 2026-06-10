@@ -353,6 +353,7 @@
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Não foi possível restaurar a senha salva (provavelmente por copiar configurações de outro PC ou redefinir a senha do Windows). Defina a senha novamente.</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">A senha salva contém caracteres que não podem ser usados no formato ZIP (somente ASCII). Digite uma senha para esta compressão (a senha salva não será alterada).</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">A senha salva é curta demais para ser usada (são necessários pelo menos {0} caracteres). Defina uma nova senha.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} arquivo(s) ignorado(s) por estarem inacessíveis. Um arquivo protegido por senha foi criado com os arquivos restantes.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Todos os arquivos de origem estavam inacessíveis, então a compactação foi abortada. Nenhum arquivo vazio foi criado.</x:String>

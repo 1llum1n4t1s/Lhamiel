@@ -355,6 +355,7 @@
   <!-- 通知 -->
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">保存されていたパスワードを復元できませんでした (別 PC からの設定コピー / Windows パスワードのリセット等が原因の可能性があります)。再度パスワードを設定してください。</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">保存済みパスワードには ZIP 形式で使用できない文字が含まれています (ASCII 文字のみ対応)。この圧縮で使用するパスワードを入力してください (保存済みパスワードは変更されません)。</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">保存されているパスワードが短すぎるため使用できません（{0} 文字以上が必要です）。新しいパスワードを設定してください。</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} 件のファイルがアクセス不能でスキップされました。残りのファイルでパスワード保護アーカイブを作成しました。</x:String>
 
   <!-- パスワード関連エラー -->

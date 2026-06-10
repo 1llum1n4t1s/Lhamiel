@@ -353,6 +353,7 @@
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Das gespeicherte Passwort konnte nicht wiederhergestellt werden (möglicherweise durch Übernahme der Einstellungen von einem anderen PC oder Zurücksetzen des Windows-Passworts). Bitte legen Sie das Passwort erneut fest.</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Das gespeicherte Passwort enthält Zeichen, die im ZIP-Format nicht verwendet werden können (nur ASCII). Geben Sie ein Passwort für diese Komprimierung ein (das gespeicherte Passwort wird nicht geändert).</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">Das gespeicherte Passwort ist zu kurz und kann nicht verwendet werden (mindestens {0} Zeichen erforderlich). Bitte legen Sie ein neues Passwort fest.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} Datei(en) wurden übersprungen, da sie nicht zugänglich waren. Mit den restlichen Dateien wurde ein passwortgeschütztes Archiv erstellt.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Alle Quelldateien waren nicht zugänglich, daher wurde die Komprimierung abgebrochen. Es wurde kein leeres Archiv erstellt.</x:String>

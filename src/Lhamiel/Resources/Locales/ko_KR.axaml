@@ -353,6 +353,7 @@
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">저장된 암호를 복원하지 못했습니다 (다른 PC에서 설정 복사 또는 Windows 암호 재설정이 원인일 수 있음). 암호를 다시 설정하세요.</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">저장된 비밀번호에 ZIP 형식에서 사용할 수 없는 문자가 포함되어 있습니다(ASCII만 지원). 이번 압축에 사용할 비밀번호를 입력하세요(저장된 비밀번호는 변경되지 않습니다).</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">저장된 암호가 너무 짧아 사용할 수 없습니다 (최소 {0}자 필요). 새 암호를 설정해 주세요.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0}개 파일이 접근 불가로 건너뛰어졌습니다. 나머지 파일로 암호 보호된 아카이브를 만들었습니다.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">모든 원본 파일에 접근할 수 없어 압축을 중단했습니다. 빈 아카이브는 생성되지 않았습니다.</x:String>

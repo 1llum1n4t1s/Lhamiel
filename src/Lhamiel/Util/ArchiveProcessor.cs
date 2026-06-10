@@ -117,6 +117,21 @@ public static class ArchiveProcessor
             // 保存済み ciphertext があれば復号を試行
             plaintext = CompressionPasswordSession.TryUnprotect(settings.EncryptedCompressionPassword);
 
+            // 復号できても redaction 下限 (= MinCompressPasswordLength) 未満の保存値は使用しない
+            // (codex P2 #3390183195)。4 文字フロア導入前のビルドで保存された legacy 値が対象。
+            // Logger.RegisterRedactionToken は 4 文字未満で no-op のため、このまま圧縮スコープに
+            // 入るとライブラリ例外経由で平文がログに残りうる。復号失敗と同様に通知 +
+            // CompressNew 再プロンプト (ダイアログが 4 文字以上を強制) し、下の保存パスで
+            // 新しい値に移行する (保存値の上書き)。
+            var savedTooShort = plaintext is not null && plaintext.Length < View.PasswordDialog.MinCompressPasswordLength;
+            if (savedTooShort)
+            {
+                plaintext = null;
+                await UiDispatcherImpl.InvokeAsync(() =>
+                    MessageServiceImpl.ShowError(
+                        App.Text("Notify.SavedPasswordTooShort", View.PasswordDialog.MinCompressPasswordLength)));
+            }
+
             // 保存済みパスワードが復号できても、ZIP + 非 ASCII は使用不能 (7-Zip 26.00 regression)。
             // 7z では引き続き有効なパスワードなので保存値は変更せず、
             // この圧縮限りの一時パスワードを再プロンプトする。
@@ -132,8 +147,9 @@ public static class ArchiveProcessor
             {
                 // 復号失敗 (別ユーザー/PC コピー等) → ユーザーに通知して再プロンプト。
                 // ciphertext 未保存 (初回 Remember 利用) との区別はユーザー視点では不要なので
-                // 通知は ciphertext があった場合のみ表示する (ZIP 非対応文字の通知済みケースを除く)。
-                if (!savedUnusableForZip && settings.EncryptedCompressionPassword is { Length: > 0 })
+                // 通知は ciphertext があった場合のみ表示する (ZIP 非対応文字・短すぎる保存値の
+                // 通知済みケースを除く)。
+                if (!savedUnusableForZip && !savedTooShort && settings.EncryptedCompressionPassword is { Length: > 0 })
                 {
                     await UiDispatcherImpl.InvokeAsync(() =>
                         MessageServiceImpl.ShowError(App.Text("Notify.SavedPasswordDecryptFailed")));

@@ -353,6 +353,7 @@
 
   <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Tessera servata restitui non potuit (fortasse ob configurationes ex alio computatro descriptas vel ob tesseram Windows redintegratam). Tesseram iterum constitue.</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Tessera servata litteras continet quae in forma ZIP adhiberi non possunt (ASCII solum). Tesseram huic compressioni inscribe (tessera servata non mutabitur).</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">Tessera servata brevior est quam ut adhiberi possit (saltem {0} litterae requiruntur). Novam tesseram constitue.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} fasciculus(i) praeteritus(i) sunt ob inaccessibilitatem. Archivum tessera tutum cum reliquis fasciculis creatum est.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Omnes fasciculi originales inaccessibiles erant, itaque compressio abrupta est. Archivum inane non creatum est.</x:String>
