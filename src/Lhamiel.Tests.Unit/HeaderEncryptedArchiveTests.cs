@@ -56,6 +56,35 @@ public class HeaderEncryptedArchiveTests : IDisposable
     }
 
     /// <summary>
+    /// 同時に開いているプロンプト数を追跡するスタブ。一定時間保持してから null (キャンセル) を返す。
+    /// StructurePasswordPromptGate が機能していれば MaxObservedConcurrency は 1 を超えない。
+    /// </summary>
+    private sealed class ConcurrencyTrackingPasswordDialog : IPasswordDialogService
+    {
+        private int _active;
+        public int CallCount;
+        public int MaxObservedConcurrency;
+
+        public async Task<string?> PromptForPasswordAsync(
+            string archiveDisplayName,
+            PasswordDialogMode mode,
+            bool isRetry,
+            Window? parentWindow,
+            CancellationToken cancellationToken)
+        {
+            var now = Interlocked.Increment(ref _active);
+            int seen;
+            while (now > (seen = Volatile.Read(ref MaxObservedConcurrency)))
+                Interlocked.CompareExchange(ref MaxObservedConcurrency, now, seen);
+            Interlocked.Increment(ref CallCount);
+            // ゲートが無い場合に 2 つ目のプロンプトと確実に重なる猶予を作る
+            await Task.Delay(150, cancellationToken);
+            Interlocked.Decrement(ref _active);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// アーカイブ名と同名のルートフォルダ 1 つ (中にファイル 1 つ) を持つ
     /// he=on ヘッダ暗号化 7z を作成する。
     /// </summary>
@@ -143,5 +172,41 @@ public class HeaderEncryptedArchiveTests : IDisposable
         var withPw = await ArchiveIntegrityVerifier.VerifyArchiveAsync(
             archive, TestContext.Current.CancellationToken, Password);
         Assert.True(withPw.IsValid);
+    }
+
+    [Fact]
+    public async Task ExtractArchiveAsync_HeaderEncrypted_CancelPrompt_CancelsExtraction()
+    {
+        // codex P2 #3385210131: 構造解析プロンプトの明示キャンセルは従来経路へ合流せず
+        // 展開ごと中止する (合流すると展開中の AsyncPasswordQuery が再ダイアログを出す)。
+        var archive = await CreateHeaderEncryptedArchiveAsync("data6");
+        var stub = new CountingPasswordDialog(); // null = キャンセルを返す
+        ArchiveProcessor.PasswordDialogImpl = stub;
+
+        var outDir = Path.Combine(_dir, "out6");
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            ArchiveProcessor.ExtractArchiveAsync(archive, outDir, outputToSameDirectory: false, progressWindow: null));
+
+        Assert.Equal(1, stub.CallCount); // キャンセル後に 2 つ目のダイアログが出ない
+        Assert.False(Directory.Exists(outDir)); // 何も展開されていない
+    }
+
+    [Fact]
+    public async Task ExtractArchiveAsync_ParallelHeaderEncrypted_PromptsAreSerialized()
+    {
+        // codex P2 #3385210128: バッチ並列で複数の he=on アーカイブが同時に構造解析へ到達しても
+        // StructurePasswordPromptGate がプロンプトを 1 つずつに直列化する。
+        var a1 = await CreateHeaderEncryptedArchiveAsync("data7");
+        var a2 = await CreateHeaderEncryptedArchiveAsync("data8");
+        var stub = new ConcurrencyTrackingPasswordDialog();
+        ArchiveProcessor.PasswordDialogImpl = stub;
+
+        var t1 = ArchiveProcessor.ExtractArchiveAsync(a1, Path.Combine(_dir, "out7"), outputToSameDirectory: false, progressWindow: null);
+        var t2 = ArchiveProcessor.ExtractArchiveAsync(a2, Path.Combine(_dir, "out8"), outputToSameDirectory: false, progressWindow: null);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => t1);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => t2);
+
+        Assert.Equal(2, stub.CallCount);
+        Assert.Equal(1, stub.MaxObservedConcurrency); // ダイアログが積み重ならない
     }
 }

@@ -32,6 +32,17 @@ public static class ArchiveProcessor
     internal static IPasswordDialogService PasswordDialogImpl { get; set; } = new DefaultPasswordDialogService();
 
     /// <summary>
+    /// ヘッダ暗号化 (he=on) 構造解析のパスワードプロンプトをプロセス全体で 1 つに直列化するゲート。
+    /// バッチ展開は IoBoundParallelism (2〜4) 並列でタスクを回すため、複数の he=on アーカイブが
+    /// 同時に構造解析へ到達するとモーダルダイアログが積み重なる (codex P2 #3385210128)。
+    /// 展開中の AsyncPasswordQuery が NativeArchiveGate で自然に直列化されるのと同等の体験に揃える。
+    /// NativeArchiveGate 自体は GetArchiveStructureInfo 内部で取得される (非リエントラント) ため
+    /// 流用できない。取得順は常に「本ゲート → NativeArchiveGate (一時取得)」の一方向のみで、
+    /// 逆順取得は存在しないためデッドロックしない。
+    /// </summary>
+    private static readonly SemaphoreSlim StructurePasswordPromptGate = new(1, 1);
+
+    /// <summary>
     /// 設定の <see cref="Settings.IsPasswordProtectionEnabled"/> / <see cref="Settings.PasswordMode"/> /
     /// <see cref="Settings.EncryptedCompressionPassword"/> を元に圧縮パスワードを解決する。
     /// <para>
@@ -304,32 +315,50 @@ public static class ArchiveProcessor
                 // 常に false になり「Foo/Foo」二重ネストが起きる (codex P2 #3384706128)。
                 // 該当拡張子ならここでパスワードを確認して再解析し、検証済みパスワードは
                 // 展開・CRC 検証にも引き回す (展開中の再ダイアログを回避)。
-                // キャンセル・全試行失敗時は従来経路 (パスワード無し) に合流し、本当に破損した
-                // アーカイブの UX (展開時エラー表示) を変えない。
+                // 全試行失敗時は従来経路 (パスワード無し) に合流し、本当に破損したアーカイブの
+                // UX (展開時エラー表示) を変えない。明示キャンセルは展開ごと中止する。
                 string? knownPassword = null;
                 if (rawStructureInfo.OpenFailed && extension is ".7z" or ".rar")
                 {
                     const int MaxStructurePasswordAttempts = 3;
                     var archiveDisplayName = Path.GetFileName(filePath);
-                    for (var attempt = 1; attempt <= MaxStructurePasswordAttempts; attempt++)
+                    // バッチ並列時にプロンプトが積み重ならないよう、ループ全体をゲートで直列化する
+                    // (codex P2 #3385210128)。
+                    await StructurePasswordPromptGate.WaitAsync(cancellationToken);
+                    try
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        var pw = await PasswordDialogImpl.PromptForPasswordAsync(
-                            archiveDisplayName, View.PasswordDialogMode.Extract, attempt > 1, progressWindow, cancellationToken);
-                        if (pw is null)
+                        for (var attempt = 1; attempt <= MaxStructurePasswordAttempts; attempt++)
                         {
-                            Logger.Log("ヘッダ暗号化解析のパスワード入力がキャンセルされたため、従来経路で続行します");
-                            break;
-                        }
+                            cancellationToken.ThrowIfCancellationRequested();
+                            var pw = await PasswordDialogImpl.PromptForPasswordAsync(
+                                archiveDisplayName, View.PasswordDialogMode.Extract, attempt > 1, progressWindow, cancellationToken);
+                            if (pw is null)
+                            {
+                                // 明示キャンセルはこのアーカイブの展開ごと中止する (codex P2 #3385210131)。
+                                // 従来経路に合流させると展開中の AsyncPasswordQuery がもう一度ダイアログを
+                                // 出してしまう。展開経路のキャンセル (EncryptionException → OCE 変換) と同じ
+                                // 形に揃える。バッチ側は OCE を「失敗ではなくスキップ」として扱う。
+                                Logger.Log("ヘッダ暗号化解析のパスワード入力がキャンセルされたため展開を中止します");
+                                throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"), cancellationToken);
+                            }
 
-                        var retried = ArchiveExtractor.GetArchiveStructureInfo(filePath, pw);
-                        if (!retried.OpenFailed)
-                        {
-                            rawStructureInfo = retried;
-                            knownPassword = pw;
-                            Logger.Log("検証済みパスワードでアーカイブ構造を再解析しました");
-                            break;
+                            // 解析が例外メッセージ経由で平文パスワードをログに混入させないよう、
+                            // パスワードを渡す前に redaction を登録する (codex P2 #3385210137)。
+                            // using var は各 iteration 終端で解放され、確定後は下の knownPassword 登録が引き継ぐ。
+                            using var attemptRedaction = Logger.RegisterRedactionToken(pw);
+                            var retried = ArchiveExtractor.GetArchiveStructureInfo(filePath, pw);
+                            if (!retried.OpenFailed)
+                            {
+                                rawStructureInfo = retried;
+                                knownPassword = pw;
+                                Logger.Log("検証済みパスワードでアーカイブ構造を再解析しました");
+                                break;
+                            }
                         }
+                    }
+                    finally
+                    {
+                        StructurePasswordPromptGate.Release();
                     }
 
                     if (knownPassword is null)
