@@ -295,7 +295,10 @@ public static class ArchiveProcessor
             ArchiveExtractor.ArchiveStructureInfo? structureInfo = null;
             // he=on 構造解析で確定したパスワードの redaction 登録。catch の LogException 時にも
             // 有効なように try の外で保持し finally で解放する (codex P2 #3386575721)。
+            // knownPassword 自体も catch から参照する (redaction 不能な 1〜3 文字パスワードの
+            // 例外詳細を生ログしない分岐、codex P2 #3386732834) ため try の外で宣言する。
             IDisposable? knownPasswordRedaction = null;
+            string? knownPassword = null;
             try
             {
                 // UIスレッドからアクセスが必要なプログレス表示用のラッパー
@@ -334,7 +337,7 @@ public static class ArchiveProcessor
                 // 抑止する (suppressPasswordPrompt)。本当に破損したアーカイブはパスワード
                 // コールバック自体が呼ばれずエラー表示経路に進むため UX は変わらない。
                 // 明示キャンセルは展開ごと中止する。
-                string? knownPassword = null;
+                // (knownPassword の宣言は catch から参照するため try の外にある)
                 var structurePromptExhausted = false;
                 if (rawStructureInfo.OpenFailed && extension is ".7z" or ".rar")
                 {
@@ -554,7 +557,12 @@ public static class ArchiveProcessor
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                Logger.LogException($"展開処理でエラーが発生: {filePath}", ex);
+                // 1〜3 文字の knownPassword は redaction 対象外のため、例外の全文 (スタックトレース・
+                // ライブラリ例外メッセージ) を生ログしない (codex P2 #3386732834)。
+                if (knownPassword is null || Logger.CanRedactToken(knownPassword))
+                    Logger.LogException($"展開処理でエラーが発生: {filePath}", ex);
+                else
+                    Logger.Log($"展開処理でエラーが発生 (パスワード付き・詳細抑止): {filePath} - {ex.GetType().Name} (HResult=0x{ex.HResult:X8})", LogLevel.Error);
                 var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, filePath, outputPath ?? string.Empty);
                 // 進捗ウィンドウを先に閉じてからダイアログを表示。Post + 破棄では進捗ウィンドウの
                 // クローズ遷移と競合し、ダイアログが背面に隠れる/表示されないことがあるため、

@@ -48,9 +48,10 @@ public partial class PasswordDialog : Window
     /// パスワードを受理するとログ redaction の対象外になる。入力時点で 4 文字以上を
     /// 強制して「マスクされない圧縮パスワード」の存在自体をなくす (1〜3 文字の
     /// アーカイブパスワードは保護強度的にも無意味)。Extract モードは既存書庫との
-    /// 互換のため制限しない。
+    /// 互換のため制限しない。Logger.MinRedactionTokenLength を直接参照することで
+    /// 連動を構造的に固定する (linkage テストは belt-and-suspenders として維持)。
     /// </summary>
-    internal const int MinCompressPasswordLength = 4;
+    internal const int MinCompressPasswordLength = Logger.MinRedactionTokenLength;
 
     /// <summary>アーカイブ名（バインディング用、コンストラクタで決定し以後不変）</summary>
     public string ArchiveName { get; }

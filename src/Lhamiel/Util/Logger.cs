@@ -292,12 +292,26 @@ public static class Logger
     /// </remarks>
     public static IDisposable RegisterRedactionToken(string? token)
     {
-        if (string.IsNullOrEmpty(token) || token.Length < 4)
+        if (!CanRedactToken(token))
             return NoopDisposable.Instance;
         // Refcount を 1 増やす (同一 token を別 scope が共有しても安全)。
-        _redactionTokens.AddOrUpdate(token, 1, (_, current) => current + 1);
-        return new RedactionScope(token);
+        _redactionTokens.AddOrUpdate(token!, 1, (_, current) => current + 1);
+        return new RedactionScope(token!);
     }
+
+    /// <summary>
+    /// redaction の最小トークン長。これ未満の token は over-masking でログ全体を
+    /// 破壊するため <see cref="RegisterRedactionToken"/> が no-op になる (上記 remarks 参照)。
+    /// </summary>
+    internal const int MinRedactionTokenLength = 4;
+
+    /// <summary>
+    /// token が <see cref="RegisterRedactionToken"/> でマスク可能な長さかどうかを返す。
+    /// false の場合、呼び出し側はその token を含みうるライブラリ例外メッセージ等を
+    /// 生ログしないこと (型名 + HResult 等の安全な要約に置き換える契約、codex P2 #3386732834)。
+    /// </summary>
+    internal static bool CanRedactToken(string? token) =>
+        !string.IsNullOrEmpty(token) && token.Length >= MinRedactionTokenLength;
 
     /// <summary>
     /// 内部 redaction ロジック。テストから直接呼べるよう internal で公開する。

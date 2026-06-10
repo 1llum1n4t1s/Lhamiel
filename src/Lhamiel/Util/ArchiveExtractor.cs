@@ -1423,8 +1423,18 @@ public static class ArchiveExtractor
             }
 
             var errorInfo = ArchiveErrorHandler.AnalyzeError(ex, archivePath, outputPath);
-            Logger.Log($"アーカイブ展開でエラーが発生しました: {errorInfo.Message}");
-            Logger.Log($"エラー詳細: {errorInfo.Details}");
+            // 1〜3 文字の knownPassword は Logger redaction (4 文字下限) の対象外のため、
+            // ライブラリ例外由来の詳細 (errorInfo.Details = ex.Message 等) を生ログしない
+            // (codex P2 #3386732834)。redaction 可能なら従来どおり (ログ側でマスクされる)。
+            if (knownPassword is null || Logger.CanRedactToken(knownPassword))
+            {
+                Logger.Log($"アーカイブ展開でエラーが発生しました: {errorInfo.Message}");
+                Logger.Log($"エラー詳細: {errorInfo.Details}");
+            }
+            else
+            {
+                Logger.Log($"アーカイブ展開でエラーが発生しました (パスワード付き・詳細抑止): {ex.GetType().Name} (HResult=0x{ex.HResult:X8})");
+            }
 
             throw;
         }

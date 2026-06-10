@@ -266,4 +266,21 @@ public class HeaderEncryptedArchiveTests : IDisposable
         Assert.Equal(2, stub.CallCount); // 構造解析側 1 回 + 展開中クエリ側 1 回
         Assert.Equal(1, stub.MaxObservedConcurrency); // 経路をまたいでも積み重ならない
     }
+
+    [Fact]
+    public async Task VerifyArchiveAsync_UnredactableShortPassword_SanitizesErrorDetail()
+    {
+        // codex P2 #3386732834: 1〜3 文字パスワード (Extract は既存書庫互換で受理) は
+        // Logger redaction (4 文字下限) の対象外のため、パスワード付き検証の失敗詳細は
+        // 生の例外メッセージではなく型名 + HResult に置き換えられる
+        // (ErrorMessage は呼び出し側がログ・ダイアログへ転載するため)。
+        var archive = await CreateHeaderEncryptedArchiveAsync("data13");
+
+        var result = await ArchiveIntegrityVerifier.VerifyArchiveAsync(
+            archive, TestContext.Current.CancellationToken, "xq1");
+
+        Assert.False(result.IsValid);
+        Assert.Contains("HResult=0x", result.ErrorMessage ?? "", StringComparison.Ordinal); // sanitized 形式
+        Assert.DoesNotContain("xq1", result.ErrorMessage ?? "", StringComparison.Ordinal);
+    }
 }
