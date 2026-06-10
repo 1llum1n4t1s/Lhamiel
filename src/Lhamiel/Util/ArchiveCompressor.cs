@@ -172,6 +172,11 @@ public static class ArchiveCompressor
                             // 空のマーカーディレクトリを src に渡すと再走査しても中身が無いので、
                             // 意図したディレクトリエントリだけがアーカイブに追加される。
                             emptyDirMarker ??= CreateEmptyDirectoryMarker();
+                            // マーカーは 1 個を使い回すが、ライブラリは Add 時点でメタデータを
+                            // スナップショットする (RawEntity → Entity ctor)。Add 直前に元ディレクトリの
+                            // タイムスタンプをコピーすれば、ディレクトリごとの値がアーカイブに保存される
+                            // (コピーしないと空ディレクトリの更新日時が圧縮実行時刻になる)。
+                            TryCopyDirectoryTimestamps(fullPath, emptyDirMarker);
                             writer.Add(emptyDirMarker, relativePath);
                             addedCount++;
                             continue;
@@ -300,6 +305,27 @@ public static class ArchiveCompressor
         var dir = Path.Combine(Path.GetTempPath(), $"Lhamiel_emptydir_{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
         return dir;
+    }
+
+    /// <summary>
+    /// 空ディレクトリマーカーに元ディレクトリのタイムスタンプをコピーする（best-effort）。
+    /// マーカー方式ではマーカー自身のメタデータがアーカイブに保存されるため、コピーしないと
+    /// 空ディレクトリの更新日時が圧縮実行時刻になってしまう。コピー失敗はアーカイブの内容
+    /// 自体には影響しないため、警告ログのみ残して続行する。
+    /// </summary>
+    private static void TryCopyDirectoryTimestamps(string sourceDir, string markerDir)
+    {
+        try
+        {
+            Directory.SetCreationTimeUtc(markerDir, Directory.GetCreationTimeUtc(sourceDir));
+            Directory.SetLastWriteTimeUtc(markerDir, Directory.GetLastWriteTimeUtc(sourceDir));
+        }
+        catch (Exception ex)
+        {
+            Logger.Log(
+                $"空ディレクトリのタイムスタンプコピーに失敗（マーカーの時刻で続行）: {sourceDir} - {ex.Message}",
+                LogLevel.Warning);
+        }
     }
 
     /// <summary>

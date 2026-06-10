@@ -579,4 +579,49 @@ public class ArchiveCompressionTests
                 Directory.Delete(testDir, true);
         }
     }
+
+    /// <summary>
+    /// 空ディレクトリのタイムスタンプが圧縮→展開ラウンドトリップで保持されるか確認。
+    /// 空ディレクトリは共有の空マーカーディレクトリ経由で追加されるため、Add 直前の
+    /// タイムスタンプコピー (TryCopyDirectoryTimestamps) が無いと全て圧縮実行時刻になる。
+    /// ディレクトリごとに異なる時刻を設定し、マーカー使い回しでも各値が保持されることを確認する。
+    /// </summary>
+    [Fact]
+    public async Task CompressAndExtract_EmptyDirectories_PreserveTimestamps()
+    {
+        var testDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var sourceDir = Path.Combine(testDir, "source");
+            var dirA = Path.Combine(sourceDir, "EmptyA");
+            var dirB = Path.Combine(sourceDir, "EmptyB");
+            Directory.CreateDirectory(dirA);
+            Directory.CreateDirectory(dirB);
+            File.WriteAllText(Path.Combine(sourceDir, "root.txt"), "x"); // 空ディレクトリ以外も混在させる
+            var timeA = new DateTime(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc);
+            var timeB = new DateTime(2021, 6, 7, 8, 9, 10, DateTimeKind.Utc);
+            Directory.SetLastWriteTimeUtc(dirA, timeA);
+            Directory.SetLastWriteTimeUtc(dirB, timeB);
+
+            var archivePath = Path.Combine(testDir, "empty_dir_times.7z");
+            var extractDir = Path.Combine(testDir, "extracted");
+            var format = ArchiveCompressor.ParseFormat("7z");
+            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, format, null, TestContext.Current.CancellationToken);
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
+
+            var outA = Directory.GetDirectories(extractDir, "EmptyA", SearchOption.AllDirectories).Single();
+            var outB = Directory.GetDirectories(extractDir, "EmptyB", SearchOption.AllDirectories).Single();
+            var actualA = Directory.GetLastWriteTimeUtc(outA);
+            var actualB = Directory.GetLastWriteTimeUtc(outB);
+            Assert.True(Math.Abs((actualA - timeA).TotalSeconds) < 3,
+                $"EmptyA の更新日時が保持されるべき: expected={timeA:O}, actual={actualA:O}");
+            Assert.True(Math.Abs((actualB - timeB).TotalSeconds) < 3,
+                $"EmptyB の更新日時が保持されるべき: expected={timeB:O}, actual={actualB:O}");
+        }
+        finally
+        {
+            if (Directory.Exists(testDir))
+                Directory.Delete(testDir, true);
+        }
+    }
 }
