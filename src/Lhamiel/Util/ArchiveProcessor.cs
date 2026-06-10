@@ -62,17 +62,25 @@ public static class ArchiveProcessor
         if (!settings.IsPasswordProtectionEnabled)
             return new PasswordResolutionState(null, false);
 
-        // TAR はパスワード保護非対応。ここに来る時点で IsPasswordProtectionEnabled=true なので、
-        // 「保護要求 + TAR」という矛盾状態。サイレントに 'password なし' へダウングレードすると、
-        // ユーザーが暗号化されたと思い込んだまま無保護の TAR が生成される footgun になる
-        // (CodeRabbit 指摘 / CLAUDE.md「TAR は InvalidOperationException guard」)。
-        // ArchiveCompressor.CreateArchiveWriter と同じ Error.PasswordNotSupportedByFormat で fail-loud にする。
-        // UI のドロップ経路は MainWindowViewModel で TAR 選択時に IsPasswordProtectionEnabled を
-        // 強制 false にするためここには到達せず、CLI/設定直書き等の非 UI 経路でのみ発火する。
-        // この例外は MainWindowViewModel の圧縮 try/catch (Error.ProcessFiles) で捕捉されダイアログ表示される
-        // (codex P2 #3381313186 のサイレント解除を fail-loud へ是正)。
+        // TAR はパスワード保護非対応。明示的に TAR が要求された場合は password 解決を
+        // スキップして「保護なし」で続行する (codex P2 #3384620480)。
+        //
+        // ここは fail-loud (throw) にしない: UI は TAR 選択時に checkbox を disable して
+        // 「TAR に保護は適用されない」ことを明示しており、保存済みの IsPasswordProtectionEnabled
+        // は ZIP/7z 用の選好にすぎない。シェル/CLI の明示 `--format TAR` は
+        // CompressItemAsync/CompressMergedAsync が新規 snapshot (= ZIP/7z 選好の保護 ON) を
+        // 取るためこの分岐に必ず到達し、throw すると「ZIP の保護設定を OFF にしないと
+        // TAR 圧縮できない」誤爆になる。coerce が UI ドロップ経路 (VM での強制 false) と
+        // 同じ意味論。
+        //
+        // 「暗号化されたつもりの無保護 TAR」footgun への防御線は
+        // ArchiveCompressor.CreateArchiveWriter の「非 null password + TAR → InvalidOperationException」
+        // が担う (こちらは本物のバグ検知用で fail-loud を維持)。
         if (formatHint is { } fmt && string.Equals(fmt, "TAR", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException(App.Text("Error.PasswordNotSupportedByFormat", "TAR"));
+        {
+            Logger.Log("TAR はパスワード保護非対応のため、保護設定をスキップして圧縮を続行します", LogLevel.Info);
+            return new PasswordResolutionState(null, false);
+        }
 
         var encryptFileNames = settings.EncryptFileNames;
         string? plaintext;

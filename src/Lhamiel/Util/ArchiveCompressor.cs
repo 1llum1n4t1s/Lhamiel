@@ -405,6 +405,7 @@ public static class ArchiveCompressor
                 }
 
                 // Flatモードでなければ空ディレクトリを収集してエントリに追加
+                var emptyDirCount = 0;
                 if (dirMode != DirectoryStructureMode.Flat)
                 {
                     var emptyDirs = CollectEmptyDirectories(sourcePath, effectiveMatcher, directoriesWithFiles, includeHiddenAndSystemEntries);
@@ -414,8 +415,24 @@ public static class ArchiveCompressor
                         filesToCompress.Add((emptyDir, relativePath + "/"));
                     }
 
+                    emptyDirCount = emptyDirs.Count;
                     if (emptyDirs.Count > 0)
                         Logger.Log($"空ディレクトリ: {emptyDirs.Count}個を追加");
+                }
+
+                // codex P2 #3384620482: 空ディレクトリそのものをドロップした場合 (files=0 かつ
+                // 子の空ディレクトリも 0)、CollectEmptyDirectories は root 自身を返さないため
+                // エントリが 1 件も残らず、addedCount==0 guard が「全ソースアクセス不能」という
+                // 誤ったエラーで中止してしまう。IncludeRoot モードでは root 自身を
+                // 空ディレクトリエントリとして追加し、「空フォルダを圧縮」を有効な操作として
+                // 成立させる (空フォルダ 1 個入りのアーカイブ)。
+                // ExcludeRoot/Flat では root の相対パスが "." になり意味のあるエントリを
+                // 表現できないため追加しない (本当に中身ゼロなら従来通り guard が中止する)。
+                if (fileCount == 0 && emptyDirCount == 0 && dirMode == DirectoryStructureMode.IncludeRoot)
+                {
+                    var rootRelative = NormalizeNfc(Path.GetRelativePath(parentDir, sourcePath), normalizeUnicode);
+                    filesToCompress.Add((sourcePath, rootRelative + "/"));
+                    Logger.Log($"空ディレクトリをルートエントリとして追加: {sourcePath}");
                 }
 
                 Logger.Log($"スキャン完了: {fileCount}個のファイルが見つかりました");

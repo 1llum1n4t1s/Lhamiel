@@ -95,11 +95,15 @@ public class ArchiveProcessorPasswordTests : IDisposable
     }
 
     [Fact]
-    public async Task TarFormatHint_WithProtectionEnabled_Throws_NotSilentDowngrade()
+    public async Task TarFormatHint_WithProtectionEnabled_SkipsPassword_WithoutPrompt()
     {
-        // CodeRabbit 指摘: 保護 ON + TAR をサイレントに「無保護 TAR」へダウングレードせず、
-        // fail-loud で InvalidOperationException を投げる (CLAUDE.md「TAR は guard」)。
-        // パスワードプロンプトは出さない (フォーマット非対応なので入力させる意味がない)。
+        // codex P2 #3384620480: 明示 `--format TAR` (シェル/CLI) は ZIP/7z 用の保護選好が
+        // ON のままでも到達する正規経路。throw すると「ZIP の保護設定を OFF にしないと
+        // TAR 圧縮できない」誤爆になるため、UI ドロップ経路 (VM の強制 false) と同じく
+        // 「保護なし」へ coerce する。プロンプトも出さない。
+        // 「非 null password が TAR writer に届く」本物のバグは
+        // ArchiveCompressor.CreateArchiveWriter の fail-loud guard が検知する
+        // (TarFormat_WithPassword_Throws テスト参照)。
         var pwdStub = new StubPasswordDialog { Plaintext = "should-not-be-asked" };
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
         ArchiveProcessor.MessageServiceImpl = new StubMsg();
@@ -111,9 +115,12 @@ public class ArchiveProcessorPasswordTests : IDisposable
             PasswordMode = "PromptEachTime",
         };
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            ArchiveProcessor.TryResolveCompressionPasswordAsync(
-                settings, "test.tar", null, TestContext.Current.CancellationToken, "TAR"));
+        var result = await ArchiveProcessor.TryResolveCompressionPasswordAsync(
+            settings, "test.tar", null, TestContext.Current.CancellationToken, "TAR");
+
+        Assert.NotNull(result);
+        Assert.Null(result!.Password);
+        Assert.False(result.EncryptFileNames);
         Assert.Empty(pwdStub.Calls); // プロンプトは出ない
     }
 
