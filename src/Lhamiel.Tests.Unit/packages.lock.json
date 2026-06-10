@@ -50,8 +50,8 @@
       },
       "1llum1n4t1s.Sevenzip": {
         "type": "Transitive",
-        "resolved": "1.0.77",
-        "contentHash": "YIqYoy/Fa0Y9IEjciC9WOZj995hp4TVmFNOfGdEC0MexSu4I3cm11v3111YQKvjakZdUk9HgZqb2Guo2iAPoXA=="
+        "resolved": "1.0.78",
+        "contentHash": "EPRhOSn+syt0geZQH/MBfVU/pF6YBmc1FjzwK0eY7A97lGh6/TKDwMsTumIhzS3ZZYWHuRYsuH6WHly32jTelw=="
       },
       "Avalonia": {
         "type": "Transitive",
@@ -420,8 +420,8 @@
       },
       "System.Security.Cryptography.ProtectedData": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "qy6C3gQRTrfhFfuiIYU1jNwWfFdJpBVo1BARW7jgMm1zTEm3LRzLLyOLJGaAuKE+nZCGkEP71y4rj9NWjqLGdQ=="
+        "resolved": "10.0.9",
+        "contentHash": "vXp+vBQbTkMrDzUiPCxo1KvzfaAvZWuSRS2P7e5orhtV7ZuePKAB3Cqc9dH2YHUavRJyA2uWd2yrL6hl2VoJ5g=="
       },
       "Velopack": {
         "type": "Transitive",
@@ -509,7 +509,7 @@
       "lhamiel": {
         "type": "Project",
         "dependencies": {
-          "1llum1n4t1s.Sevenzip": "[1.0.77, )",
+          "1llum1n4t1s.Sevenzip": "[1.0.78, )",
           "Avalonia": "[12.0.4, )",
           "Avalonia.Desktop": "[12.0.4, )",
           "Avalonia.Fonts.Inter": "[12.0.4, )",
@@ -519,7 +519,7 @@
           "CommunityToolkit.Mvvm": "[8.4.2, )",
           "MessageBox.Avalonia": "[12.0.0, )",
           "SuperLightLogger": "[1.0.7, )",
-          "System.Security.Cryptography.ProtectedData": "[10.0.0, )",
+          "System.Security.Cryptography.ProtectedData": "[10.0.9, )",
           "Tmds.DBus.Protocol": "[0.94.1, )",
           "VelopackUpdateDialog.Avalonia": "[1.0.6, )"
         }
