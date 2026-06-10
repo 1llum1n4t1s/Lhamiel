@@ -320,4 +320,43 @@
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">Kata sandi diperlukan atau salah</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">Arsip ini dilindungi kata sandi. Tidak ada kata sandi yang diberikan atau tidak cocok: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">Ulangi ekstraksi dan masukkan kata sandi yang benar.</x:String>
+
+  <!-- Perlindungan kata sandi (v1.0.181+) -->
+  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Perlindungan Kata Sandi</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Lindungi dengan kata sandi</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Mengenkripsi ZIP dengan AES-256 (WinZip AE-2), 7z dengan AES-256.</x:String>
+  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR tidak mendukung perlindungan kata sandi. Pilih ZIP atau 7z.</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Catatan: ZIP terenkripsi AES-256 tidak dapat dibuka dengan Windows Explorer bawaan. Penerima memerlukan 7-Zip, WinRAR, atau alat lain yang kompatibel.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Enkripsi juga nama file</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Mengenkripsi daftar nama file (header) di dalam arsip. Tanpa kata sandi, bahkan isinya pun tidak dapat dijelajahi.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">Spesifikasi format ZIP tidak dapat mengenkripsi nama file (direktori pusat). Beralih ke 7z untuk mengaktifkan opsi ini.</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">Cara memasukkan kata sandi</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">Tanyakan setiap kali drop</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">Simpan dan gunakan kembali (terenkripsi DPAPI)</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">Kata sandi: telah diatur</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">Kata sandi: belum diatur (akan diminta pada kompresi berikutnya)</x:String>
+  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">Ubah Kata Sandi</x:String>
+  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">Hapus Kata Sandi</x:String>
+
+  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">Atur Kata Sandi</x:String>
+  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">Atur kata sandi untuk mengenkripsi arsip. Masukkan dua kali untuk konfirmasi.</x:String>
+  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Kata sandi (konfirmasi)</x:String>
+  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Kata sandi tidak cocok. Silakan masukkan ulang konfirmasi.</x:String>
+  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Silakan masukkan kata sandi.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">Kata sandi harus terdiri dari minimal 4 karakter.</x:String>
+  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Anda dapat menempel dari pengelola kata sandi (Ctrl+V).</x:String>
+
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Hapus kata sandi yang tersimpan?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Beralih ke "Tanyakan setiap kali drop" akan menghapus kata sandi yang saat ini tersimpan. Lanjutkan?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">Hapus kata sandi yang tersimpan?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">Kata sandi yang tersimpan akan dihapus. Anda perlu memasukkannya kembali pada kompresi berikutnya. Lanjutkan?</x:String>
+
+  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Kata sandi yang tersimpan tidak dapat dipulihkan (kemungkinan disebabkan oleh menyalin pengaturan dari PC lain atau reset kata sandi Windows). Silakan atur kata sandi lagi.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Kata sandi tersimpan mengandung karakter yang tidak dapat digunakan dengan format ZIP (hanya ASCII). Masukkan kata sandi untuk kompresi ini (kata sandi tersimpan tidak akan diubah).</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">Kata sandi yang tersimpan terlalu pendek untuk digunakan (diperlukan minimal {0} karakter). Silakan atur kata sandi baru.</x:String>
+  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} berkas dilewati karena tidak dapat diakses. Arsip yang dilindungi kata sandi telah dibuat dari berkas yang tersisa.</x:String>
+
+  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Semua berkas sumber tidak dapat diakses, sehingga kompresi dibatalkan. Arsip kosong tidak dibuat.</x:String>
+  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Format {0} tidak mendukung perlindungan kata sandi. Pilih ZIP atau 7z.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Kata sandi ZIP hanya dapat berisi karakter ASCII (huruf, angka, dan simbol). Untuk menggunakan karakter lain (seperti huruf beraksen atau bahasa Jepang), pilih format 7z.</x:String>
 </ResourceDictionary>

@@ -297,10 +297,15 @@ public class DirectPathCompressionAdversarialTests
 
     /// <summary>
     /// @adversarial @category state @severity medium
-    /// 空のディレクトリのみを圧縮した場合、空のアーカイブが正しく作成される
+    /// 空のディレクトリのみを圧縮した場合、root 自身を空ディレクトリエントリとして含む
+    /// 有効なアーカイブを作る (codex P2 #3384620482)。
+    /// CollectEmptyDirectories は子ディレクトリしか返さないため、root マーカーを追加しないと
+    /// addedCount==0 guard が「全ソースアクセス不能」という誤ったエラーで中止していた。
+    /// addedCount==0 guard は「スキャン後に全ファイルが消えた」等の本当に空のケース専用
+    /// (AllFilesDeleted_ThrowsInvalidOperation テスト参照)。
     /// </summary>
     [Fact]
-    public async Task EmptyDirectoryOnly_CreatesValidArchive()
+    public async Task EmptyDirectoryOnly_CreatesArchiveWithRootDirEntry()
     {
         await WithTempDir(async dir =>
         {
@@ -311,6 +316,8 @@ public class DirectPathCompressionAdversarialTests
             await ArchiveCompressor.CompressFilesAsync([emptySubDir], archivePath, Format.Zip);
 
             Assert.True(File.Exists(archivePath));
+            using var reader = new ArchiveReader(archivePath);
+            Assert.Contains(reader.Items, i => i.IsDirectory && i.FullName.Contains("empty_folder"));
         });
     }
 

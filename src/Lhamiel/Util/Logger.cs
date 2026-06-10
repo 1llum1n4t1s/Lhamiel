@@ -44,6 +44,16 @@ public static class Logger
     private static readonly object _initLock = new();
     private static string _appName = "App";
 
+    // 一時的なログマスク対象トークンの集合 (defense-in-depth、v1.0.181+)。
+    // 圧縮パスワードなど機密性の高い文字列を <see cref="RegisterRedactionToken"/> で登録すると、
+    // <see cref="Log"/> / <see cref="LogException"/> の出力時に "***" に置換される。
+    // 通常 Lhamiel のコードはパスワードを直接ログに流さない設計だが、ライブラリ例外の
+    // <c>ex.Message</c> 等で偶発的に混入するリスクへの保険として用意する。
+    // value は refcount: バッチで同じパスワードを複数回登録するケースに対応し、
+    // 各 RedactionScope.Dispose が refcount を 1 ずつ減らして 0 で remove する
+    // (codex P2 #3381085196 対応、同一 token を共有する別 scope を巻き添えにしない)。
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> _redactionTokens = new();
+
     /// <summary>
     /// 現在の処理ジョブを識別する相関 ID。<see cref="BeginScope(string)"/> で
     /// 並列圧縮/展開ジョブのログを後追跡可能にするための AsyncLocal スコープ。
@@ -98,23 +108,66 @@ public static class Logger
     }
 
     /// <summary>
+    /// ユーザー名マスク用の事前コンパイル済みパターン。プロセス起動後の初回参照で 1 回だけ構築する。
+    /// <para>
+    /// <see cref="Environment.UserName"/> は使わない: 内部で GetUserNameExW (secur32 → LSA への
+    /// RPC) を呼び、RDP セッションやドメイン環境で LSA が応答しないと**無期限ブロック**する
+    /// (実機で再現・dump で確認済み: ログ 1 行ごとに呼んでいた旧実装では全ログ呼び出しスレッドが
+    /// ここに吸い込まれてプロセス全体が凍結し、テストの断続的ハングの原因だった)。
+    /// 代わりに環境変数 USERNAME (プロセス環境ブロックの読み取りのみ、ブロック不能) と
+    /// プロファイルフォルダ名 (SHGetKnownFolderPath ベース、LSA 非経由) の両方を候補にする。
+    /// アカウント名とプロファイルフォルダ名が異なるケース (アカウントリネーム等) も
+    /// 両方マスクできるため、旧実装より PII カバレッジも広い。
+    /// </para>
+    /// </summary>
+    private static readonly System.Text.RegularExpressions.Regex[] _userNameMaskPatterns = BuildUserNameMaskPatterns();
+
+    private static System.Text.RegularExpressions.Regex[] BuildUserNameMaskPatterns()
+    {
+        var candidates = new List<string>(2);
+        try
+        {
+            var envUser = Environment.GetEnvironmentVariable("USERNAME");
+            if (!string.IsNullOrEmpty(envUser))
+                candidates.Add(envUser);
+
+            var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var profileLeaf = Path.GetFileName(
+                profile.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            if (!string.IsNullOrEmpty(profileLeaf) &&
+                !candidates.Contains(profileLeaf, StringComparer.OrdinalIgnoreCase))
+            {
+                candidates.Add(profileLeaf);
+            }
+        }
+        catch
+        {
+            // 候補が取得できなくてもログ機能自体は止めない (マスクなしで続行)
+        }
+
+        var patterns = new System.Text.RegularExpressions.Regex[candidates.Count];
+        for (var i = 0; i < candidates.Count; i++)
+        {
+            // case-insensitive 置換（Windows のパスは大小区別なし）。毎行呼ばれるので事前コンパイル
+            patterns[i] = new System.Text.RegularExpressions.Regex(
+                System.Text.RegularExpressions.Regex.Escape(candidates[i]),
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase |
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+        }
+        return patterns;
+    }
+
+    /// <summary>
     /// ユーザー名を含むパスを <c>&lt;USER&gt;</c> プレースホルダにマスクする。
     /// <c>C:\Users\田中太郎\...</c> のような PII 露出を Logger 経由のサポート ZIP で防ぐ。
-    /// RTK レビュー #F-014 対応。
+    /// RTK レビュー #F-014 対応。多言語ユーザー名にも対応するためユーザー名ベースの単純置換。
     /// </summary>
     private static string MaskUserPath(string input)
     {
         if (string.IsNullOrEmpty(input)) return input;
-        // 多言語ユーザー名にも対応するため UserName ベースの単純置換
-        var userName = Environment.UserName;
-        if (!string.IsNullOrEmpty(userName))
+        foreach (var pattern in _userNameMaskPatterns)
         {
-            // case-insensitive 置換（Windows のパスは大小区別なし）
-            input = System.Text.RegularExpressions.Regex.Replace(
-                input,
-                System.Text.RegularExpressions.Regex.Escape(userName),
-                "<USER>",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            input = pattern.Replace(input, "<USER>");
         }
         return input;
     }
@@ -255,7 +308,144 @@ public static class Logger
         if (level < MinLogLevel)
             return;
 
-        WriteToLogger(message, level);
+        WriteToLogger(ApplyRedaction(message), level);
+    }
+
+    /// <summary>
+    /// 一時的にログ出力からマスクすべき文字列を登録する。返り値の <see cref="IDisposable.Dispose"/> で登録解除される
+    /// （<c>using</c> スコープで利用する）。
+    /// </summary>
+    /// <param name="token">マスク対象文字列（通常はパスワード平文）。4 文字未満・null・空文字列は no-op。</param>
+    /// <returns>Dispose で登録解除される <see cref="IDisposable"/>。</returns>
+    /// <remarks>
+    /// <para>
+    /// defense-in-depth: Lhamiel コード自体はパスワードを直接ログに流さない設計だが、ライブラリ例外メッセージや
+    /// 将来の改修ミスで混入した場合の保険。性能影響は登録 token が無いとき <see cref="ConcurrentDictionary{TKey,TValue}.IsEmpty"/>
+    /// による即座 return で最小化される。
+    /// </para>
+    /// <para>
+    /// 4 文字以上の token のみ登録する (CLAUDE.md 契約 / CodeRabbit #3382682610)。
+    /// 1〜3 文字を登録すると、その文字を含む通常ログやスタックトレース全体が `***` に潰れ、
+    /// 障害時の診断性が大きく落ちる。3 文字以下のパスワードは暗号学的にほぼ無価値で
+    /// redaction の defense-in-depth 効果も乏しいため、ログ可読性を優先して no-op にする
+    /// (「短いパスワードだけ redaction されない」損失より「全ログが *** で潰れる」被害の方が遥かに大きい)。
+    /// なお過去の codex #3381905948 で一旦この下限を撤去したが、ログ破壊の副作用が大きく
+    /// CLAUDE.md の明文契約とも矛盾するため復元した。
+    /// </para>
+    /// </remarks>
+    public static IDisposable RegisterRedactionToken(string? token)
+    {
+        if (!CanRedactToken(token))
+            return NoopDisposable.Instance;
+        // Refcount を 1 増やす (同一 token を別 scope が共有しても安全)。
+        _redactionTokens.AddOrUpdate(token!, 1, (_, current) => current + 1);
+        return new RedactionScope(token!);
+    }
+
+    /// <summary>
+    /// redaction の最小トークン長。これ未満の token は over-masking でログ全体を
+    /// 破壊するため <see cref="RegisterRedactionToken"/> が no-op になる (上記 remarks 参照)。
+    /// </summary>
+    internal const int MinRedactionTokenLength = 4;
+
+    /// <summary>
+    /// token が <see cref="RegisterRedactionToken"/> でマスク可能な長さかどうかを返す。
+    /// false の場合、呼び出し側はその token を含みうるライブラリ例外メッセージ等を
+    /// 生ログしないこと (型名 + HResult 等の安全な要約に置き換える契約、codex P2 #3386732834)。
+    /// </summary>
+    internal static bool CanRedactToken(string? token) =>
+        !string.IsNullOrEmpty(token) && token.Length >= MinRedactionTokenLength;
+
+    /// <summary>
+    /// 内部 redaction ロジック。テストから直接呼べるよう internal で公開する。
+    /// 通常ロガー経路 (<see cref="Log"/> / <see cref="LogException"/>) はここを通る。
+    /// </summary>
+    internal static string ApplyRedaction(string message)
+    {
+        if (_redactionTokens.IsEmpty || string.IsNullOrEmpty(message)) return message;
+
+        // Adversarial review (round 6): 単純な順次 Replace は、たとえ降順 length でソートしても
+        // 「同長の overlapping token」(e.g. `abcd` + `cdef` が同時アクティブで message=`abcdef`) で
+        // tie-breaking が不定。`abcd` を先に Replace すると "***ef" となり ef が平文で残る。
+        // 解決策: 全 token の出現位置を非破壊的に bool 配列にマークし、最後にまとめて連続区間を "***" に圧縮する。
+        // これにより token 順序・長さ・重複に関わらず「マッチした 1 文字でも残らない」ことを保証する。
+        var tokens = new List<string>();
+        foreach (var t in _redactionTokens.Keys)
+        {
+            if (!string.IsNullOrEmpty(t)) tokens.Add(t);
+        }
+        if (tokens.Count == 0) return message;
+
+        var maskBits = new bool[message.Length];
+        var anyHit = false;
+        foreach (var t in tokens)
+        {
+            var idx = 0;
+            while (idx <= message.Length - t.Length)
+            {
+                var hit = message.IndexOf(t, idx, StringComparison.Ordinal);
+                if (hit < 0) break;
+                anyHit = true;
+                for (var i = hit; i < hit + t.Length; i++) maskBits[i] = true;
+                // codex #3382276697: 自己 overlap する token (e.g. `aaa` in `aaaa`) を取りこぼさないよう
+                // `hit + t.Length` ではなく `hit + 1` で次の検索位置を 1 文字だけ進める。
+                // 既に hit 範囲は maskBits=true なので、その内側で再 hit しても結果は冪等。
+                idx = hit + 1;
+            }
+        }
+        if (!anyHit) return message;
+
+        var sb = new System.Text.StringBuilder(message.Length);
+        var pos = 0;
+        while (pos < message.Length)
+        {
+            if (maskBits[pos])
+            {
+                sb.Append("***");
+                while (pos < message.Length && maskBits[pos]) pos++;
+            }
+            else
+            {
+                sb.Append(message[pos]);
+                pos++;
+            }
+        }
+        return sb.ToString();
+    }
+
+    private sealed class RedactionScope(string token) : IDisposable
+    {
+        private int _disposed;
+        public void Dispose()
+        {
+            if (System.Threading.Interlocked.Exchange(ref _disposed, 1) != 0) return;
+            // Refcount を 1 減らす。0 になったら entry を削除する。
+            // ConcurrentDictionary の TryUpdate(new, current) と
+            // TryRemove(KeyValuePair) を CAS ループで使うことで refcount 更新 + remove を
+            // atomic に行い、別 thread の RegisterRedactionToken と race しても安全
+            // (codex P2 #3381085196)。
+            while (true)
+            {
+                if (!_redactionTokens.TryGetValue(token, out var current)) return;
+                var next = current - 1;
+                if (next <= 0)
+                {
+                    if (_redactionTokens.TryRemove(
+                            new KeyValuePair<string, int>(token, current))) return;
+                }
+                else
+                {
+                    if (_redactionTokens.TryUpdate(token, next, current)) return;
+                }
+                // CAS 失敗 → retry
+            }
+        }
+    }
+
+    private sealed class NoopDisposable : IDisposable
+    {
+        internal static readonly NoopDisposable Instance = new();
+        public void Dispose() { }
     }
 
     /// <summary>
@@ -280,15 +470,35 @@ public static class Logger
     /// <param name="exception">例外オブジェクト</param>
     public static void LogException(string message, Exception exception)
     {
+        // 平文 redaction → ユーザーパス mask → 相関 ID suffix の順で常に適用する。
+        // CodeRabbit #3381597792: 通常経路 (構造化 Error) でも redaction 経路 (1 行 Error) でも
+        // MaskUserPath / GetCorrelationSuffix を統一的に通す。WriteToLogger は exception 引数を
+        // 取らないので LogException 専用に同じ前処理を直接呼ぶ。
+        var maskedMessage = MaskUserPath(ApplyRedaction(message)) + GetCorrelationSuffix();
         if (_logger != null)
         {
-            _logger.Error(message, exception);
+            if (_redactionTokens.IsEmpty)
+            {
+                // 通常経路: 構造化ログのまま渡す (StackTrace 保持)。
+                _logger.Error(maskedMessage, exception);
+            }
+            else
+            {
+                // Redaction token が登録されているとき: 例外オブジェクトをそのまま渡すと
+                // SuperLightLogger 内部で ToString() を呼んで Message/StackTrace を出すため
+                // password 平文が漏れる経路が残る。平文化してから redaction → mask を通し、Error 1 行で出す
+                // (codex P2 #3381085189 対応、構造化ログとのトレードオフだが安全側に倒す)。
+                var maskedException = MaskUserPath(ApplyRedaction(exception.ToString()));
+                _logger.Error($"{maskedMessage}{Environment.NewLine}{maskedException}");
+            }
             return;
         }
 
         // Logger 初期化前 / 初期化失敗時の緊急フォールバック。
         // Avalonia 起動失敗・LogManager.Configure 例外などでロガーが
         // 立ち上がらないケースでも例外情報を失わないよう、直接ファイルに追記する。
+        // 緊急ログ側でも MaskUserPath / Redaction を再度適用するので二重マスクになるが
+        // 冪等 (regex の no-op マッチ) なので問題ない。
         WriteEmergencyLog(message, exception);
     }
 
@@ -310,8 +520,11 @@ public static class Logger
             // CodeRabbit 指摘対応 (Outside diff): 緊急ログ経路でも MaskUserPath を適用する。
             // 設定破損・起動失敗時のログには StackTrace 経由でユーザー実名フォルダパスが含まれやすく、
             // 通常ロガー経路と同じ <USER> マスクを通すことでサポート ZIP の PII 露出を防ぐ。
-            var maskedMessage = MaskUserPath(message) + GetCorrelationSuffix();
-            var maskedException = MaskUserPath(exception.ToString());
+            // ApplyRedaction を MaskUserPath より先に通す: Logger 経路と同じく
+            // 圧縮パスワード等の token を "***" に置換してから PII マスクをかける
+            // (codex P2 #3381085189 の緊急ログ経路も同様に保護)。
+            var maskedMessage = MaskUserPath(ApplyRedaction(message)) + GetCorrelationSuffix();
+            var maskedException = MaskUserPath(ApplyRedaction(exception.ToString()));
             var line =
                 $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [ERROR] {maskedMessage}{Environment.NewLine}{maskedException}{Environment.NewLine}";
             File.AppendAllText(path, line);

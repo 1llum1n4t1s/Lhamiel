@@ -320,4 +320,43 @@
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">Senha necessária ou incorreta</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">Este arquivo está protegido por senha. Nenhuma senha foi fornecida ou não coincide: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">Tente a extração novamente e digite a senha correta.</x:String>
+
+  <!-- Proteção por senha (v1.0.181+) -->
+  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Proteção por senha</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Proteger com senha</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Criptografa ZIP com AES-256 (WinZip AE-2) e 7z com AES-256.</x:String>
+  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR não oferece suporte à proteção por senha. Escolha ZIP ou 7z.</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Observação: ZIPs criptografados com AES-256 não podem ser abertos pelo Explorador do Windows integrado. Os destinatários precisam de 7-Zip, WinRAR ou outra ferramenta compatível.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Criptografar também os nomes de arquivos</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Criptografa a lista de nomes de arquivos (cabeçalho) dentro do arquivo compactado. Sem a senha, nem o conteúdo pode ser navegado.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">O formato ZIP não consegue criptografar os nomes de arquivos (diretório central). Mude para 7z para habilitar esta opção.</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">Como inserir a senha</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">Perguntar a cada arrastar/soltar</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">Salvar e reutilizar (criptografado por DPAPI)</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">Senha: definida</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">Senha: não definida (será solicitada na próxima compactação)</x:String>
+  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">Alterar senha</x:String>
+  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">Excluir senha</x:String>
+
+  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">Definir uma senha</x:String>
+  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">Defina uma senha para criptografar o arquivo. Insira duas vezes para confirmação.</x:String>
+  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Senha (confirmação)</x:String>
+  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">As senhas não conferem. Reinsira a confirmação.</x:String>
+  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Insira uma senha.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">A senha deve ter pelo menos 4 caracteres.</x:String>
+  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Você pode colar de um gerenciador de senhas (Ctrl+V).</x:String>
+
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Excluir a senha salva?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Mudar para "Perguntar a cada arrastar/soltar" excluirá a senha salva atual. Continuar?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">Excluir a senha salva?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">A senha salva será excluída. Você precisará digitá-la novamente na próxima compactação. Continuar?</x:String>
+
+  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Não foi possível restaurar a senha salva (provavelmente por copiar configurações de outro PC ou redefinir a senha do Windows). Defina a senha novamente.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">A senha salva contém caracteres que não podem ser usados no formato ZIP (somente ASCII). Digite uma senha para esta compressão (a senha salva não será alterada).</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">A senha salva é curta demais para ser usada (são necessários pelo menos {0} caracteres). Defina uma nova senha.</x:String>
+  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} arquivo(s) ignorado(s) por estarem inacessíveis. Um arquivo protegido por senha foi criado com os arquivos restantes.</x:String>
+
+  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Todos os arquivos de origem estavam inacessíveis, então a compactação foi abortada. Nenhum arquivo vazio foi criado.</x:String>
+  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">O formato {0} não oferece suporte à proteção por senha. Escolha ZIP ou 7z.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Senhas ZIP podem conter apenas caracteres ASCII (letras, dígitos e símbolos). Para usar outros caracteres (como letras acentuadas ou japonês), escolha o formato 7z.</x:String>
 </ResourceDictionary>

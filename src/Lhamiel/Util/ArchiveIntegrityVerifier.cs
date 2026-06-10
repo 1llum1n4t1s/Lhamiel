@@ -18,13 +18,22 @@ internal static class ArchiveIntegrityVerifier
     /// データはストリーム的に処理され、全エントリをメモリ上に同時展開することも、
     /// ディスクへ書き出すこともしない。
     /// </summary>
+    /// <param name="password">展開時に検証済みのパスワード (he=on 7z 等)。指定があれば暗号化アーカイブも CRC 検証を実行する</param>
     internal static async Task<VerificationResult> VerifyArchiveAsync(
-        string archivePath, CancellationToken cancellationToken = default)
+        string archivePath, CancellationToken cancellationToken = default, string? password = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (!File.Exists(archivePath))
             return new VerificationResult(false, App.Text("ErrorHandler.FileNotFound"));
+
+        // 1〜3 文字パスワード (Extract は既存書庫互換で受理) は Logger redaction (4 文字下限) の
+        // 対象外のため、パスワードを渡して開いた reader の例外メッセージを生のままログや
+        // ErrorMessage (呼び出し側がログ・ダイアログに転載する) に乗せない (codex P2 #3386732834)。
+        // redaction 可能な場合は従来どおり生メッセージを使う (ログ側でマスクされる)。
+        string SafeDetail(Exception ex) => password is null || Logger.CanRedactToken(password)
+            ? ex.Message
+            : $"{ex.GetType().Name} (HResult=0x{ex.HResult:X8})";
 
         return await Task.Run(() =>
         {
@@ -33,7 +42,14 @@ internal static class ArchiveIntegrityVerifier
                 cancellationToken.ThrowIfCancellationRequested();
                 // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→Test→Dispose を覆う）
                 using var nativeGate = NativeArchiveGate.Enter(cancellationToken);
-                using var reader = LockedFileRetryPolicy.Execute(() => new ArchiveReader(PathValidator.EnsureLongPathPrefix(archivePath)), archivePath);
+                var longPath = PathValidator.EnsureLongPathPrefix(archivePath);
+                // he=on (ヘッダ暗号化) はパスワード無しだと ctor 自体が失敗して外側 catch で
+                // 「検証失敗」になるため、検証済みパスワードがあれば reader に渡して開く。
+                using var reader = LockedFileRetryPolicy.Execute(
+                    () => password is null
+                        ? new ArchiveReader(longPath)
+                        : new ArchiveReader(longPath, password, new ArchiveOption()),
+                    archivePath);
 
                 // パスワード保護アーカイブはパスワードなしで Test() すると失敗するためスキップ。
                 // ヘッダー暗号化(-mhe=on)の場合は reader.Items 自体がアクセス不可。
@@ -45,13 +61,13 @@ internal static class ArchiveIntegrityVerifier
                 catch (OperationCanceledException) { throw; }
                 catch (IOException ex) when (!cancellationToken.IsCancellationRequested)
                 {
-                    Logger.Log($"アーカイブヘッダー読み取り中に I/O エラー: {archivePath} - {ex.Message}", LogLevel.Warning);
-                    return new VerificationResult(false, ex.Message);
+                    Logger.Log($"アーカイブヘッダー読み取り中に I/O エラー: {archivePath} - {SafeDetail(ex)}", LogLevel.Warning);
+                    return new VerificationResult(false, SafeDetail(ex));
                 }
                 catch (UnauthorizedAccessException ex) when (!cancellationToken.IsCancellationRequested)
                 {
-                    Logger.Log($"アーカイブヘッダー読み取り中にアクセス拒否: {archivePath} - {ex.Message}", LogLevel.Warning);
-                    return new VerificationResult(false, ex.Message);
+                    Logger.Log($"アーカイブヘッダー読み取り中にアクセス拒否: {archivePath} - {SafeDetail(ex)}", LogLevel.Warning);
+                    return new VerificationResult(false, SafeDetail(ex));
                 }
                 catch (Exception) when (!cancellationToken.IsCancellationRequested)
                 {
@@ -59,7 +75,7 @@ internal static class ArchiveIntegrityVerifier
                     return new VerificationResult(true);
                 }
 
-                if (hasEncryptedItems)
+                if (hasEncryptedItems && password is null)
                 {
                     Logger.Log($"パスワード保護アーカイブのため CRC 検証をスキップ: {archivePath}");
                     return new VerificationResult(true);
@@ -74,8 +90,8 @@ internal static class ArchiveIntegrityVerifier
             }
             catch (Exception ex)
             {
-                Logger.Log($"アーカイブ整合性検証失敗: {archivePath} - {ex.Message}", LogLevel.Warning);
-                return new VerificationResult(false, ex.Message);
+                Logger.Log($"アーカイブ整合性検証失敗: {archivePath} - {SafeDetail(ex)}", LogLevel.Warning);
+                return new VerificationResult(false, SafeDetail(ex));
             }
         }, cancellationToken);
     }

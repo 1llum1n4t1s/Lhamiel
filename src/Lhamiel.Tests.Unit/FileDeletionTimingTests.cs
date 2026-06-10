@@ -66,10 +66,11 @@ public class FileDeletionTimingTests
 
     /// <summary>
     /// @adversarial @category state @severity high
-    /// 全ファイルが削除された場合、空のアーカイブが作成される（クラッシュしない）
+    /// 全ファイルが削除された場合、空のアーカイブを作らずに InvalidOperationException で中止する。
+    /// v1.0.181+: 空アーカイブの誤生成を防ぐため、addedCount==0 で例外を投げる仕様に変更。
     /// </summary>
     [Fact]
-    public async Task AllFilesDeleted_CreatesEmptyArchive()
+    public async Task AllFilesDeleted_ThrowsInvalidOperation()
     {
         await WithTempDir(async dir =>
         {
@@ -84,11 +85,12 @@ public class FileDeletionTimingTests
 
             File.Delete(file);
 
-            // クラッシュせずに完了する
-            await ArchiveCompressor.CompressFilesAsync([dir], archivePath, Format.Zip,
-                resolvedFiles: resolvedFiles);
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await ArchiveCompressor.CompressFilesAsync([dir], archivePath, Format.Zip,
+                    resolvedFiles: resolvedFiles));
 
-            Assert.True(File.Exists(archivePath));
+            Assert.Contains("AllSourcesInaccessible", ex.Message);
+            Assert.False(File.Exists(archivePath));
         });
     }
 

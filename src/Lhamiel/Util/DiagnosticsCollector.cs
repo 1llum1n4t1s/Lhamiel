@@ -19,7 +19,11 @@ internal static partial class DiagnosticsCollector
     //   - UpdateChannel: allow-list ("release" / "prerelease") の 2 択、公開情報
     //   - IgnoreUpdateTag: Velopack リリースタグ名 (公開情報、診断時にサポート担当に見せる方が有用)
     // 新たに秘密情報を Settings に追加した場合はここに列挙すること。
-    private static readonly string[] _sensitiveKeys = [];
+    // EncryptedCompressionPassword は SensitivePatternRegex の "password" マッチでも捕捉されるが、
+    // regex 経由のみだとリファクタリング時に regex を緩めると漏洩しうるため明示的に列挙する。
+    private static readonly string[] _sensitiveKeys = [
+        "EncryptedCompressionPassword",
+    ];
 
     /// <summary>
     /// 診断 ZIP を指定パスに作成する。
@@ -36,7 +40,10 @@ internal static partial class DiagnosticsCollector
             await Task.Run(() =>
             {
                 CollectLogs(tempDir);
-                CollectDumps(tempDir);
+                // ダンプ (MiniDump) は support ZIP に含めない (v1.0.181+)。
+                // パスワード保護機能の追加により、圧縮中クラッシュ時のメモリ snapshot には
+                // スタック上の平文パスワード参照が含まれる可能性があるため、構造的に漏洩経路を塞ぐ。
+                // 既存ログ (Lhamiel_*.log) でクラッシュ原因の特定は概ね可能。
             }, cancellationToken);
 
             var tempZip = outputPath + $".tmp_{Guid.NewGuid():N}";
@@ -240,55 +247,6 @@ internal static partial class DiagnosticsCollector
                 Logger.Log($"ログファイルコピーに失敗: {fi.Name} - {ex.Message}", LogLevel.Warning);
             }
         }
-    }
-
-    private static void CollectDumps(string tempDir)
-    {
-        if (!Directory.Exists(CrashHandler.DumpDirectory))
-            return;
-
-        var dumpFiles = Directory.GetFiles(CrashHandler.DumpDirectory, "*.dmp");
-        if (dumpFiles.Length == 0)
-            return;
-
-        var dumpsDir = Path.Combine(tempDir, "dumps");
-        Directory.CreateDirectory(dumpsDir);
-
-        // 最新 3 ファイルまで（ダンプは大きいため）
-        var recent = dumpFiles
-            .Select(f => new FileInfo(f))
-            .OrderByDescending(f => f.LastWriteTime)
-            .Take(3);
-
-        foreach (var fi in recent)
-        {
-            try
-            {
-                CopyFileWithSharedRead(fi.FullName, Path.Combine(dumpsDir, fi.Name));
-                var txtPath = Path.ChangeExtension(fi.FullName, ".txt");
-                if (File.Exists(txtPath))
-                    CopyFileWithSharedRead(txtPath, Path.Combine(dumpsDir, Path.GetFileName(txtPath)));
-            }
-            catch (FileNotFoundException)
-            {
-                // CrashHandler のローテーション削除と被った経路。
-            }
-            catch (DirectoryNotFoundException)
-            {
-                // ダンプディレクトリごと消えた経路。
-            }
-            catch (Exception ex)
-            {
-                Logger.Log($"ダンプファイルコピーに失敗: {fi.Name} - {ex.Message}", LogLevel.Warning);
-            }
-        }
-    }
-
-    private static void CopyFileWithSharedRead(string sourcePath, string destPath)
-    {
-        using var src = new FileStream(sourcePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        using var dst = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None);
-        src.CopyTo(dst);
     }
 
     /// <summary>

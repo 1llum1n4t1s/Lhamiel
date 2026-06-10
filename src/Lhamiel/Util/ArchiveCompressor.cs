@@ -83,13 +83,26 @@ public static class ArchiveCompressor
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="resolvedFiles">衝突解決済みのファイルリスト（指定時はsourcePathsのスキャンをスキップ）</param>
     /// <param name="settingsOverride">使用する設定のスナップショット（並列処理時の race を避けるため呼び出し側で明示）</param>
-    public static async Task CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null, Settings? settingsOverride = null)
+    /// <param name="password">圧縮パスワード（null または空文字列でパスワード保護なし）。
+    /// ZIP は AES-256 (WinZip AE-2) を強制、7z は AES-256 をライブラリ既定で使用。
+    /// TAR/GZ/BZ2/XZ では非 null を渡すと <see cref="InvalidOperationException"/> を投げる。</param>
+    /// <param name="encryptFileNames">7z 形式でアーカイブ内ファイル名（ヘッダ）も暗号化するか（<c>-mhe=on</c> 相当）。
+    /// ZIP では仕様上ヘッダ暗号化が存在しないので無視される。<paramref name="password"/> が null/空のときは無視される。</param>
+    /// <returns>アクセス不能 (AccessException) でスキップしたファイル数。パスワード保護圧縮で
+    /// 「アーカイブに含まれず平文のまま残ったファイルがある」ことを呼び出し側が UI 警告
+    /// できるようにする (codex P2 #3386876544)。</returns>
+    public static async Task<int> CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null, Settings? settingsOverride = null, string? password = null, bool encryptFileNames = true)
     {
         var sourceList = sourcePaths.ToList();
         if (sourceList.Count == 0)
         {
             throw new ArgumentException(App.Text("Error.NoFilesToCompress"));
         }
+
+        // パスワード平文がログに偶発的に混入するのを防ぐ defense-in-depth。
+        // ライブラリ例外の ex.Message に password が含まれるケースなどを想定。
+        // password が null/空のときは no-op。
+        using var passwordRedactionScope = Logger.RegisterRedactionToken(password);
 
         // 出力ディレクトリを作成
         var outputDir = Path.GetDirectoryName(outputPath);
@@ -106,6 +119,9 @@ public static class ArchiveCompressor
         var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
 
         var outputCreated = false;
+        // アクセス不能でスキップしたファイル数 (戻り値)。Task.Run ラムダ内で加算するため
+        // メソッドスコープで宣言する (codex P2 #3386876544)。
+        var inaccessibleSkipped = 0;
         // 空ディレクトリエントリ用の空マーカーディレクトリ（遅延作成）。後段 finally で必ず掃除する。
         string? emptyDirMarker = null;
         try
@@ -144,11 +160,11 @@ public static class ArchiveCompressor
                 {
                     // ネイティブ側（7z.dll）との連携を確実に保護するため
                     // 全ての主要オブジェクトを Task.Run の内部スコープで管理する
-                    using var writer = CreateArchiveWriter(format, settings);
+                    using var writer = CreateArchiveWriter(format, settings, password, encryptFileNames);
 
                     // ファイルとディレクトリを圧縮アーカイブに追加
                     // スキャン後にファイルが削除されている場合はスキップする
-                    var inaccessibleSkipped = 0;
+                    var addedCount = 0;
                     foreach (var (fullPath, relativePath) in filesToCompress)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
@@ -161,7 +177,13 @@ public static class ArchiveCompressor
                             // 空のマーカーディレクトリを src に渡すと再走査しても中身が無いので、
                             // 意図したディレクトリエントリだけがアーカイブに追加される。
                             emptyDirMarker ??= CreateEmptyDirectoryMarker();
+                            // マーカーは 1 個を使い回すが、ライブラリは Add 時点でメタデータを
+                            // スナップショットする (RawEntity → Entity ctor)。Add 直前に元ディレクトリの
+                            // タイムスタンプをコピーすれば、ディレクトリごとの値がアーカイブに保存される
+                            // (コピーしないと空ディレクトリの更新日時が圧縮実行時刻になる)。
+                            TryCopyDirectoryTimestamps(fullPath, emptyDirMarker);
                             writer.Add(emptyDirMarker, relativePath);
+                            addedCount++;
                             continue;
                         }
                         if (!File.Exists(fullPath))
@@ -172,6 +194,7 @@ public static class ArchiveCompressor
                         try
                         {
                             writer.Add(fullPath, relativePath);
+                            addedCount++;
                         }
                         catch (AccessException ex)
                         {
@@ -191,6 +214,14 @@ public static class ArchiveCompressor
                         Logger.Log(
                             $"アクセス不能でスキップしたファイル: {inaccessibleSkipped}個（ログを確認してください）",
                             LogLevel.Warning);
+                    }
+
+                    // 空アーカイブ生成防止 (codex P1 / CodeRabbit #3381138394): 1 件もエントリを追加
+                    // できなければ fail-fast。スキャン 0 件 / 除外フィルタで全件落ち / 全件アクセス不能、
+                    // どの経路でも「中身ゼロの (暗号化された) アーカイブだけが残る」のは仕様違反。
+                    if (addedCount == 0)
+                    {
+                        throw new InvalidOperationException(App.Text("Error.AllSourcesInaccessible"));
                     }
 
                     // 進捗スロットリング（UIスレッド負荷軽減用）
@@ -232,6 +263,7 @@ public static class ArchiveCompressor
             }
 
             Logger.Log($"圧縮完了: {outputPath}（{filesToCompress.Count}個のファイル）");
+            return inaccessibleSkipped;
         }
         catch (OperationCanceledException oce) when (!cancellationToken.IsCancellationRequested && oce.InnerException is not null)
         {
@@ -243,6 +275,9 @@ public static class ArchiveCompressor
             Logger.Log($"非キャンセル要因の中断を検出、内部例外へ昇格: {oce.InnerException.Message}");
             TryDeletePartialOutput(outputPath, outputCreated, "圧縮エラー");
             System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(oce.InnerException);
+            // 上の Throw が常に送出するため到達しないが、Task<int> 化に伴い
+            // コンパイラの全経路 return/throw 要求 (CS0161) を満たすために明示する。
+            throw;
         }
         catch (OperationCanceledException)
         {
@@ -279,6 +314,27 @@ public static class ArchiveCompressor
         var dir = Path.Combine(Path.GetTempPath(), $"Lhamiel_emptydir_{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
         return dir;
+    }
+
+    /// <summary>
+    /// 空ディレクトリマーカーに元ディレクトリのタイムスタンプをコピーする（best-effort）。
+    /// マーカー方式ではマーカー自身のメタデータがアーカイブに保存されるため、コピーしないと
+    /// 空ディレクトリの更新日時が圧縮実行時刻になってしまう。コピー失敗はアーカイブの内容
+    /// 自体には影響しないため、警告ログのみ残して続行する。
+    /// </summary>
+    private static void TryCopyDirectoryTimestamps(string sourceDir, string markerDir)
+    {
+        try
+        {
+            Directory.SetCreationTimeUtc(markerDir, Directory.GetCreationTimeUtc(sourceDir));
+            Directory.SetLastWriteTimeUtc(markerDir, Directory.GetLastWriteTimeUtc(sourceDir));
+        }
+        catch (Exception ex)
+        {
+            Logger.Log(
+                $"空ディレクトリのタイムスタンプコピーに失敗（マーカーの時刻で続行）: {sourceDir} - {ex.Message}",
+                LogLevel.Warning);
+        }
     }
 
     /// <summary>
@@ -384,6 +440,7 @@ public static class ArchiveCompressor
                 }
 
                 // Flatモードでなければ空ディレクトリを収集してエントリに追加
+                var emptyDirCount = 0;
                 if (dirMode != DirectoryStructureMode.Flat)
                 {
                     var emptyDirs = CollectEmptyDirectories(sourcePath, effectiveMatcher, directoriesWithFiles, includeHiddenAndSystemEntries);
@@ -393,8 +450,24 @@ public static class ArchiveCompressor
                         filesToCompress.Add((emptyDir, relativePath + "/"));
                     }
 
+                    emptyDirCount = emptyDirs.Count;
                     if (emptyDirs.Count > 0)
                         Logger.Log($"空ディレクトリ: {emptyDirs.Count}個を追加");
+                }
+
+                // codex P2 #3384620482: 空ディレクトリそのものをドロップした場合 (files=0 かつ
+                // 子の空ディレクトリも 0)、CollectEmptyDirectories は root 自身を返さないため
+                // エントリが 1 件も残らず、addedCount==0 guard が「全ソースアクセス不能」という
+                // 誤ったエラーで中止してしまう。IncludeRoot モードでは root 自身を
+                // 空ディレクトリエントリとして追加し、「空フォルダを圧縮」を有効な操作として
+                // 成立させる (空フォルダ 1 個入りのアーカイブ)。
+                // ExcludeRoot/Flat では root の相対パスが "." になり意味のあるエントリを
+                // 表現できないため追加しない (本当に中身ゼロなら従来通り guard が中止する)。
+                if (fileCount == 0 && emptyDirCount == 0 && dirMode == DirectoryStructureMode.IncludeRoot)
+                {
+                    var rootRelative = NormalizeNfc(Path.GetRelativePath(parentDir, sourcePath), normalizeUnicode);
+                    filesToCompress.Add((sourcePath, rootRelative + "/"));
+                    Logger.Log($"空ディレクトリをルートエントリとして追加: {sourcePath}");
                 }
 
                 Logger.Log($"スキャン完了: {fileCount}個のファイルが見つかりました");
@@ -625,13 +698,16 @@ public static class ArchiveCompressor
     }
 
     /// <summary>
-    /// ArchiveWriterを作成する（スレッド数制御追加）
+    /// ArchiveWriterを作成する（スレッド数制御 + パスワード保護対応）
     /// </summary>
     /// <param name="format">圧縮形式</param>
     /// <param name="settings">設定オブジェクト</param>
+    /// <param name="password">パスワード（null/空でパスワード保護なし）</param>
+    /// <param name="encryptFileNames">7z でファイル名（ヘッダ）も暗号化するか（<c>-mhe=on</c> 相当）。ZIP では仕様上不可能なので無視。</param>
     /// <param name="maxThreads">最大スレッド数（0または負の値で自動設定）</param>
     /// <returns>ArchiveWriterインスタンス</returns>
-    private static ArchiveWriter CreateArchiveWriter(Format format, Settings settings, int maxThreads = -1)
+    /// <exception cref="InvalidOperationException">TAR/GZ/BZ2/XZ で <paramref name="password"/> を指定した場合（これらの形式は暗号化非対応）。</exception>
+    private static ArchiveWriter CreateArchiveWriter(Format format, Settings settings, string? password = null, bool encryptFileNames = true, int maxThreads = -1)
     {
         // スレッド数を [1, 論理プロセッサ数] に丸める。
         // ・maxThreads が未指定/0以下のときは論理プロセッサ数を既定とする。
@@ -645,32 +721,83 @@ public static class ArchiveCompressor
             1,
             Environment.ProcessorCount);
 
+        var hasPassword = !string.IsNullOrEmpty(password);
+
         // 形式に応じたオプションを設定
         if (format == Format.SevenZip)
         {
             // 7z形式: LZMA2 + スレッド数制御
+            // パスワード指定時は AES-256 が 7z 仕様上の唯一の選択肢（ライブラリの SevenZipOptionSetter は
+            // em プロパティを送らないが、7z.dll が body 暗号化に AES-256 を強制する）。
+            // ヘッダ暗号化（ファイル名も暗号化）は CustomParameters の "he"="on" で有効化する。
+            var customParameters = new Dictionary<string, string>();
+            if (hasPassword && encryptFileNames)
+                customParameters["he"] = "on";
+
             var options = new CompressionOption
             {
                 CompressionLevel = (CompressionLevel)settings.SevenZipCompressionLevel,
                 CompressionMethod = CompressionMethod.Lzma2,
-                ThreadCount = threadCount
+                ThreadCount = threadCount,
+                Password = hasPassword ? password! : string.Empty,
+                CustomParameters = customParameters
             };
             return new ArchiveWriter(format, options);
         }
         if (format == Format.Zip)
         {
+            // 同梱 7-Zip 26.00 は ZIP 作成時に非 ASCII パスワードを E_INVALIDARG で拒否する
+            // (upstream regression、ライブラリ CLAUDE.md の既知問題。7z は非 ASCII でも正常動作)。
+            // ネイティブまで届くと不透明な SevenZipException になるため、ここで fail-fast して
+            // 具体的なメッセージを返す。通常は TryResolveCompressionPasswordAsync 側の検証 +
+            // 再プロンプトで止まるので、ここはバッチ override 等で検証を迂回した場合の防御線。
+            if (hasPassword && ContainsNonAscii(password!))
+                throw new InvalidOperationException(App.Text("Error.ZipPasswordAsciiOnly"));
+
             // ZIP形式: UTF-8エンコーディング
+            // ⚠️ パスワード指定時は **必ず** EncryptionMethod=Aes256 を明示する。
+            // ライブラリの ZipOptionSetter は EncryptionMethod=Default のとき em プロパティを送らず、
+            // 7z.dll のデフォルトである **ZipCrypto (脆弱な旧式)** に fallback してしまう。
+            // Lhamiel はセキュリティ要件として AES-256 (WinZip AE-2) を強制する。
             var options = new CompressionOption
             {
                 CompressionLevel = (CompressionLevel)settings.ZipCompressionLevel,
                 CompressionMethod = CompressionMethod.Deflate,
                 ThreadCount = threadCount,
-                CodePage = CodePage.Utf8
+                CodePage = CodePage.Utf8,
+                Password = hasPassword ? password! : string.Empty,
+                EncryptionMethod = hasPassword ? EncryptionMethod.Aes256 : EncryptionMethod.Default
             };
+            // 二重防御: ZipCrypto 落ちを構造的に防ぐ assert。
+            // 上の三項演算子が壊れた場合（将来の改修ミス等）に気付けるよう、ここでも検査する。
+            if (hasPassword && options.EncryptionMethod != EncryptionMethod.Aes256)
+                throw new InvalidOperationException("ZIP encryption must be AES-256 (defense-in-depth check).");
             return new ArchiveWriter(format, options);
         }
-        // TAR形式など、その他の形式ではオプションを設定しない
+
+        // TAR/GZ/BZ2/XZ など暗号化非対応形式: password 指定があれば fail-fast する
+        // （ライブラリの CompressionOption.Validate も投げるが、こちらでガードして UI ガード漏れを検知）。
+        if (hasPassword)
+            throw new InvalidOperationException(App.Text("Error.PasswordNotSupportedByFormat", format.ToString()));
         return new ArchiveWriter(format);
+    }
+
+    /// <summary>
+    /// 文字列に ASCII 範囲外 (U+0080 以上) の文字が含まれるかを判定する。
+    /// </summary>
+    /// <remarks>
+    /// ZIP パスワードの ASCII 制約検証用 (同梱 7-Zip 26.00 が ZIP 作成時に
+    /// 非 ASCII パスワードを E_INVALIDARG で拒否する upstream regression への対応)。
+    /// <see cref="ArchiveProcessor"/> の入力時検証と <see cref="CreateArchiveWriter"/> の
+    /// fail-fast guard の両方から使う。
+    /// </remarks>
+    internal static bool ContainsNonAscii(string value)
+    {
+        foreach (var c in value)
+        {
+            if (c > '\x7F') return true;
+        }
+        return false;
     }
 
     /// <summary>

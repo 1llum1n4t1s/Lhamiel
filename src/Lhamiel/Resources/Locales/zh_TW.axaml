@@ -320,4 +320,43 @@
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">需要密碼或密碼不正確</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">此壓縮檔案受密碼保護。未提供密碼或密碼不相符: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">請重新解壓縮並輸入正確的密碼。</x:String>
+
+  <!-- 密碼保護 (v1.0.181+) -->
+  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">密碼保護</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">使用密碼保護</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP 以 AES-256 (WinZip AE-2) 加密,7z 以 AES-256 加密。</x:String>
+  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR 格式不支援密碼保護。請選擇 ZIP 或 7z。</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">注意:AES-256 加密的 ZIP 無法以 Windows 內建的檔案總管解壓縮。收件人需要 7-Zip、WinRAR 等相容工具。</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">同時加密檔名</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">同時加密壓縮檔內的檔名清單(標頭)。沒有密碼連內容也無法瀏覽。</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">ZIP 格式的規範不支援檔名(中央目錄)加密。切換為 7z 即可啟用此選項。</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">密碼輸入方式</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">每次拖放時確認</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">儲存並重複使用 (DPAPI 加密)</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">密碼:已設定</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">密碼:未設定 (下次壓縮時會要求設定)</x:String>
+  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">變更密碼</x:String>
+  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">刪除密碼</x:String>
+
+  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">設定密碼</x:String>
+  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">請設定用於加密壓縮檔的密碼。為了確認,請輸入兩次。</x:String>
+  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">密碼 (確認)</x:String>
+  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">兩次輸入的密碼不一致,請重新輸入。</x:String>
+  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">請輸入密碼。</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">密碼長度至少需 4 個字元。</x:String>
+  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">可以從密碼管理工具貼上 (Ctrl+V)。</x:String>
+
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">要刪除已儲存的密碼嗎?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">切換為「每次拖放時確認」將會刪除目前儲存的密碼。確定要繼續嗎?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">要刪除已儲存的密碼嗎?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">將刪除已儲存的密碼。下次壓縮時需要重新輸入。確定要繼續嗎?</x:String>
+
+  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">無法還原已儲存的密碼 (可能是從其他電腦複製設定或 Windows 密碼重設所致)。請重新設定密碼。</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">已儲存的密碼包含 ZIP 格式無法使用的字元（僅支援 ASCII）。請輸入本次壓縮使用的密碼（已儲存的密碼不會被變更）。</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">儲存的密碼太短，無法使用（至少需要 {0} 個字元）。請設定新密碼。</x:String>
+  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} 個檔案因無法存取而被跳過。已使用其餘檔案建立了受密碼保護的壓縮檔。</x:String>
+
+  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">所有來源檔案皆無法存取,已中止壓縮。未建立空的壓縮檔。</x:String>
+  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} 格式不支援密碼保護。請選擇 ZIP 或 7z。</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP 格式的密碼只能包含 ASCII 字元（字母、數字與符號）。如需使用中文等其他字元，請選擇 7z 格式。</x:String>
 </ResourceDictionary>

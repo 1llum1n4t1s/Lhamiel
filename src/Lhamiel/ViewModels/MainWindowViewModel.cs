@@ -43,6 +43,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private readonly Func<Task<string?>> _pickExtractionFolder;
     private readonly Func<Task<string?>> _pickCompressionFolder;
     private readonly Action<ProgressWindow> _showProgressWindow;
+
+    // PasswordModeRadioSyncCallback は CodeRabbit #3381138457 を受けて廃止し、
+    // MainWindow 側で INotifyPropertyChanged を購読する一般化された方式へ移行した。
     private bool _isLoading;
     private CancellationTokenSource? _autoSaveCts;
 
@@ -56,6 +59,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _compressionOutputDirectory = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsZipFormat))]
+    [NotifyPropertyChangedFor(nameof(IsSevenZipFormat))]
+    [NotifyPropertyChangedFor(nameof(IsTarFormat))]
+    [NotifyPropertyChangedFor(nameof(IsZipOrSevenZipFormat))]
+    [NotifyPropertyChangedFor(nameof(IsPasswordSubPanelVisible))]
+    [NotifyPropertyChangedFor(nameof(IsZipFormatAndPasswordOn))]
+    [NotifyPropertyChangedFor(nameof(ShowZipExplorerWarning))]
+    [NotifyPropertyChangedFor(nameof(EncryptFileNamesEnabled))]
     private string _selectedCompressionFormat = "ZIP";
 
     [ObservableProperty]
@@ -87,6 +98,97 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _respectNestedGitignore;
+
+    // ──────────────────────────────────────────────
+    // パスワード保護 (v1.0.181+)
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// パスワード保護を有効化するかどうか。OFF→ON 遷移時に <see cref="EncryptFileNames"/> を
+    /// true にリセットする（decision #4: 「パスワード ON のたび強制 true」）。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPasswordSubPanelVisible))]
+    [NotifyPropertyChangedFor(nameof(IsZipFormatAndPasswordOn))]
+    [NotifyPropertyChangedFor(nameof(ShowZipExplorerWarning))]
+    [NotifyPropertyChangedFor(nameof(IsRememberModeActive))]
+    private bool _isPasswordProtectionEnabled;
+
+    /// <summary>
+    /// 7z アーカイブ内のファイル名（ヘッダ）も暗号化するか。
+    /// 永続化しない（decision #4: パスワード ON のたびに毎回 true で初期化）。
+    /// ZIP では仕様上不可能なので UI で disabled になる。
+    /// </summary>
+    [ObservableProperty]
+    private bool _encryptFileNames = true;
+
+    /// <summary>
+    /// パスワード入力モード（"PromptEachTime" or "Remember"）。
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRememberModeActive))]
+    private string _passwordMode = "PromptEachTime";
+
+    /// <summary>ドロップ中のパスワード入力ダイアログを同時に複数起動しないための排他ガード（0=空き / 1=入力中）。</summary>
+    private int _isAwaitingPasswordInput;
+
+    // === 派生プロパティ (XAML compiled binding 用) ===
+
+    public bool IsZipFormat => string.Equals(SelectedCompressionFormat, "ZIP", StringComparison.OrdinalIgnoreCase);
+    public bool IsSevenZipFormat => string.Equals(SelectedCompressionFormat, "7z", StringComparison.OrdinalIgnoreCase);
+    public bool IsTarFormat => string.Equals(SelectedCompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase);
+    public bool IsZipOrSevenZipFormat => IsZipFormat || IsSevenZipFormat;
+    public bool IsPasswordSubPanelVisible => IsPasswordProtectionEnabled && IsZipOrSevenZipFormat;
+    public bool IsZipFormatAndPasswordOn => IsZipFormat && IsPasswordProtectionEnabled;
+    public bool ShowZipExplorerWarning => IsZipFormatAndPasswordOn;
+    /// <summary>EncryptFileNames チェックボックスを有効にする条件: format=7z（ZIP では仕様上不可能）。</summary>
+    public bool EncryptFileNamesEnabled => IsSevenZipFormat;
+    public bool IsRememberModeActive => IsPasswordProtectionEnabled
+                                        && string.Equals(PasswordMode, "Remember", StringComparison.Ordinal);
+
+    /// <summary>保存済みパスワード ciphertext があるかどうか（UI に「設定済 / 未設定」を表示するため）。</summary>
+    public bool HasSavedPassword =>
+        SettingsManager.Instance.Current.EncryptedCompressionPassword is { Length: > 0 };
+
+    /// <summary>「設定済 / 未設定」のローカライズ済み表示テキスト。</summary>
+    public string SavedPasswordStatusText => HasSavedPassword
+        ? App.Text("Settings.Compression.SavedPasswordStatus.Set")
+        : App.Text("Settings.Compression.SavedPasswordStatus.NotSet");
+
+    /// <summary>
+    /// VM 外 (ArchiveProcessor の Remember 初回保存等) で
+    /// <see cref="Settings.EncryptedCompressionPassword"/> が変化したとき発火する内部 event。
+    /// VM コンストラクタで購読し、<see cref="HasSavedPassword"/> /
+    /// <see cref="SavedPasswordStatusText"/> の PropertyChanged を再発火して
+    /// 設定パネルの「設定済 / 未設定」と「Clear」ボタンの enable 状態を即時更新する
+    /// (codex P2 #3382276703)。
+    /// </summary>
+    internal static event Action? SavedPasswordExternallyChanged;
+
+    /// <summary>VM 外から ciphertext 更新を通知するためのトリガー。</summary>
+    internal static void RaiseSavedPasswordExternallyChanged()
+        => SavedPasswordExternallyChanged?.Invoke();
+
+    /// <summary>
+    /// MainWindow から drop ハンドリングする際に呼ぶ排他取得。同時 drop を 1 件目だけ処理し、2 件目以降は false で弾く。
+    /// 戻り値の <see cref="IDisposable.Dispose"/> でガード解放。
+    /// </summary>
+    internal IDisposable? TryBeginAwaitingPasswordInput()
+    {
+        if (System.Threading.Interlocked.CompareExchange(ref _isAwaitingPasswordInput, 1, 0) != 0)
+            return null;
+        return new AwaitingPasswordInputGuard(this);
+    }
+
+    private sealed class AwaitingPasswordInputGuard(MainWindowViewModel vm) : IDisposable
+    {
+        private int _released;
+        public void Dispose()
+        {
+            if (System.Threading.Interlocked.Exchange(ref _released, 1) == 0)
+                System.Threading.Interlocked.Exchange(ref vm._isAwaitingPasswordInput, 0);
+        }
+    }
 
     /// <summary>
     /// メイン画面起動時に Velopack 自動更新チェックを走らせるかどうかの UI バインディング。
@@ -174,6 +276,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
             s.ZipCompressionLevel = ZipCompressionLevel;
             s.SevenZipCompressionLevel = SevenZipCompressionLevel;
+            // パスワード保護: 永続化するのは ON/OFF と Mode のみ。
+            // EncryptFileNames は実行時のみの選択値（パスワード ON のたびに true 強制リセット、
+            // decision #4）で、永続化は [JsonIgnore] が防ぐが、in-memory の Settings には同期する
+            // (codex P2 #3385301556)。シェル/IPC 圧縮 (App.ProcessCommandLineFiles) は
+            // FlushPendingAutoSave → CreateSnapshot (MemberwiseClone) で本メソッドの結果を
+            // そのまま見るため、ここで同期しないと UI でチェックを外しても snapshot が
+            // 古い値 (デフォルト true) を引きずり he=on で圧縮される。
+            // EncryptedCompressionPassword は ArchiveProcessor 側で MutateAndSave 経由で更新する。
+            //
+            // codex P2 #3384524013: TAR 選択中は false で永続化する (ドロップ経路の Snapshot 押し下げ
+            // と同じ coerce を永続層にも適用)。永続層に「TAR + 保護 ON」という矛盾状態を残すと、
+            // シェル/CLI 圧縮 (App.axaml.cs) が永続設定をそのまま使い、
+            // TryResolveCompressionPasswordAsync の TAR fail-loud guard に当たって
+            // アーカイブ作成前に必ず失敗する。VM 側の値は保持されるので、セッション内で
+            // ZIP/7z に戻せば次の AutoSave で true が復活する (TAR 選択のままアプリを
+            // 再起動した場合のみ保護 OFF からの再有効化が必要になる、許容トレードオフ)。
+            s.IsPasswordProtectionEnabled = IsPasswordProtectionEnabled
+                && !string.Equals(SelectedCompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase);
+            s.PasswordMode = PasswordMode;
+            s.EncryptFileNames = EncryptFileNames;
             // 除外パターンは .lhaignore ファイルが真の源なので、settings.json には書き出さない。
         });
     }
@@ -206,6 +328,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         // ロケール変更後、App.Text() で動的に表示名を取得するドロップダウンを再描画
         OnPropertyChanged(nameof(ThemeOptions));
         RefreshCompressionLevels();
+        // 保存済みパスワード状態ラベル ("設定済み" / "未設定 (次回...)") も App.Text() ベースなので
+        // ロケール変更で再評価が必要 (CodeRabbit outside-diff、MainWindowViewModel.cs:292-300)。
+        OnPropertyChanged(nameof(SavedPasswordStatusText));
 
         AutoSave();
     }
@@ -226,6 +351,157 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnIncludeHiddenAndSystemEntriesChanged(bool value) => AutoSave();
     partial void OnRespectNestedGitignoreChanged(bool value) => AutoSave();
+
+    // ──────────────────────────────────────────────
+    // パスワード保護のハンドラ + コマンド
+    // ──────────────────────────────────────────────
+
+    private bool _suppressPasswordModeWipe;
+
+    /// <summary>
+    /// IsPasswordProtectionEnabled の値変化ハンドラ。
+    /// false → true 遷移で EncryptFileNames を true に強制リセット（decision #4）。
+    /// </summary>
+    partial void OnIsPasswordProtectionEnabledChanged(bool value)
+    {
+        if (value)
+        {
+            // パスワード ON にしたら毎回ファイル名暗号化も ON（decision #4）。
+            EncryptFileNames = true;
+        }
+        AutoSave();
+    }
+
+    partial void OnEncryptFileNamesChanged(bool value)
+    {
+        // 永続化しないので AutoSave は呼ばない（実行時のみの選択値）。
+        // 派生 UI への通知は [ObservableProperty] が自動発行する。
+        // in-memory の Settings への同期は、ドロップ経路は snapshot 直前の Mutate、
+        // シェル/IPC 経路は FlushPendingAutoSave → ApplySettingsToManager が担う
+        // (codex P2 #3385301556)。どちらも圧縮開始時に必ず通るため、ここでの即時同期は不要。
+    }
+
+    partial void OnPasswordModeChanged(string value)
+    {
+        // 抑制フラグ ON（UI ロールバック中）は無視
+        if (_suppressPasswordModeWipe)
+        {
+            AutoSave();
+            return;
+        }
+
+        // Remember → PromptEachTime 遷移 + 保存済みパスワードあり: ConfirmDialog で確認
+        if (string.Equals(value, "PromptEachTime", StringComparison.Ordinal)
+            && SettingsManager.Instance.Current.EncryptedCompressionPassword is { Length: > 0 })
+        {
+            _ = HandlePromptEachTimeTransitionAsync();
+            return;
+        }
+
+        AutoSave();
+    }
+
+    private async Task HandlePromptEachTimeTransitionAsync()
+    {
+        var owner = GetMainWindowSafe();
+        if (owner is null)
+        {
+            // MainWindow が無い経路（起動直後の race など）は安全側に倒して AutoSave のみ。
+            AutoSave();
+            return;
+        }
+        var confirmed = await Dispatcher.UIThread.InvokeAsync(async () =>
+        {
+            var dialog = new ConfirmDialog(
+                App.Text("Confirm.WipeSavedPassword.Message"),
+                App.Text("Confirm.WipeSavedPassword.Title"));
+            return await dialog.ShowDialog<bool>(owner);
+        });
+
+        if (confirmed)
+        {
+            // 1 トランザクションで mode + ciphertext を更新（中間状態を作らない、critique security #3）
+            SettingsManager.Instance.MutateAndSave(s =>
+            {
+                s.PasswordMode = "PromptEachTime";
+                s.EncryptedCompressionPassword = null;
+            });
+            OnPropertyChanged(nameof(HasSavedPassword));
+            OnPropertyChanged(nameof(SavedPasswordStatusText));
+        }
+        else
+        {
+            // RadioButton を Remember に戻す（_suppressPasswordModeWipe で再帰防止）
+            // PasswordMode セッターは ObservableProperty が PropertyChanged を発火するので、
+            // MainWindow 側で購読している InitPasswordModeRadioButtons が UI 上の radio も Remember に戻す
+            // (CodeRabbit #3381138457: PropertyChanged 購読方式に統一)。
+            _suppressPasswordModeWipe = true;
+            try { PasswordMode = "Remember"; }
+            finally { _suppressPasswordModeWipe = false; }
+        }
+    }
+
+    /// <summary>保存済みパスワードを削除する（確認ダイアログあり）。</summary>
+    [RelayCommand]
+    private async Task ClearSavedPasswordAsync()
+    {
+        if (!HasSavedPassword) return;
+        var owner = GetMainWindowSafe();
+        if (owner is null) return;
+        var confirmed = await Dispatcher.UIThread.InvokeAsync(async () =>
+        {
+            var dialog = new ConfirmDialog(
+                App.Text("Confirm.ClearSavedPassword.Message"),
+                App.Text("Confirm.ClearSavedPassword.Title"));
+            return await dialog.ShowDialog<bool>(owner);
+        });
+        if (!confirmed) return;
+
+        SettingsManager.Instance.MutateAndSave(s => s.EncryptedCompressionPassword = null);
+        OnPropertyChanged(nameof(HasSavedPassword));
+        OnPropertyChanged(nameof(SavedPasswordStatusText));
+    }
+
+    /// <summary>保存済みパスワードを変更する（PasswordDialog で新規入力）。</summary>
+    [RelayCommand]
+    private async Task ChangeSavedPasswordAsync()
+    {
+        var owner = GetMainWindowSafe();
+        // codex P2 #3384761806: ZIP 選択中は圧縮時 (TryResolveCompressionPasswordAsync) と
+        // 同じ ASCII 制約を入力時に検証する。バイパスすると「設定済」表示なのに ZIP 圧縮の
+        // たびに一時パスワードを要求される使えない保存値ができる。7z 選択中は非 ASCII も
+        // 有効なので制限しない (後で ZIP に切り替えた場合は圧縮時の再プロンプトで救済される)。
+        var isZip = string.Equals(SelectedCompressionFormat, "ZIP", StringComparison.OrdinalIgnoreCase);
+        var newPassword = await ArchiveProcessor.PromptCompressionPasswordAsync(
+            App.Text("Settings.Compression.ChangeSavedPassword"), isZip, owner, CancellationToken.None);
+
+        if (newPassword is null) return;
+
+        try
+        {
+            // 平文を扱う try スコープでログ redaction を掛ける (CodeRabbit #3381138482)。
+            // Protect 内部やこの try の catch で平文混入経路があってもマスクされる。
+            using var _ = Logger.RegisterRedactionToken(newPassword);
+            var ciphertext = CompressionPasswordSession.Protect(newPassword);
+            SettingsManager.Instance.MutateAndSave(s => s.EncryptedCompressionPassword = ciphertext);
+            OnPropertyChanged(nameof(HasSavedPassword));
+            OnPropertyChanged(nameof(SavedPasswordStatusText));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("圧縮パスワードの保存に失敗", ex);
+        }
+    }
+
+    /// <summary>アクティブな MainWindow を取得する（取れない場合は null）。</summary>
+    private static Window? GetMainWindowSafe()
+    {
+        try
+        {
+            return (Application.Current?.ApplicationLifetime as Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+        }
+        catch { return null; }
+    }
 
     partial void OnCheck4UpdatesOnStartupChanged(bool value) => AutoSave();
 
@@ -368,11 +644,21 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>
     /// コンストラクタ
     /// </summary>
+    /// <summary>
+    /// アクティブな MainWindowViewModel インスタンス (シングルウィンドウアプリなので 1 つ)。
+    /// ArchiveProcessor / App が「パスワード保存直前」「CLI/IPC 圧縮開始前」に
+    /// <see cref="FlushPendingAutoSave"/> を呼んで 300ms デバウンス中の設定変更を確定させる
+    /// (codex P2 #3384706123 / #3384706125)。UI スレッドからのみ参照すること。
+    /// テストは VM を構築しないため null のまま (null 条件演算子で安全にスキップされる)。
+    /// </summary>
+    internal static MainWindowViewModel? Current { get; private set; }
+
     public MainWindowViewModel(
         Func<Task<string?>> pickExtractionFolder,
         Func<Task<string?>> pickCompressionFolder,
         Action<ProgressWindow> showProgressWindow)
     {
+        Current = this;
         _settingsManager = SettingsManager.Instance;
         _pickExtractionFolder = pickExtractionFolder;
         _pickCompressionFolder = pickCompressionFolder;
@@ -389,6 +675,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         // ※ MainWindowViewModel はアプリ全体で 1 インスタンスなので unsubscribe しなくてもリークしない。
         App.UpdateCheckStateChanged += OnAppUpdateCheckStateChanged;
         IsCheckingUpdate = App.IsUpdateCheckInProgress;
+
+        // ArchiveProcessor (Remember 初回保存) で SettingsManager の
+        // EncryptedCompressionPassword が外部更新されたとき、設定パネルの
+        // 「設定済 / 未設定」と Clear ボタン enable 状態を即時更新する
+        // (codex P2 #3382276703)。UI スレッドに必ず post する。
+        // round 7 adversarial: 再構築シナリオでの duplicate handler 蓄積を防ぐため
+        // -= してから += で idempotent に subscribe する。
+        SavedPasswordExternallyChanged -= OnSavedPasswordExternallyChanged;
+        SavedPasswordExternallyChanged += OnSavedPasswordExternallyChanged;
 
         // 初期選択状態を設定
         OnZipCompressionLevelChanged(ZipCompressionLevel);
@@ -457,6 +752,34 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
+    /// VM 外で <see cref="Settings.EncryptedCompressionPassword"/> が変化したとき UI に反映する。
+    /// 設定パネルの「設定済 / 未設定」表示と「Clear」ボタンの enable 状態を即時更新する
+    /// (codex P2 #3382276703)。<see cref="HasSavedPassword"/> /
+    /// <see cref="SavedPasswordStatusText"/> はどちらも <see cref="SettingsManager"/> を直読み
+    /// する派生値なので、PropertyChanged を発火するだけで OK。
+    /// </summary>
+    /// <remarks>
+    /// round 7 adversarial: Avalonia 未初期化のテスト環境 (Dispatcher.UIThread が
+    /// null の状況) で <see cref="Dispatcher.UIThread"/> 参照が throw する可能性がある
+    /// ので try-catch で防御する。プロダクション経路では起こらない。
+    /// </remarks>
+    private void OnSavedPasswordExternallyChanged()
+    {
+        try
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                OnPropertyChanged(nameof(HasSavedPassword));
+                OnPropertyChanged(nameof(SavedPasswordStatusText));
+            });
+        }
+        catch
+        {
+            // Avalonia 未初期化 (テスト環境等) では UI 更新を諦める。
+        }
+    }
+
+    /// <summary>
     /// 設定から View に読み込む
     /// </summary>
     public void LoadFromSettings()
@@ -485,6 +808,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SelectedLocale = string.IsNullOrEmpty(s.Locale) ? App.DetectDefaultLocale() : s.Locale;
         ZipCompressionLevel = s.ZipCompressionLevel;
         SevenZipCompressionLevel = s.SevenZipCompressionLevel;
+        // パスワード保護: 永続値から復元。EncryptFileNames は毎回 true で初期化（decision #4）。
+        IsPasswordProtectionEnabled = s.IsPasswordProtectionEnabled;
+        PasswordMode = string.Equals(s.PasswordMode, "Remember", StringComparison.Ordinal)
+            ? "Remember" : "PromptEachTime";
+        EncryptFileNames = true;
+        // 派生プロパティ通知（HasSavedPassword は SettingsManager 直読みのため AutoSave に反応しない手動 OnPropertyChanged）
+        OnPropertyChanged(nameof(HasSavedPassword));
+        OnPropertyChanged(nameof(SavedPasswordStatusText));
         // 除外パターンは settings.json ではなく .lhaignore から読み込む。
         ReloadExcludedFilePatternsFromFile();
     }
@@ -707,6 +1038,28 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var cancellationToken = progressWindow.GetCancellationToken();
             // 並列処理中にUIスレッドが設定を書き換えても影響を受けないよう、処理開始時点で
             // スナップショットを取って以降は固定値として使う（/rere P0 #3 対応）。
+            // パスワード保護関連 (IsPasswordProtectionEnabled / PasswordMode / EncryptFileNames) は
+            // 300ms debounce の AutoSave に依存していると、ON にして即ドロップしたとき
+            // Snapshot が古い値を見て「パスワード無しのアーカイブ」が作られる事故が起きる。
+            // ここで全部 VM の現在値を Settings に同期してから Snapshot を取る (codex P1 #3381085181)。
+            //
+            // TAR 形式は仕様上パスワード保護を持たない。UI は checkbox を disable するだけで
+            // VM の IsPasswordProtectionEnabled 自体は ZIP/7z の設定を保持する設計だが、
+            // そのまま Snapshot に流すと「TAR なのにパスワード入力ダイアログが出て CreateArchiveWriter
+            // で InvalidOperationException」になる。Snapshot 段で TAR なら強制 false に押し下げる
+            // (VM 側の値は保持されるので ZIP/7z に戻せば自動復活、codex P2 #3381085177)。
+            var isTar = string.Equals(SelectedCompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase);
+            _settingsManager.Mutate(s =>
+            {
+                // codex P2 #3381582652: 同じ mutation で CompressionFormat も UI 選択値で上書きする。
+                // debounced AutoSave 前に drop された場合、settings.CompressionFormat が古い値のまま
+                // isTar の計算結果と矛盾するスナップショットを作ると「TAR なのにパスワード保護 OFF が
+                // 効くが、フォーマットは ZIP/7z」という誤った非保護アーカイブを生成しうる。
+                s.CompressionFormat = SelectedCompressionFormat;
+                s.IsPasswordProtectionEnabled = IsPasswordProtectionEnabled && !isTar;
+                s.PasswordMode = PasswordMode;
+                s.EncryptFileNames = EncryptFileNames;
+            });
             var settings = _settingsManager.CreateSnapshot();
 
             if (validPaths.Count == 1)

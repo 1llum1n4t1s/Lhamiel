@@ -64,6 +64,18 @@ public partial class MainWindow : Window
             var viewModel = new MainWindowViewModel(pickExtractionFolder, pickCompressionFolder, ShowProgressWindow);
             DataContext = viewModel;
             InitDirModeRadioButtons(viewModel.SelectedDirectoryStructureMode);
+            InitPasswordModeRadioButtons(viewModel.PasswordMode);
+            // VM の PasswordMode 変化を購読して radio button を同期する (CodeRabbit #3381138457)。
+            // wipe キャンセル時の rollback だけでなく、将来 LoadFromSettings 経由で外部から
+            // PasswordMode が変わる経路でも自動追従する一般化された方式。
+            viewModel.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainWindowViewModel.PasswordMode))
+                {
+                    Avalonia.Threading.Dispatcher.UIThread.Post(
+                        () => InitPasswordModeRadioButtons(viewModel.PasswordMode));
+                }
+            };
         }
         catch (Exception ex)
         {
@@ -167,6 +179,29 @@ public partial class MainWindow : Window
         {
             if (int.TryParse(tag, out var mode))
                 vm.SelectedDirectoryStructureMode = mode;
+        }
+    }
+
+    /// <summary>
+    /// パスワード入力モードのラジオボタンの初期状態をセット (Remember or PromptEachTime)。
+    /// </summary>
+    private void InitPasswordModeRadioButtons(string mode)
+    {
+        var radioName = string.Equals(mode, "Remember", System.StringComparison.Ordinal)
+            ? "RememberPasswordRadio" : "PromptEachTimeRadio";
+        var radio = this.FindControl<RadioButton>(radioName);
+        if (radio != null) radio.IsChecked = true;
+    }
+
+    /// <summary>
+    /// パスワード入力モードのラジオボタン変更時。VM の PasswordMode を Tag 文字列で更新する。
+    /// </summary>
+    private void PasswordModeRadio_Changed(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is RadioButton { IsChecked: true, Tag: string tag } && DataContext is MainWindowViewModel vm)
+        {
+            if (tag is "PromptEachTime" or "Remember")
+                vm.PasswordMode = tag;
         }
     }
 

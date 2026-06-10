@@ -31,6 +31,21 @@ internal interface IConflictDialogService
         ShowFromBackgroundAsync(List<FileConflictGroup> groups, Window? parentWindow, bool isTwoPane = true);
 }
 
+/// <summary>
+/// パスワード入力ダイアログの抽象。展開時 (Extract) と圧縮時 (CompressNew) の両用。
+/// テスト時にスタブで差し替えて、UI なしで <see cref="ArchiveProcessor"/> 系のパスワード解決
+/// フローを検証できるようにする。
+/// </summary>
+internal interface IPasswordDialogService
+{
+    Task<string?> PromptForPasswordAsync(
+        string archiveName,
+        View.PasswordDialogMode mode,
+        bool isRetry,
+        Window? parentWindow,
+        CancellationToken cancellationToken);
+}
+
 // --- デフォルト実装（既存の静的クラスへの薄いラッパー） ---
 
 internal sealed class DefaultMessageService : IMessageService
@@ -53,4 +68,15 @@ internal sealed class DefaultConflictDialogService : IConflictDialogService
     public Task<(FileConflictResult result, List<(string fullPath, string relativePath)> selectedFiles)>
         ShowFromBackgroundAsync(List<FileConflictGroup> groups, Window? parentWindow, bool isTwoPane = true)
         => View.FileConflictDialog.ShowFromBackgroundAsync(groups, parentWindow, isTwoPane);
+}
+
+internal sealed class DefaultPasswordDialogService : IPasswordDialogService
+{
+    public Task<string?> PromptForPasswordAsync(
+        string archiveName,
+        View.PasswordDialogMode mode,
+        bool isRetry,
+        Window? parentWindow,
+        CancellationToken cancellationToken)
+        => View.PasswordDialog.ShowFromBackgroundAsync(archiveName, isRetry, mode, parentWindow, cancellationToken);
 }

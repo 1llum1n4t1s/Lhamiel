@@ -320,4 +320,43 @@
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">비밀번호가 필요하거나 일치하지 않음</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">이 아카이브는 비밀번호로 보호되어 있습니다. 비밀번호가 제공되지 않았거나 일치하지 않습니다: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">추출을 다시 시도하고 올바른 비밀번호를 입력하세요.</x:String>
+
+  <!-- 암호 보호 (v1.0.181+) -->
+  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">암호 보호</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">암호로 보호</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP은 AES-256 (WinZip AE-2), 7z은 AES-256으로 암호화합니다.</x:String>
+  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR 형식은 암호 보호를 지원하지 않습니다. ZIP 또는 7z을 선택하세요.</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">주의: AES-256으로 암호화된 ZIP은 Windows 기본 탐색기에서 열 수 없습니다. 수신자는 7-Zip, WinRAR 등 호환 도구가 필요합니다.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">파일명도 암호화</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">아카이브 내 파일명 목록(헤더)도 암호화합니다. 암호 없이는 내용을 볼 수도 없게 됩니다.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">ZIP 형식의 사양상 파일명(중앙 디렉터리)은 암호화할 수 없습니다. 7z으로 전환하면 이 옵션을 사용할 수 있습니다.</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">암호 입력 방식</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">드롭할 때마다 확인</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">저장하여 재사용 (DPAPI 암호화)</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">암호: 설정됨</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">암호: 미설정 (다음 압축 시 설정 요청)</x:String>
+  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">암호 변경</x:String>
+  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">암호 삭제</x:String>
+
+  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">암호 설정</x:String>
+  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">아카이브를 암호화할 암호를 설정하세요. 확인을 위해 두 번 입력합니다.</x:String>
+  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">암호 (확인)</x:String>
+  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">암호가 일치하지 않습니다. 확인란을 다시 입력하세요.</x:String>
+  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">암호를 입력하세요.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">비밀번호는 4자 이상이어야 합니다.</x:String>
+  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">암호 관리자에서 붙여넣기할 수 있습니다 (Ctrl+V).</x:String>
+
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">저장된 암호를 삭제할까요?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">"드롭할 때마다 확인"으로 전환하면 현재 저장된 암호가 삭제됩니다. 계속할까요?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">저장된 암호를 삭제할까요?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">저장된 암호를 삭제합니다. 다음 압축 시 다시 입력해야 합니다. 계속할까요?</x:String>
+
+  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">저장된 암호를 복원하지 못했습니다 (다른 PC에서 설정 복사 또는 Windows 암호 재설정이 원인일 수 있음). 암호를 다시 설정하세요.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">저장된 비밀번호에 ZIP 형식에서 사용할 수 없는 문자가 포함되어 있습니다(ASCII만 지원). 이번 압축에 사용할 비밀번호를 입력하세요(저장된 비밀번호는 변경되지 않습니다).</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">저장된 암호가 너무 짧아 사용할 수 없습니다 (최소 {0}자 필요). 새 암호를 설정해 주세요.</x:String>
+  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0}개 파일이 접근 불가로 건너뛰어졌습니다. 나머지 파일로 암호 보호된 아카이브를 만들었습니다.</x:String>
+
+  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">모든 원본 파일에 접근할 수 없어 압축을 중단했습니다. 빈 아카이브는 생성되지 않았습니다.</x:String>
+  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} 형식은 암호 보호를 지원하지 않습니다. ZIP 또는 7z을 선택하세요.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP 형식의 비밀번호에는 ASCII 문자(영문, 숫자, 기호)만 사용할 수 있습니다. 한국어 등 다른 문자를 사용하려면 7z 형식을 선택하세요.</x:String>
 </ResourceDictionary>

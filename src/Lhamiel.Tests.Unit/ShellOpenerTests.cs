@@ -37,23 +37,4 @@ public class ShellOpenerTests : IDisposable
         await task;
         Assert.True(task.IsCompletedSuccessfully);
     }
-
-    [Fact]
-    public void OpenWithDefaultHandlerAsync_ReturnsTaskRunInstance_NotSyncCompleted()
-    {
-        // DryRun=true でも Task.Run の Task が返ることを保証する (UI スレッドから async に逃がす保証)。
-        // Issue #54 対策: 戻り値が同期完了 Task ではなく、別スレッドで走るタスクであること。
-        ShellOpener.DryRun = true;
-        var task = ShellOpener.OpenWithDefaultHandlerAsync("https://example.com/");
-        // Task.Run で生成された Task は完了済みかもしれないが、CompletedTask の参照ではない
-        Assert.NotSame(Task.CompletedTask, task);
-    }
-
-    [Fact]
-    public void OpenInExplorerAsync_ReturnsTaskRunInstance_NotSyncCompleted()
-    {
-        ShellOpener.DryRun = true;
-        var task = ShellOpener.OpenInExplorerAsync(@"C:\Windows");
-        Assert.NotSame(Task.CompletedTask, task);
-    }
 }

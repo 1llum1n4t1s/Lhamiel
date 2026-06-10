@@ -319,4 +319,47 @@
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">パスワードが必要、または不一致です</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">このアーカイブはパスワード保護されています。パスワードが指定されていない、または一致しませんでした: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">もう一度展開し、正しいパスワードを入力してください。</x:String>
+
+  <!-- パスワード保護 (v1.0.181+) -->
+  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">パスワード保護</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">パスワードで保護する</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP は AES-256 (WinZip AE-2)、7z は AES-256 で暗号化します。</x:String>
+  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR 形式はパスワード保護をサポートしていません。ZIP または 7z を選択してください。</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">注意: AES-256 で暗号化した ZIP は Windows 標準のエクスプローラーでは展開できません。受信者は 7-Zip / WinRAR 等の対応ツールが必要です。</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">ファイル名も暗号化する</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">アーカイブ内のファイル名一覧 (ヘッダ) も暗号化します。パスワード無しでは内容を見ることもできなくなります。</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">ZIP 形式の仕様上、ファイル名 (セントラルディレクトリ) は暗号化できません。7z を選択すると有効化できます。</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">パスワードの入力方法</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">ドロップごとに確認する</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">保存して再利用する (DPAPI 暗号化)</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">パスワード: 設定済</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">パスワード: 未設定 (次回圧縮時に設定します)</x:String>
+  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">パスワードを変更</x:String>
+  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">パスワードを削除</x:String>
+
+  <!-- PasswordDialog CompressNew モード -->
+  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">パスワードの設定</x:String>
+  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">アーカイブを暗号化するためのパスワードを設定してください。確認のため 2 回入力します。</x:String>
+  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">パスワード (確認)</x:String>
+  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">パスワードが一致しません。もう一度確認入力してください。</x:String>
+  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">パスワードを入力してください。</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">パスワードは 4 文字以上で入力してください。</x:String>
+  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">パスワード管理ツールから貼り付けできます (Ctrl+V)。</x:String>
+
+  <!-- Confirm ダイアログ -->
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">保存済みパスワードを削除しますか？</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">「ドロップごとに確認」に切り替えると、現在保存されているパスワードは削除されます。よろしいですか？</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">保存済みパスワードを削除しますか？</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">保存されているパスワードを削除します。次回圧縮時にもう一度入力が必要になります。よろしいですか？</x:String>
+
+  <!-- 通知 -->
+  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">保存されていたパスワードを復元できませんでした (別 PC からの設定コピー / Windows パスワードのリセット等が原因の可能性があります)。再度パスワードを設定してください。</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">保存済みパスワードには ZIP 形式で使用できない文字が含まれています (ASCII 文字のみ対応)。この圧縮で使用するパスワードを入力してください (保存済みパスワードは変更されません)。</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">保存されているパスワードが短すぎるため使用できません（{0} 文字以上が必要です）。新しいパスワードを設定してください。</x:String>
+  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} 件のファイルがアクセス不能でスキップされました。残りのファイルでパスワード保護アーカイブを作成しました。</x:String>
+
+  <!-- パスワード関連エラー -->
+  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">すべてのファイルがアクセス不能のため圧縮を中止しました。空のアーカイブは作成していません。</x:String>
+  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} 形式はパスワード保護をサポートしていません。ZIP または 7z を選択してください。</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP 形式のパスワードに使用できるのは半角英数字と記号 (ASCII 文字) のみです。日本語など他の文字を使う場合は 7z 形式を選択してください。</x:String>
 </ResourceDictionary>

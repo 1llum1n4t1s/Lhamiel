@@ -320,4 +320,43 @@
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">Tessera opus est aut falsa</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">Hoc archivum tessera munitum est. Nulla tessera data est aut non congruit: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">Iterum extractionem tenta et tesseram rectam insere.</x:String>
+
+  <!-- Tutela tessera (v1.0.181+) -->
+  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Tutela tessera</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Tessera muniri</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP per AES-256 (WinZip AE-2), 7z per AES-256 cryptat.</x:String>
+  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR tutelam tesserae non sustinet. ZIP vel 7z eligere.</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Nota: archiva ZIP per AES-256 cryptata Exploratore Windows inserto aperiri non possunt. Receptoribus 7-Zip, WinRAR vel aliud instrumentum compatibile opus est.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Etiam nomina fasciculorum cryptare</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Indicem nominum fasciculorum (caput) intra archivum cryptat. Sine tessera ne contenta quidem inspici possunt.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">Forma ZIP nomina fasciculorum (indicem centralem) cryptare non potest. Ad 7z muta ut haec optio activari possit.</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">Quomodo tesseram inserere</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">Singulis demissionibus rogare</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">Servare et iterum uti (DPAPI cryptatum)</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">Tessera: constituta</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">Tessera: non constituta (proxima compressione rogabitur)</x:String>
+  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">Tesseram mutare</x:String>
+  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">Tesseram delere</x:String>
+
+  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">Tesseram constituere</x:String>
+  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">Tesseram ad archivum cryptandum constitue. Ad confirmandum bis insere.</x:String>
+  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Tessera (confirmatio)</x:String>
+  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Tesserae non congruunt. Confirmationem iterum insere.</x:String>
+  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Tesseram insere.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">Tessera saltem 4 characteres habere debet.</x:String>
+  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Ex tesserarum administro inserere potes (Ctrl+V).</x:String>
+
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Tesseram servatam delere?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Ad "Singulis demissionibus rogare" mutatio tesseram nunc servatam delebit. Pergere?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">Tesseram servatam delere?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">Tessera servata delebitur. Proxima compressione iterum inserere debes. Pergere?</x:String>
+
+  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Tessera servata restitui non potuit (fortasse ob configurationes ex alio computatro descriptas vel ob tesseram Windows redintegratam). Tesseram iterum constitue.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Tessera servata litteras continet quae in forma ZIP adhiberi non possunt (ASCII solum). Tesseram huic compressioni inscribe (tessera servata non mutabitur).</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">Tessera servata brevior est quam ut adhiberi possit (saltem {0} litterae requiruntur). Novam tesseram constitue.</x:String>
+  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} fasciculus(i) praeteritus(i) sunt ob inaccessibilitatem. Archivum tessera tutum cum reliquis fasciculis creatum est.</x:String>
+
+  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Omnes fasciculi originales inaccessibiles erant, itaque compressio abrupta est. Archivum inane non creatum est.</x:String>
+  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Forma {0} tutelam tesserae non sustinet. ZIP vel 7z elige.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Tesserae ZIP solum litteras ASCII (litteras, numeros, signa) continere possunt. Ad alias litteras (ut litteras cum signis diacriticis aut Iaponicas) adhibendas formam 7z elige.</x:String>
 </ResourceDictionary>

@@ -320,4 +320,43 @@
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPassword" xml:space="preserve">Потрібен пароль або пароль неправильний</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">Цей архів захищено паролем. Пароль не надано або не збігається: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">Повторіть видобування та введіть правильний пароль.</x:String>
+
+  <!-- Захист паролем (v1.0.181+) -->
+  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Захист паролем</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Захистити паролем</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Шифрує ZIP за допомогою AES-256 (WinZip AE-2), 7z — за допомогою AES-256.</x:String>
+  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR не підтримує захист паролем. Виберіть ZIP або 7z.</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Примітка: ZIP-архіви, зашифровані AES-256, не можна відкрити стандартним Провідником Windows. Одержувачам потрібні 7-Zip, WinRAR або інший сумісний інструмент.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Шифрувати також імена файлів</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Шифрує список імен файлів (заголовок) усередині архіву. Без пароля навіть вмісту не побачите.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">Формат ZIP не може шифрувати імена файлів (центральний каталог). Перейдіть на 7z, щоб увімкнути цю опцію.</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">Як вводити пароль</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">Запитувати при кожному перетягуванні</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">Зберегти й повторно використовувати (зашифровано DPAPI)</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">Пароль: встановлено</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">Пароль: не встановлено (буде запитано під час наступного стиснення)</x:String>
+  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">Змінити пароль</x:String>
+  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">Видалити пароль</x:String>
+
+  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">Встановити пароль</x:String>
+  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">Встановіть пароль для шифрування архіву. Введіть його двічі для підтвердження.</x:String>
+  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Пароль (підтвердження)</x:String>
+  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Паролі не збігаються. Повторно введіть підтвердження.</x:String>
+  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Введіть пароль.</x:String>
+  <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">Пароль має містити щонайменше 4 символи.</x:String>
+  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Можна вставити з менеджера паролів (Ctrl+V).</x:String>
+
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Видалити збережений пароль?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Перехід на "Запитувати при кожному перетягуванні" видалить поточний збережений пароль. Продовжити?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">Видалити збережений пароль?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">Збережений пароль буде видалено. Під час наступного стиснення його доведеться ввести знову. Продовжити?</x:String>
+
+  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Не вдалося відновити збережений пароль (імовірно, через копіювання налаштувань з іншого ПК або скидання пароля Windows). Установіть пароль ще раз.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Збережений пароль містить символи, які не можна використовувати у форматі ZIP (лише ASCII). Введіть пароль для цього стиснення (збережений пароль не буде змінено).</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">Збережений пароль закороткий для використання (потрібно щонайменше {0} символів). Встановіть новий пароль.</x:String>
+  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">Пропущено файлів: {0}, оскільки вони були недоступні. З решти файлів створено архів, захищений паролем.</x:String>
+
+  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Усі вихідні файли були недоступні, тож стиснення скасовано. Порожній архів не створено.</x:String>
+  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Формат {0} не підтримує захист паролем. Виберіть ZIP або 7z.</x:String>
+  <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Паролі ZIP можуть містити лише символи ASCII (латинські літери, цифри та знаки). Для інших символів (наприклад, кирилиці) виберіть формат 7z.</x:String>
 </ResourceDictionary>
