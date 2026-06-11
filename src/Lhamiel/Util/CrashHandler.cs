@@ -36,7 +36,23 @@ internal static partial class CrashHandler
     /// <summary>
     /// 現在のプロセスのミニダンプを %LocalAppData%\Lhamiel\dumps\ に出力する。
     /// </summary>
+    /// <remarks>
+    /// 自己プロセスへの MiniDumpWriteDump は全スレッドをサスペンドするため、
+    /// 他スレッドがヒープロック/ローダーロックを握ったままだと DbgHelp がデッドロックする窓がある
+    /// （MS ドキュメントも自己ダンプは別プロセスからの実行を推奨）。
+    /// クラッシュハンドラ経路は「既にプロセスが死んでいる」前提でこのリスクを受容するが、
+    /// テストからは必ず子プロセスを対象にするオーバーロードを使うこと。
+    /// </remarks>
     internal static string? WriteMiniDump(Exception? triggerException = null)
+    {
+        using var process = Process.GetCurrentProcess();
+        return WriteMiniDump(process, triggerException);
+    }
+
+    /// <summary>
+    /// 指定プロセスのミニダンプを %LocalAppData%\Lhamiel\dumps\ に出力する（テスト用差し替え点）。
+    /// </summary>
+    internal static string? WriteMiniDump(Process process, Exception? triggerException = null)
     {
         try
         {
@@ -45,7 +61,6 @@ internal static partial class CrashHandler
             var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
             var dumpPath = Path.Combine(DumpDirectory, $"Lhamiel_{timestamp}.dmp");
 
-            using var process = Process.GetCurrentProcess();
             using var fs = new FileStream(dumpPath, FileMode.Create, FileAccess.Write, FileShare.None);
 
             // MiniDumpNormal (0x00): スタック・レジスタ・実行コンテキストのみ。
@@ -55,7 +70,10 @@ internal static partial class CrashHandler
             // 通常の例外解析にはスタック情報だけで十分。
             const int dumpType = 0x00;
 
-            var exceptionPointers = Marshal.GetExceptionPointers();
+            // 例外ポインタは呼び出しスレッドのものなので、自プロセス対象のときだけ添付する
+            var exceptionPointers = process.Id == Environment.ProcessId
+                ? Marshal.GetExceptionPointers()
+                : IntPtr.Zero;
             var exceptionParam = IntPtr.Zero;
             var exceptionInfo = default(MinidumpExceptionInformation);
             if (exceptionPointers != IntPtr.Zero)

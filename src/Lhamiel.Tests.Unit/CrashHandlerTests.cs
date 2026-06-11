@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Lhamiel.Util;
 using Xunit;
 namespace Lhamiel.Tests.Unit;
@@ -5,21 +6,54 @@ namespace Lhamiel.Tests.Unit;
 [Collection("CrashHandler")]
 public class CrashHandlerTests
 {
+    /// <summary>
+    /// ダンプ対象の子プロセスを起動する。
+    /// 自プロセスへの MiniDumpWriteDump は全スレッドをサスペンドするため、
+    /// xUnit の並列実行中に他テストのスレッドがヒープロック/ローダーロックを
+    /// 握ったままサスペンドされると DbgHelp がデッドロックし、テストプロセス全体が
+    /// 無期限ハングする（実機 dump で確認済み）。テストでは必ず子プロセスを対象にする。
+    /// </summary>
+    private static Process StartDumpTargetProcess()
+    {
+        var psi = new ProcessStartInfo("ping.exe", "-n 60 127.0.0.1")
+        {
+            CreateNoWindow = true,
+            UseShellExecute = false,
+        };
+        return Process.Start(psi)!;
+    }
+
+    private static void KillQuietly(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+                process.Kill(entireProcessTree: true);
+        }
+        catch
+        {
+            // ベストエフォート（既に終了済みなど）
+        }
+        process.Dispose();
+    }
+
     [Fact]
     public void WriteMiniDump_ProducesDumpFile()
     {
         var originalDumpDir = CrashHandler.DumpDirectory;
         var dumpDir = Path.Combine(Path.GetTempPath(), $"lhamiel_dump_test_{Guid.NewGuid():N}");
         CrashHandler.DumpDirectory = dumpDir;
+        var target = StartDumpTargetProcess();
         try
         {
-            var dumpPath = CrashHandler.WriteMiniDump();
+            var dumpPath = CrashHandler.WriteMiniDump(target);
             Assert.NotNull(dumpPath);
             Assert.True(File.Exists(dumpPath), $"ダンプファイルが存在しない: {dumpPath}");
             Assert.True(new FileInfo(dumpPath!).Length > 0, "ダンプファイルが空");
         }
         finally
         {
+            KillQuietly(target);
             CrashHandler.DumpDirectory = originalDumpDir;
             if (Directory.Exists(dumpDir))
                 Directory.Delete(dumpDir, true);
@@ -32,10 +66,11 @@ public class CrashHandlerTests
         var originalDumpDir = CrashHandler.DumpDirectory;
         var dumpDir = Path.Combine(Path.GetTempPath(), $"lhamiel_dump_test_{Guid.NewGuid():N}");
         CrashHandler.DumpDirectory = dumpDir;
+        var target = StartDumpTargetProcess();
         try
         {
             var ex = new InvalidOperationException("テスト用例外");
-            var dumpPath = CrashHandler.WriteMiniDump(ex);
+            var dumpPath = CrashHandler.WriteMiniDump(target, ex);
             Assert.NotNull(dumpPath);
 
             var txtPath = Path.ChangeExtension(dumpPath, ".txt");
@@ -46,6 +81,7 @@ public class CrashHandlerTests
         }
         finally
         {
+            KillQuietly(target);
             CrashHandler.DumpDirectory = originalDumpDir;
             if (Directory.Exists(dumpDir))
                 Directory.Delete(dumpDir, true);
@@ -104,9 +140,10 @@ public class CrashHandlerTests
         var originalDumpDir = CrashHandler.DumpDirectory;
         var dumpDir = Path.Combine(Path.GetTempPath(), $"lhamiel_dump_test_{Guid.NewGuid():N}");
         CrashHandler.DumpDirectory = dumpDir;
+        var target = StartDumpTargetProcess();
         try
         {
-            var dumpPath = CrashHandler.WriteMiniDump();
+            var dumpPath = CrashHandler.WriteMiniDump(target);
             Assert.NotNull(dumpPath);
 
             var dir = Path.GetDirectoryName(dumpPath)!;
@@ -114,6 +151,7 @@ public class CrashHandlerTests
         }
         finally
         {
+            KillQuietly(target);
             CrashHandler.DumpDirectory = originalDumpDir;
             if (Directory.Exists(dumpDir))
                 Directory.Delete(dumpDir, true);
