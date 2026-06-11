@@ -86,6 +86,9 @@
   <!-- Association Settings -->
   <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">Вибрати все</x:String>
   <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">Зняти вибір</x:String>
+  <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">Піктограма файла</x:String>
+  <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">Класична</x:String>
+  <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">Папка</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
@@ -116,6 +119,10 @@
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Стиснення</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Перевірка цілісності...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Застосування позначки безпеки...</x:String>
+  <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">Пошук файлів... {0:N0}</x:String>
+  <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">Підготовка до стиснення... {0:N0} / {1:N0}</x:String>
+  <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">Завершення...</x:String>
+  <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">Перевірка вільного місця...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Інформація про помилку</x:String>

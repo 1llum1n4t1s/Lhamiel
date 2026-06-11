@@ -86,6 +86,9 @@
   <!-- Association Settings -->
   <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">全選</x:String>
   <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">取消全選</x:String>
+  <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">檔案圖示</x:String>
+  <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">經典</x:String>
+  <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">資料夾</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
@@ -116,6 +119,10 @@
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">壓縮中</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">正在驗證完整性...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">正在套用安全標記...</x:String>
+  <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">正在掃描檔案... {0:N0}</x:String>
+  <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">正在準備壓縮... {0:N0} / {1:N0}</x:String>
+  <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">正在完成...</x:String>
+  <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">正在檢查可用空間...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">錯誤資訊</x:String>

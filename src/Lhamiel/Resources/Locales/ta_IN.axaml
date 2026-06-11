@@ -86,6 +86,9 @@
   <!-- Association Settings -->
   <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">அனைத்தையும் தேர்</x:String>
   <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">அனைத்தையும் நீக்கு</x:String>
+  <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">கோப்பு ஐகான்</x:String>
+  <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">பாரம்பரியம்</x:String>
+  <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">கோப்புறை</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
@@ -116,6 +119,10 @@
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">சுருக்குதல்</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">ஒருமைப்பாடு சரிபார்ப்பு...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">பாதுகாப்பு அடையாளம் செலுத்துகிறது...</x:String>
+  <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">கோப்புகள் தேடப்படுகின்றன... {0:N0}</x:String>
+  <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">அழுத்தம் தயாராகிறது... {0:N0} / {1:N0}</x:String>
+  <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">நிறைவு செய்யப்படுகிறது...</x:String>
+  <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">காலி இடம் சரிபார்க்கப்படுகிறது...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">பிழைத் தகவல்</x:String>

@@ -86,6 +86,9 @@
   <!-- Association Settings -->
   <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">Seleziona tutto</x:String>
   <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">Deseleziona tutto</x:String>
+  <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">Icona file</x:String>
+  <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">Classica</x:String>
+  <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">Cartella</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
@@ -116,6 +119,10 @@
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Compressione</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Verifica integrità...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Applicazione del contrassegno di sicurezza...</x:String>
+  <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">Scansione dei file... {0:N0}</x:String>
+  <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">Preparazione della compressione... {0:N0} / {1:N0}</x:String>
+  <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">Finalizzazione...</x:String>
+  <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">Verifica dello spazio libero...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informazioni sull'errore</x:String>

@@ -86,6 +86,9 @@
   <!-- Association Settings -->
   <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">전체 선택</x:String>
   <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">전체 해제</x:String>
+  <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">파일 아이콘</x:String>
+  <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">클래식</x:String>
+  <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">폴더</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
@@ -116,6 +119,10 @@
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">압축 중</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">무결성 검증 중...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">보안 마크 적용 중...</x:String>
+  <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">파일 확인 중... {0:N0}</x:String>
+  <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">압축 준비 중... {0:N0} / {1:N0}</x:String>
+  <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">마무리 중...</x:String>
+  <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">여유 공간 확인 중...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">오류 정보</x:String>

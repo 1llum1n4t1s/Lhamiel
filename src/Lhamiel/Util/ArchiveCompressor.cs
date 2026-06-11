@@ -33,6 +33,12 @@ public static class ArchiveCompressor
     private static readonly PathPairComparer DefaultPathPairComparer = new(PathComparer);
 
     /// <summary>
+    /// スキャン・準備フェーズの経過テキスト (マーキー表示) を更新する最小間隔（ミリ秒）。
+    /// パーセンテージと違い単調増加判定が使えないため、時間スロットルのみで UI 負荷を抑える。
+    /// </summary>
+    internal const int ProgressTextIntervalMs = 200;
+
+    /// <summary>
     /// 圧縮ファイル名を取得する
     /// </summary>
     /// <param name="sourcePath">圧縮対象のパス</param>
@@ -129,6 +135,8 @@ public static class ArchiveCompressor
             cancellationToken.ThrowIfCancellationRequested();
 
             // 解決済みリストが渡された場合はそのまま使用、なければスキャン
+            if (resolvedFiles is null)
+                progress?.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", 0)));
             var filesToCompress = resolvedFiles ?? await ScanSourceFiles(
                 sourceList,
                 ignoreMatcher,
@@ -137,7 +145,8 @@ public static class ArchiveCompressor
                 settings.NormalizeUnicodeFileNames,
                 settings.IncludeHiddenAndSystemEntries,
                 respectNestedGitignore: settings.RespectNestedGitignore,
-                globalIgnoreLines: lhaignoreLines);
+                globalIgnoreLines: lhaignoreLines,
+                progress: progress);
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
@@ -165,9 +174,22 @@ public static class ArchiveCompressor
                     // ファイルとディレクトリを圧縮アーカイブに追加
                     // スキャン後にファイルが削除されている場合はスキップする
                     var addedCount = 0;
+                    // 準備フェーズの経過表示: writer.Add は 1 ファイルずつ開いて読み取り可否を
+                    // 検査するため、数十万ファイル規模では分単位かかる (実測: 528k ファイルで
+                    // 93 秒)。無報告だと 0% のまま凍って見えるので、件数ベースの経過を流す。
+                    var processedCount = 0;
+                    var lastPrepareReportTick = 0L;
                     foreach (var (fullPath, relativePath) in filesToCompress)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
+                        processedCount++;
+                        var nowTick = Environment.TickCount64;
+                        if (nowTick - lastPrepareReportTick >= ProgressTextIntervalMs)
+                        {
+                            lastPrepareReportTick = nowTick;
+                            progress?.Report(new ProgressInfo(
+                                App.Text("Progress.PreparingCompression", processedCount, filesToCompress.Count)));
+                        }
                         if (relativePath.EndsWith('/'))
                         {
                             // 空ディレクトリエントリ: 実ディレクトリを writer.Add(realDir, "rel/") で渡すと
@@ -227,10 +249,45 @@ public static class ArchiveCompressor
                     // 進捗スロットリング（UIスレッド負荷軽減用）
                     var throttler = new ProgressThrottler();
 
-                    // 進捗報告オブジェクトを生成
+                    // 進捗報告オブジェクトを生成。
+                    // ・Prepare 状態 (7z.dll が Save 冒頭で全エントリを列挙するフェーズ) はバイト
+                    //   進捗が動かないため、件数ベースの準備表示を続ける (ライブラリ側に時間
+                    //   スロットルが無く数十万件が素通しで届くので、ここで 200ms に間引く)。
+                    // ・100% 到達後〜Save 完了/Dispose までは「仕上げ処理中」(マーキー) に切替える。
+                    //   ZIP のセントラルディレクトリ書き出し・数十万入力ストリームの一括 close など
+                    //   バイト進捗に乗らない後処理があり、100% のまま固まって見えるため。
+                    // ・pct==0 は ProgressThrottler の boundary 扱いで素通りするため 1 回に抑える
+                    //   (数十万ファイル規模では pct=0 のコールバックが数千回連続する)。
+                    var dataStarted = false;
+                    var zeroReported = false;
+                    var finalizing = false;
                     using var reportProgress = new CancellableProgress<Report>(report =>
                     {
+                        if (finalizing) return;
+                        if (!dataStarted && report.State == ProgressState.Prepare && report.TotalCount > 0)
+                        {
+                            var nowTick = Environment.TickCount64;
+                            if (nowTick - lastPrepareReportTick >= ProgressTextIntervalMs)
+                            {
+                                lastPrepareReportTick = nowTick;
+                                progress?.Report(new ProgressInfo(
+                                    App.Text("Progress.PreparingCompression", report.Count, report.TotalCount)));
+                            }
+                            return;
+                        }
                         var percentage = (int)(report.GetRatio() * 100);
+                        if (percentage >= 100)
+                        {
+                            finalizing = true;
+                            progress?.Report(new ProgressInfo(App.Text("Progress.Finalizing")));
+                            return;
+                        }
+                        dataStarted = true;
+                        if (percentage == 0)
+                        {
+                            if (zeroReported) return;
+                            zeroReported = true;
+                        }
                         if (throttler.ShouldReport(percentage))
                             progress?.Report(new ProgressInfo(percentage, ""));
                     }, cancellationToken);
@@ -248,13 +305,24 @@ public static class ArchiveCompressor
                     // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // Terminate で 100% を保証（Ice アプリケーションの実装パターンに準拠）
-                    progress?.Report(new ProgressInfo(100, App.Text("Compressor.Processing")));
+                    // 仕上げ表示をここでも保証する (進捗が 100% に到達しないまま Save が返る
+                    // ケース: スキャン後のファイル縮小・スキップ等)。この直後に writer の
+                    // Dispose (全入力ストリームの一括 close) が走り、数十万ファイル規模では
+                    // バイト進捗に乗らない時間がかかるため、マーキー表示のまま覆う。
+                    if (!finalizing)
+                    {
+                        finalizing = true;
+                        progress?.Report(new ProgressInfo(App.Text("Progress.Finalizing")));
+                    }
 
                     // 全てのオブジェクトの生存を、ネイティブ処理完了直後に明示的に保証する
                     // これにより、JIT最適化による早期解放（およびそれに伴うアクセス違反）を防ぐ
                     NativeInteropHelper.KeepAliveCallbacks(writer, reportProgress, progress);
                 }, cancellationToken);
+
+                // Terminate で 100% を保証（Ice アプリケーションの実装パターンに準拠）。
+                // writer の Dispose (一括 close) 完了後に確定 100% へ戻してから完了処理に進む。
+                progress?.Report(new ProgressInfo(100, ""));
             }
             catch (Exception ex)
             {
@@ -366,9 +434,13 @@ public static class ArchiveCompressor
         DirectoryStructureMode? dirModeOverride = null, bool? normalizeUnicodeOverride = null,
         bool? includeHiddenAndSystemEntriesOverride = null,
         bool respectNestedGitignore = false,
-        IReadOnlyList<string>? globalIgnoreLines = null)
+        IReadOnlyList<string>? globalIgnoreLines = null,
+        IProgress<ProgressInfo>? progress = null)
     {
         var filesToCompress = new List<(string fullPath, string relativePath)>();
+        // スキャン中の経過表示 (マーキー + 発見済み件数)。数十万ファイル規模では列挙だけで
+        // 数十秒かかり、無報告だと UI が 0% のまま凍って見えるため、時間スロットルで件数を流す。
+        var lastScanReportTick = 0L;
         var dirMode = dirModeOverride ?? SettingsManager.Instance.Current.DirectoryStructureMode;
         var normalizeUnicode = normalizeUnicodeOverride ?? SettingsManager.Instance.NormalizeUnicodeFileNames;
         var includeHiddenAndSystemEntries = includeHiddenAndSystemEntriesOverride
@@ -436,6 +508,13 @@ public static class ArchiveCompressor
                     if (fileCount % 100 == 0)
                     {
                         await Task.Yield();
+                    }
+
+                    var now = Environment.TickCount64;
+                    if (now - lastScanReportTick >= ProgressTextIntervalMs)
+                    {
+                        lastScanReportTick = now;
+                        progress?.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", filesToCompress.Count)));
                     }
                 }
 

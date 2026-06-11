@@ -86,6 +86,9 @@
   <!-- Association Settings -->
   <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">Pilih Semua</x:String>
   <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">Batalkan Semua Pilihan</x:String>
+  <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">Ikon berkas</x:String>
+  <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">Klasik</x:String>
+  <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">Folder</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
@@ -116,6 +119,10 @@
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Mengompresi</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Memverifikasi integritas...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Menerapkan tanda keamanan...</x:String>
+  <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">Memindai berkas... {0:N0}</x:String>
+  <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">Menyiapkan kompresi... {0:N0} / {1:N0}</x:String>
+  <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">Menyelesaikan...</x:String>
+  <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">Memeriksa ruang kosong...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informasi Kesalahan</x:String>

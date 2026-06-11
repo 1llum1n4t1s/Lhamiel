@@ -22,12 +22,31 @@ public class FileAssociation
     /// ファイルマネージャーで表示されるアイコン
     /// </summary>
     private static readonly string FileIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "file.ico");
+    private static readonly string FileFolderIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "file_folder.ico");
 
     /// <summary>
     /// アプリケーション名
     /// レジストリに登録されるアプリケーションの表示名
     /// </summary>
     private static readonly string AppName = "Lhamiel";
+
+    internal static string ResolveFileIconPath(string? variant = null)
+    {
+        variant ??= SettingsManager.Instance.Current.FileIconVariant;
+        var normalized = Settings.NormalizeFileIconVariant(variant);
+        var selectedPath = string.Equals(normalized, Settings.FileIconVariantFolder, StringComparison.Ordinal)
+            ? FileFolderIconPath
+            : FileIconPath;
+
+        if (File.Exists(selectedPath))
+            return selectedPath;
+        if (File.Exists(FileIconPath))
+            return FileIconPath;
+        if (File.Exists(FileFolderIconPath))
+            return FileFolderIconPath;
+
+        return IconPath;
+    }
 
     /// <summary>
     /// エクスプローラーに変更を通知する（安全な方法）
@@ -55,7 +74,7 @@ public class FileAssociation
     /// <param name="extension">関連付けるファイル拡張子（例: .zip）</param>
     /// <returns>設定が成功した場合はtrue、そうでなければfalse</returns>
     [SupportedOSPlatform("windows")]
-    public static bool AssociateFileType(string extension)
+    public static bool AssociateFileType(string extension, string? fileIconVariant = null)
     {
         try
         {
@@ -84,7 +103,7 @@ public class FileAssociation
             Logger.Log($"[関連付け設定] シェルコマンド: {command}", LogLevel.Debug);
 
             // ファイル関連付けアイコンを設定（file.icoがあれば使用、なければapp.icoを使用）
-            var fileIconToUse = File.Exists(FileIconPath) ? FileIconPath : IconPath;
+            var fileIconToUse = ResolveFileIconPath(fileIconVariant);
             if (File.Exists(fileIconToUse))
             {
                 var iconKeyPath = $"Software\\Classes\\{appId}\\DefaultIcon";

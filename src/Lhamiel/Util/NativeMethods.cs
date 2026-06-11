@@ -49,4 +49,16 @@ internal static partial class NativeMethods
     /// 項目が ID リストであることを示す定数
     /// </summary>
     internal const int SHCNF_IDLIST = 0x0000;
+
+    /// <summary>
+    /// プロセスに明示的な AppUserModelID (AUMID) を設定する。
+    /// Velopack がショートカット（タスクバーピン含む）に書き込む AUMID と一致させることで、
+    /// タスクバーが exe パスではなく AUMID でピンとウィンドウを対応付け、
+    /// アップデートで exe が差し替わってもアイコン解決が安定する。
+    /// ウィンドウ生成前（タスクバーに現れる前）に呼ぶこと。
+    /// </summary>
+    /// <param name="appId">設定する AppUserModelID</param>
+    /// <returns>HRESULT（S_OK = 0 で成功）</returns>
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int SetCurrentProcessExplicitAppUserModelID(string appId);
 }

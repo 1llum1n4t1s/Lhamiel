@@ -59,6 +59,11 @@ public class Settings
     public string CompressionFormat { get; set; } = "ZIP";
 
     /// <summary>
+    /// File association icon variant.
+    /// </summary>
+    public string FileIconVariant { get; set; } = FileIconVariantClassic;
+
+    /// <summary>
     /// 展開用出力ディレクトリの設定
     /// </summary>
     public string ExtractionOutputDirectory { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
@@ -179,6 +184,19 @@ public class Settings
     /// サポートされている圧縮形式の一覧
     /// </summary>
     public static readonly string[] SupportedCompressionFormats = ["ZIP", "7z", "TAR"];
+
+    public const string FileIconVariantClassic = "Classic";
+    public const string FileIconVariantFolder = "Folder";
+
+    public static readonly string[] SupportedFileIconVariants =
+    [
+        FileIconVariantClassic,
+        FileIconVariantFolder
+    ];
+
+    internal static string NormalizeFileIconVariant(string? variant) =>
+        Array.Find(SupportedFileIconVariants, v => string.Equals(v, variant, StringComparison.OrdinalIgnoreCase))
+        ?? FileIconVariantClassic;
 
     /// <summary>
     /// サポートされている自動更新チャンネルの一覧（canonical な小文字形）。
@@ -499,6 +517,8 @@ public class Settings
         CompressionFormat = Array.Find(SupportedCompressionFormats, f => string.Equals(f, CompressionFormat, StringComparison.OrdinalIgnoreCase))
                             ?? "ZIP";
 
+        FileIconVariant = NormalizeFileIconVariant(FileIconVariant);
+
         // IgnoreUpdateTag は VelopackUpdateDialog の VersionIgnored イベント経由でユーザーが
         // 「このバージョンをスキップ」を押した GitHub Release タグ名が保存される。
         // settings.json 直接編集や JSON null (System.Text.Json が non-nullable string に null を代入する経路)、
@@ -666,6 +686,7 @@ public class Settings
     {
         Theme = "System";
         CompressionFormat = "ZIP";
+        FileIconVariant = FileIconVariantClassic;
         ExtractionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         CompressionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         ExtractionOutputToSameDirectory = false;
@@ -726,6 +747,7 @@ public class Settings
             if (TryGetString(root, nameof(Theme), out var theme)) { s.Theme = theme!; recoveredCount++; }
             if (TryGetString(root, nameof(Locale), out var locale)) { s.Locale = locale!; recoveredCount++; }
             if (TryGetString(root, nameof(CompressionFormat), out var cf)) { s.CompressionFormat = cf!; recoveredCount++; }
+            if (TryGetString(root, nameof(FileIconVariant), out var fiv)) { s.FileIconVariant = fiv!; recoveredCount++; }
             if (TryGetString(root, nameof(ExtractionOutputDirectory), out var eod)) { s.ExtractionOutputDirectory = eod!; recoveredCount++; }
             if (TryGetString(root, nameof(CompressionOutputDirectory), out var cod)) { s.CompressionOutputDirectory = cod!; recoveredCount++; }
             // UpdateBaseUrl は [JsonIgnore] ハードコード固定のため回収不要

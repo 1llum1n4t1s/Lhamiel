@@ -45,7 +45,10 @@ internal static class ArchiveProgressHelper
         {
             if (info.IsIndeterminate)
             {
-                Dispatcher.UIThread.Post(() => progressWindow?.SetIndeterminate(info.Status));
+                // 並列バッチでは複数アイテムのフェーズ表示が交錯するため、バー
+                // (完了件数ベースの確定進捗) は維持し、フェーズテキストは通知行に流す
+                // (マーキー⇔確定のバー切替が点滅して見えるのを避ける)。
+                Dispatcher.UIThread.Post(() => progressWindow?.SetNotice(info.Status));
                 return;
             }
             int baseline;

@@ -86,6 +86,9 @@
   <!-- Association Settings -->
   <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">全選択</x:String>
   <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">全解除</x:String>
+  <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">ファイルアイコン</x:String>
+  <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">クラシック</x:String>
+  <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">フォルダ</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
@@ -116,6 +119,10 @@
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">圧縮中</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">整合性を検証中...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">セキュリティマークを適用中...</x:String>
+  <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">対象ファイルを確認中... {0:N0}</x:String>
+  <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">圧縮を準備中... {0:N0} / {1:N0}</x:String>
+  <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">仕上げ処理中...</x:String>
+  <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">空き容量を確認中...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">エラー情報</x:String>

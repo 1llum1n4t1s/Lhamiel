@@ -14,14 +14,33 @@ internal class Program
     /// --update-check 引数が指定された場合は UI なしでサイレント更新チェックのみ実行する。
     /// </summary>
     /// <param name="args">コマンドライン引数</param>
+    /// <summary>
+    /// プロセスに設定する AppUserModelID。
+    /// Velopack がショートカット（タスクバーピン含む）へ書き込む AUMID（"velopack.{packId}" 規約）と
+    /// 一致させる必要がある。不一致だとタスクバーがピンとウィンドウを exe パスで対応付けるため、
+    /// アップデートの current/ 差し替えでアイコン解決が壊れ白紙アイコンになる。
+    /// </summary>
+    internal const string AppUserModelId = "velopack.Lhamiel";
+
     [STAThread]
     public static void Main(string[] args)
     {
         CrashHandler.Register();
 
+        // ウィンドウ生成前（タスクバーに現れる前）に AUMID をピンと一致させる。失敗しても起動は継続する。
+        if (OperatingSystem.IsWindows())
+        {
+            try { _ = NativeMethods.SetCurrentProcessExplicitAppUserModelID(AppUserModelId); }
+            catch { /* best-effort */ }
+        }
+
         VelopackApp.Build()
             .OnAfterInstallFastCallback(v => StartupRegistration.Register())
-            .OnAfterUpdateFastCallback(v => StartupRegistration.Register())
+            .OnAfterUpdateFastCallback(v =>
+            {
+                StartupRegistration.Register();
+                NotifyShellIconRefresh();
+            })
             .OnBeforeUninstallFastCallback(v => StartupRegistration.Unregister())
             .Run();
 
@@ -41,6 +60,22 @@ internal class Program
             Logger.LogException("アプリケーション起動エラー", ex);
             throw;
         }
+    }
+
+    /// <summary>
+    /// アップデート適用直後（--veloapp-updated フック）にシェルへアイコン再解決を促す。
+    /// Velopack は current/ ディレクトリ差し替え後にタスクバーピンの .lnk を書き換えるが、
+    /// Windows 11 のタスクバーが再解決に失敗すると白紙アイコンがアイコンキャッシュに残るため、
+    /// SHCNE_ASSOCCHANGED 通知でキャッシュ更新を促す（AUMID 一致設定の補助、best-effort）。
+    /// </summary>
+    private static void NotifyShellIconRefresh()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        try
+        {
+            NativeMethods.SHChangeNotify(NativeMethods.SHCNE_ASSOCCHANGED, NativeMethods.SHCNF_IDLIST, IntPtr.Zero, IntPtr.Zero);
+        }
+        catch { /* best-effort */ }
     }
 
     /// <summary>

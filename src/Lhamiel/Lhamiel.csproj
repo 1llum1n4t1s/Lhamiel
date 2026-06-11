@@ -62,7 +62,7 @@
     <PackageReference Include="CRDebugger.Avalonia" Version="1.0.26" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="MessageBox.Avalonia" Version="12.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.78" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.79" />
     <PackageReference Include="SuperLightLogger" Version="1.0.7" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.1" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。
@@ -82,6 +82,14 @@
   <Target Name="CopyIcons" AfterTargets="Publish">
     <Copy SourceFiles="icon\app.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\file.ico" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="icon\file_folder.ico" DestinationFolder="$(PublishDir)" />
+  </Target>
+
+  <!-- Build 出力にもコピー（dev 実行での関連付けアイコン解決・設定画面プレビュー用） -->
+  <Target Name="CopyIconsBuild" AfterTargets="Build">
+    <Copy SourceFiles="icon\app.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="icon\file.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="icon\file_folder.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
 
 

@@ -238,6 +238,24 @@ public class SettingsEdgeCaseTests
     }
 
     [Fact]
+    public void SanitizeAfterLoad_UnknownFileIconVariant_FallsBackToClassic()
+    {
+        var settings = new Settings { FileIconVariant = "MetalBoxArrow" };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(Settings.FileIconVariantClassic, settings.FileIconVariant);
+    }
+
+    [Theory]
+    [InlineData("classic", "Classic")]
+    [InlineData("FOLDER", "Folder")]
+    public void SanitizeAfterLoad_FileIconVariant_NormalizedToCanonicalCase(string input, string expected)
+    {
+        var settings = new Settings { FileIconVariant = input };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(expected, settings.FileIconVariant);
+    }
+
+    [Fact]
     public void SupportedThemes_ContainsAllThreeValues()
     {
         Assert.Contains("System", Settings.SupportedThemes);
