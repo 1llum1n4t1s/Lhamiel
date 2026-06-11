@@ -86,6 +86,9 @@
   <!-- Association Settings -->
   <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">全选</x:String>
   <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">取消全选</x:String>
+  <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">文件图标</x:String>
+  <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">经典</x:String>
+  <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">文件夹</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>

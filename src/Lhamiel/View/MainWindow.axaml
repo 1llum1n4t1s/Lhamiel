@@ -509,6 +509,35 @@
                                 FontWeight="SemiBold"
                                 Text="{DynamicResource Text.Settings.Tab.Association}" />
 
+                            <primitives:HeaderedContentControl
+                                Margin="0,0,0,12"
+                                Header="{DynamicResource Text.Settings.Association.IconHeader}">
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <ComboBox
+                                        Width="200"
+                                        VerticalAlignment="Top"
+                                        ItemsSource="{Binding FileIconOptions}"
+                                        SelectedValue="{Binding SelectedFileIconVariant}"
+                                        SelectedValueBinding="{Binding Key, DataType=vm:FileIconOption}">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:FileIconOption">
+                                                <TextBlock Text="{Binding DisplayName}" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <!--  選択中バリアントのサンプルプレビュー（128px 取得を 80px 論理サイズで表示）。
+                                          負マージンでヘッダー行の右側余白まで引き上げ、カードの間延びを防ぐ
+                                          （-28 = ヘッダー TextBlock 高さ ~18px + ヘッダー下マージン 10px）  -->
+                                    <Image
+                                        Width="80"
+                                        Height="80"
+                                        Margin="0,-28,0,0"
+                                        VerticalAlignment="Top"
+                                        RenderOptions.BitmapInterpolationMode="HighQuality"
+                                        Source="{Binding FileIconPreview}" />
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
+
                             <!--  全選択 / 全解除  -->
                             <StackPanel
                                 Margin="0,0,0,12"

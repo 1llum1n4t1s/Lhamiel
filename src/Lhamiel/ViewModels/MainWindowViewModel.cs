@@ -30,6 +30,11 @@ public record ThemeItem(string Key, string ResourceKey)
 /// <summary>
 /// ロケール選択肢の表示用クラス（固定表示名）
 /// </summary>
+public record FileIconOption(string Key, string ResourceKey)
+{
+    public string DisplayName => App.Text(ResourceKey);
+}
+
 public record LocaleItem(string Key, string DisplayName);
 
 /// <summary>
@@ -204,6 +209,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _selectedLocale = "";
 
     [ObservableProperty]
+    private string _selectedFileIconVariant = Settings.FileIconVariantClassic;
+
+    [ObservableProperty]
     private int _zipCompressionLevel = 5;
 
     [ObservableProperty]
@@ -262,6 +270,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.Theme = SelectedTheme;
             s.Locale = SelectedLocale;
             s.CompressionFormat = SelectedCompressionFormat ?? "ZIP";
+            s.FileIconVariant = Settings.NormalizeFileIconVariant(SelectedFileIconVariant);
             s.ExtractionOutputDirectory = ExtractionOutputDirectory;
             s.CompressionOutputDirectory = CompressionOutputDirectory;
             s.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectory;
@@ -327,6 +336,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         // ロケール変更後、App.Text() で動的に表示名を取得するドロップダウンを再描画
         OnPropertyChanged(nameof(ThemeOptions));
+        OnPropertyChanged(nameof(FileIconOptions));
         RefreshCompressionLevels();
         // 保存済みパスワード状態ラベル ("設定済み" / "未設定 (次回...)") も App.Text() ベースなので
         // ロケール変更で再評価が必要 (CodeRabbit outside-diff、MainWindowViewModel.cs:292-300)。
@@ -336,6 +346,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     partial void OnSelectedCompressionFormatChanged(string value) => AutoSave();
+
+    partial void OnSelectedFileIconVariantChanged(string value)
+    {
+        OnPropertyChanged(nameof(FileIconPreview));
+        AutoSave();
+        if (!_isLoading)
+            ApplyAssociationSettings(refreshAssociatedIcons: true);
+    }
 
     partial void OnExtractionOutputDirectoryChanged(string value) => AutoSave();
 
@@ -619,6 +637,39 @@ public sealed partial class MainWindowViewModel : ObservableObject
     ];
     public ThemeItem[] ThemeOptions => _themeOptions;
 
+    private static readonly FileIconOption[] _fileIconOptions =
+    [
+        new(Settings.FileIconVariantClassic, "Settings.Association.IconClassic"),
+        new(Settings.FileIconVariantFolder, "Settings.Association.IconFolder")
+    ];
+    public FileIconOption[] FileIconOptions => _fileIconOptions;
+
+    /// <summary>
+    /// バリアント → プレビュー Bitmap のキャッシュ。
+    /// 候補は 2 種で固定のためアプリ存続期間中保持し、選択切替のたびの
+    /// LoadImage P/Invoke + ピクセル変換を 1 回限りにする。
+    /// </summary>
+    private static readonly Dictionary<string, Avalonia.Media.Imaging.Bitmap?> _fileIconPreviewCache = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// 選択中のアイコンバリアントのプレビュー画像。
+    /// 関連付け設定のドロップダウン右側に表示する。読み込み失敗時は null（Image は空表示）。
+    /// </summary>
+    public Avalonia.Media.Imaging.Bitmap? FileIconPreview
+    {
+        get
+        {
+            var variant = Settings.NormalizeFileIconVariant(SelectedFileIconVariant);
+            if (_fileIconPreviewCache.TryGetValue(variant, out var cached))
+                return cached;
+
+            // 表示は 80px 論理サイズだが、高 DPI (150%/200%) でぼやけないよう 128px で取得する
+            var bitmap = FileIconHelper.LoadIconFile(FileAssociation.ResolveFileIconPath(variant), size: 128);
+            _fileIconPreviewCache[variant] = bitmap;
+            return bitmap;
+        }
+    }
+
     /// <summary>
     /// ロケールの選択肢（キー: ロケールコード、表示名: ネイティブ言語名）
     /// </summary>
@@ -792,6 +843,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SelectedCompressionFormat = (!string.IsNullOrEmpty(format)
             ? Settings.SupportedCompressionFormats.FirstOrDefault(f => f.Equals(format, StringComparison.OrdinalIgnoreCase))
             : null) ?? "ZIP";
+        SelectedFileIconVariant = Settings.NormalizeFileIconVariant(s.FileIconVariant);
         ExtractionOutputToSameDirectory = s.ExtractionOutputToSameDirectory;
         ExtractionOutputToDirectory = !s.ExtractionOutputToSameDirectory;
         CompressionOutputToSameDirectory = s.CompressionOutputToSameDirectory;
@@ -1222,7 +1274,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private void ApplyAssociationSettings()
+    private void ApplyAssociationSettings(bool refreshAssociatedIcons = false)
     {
         try
         {
@@ -1231,9 +1283,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             foreach (var item in Associations)
             {
                 var isCurrentlyAssociated = currentStatus.GetValueOrDefault(item.Extension, false);
-                if (item.IsAssociated && !isCurrentlyAssociated)
+                if (item.IsAssociated && (!isCurrentlyAssociated || refreshAssociatedIcons))
                 {
-                    if (FileAssociation.AssociateFileType(item.Extension))
+                    if (FileAssociation.AssociateFileType(item.Extension, SelectedFileIconVariant))
                         Logger.Log($"関連付け設定成功: {item.Extension}");
                     else
                         Logger.Log($"関連付け設定失敗: {item.Extension}", LogLevel.Warning);

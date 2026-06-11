@@ -86,6 +86,9 @@
   <!-- Association Settings -->
   <x:String x:Key="Text.Settings.Association.SelectAll" xml:space="preserve">Tout sélectionner</x:String>
   <x:String x:Key="Text.Settings.Association.DeselectAll" xml:space="preserve">Tout désélectionner</x:String>
+  <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">Icône de fichier</x:String>
+  <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">Classique</x:String>
+  <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">Dossier</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>

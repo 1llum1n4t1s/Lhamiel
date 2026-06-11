@@ -74,6 +74,22 @@ public static class FileIconHelper
         public int cy;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BITMAPINFOHEADER
+    {
+        public int biSize;
+        public int biWidth;
+        public int biHeight;
+        public ushort biPlanes;
+        public ushort biBitCount;
+        public uint biCompression;
+        public uint biSizeImage;
+        public int biXPelsPerMeter;
+        public int biYPelsPerMeter;
+        public uint biClrUsed;
+        public uint biClrImportant;
+    }
+
     // IShellItemImageFactory GUID
     private static readonly Guid CLSID_ShellItem = new("43826d1e-e718-42ee-bc55-a1e261c37bfe");
 
@@ -102,6 +118,12 @@ public static class FileIconHelper
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool DestroyIcon(IntPtr hIcon);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr LoadImage(IntPtr hInst, string name, uint type, int cx, int cy, uint fuLoad);
+
+    private const uint IMAGE_ICON = 1;
+    private const uint LR_LOADFROMFILE = 0x00000010;
+
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetIconInfo(IntPtr hIcon, out ICONINFO piconinfo);
@@ -111,6 +133,21 @@ public static class FileIconHelper
 
     [DllImport("gdi32.dll")]
     private static extern int GetBitmapBits(IntPtr hbmp, int cbBuffer, byte[] lpvBits);
+
+    [DllImport("gdi32.dll")]
+    private static extern int GetDIBits(IntPtr hdc, IntPtr hbmp, uint start, uint cLines, byte[] lpvBits, ref BITMAPINFOHEADER lpbmi, uint usage);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDC(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern int ReleaseDC(IntPtr hWnd, IntPtr hdc);
+
+    /// <summary>無圧縮 RGB を示す biCompression 値</summary>
+    private const uint BI_RGB = 0;
+
+    /// <summary>GetDIBits の usage: カラーテーブルを実 RGB 値で返す</summary>
+    private const uint DIB_RGB_COLORS = 0;
 
     [DllImport("gdi32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -332,6 +369,40 @@ public static class FileIconHelper
     }
 
     /// <summary>
+    /// .ico ファイルを指定サイズで読み込み Avalonia Bitmap として返す。
+    /// マルチサイズ .ico からは要求サイズに最も近いフレームが選ばれる。
+    /// ファイルが存在しない、または読み込みに失敗した場合は null を返す。
+    /// </summary>
+    /// <param name="icoPath">.ico ファイルのパス</param>
+    /// <param name="size">取得するアイコンのピクセルサイズ</param>
+    public static Bitmap? LoadIconFile(string icoPath, int size = 48)
+    {
+        try
+        {
+            if (!File.Exists(icoPath))
+                return null;
+
+            var hIcon = LoadImage(IntPtr.Zero, icoPath, IMAGE_ICON, size, size, LR_LOADFROMFILE);
+            if (hIcon == IntPtr.Zero)
+                return null;
+
+            try
+            {
+                return HIconToBitmap(hIcon);
+            }
+            finally
+            {
+                DestroyIcon(hIcon);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Log($"アイコンファイル読み込み失敗: {icoPath}, {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
     /// HBITMAP → Avalonia Bitmap 変換（サムネイル用）
     /// </summary>
     private static Bitmap? HBitmapToBitmap(IntPtr hBitmap)
@@ -409,28 +480,41 @@ public static class FileIconHelper
             var bufferSize = stride * height;
             var pixels = new byte[bufferSize];
 
-            if (bmpStruct.bmBitsPixel == 32)
-            {
-                GetBitmapBits(hbmp, bufferSize, pixels);
-            }
-            else
+            if (bmpStruct.bmBitsPixel != 32)
             {
                 // 32bpp でない場合はフォールバック
                 return null;
             }
 
-            // GDI のビットマップはボトムアップなので上下反転
-            var flipped = new byte[bufferSize];
-            for (var y = 0; y < height; y++)
+            // GetBitmapBits はデバイス依存の格納順をそのまま返すため向きが保証されず、
+            // SHGetFileInfo 由来 (ボトムアップ) と LoadImage 由来 (トップダウン) で
+            // 結果が逆転していた。GetDIBits に負の高さを渡してトップダウンを契約で
+            // 固定し、変換側の反転処理を不要にする。
+            var bmi = new BITMAPINFOHEADER
             {
-                Array.Copy(pixels, (height - 1 - y) * stride, flipped, y * stride, stride);
+                biSize = Marshal.SizeOf<BITMAPINFOHEADER>(),
+                biWidth = width,
+                biHeight = -height, // 負値 = トップダウンで取得
+                biPlanes = 1,
+                biBitCount = 32,
+                biCompression = BI_RGB,
+            };
+            var hdc = GetDC(IntPtr.Zero);
+            try
+            {
+                if (GetDIBits(hdc, hbmp, 0, (uint)height, pixels, ref bmi, DIB_RGB_COLORS) == 0)
+                    return null;
+            }
+            finally
+            {
+                ReleaseDC(IntPtr.Zero, hdc);
             }
 
             // WriteableBitmap に書き込み
             var wb = new WriteableBitmap(new PixelSize(width, height), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
             using (var fb = wb.Lock())
             {
-                Marshal.Copy(flipped, 0, fb.Address, bufferSize);
+                Marshal.Copy(pixels, 0, fb.Address, bufferSize);
             }
             return wb;
         }
