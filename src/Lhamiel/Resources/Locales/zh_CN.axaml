@@ -116,6 +116,10 @@
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">压缩中</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">正在验证完整性...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">正在应用安全标记...</x:String>
+  <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">正在扫描文件... {0:N0}</x:String>
+  <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">正在准备压缩... {0:N0} / {1:N0}</x:String>
+  <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">正在完成...</x:String>
+  <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">正在检查可用空间...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">错误信息</x:String>

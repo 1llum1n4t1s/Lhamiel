@@ -936,7 +936,16 @@ public static class ArchiveProcessor
                     tempOutputPath = outputPath + ".lhamiel-tmp-" + Guid.NewGuid().ToString("N").Substring(0, 8);
                 }
 
-                // 圧縮前のディスク容量チェック
+                // CompressFilesAsync が IProgress<ProgressInfo> に統一されたので直接渡す。
+                // progressReporter が渡されていればそれをそのまま使い、Progress<T> の二重
+                // ラップと無駄なアロケ・同期コンテキスト転送を避ける。null のときだけ
+                // progressWindow への DispatchProgress 用ラッパを 1 個だけ作る。
+                IProgress<ProgressInfo> compressionProgress = progressReporter
+                    ?? new Progress<ProgressInfo>(info => ArchiveProgressHelper.DispatchProgress(progressWindow, info));
+
+                // 圧縮前のディスク容量チェック。サイズ見積りは対象ツリーの再帰列挙で
+                // 数十万ファイル規模では数十秒かかるため、経過をマーキー表示で伝える。
+                compressionProgress.Report(new ProgressInfo(App.Text("Progress.CheckingDiskSpace")));
                 var estimatedSize = DiskSpaceChecker.GetTotalFileSize([sourcePath]);
                 if (estimatedSize > 0)
                 {
@@ -950,12 +959,6 @@ public static class ArchiveProcessor
                 Logger.Log($"ArchiveCompressor.CompressFilesAsyncを呼び出し: sourcePath={sourcePath}, outputPath={outputPath}, format={format}");
 
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
-                // CompressFilesAsync が IProgress<ProgressInfo> に統一されたので直接渡す。
-                // progressReporter が渡されていればそれをそのまま使い、Progress<T> の二重
-                // ラップと無駄なアロケ・同期コンテキスト転送を避ける。null のときだけ
-                // progressWindow への DispatchProgress 用ラッパを 1 個だけ作る。
-                IProgress<ProgressInfo> compressionProgress = progressReporter
-                    ?? new Progress<ProgressInfo>(info => ArchiveProgressHelper.DispatchProgress(progressWindow, info));
 
                 // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示。
                 // settings はメソッド冒頭で確保済み。
@@ -966,6 +969,7 @@ public static class ArchiveProcessor
                     // RespectNestedGitignore=true なら各サブツリーの .gitignore も layered matcher として合成する。
                     var lhaignoreLines = LhaignoreFile.ReadLines();
                     var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
+                    compressionProgress.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", 0)));
                     var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
                         [sourcePath],
                         ignoreMatcher,
@@ -974,7 +978,8 @@ public static class ArchiveProcessor
                         normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames,
                         includeHiddenAndSystemEntriesOverride: settings.IncludeHiddenAndSystemEntries,
                         respectNestedGitignore: settings.RespectNestedGitignore,
-                        globalIgnoreLines: lhaignoreLines);
+                        globalIgnoreLines: lhaignoreLines,
+                        progress: compressionProgress);
 
                     var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);
                     if (conflicts.Count > 0)
@@ -1493,18 +1498,27 @@ public static class ArchiveProcessor
                     tempMergedOutputPath = outputPath + ".lhamiel-tmp-" + Guid.NewGuid().ToString("N").Substring(0, 8);
                 }
 
+                // 進捗ラッパは scan より前に用意する (スキャン経過のマーキー表示に使うため)。
+                // DispatchProgress 経由にすることで IsIndeterminate も正しく処理される
+                // (旧実装は UpdateProgress(info.Percentage) 直叩きで、不確定進捗が来ると
+                //  Percentage=-1 がバーに渡ってしまう)。
+                IProgress<ProgressInfo> progress = new Progress<ProgressInfo>(info =>
+                    ArchiveProgressHelper.DispatchProgress(progressWindow, info));
+
                 // ファイルリストをスキャン。
                 // 除外パターンは .lhaignore（gitignore 互換）から圧縮実行毎に読み直す。
                 // RespectNestedGitignore=true なら各サブツリーの .gitignore も layered matcher として合成する。
                 var lhaignoreLines = LhaignoreFile.ReadLines();
                 var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
+                progress.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", 0)));
                 var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
                     sourcePaths.ToList(), ignoreMatcher, actualCancellationToken,
                     dirModeOverride: settings.DirectoryStructureMode,
                     normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames,
                     includeHiddenAndSystemEntriesOverride: settings.IncludeHiddenAndSystemEntries,
                     respectNestedGitignore: settings.RespectNestedGitignore,
-                    globalIgnoreLines: lhaignoreLines);
+                    globalIgnoreLines: lhaignoreLines,
+                    progress: progress);
 
                 // 衝突検出
                 var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);
@@ -1535,11 +1549,6 @@ public static class ArchiveProcessor
                 {
                     resolvedFiles = scannedFiles;
                 }
-
-                IProgress<ProgressInfo> progress = new Progress<ProgressInfo>(info =>
-                {
-                    UiDispatcherImpl.Post(() => progressWindow?.UpdateProgress(info.Percentage));
-                });
 
                 // 圧縮前のディスク容量チェック
                 var estimatedMergeSize = resolvedFiles.Sum(f =>

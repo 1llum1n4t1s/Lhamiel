@@ -864,6 +864,68 @@ public class ArchiveCompressorTests
     }
 
     [Fact]
+    public async Task CompressFilesAsync_ReportsFinalizingBeforeFinal100()
+    {
+        // 進捗 100% 張り付き対策の表示契約を検証する (528k ファイル / 60GB の実測で
+        // 100% 表示のまま数分固まって見えた問題への回帰テスト):
+        // (1) Save 完了後〜writer Dispose の区間で「仕上げ処理中」(IsIndeterminate) が報告される
+        // (2) 最終報告は確定 100%
+        // (3) 仕上げ表示の後に確定パーセンテージが混ざらない (finalizing フラグの抑止契約)
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testRoot, "Source");
+        try
+        {
+            Directory.CreateDirectory(sourceDir);
+            for (var i = 0; i < 5; i++)
+                File.WriteAllText(Path.Combine(sourceDir, $"file{i}.txt"), new string('a', 1000));
+
+            var reports = new List<ProgressInfo>();
+            var recorder = new SyncRecordingProgress(info => { lock (reports) reports.Add(info); });
+
+            var zipPath = Path.Combine(testRoot, "out.zip");
+            await ArchiveCompressor.CompressFilesAsync(
+                [sourceDir], zipPath, Format.Zip,
+                recorder,
+                TestContext.Current.CancellationToken);
+
+            Assert.True(File.Exists(zipPath), "アーカイブが生成されていない");
+
+            ProgressInfo[] snapshot;
+            lock (reports) snapshot = [.. reports];
+            Assert.NotEmpty(snapshot);
+
+            // 最終報告は確定 100% (ウィンドウクローズ前にバーを完了状態へ戻す契約)
+            var last = snapshot[^1];
+            Assert.False(last.IsIndeterminate);
+            Assert.Equal(100, last.Percentage);
+
+            // 「仕上げ処理中」の不確定報告が最終 100% より前に必ず存在する
+            var finalizingText = App.Text("Progress.Finalizing");
+            var finalizingIdx = Array.FindIndex(snapshot, i => i.IsIndeterminate && i.Status == finalizingText);
+            Assert.True(finalizingIdx >= 0, "仕上げ表示 (Progress.Finalizing) が報告されていない");
+            Assert.True(finalizingIdx < snapshot.Length - 1, "仕上げ表示が最終報告より後にある");
+
+            // 仕上げ表示以降、最終 100% までの間に確定パーセンテージが混ざらない
+            for (var i = finalizingIdx + 1; i < snapshot.Length - 1; i++)
+                Assert.True(snapshot[i].IsIndeterminate, $"仕上げ表示後に確定進捗が報告された: index={i}");
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    /// <summary>
+    /// Progress&lt;T&gt; と違い SynchronizationContext を介さず同期的に記録する
+    /// IProgress 実装（報告順序の検証用）。
+    /// </summary>
+    private sealed class SyncRecordingProgress(Action<ProgressInfo> handler) : IProgress<ProgressInfo>
+    {
+        public void Report(ProgressInfo value) => handler(value);
+    }
+
+    [Fact]
     public async Task CompressFilesAsync_FileLockedWithFileShareNone_SkipsAndContinues()
     {
         // Visual Studio の .vsidx 等、FileShare.None で他プロセスが握っているファイルは

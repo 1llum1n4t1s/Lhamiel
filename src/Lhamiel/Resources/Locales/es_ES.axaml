@@ -116,6 +116,10 @@
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Comprimiendo</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Verificando integridad...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Aplicando marca de seguridad...</x:String>
+  <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">Explorando archivos... {0:N0}</x:String>
+  <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">Preparando la compresión... {0:N0} / {1:N0}</x:String>
+  <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">Finalizando...</x:String>
+  <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">Comprobando espacio libre...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Información del error</x:String>

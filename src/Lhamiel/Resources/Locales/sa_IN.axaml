@@ -116,6 +116,10 @@
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">संपीडनम्</x:String>
   <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">अखण्डतायाः सत्यापनम्...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">सुरक्षाचिह्नस्य प्रयोगः...</x:String>
+  <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">सञ्चिकाः अन्विष्यन्ते... {0:N0}</x:String>
+  <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">सङ्कोचनं सज्जीक्रियते... {0:N0} / {1:N0}</x:String>
+  <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">समाप्यते...</x:String>
+  <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">रिक्तस्थानं परीक्ष्यते...</x:String>
 
   <!-- Error Recovery Dialog -->
   <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">दोषसूचना</x:String>
