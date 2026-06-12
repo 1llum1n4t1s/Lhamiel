@@ -1,0 +1,7 @@
+{
+  "localRelease": {
+    "run": "pwsh -NoProfile -File scripts/release-local.ps1",
+    "precheck": "pwsh -NoProfile -Command \"if (-not (Get-ChildItem Cert:\\CurrentUser\\My | Where-Object { $_.Subject -like 'CN=Open Source Developer Yuichiro Shinozaki*' -and $_.NotAfter -gt (Get-Date) })) { exit 1 }\"",
+    "precheckFailMessage": "署名証明書が見つからないよ。SimplySign Desktop を起動してトークンでログインしてから /vava を再実行してね"
+  }
+}
