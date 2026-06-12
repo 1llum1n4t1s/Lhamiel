@@ -209,8 +209,13 @@ while ($true) {
     $uri = "$api/objects?per_page=1000" + $(if ($cursor) { "&cursor=$cursor" })
     $resp = Invoke-RestMethod -Uri $uri -Headers $headers -TimeoutSec 30
     foreach ($obj in $resp.result) { $allKeys.Add($obj.key) }
-    if (-not $resp.result_info.is_truncated) { break }
-    $cursor = $resp.result_info.cursor
+    # 全件 1 ページに収まると result_info が省略される (StrictMode 下では直接参照が throw)
+    $info = $resp.PSObject.Properties['result_info']
+    if (-not $info -or -not $info.Value) { break }
+    $truncated = $info.Value.PSObject.Properties['is_truncated']
+    if (-not $truncated -or -not $truncated.Value) { break }
+    $cursorProp = $info.Value.PSObject.Properties['cursor']
+    $cursor = if ($cursorProp) { $cursorProp.Value } else { '' }
     if (-not $cursor) { break }
 }
 
