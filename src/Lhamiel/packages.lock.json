@@ -66,18 +66,6 @@
         "resolved": "8.4.2",
         "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="
       },
-      "CRDebugger.Avalonia": {
-        "type": "Direct",
-        "requested": "[1.0.26, )",
-        "resolved": "1.0.26",
-        "contentHash": "ptuf0FEq8alIOD5/9IWjaEeJy/KWzrfmFXlC4APngTxXHVFLnHKrqlTw2qHl8WkYPGXTxq10ReUtfCPwjquDOg==",
-        "dependencies": {
-          "Avalonia": "12.0.3",
-          "Avalonia.Themes.Fluent": "12.0.3",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.8",
-          "SuperLightLogger": "1.0.7"
-        }
-      },
       "MessageBox.Avalonia": {
         "type": "Direct",
         "requested": "[12.0.0, )",
@@ -125,14 +113,14 @@
       },
       "VelopackUpdateDialog.Avalonia": {
         "type": "Direct",
-        "requested": "[1.0.6, )",
-        "resolved": "1.0.6",
-        "contentHash": "opmQKfNpAdoGwonna1udO1I6bkNfFmaIGVZtE3vEvIMJk8qeWotPCZ+B2YOVIgOPkEbC1UAf+TpzJsM2SR8thQ==",
+        "requested": "[1.0.7, )",
+        "resolved": "1.0.7",
+        "contentHash": "wq6ORU0ROkIN/hvq+5yiB0Mwl/WDWSOFToCEMw08PU4cDXFbS5OITrzxSDItDnjaJmtc1eILSU2LLW73TnJOdg==",
         "dependencies": {
           "Avalonia": "12.0.4",
           "CommunityToolkit.Mvvm": "8.4.2",
           "SuperLightLogger": "1.0.7",
-          "Velopack": "1.1.1"
+          "Velopack": "1.2.0"
         }
       },
       "Avalonia.Angle.Windows.Natives": {
@@ -338,8 +326,8 @@
       },
       "Velopack": {
         "type": "Transitive",
-        "resolved": "1.1.1",
-        "contentHash": "NvPcAHnGj97qFToV4HZIEs05UfWYMXo0BAFUVmsf+/Xb1Bxqvk7H09CXanCqb5Vpd42tN5h7dz/qHLvWnTMpzw=="
+        "resolved": "1.2.0",
+        "contentHash": "Rz67gJL619fSBS6omaSINUxyDuwhIxkm5mmubf7uLd5Qgi6LLKaKCha+QFP6n+Bw/UjA0vutnH4JQfYzn6ANtw=="
       }
     },
     "net10.0-windows8.0/win-x64": {
