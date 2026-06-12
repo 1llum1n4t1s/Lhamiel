@@ -38,11 +38,7 @@
                     TintOpacity="0.9" />
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
-        <!--  アクセントカラーオーバーレイ（OSのアクセントカラーを超薄く重ねる）  -->
-        <Border
-            x:Name="AccentOverlay"
-            IsHitTestVisible="False"
-            Opacity="0.04" />
+        <!--  アクセントカラーオーバーレイは AccentTintHelper がここ（アクリル直後）に挿入する  -->
         <Grid>
             <!--  ═══ サイドバー + コンテンツ ═══  -->
             <TabControl Margin="16,36,16,16" Classes="sidebar">

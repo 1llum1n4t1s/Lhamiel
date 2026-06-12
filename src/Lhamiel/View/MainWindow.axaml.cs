@@ -14,36 +14,13 @@ namespace Lhamiel.View;
 public partial class MainWindow : Window
 {
     private Border? _dropOverlay;
-    private Border? _accentOverlay;
     private bool _isProcessingDrop;
 
     private void InitializeComponent()
     {
         AvaloniaXamlLoader.Load(this);
         _dropOverlay = this.FindControl<Border>("DropOverlay");
-        _accentOverlay = this.FindControl<Border>("AccentOverlay");
-        ApplyAccentOverlay();
         InitDebugTapArea();
-    }
-
-    /// <summary>
-    /// OSのアクセントカラーを取得してオーバーレイに適用
-    /// </summary>
-    private void ApplyAccentOverlay()
-    {
-        if (_accentOverlay is null) return;
-        try
-        {
-            var colors = Application.Current?.PlatformSettings?.GetColorValues();
-            if (colors is { } c)
-            {
-                _accentOverlay.Background = new SolidColorBrush(c.AccentColor1);
-            }
-        }
-        catch
-        {
-            // アクセントカラー取得に失敗した場合はオーバーレイなし
-        }
     }
 
     /// <summary>
@@ -55,6 +32,7 @@ public partial class MainWindow : Window
         {
             InitializeComponent();
             Util.AcrylicFallbackHelper.Attach(this);
+            Util.AccentTintHelper.Attach(this);
             var pickExtractionFolder = () => PickFolderAsync(App.Text("Settings.Output.BrowseExtraction"));
             var pickCompressionFolder = () => PickFolderAsync(App.Text("Settings.Output.BrowseCompression"));
             void ShowProgressWindow(ProgressWindow w)

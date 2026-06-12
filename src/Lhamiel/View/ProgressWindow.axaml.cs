@@ -50,6 +50,7 @@ public partial class ProgressWindow : Window
         // コンポーネントの初期化
         InitializeComponent();
         Util.AcrylicFallbackHelper.Attach(this);
+        Util.AccentTintHelper.Attach(this);
 
         // 操作タイプに応じたタイトルとラベルを設定
         Title = $"{operationType} - Lhamiel";

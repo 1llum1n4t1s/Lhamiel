@@ -23,6 +23,7 @@ public partial class DiskSpaceDialog : Window
 
         AvaloniaXamlLoader.Load(this);
         AcrylicFallbackHelper.Attach(this);
+        AccentTintHelper.Attach(this);
 
         var titleText = this.FindControl<TextBlock>("TitleText");
         var requiredText = this.FindControl<TextBlock>("RequiredText");

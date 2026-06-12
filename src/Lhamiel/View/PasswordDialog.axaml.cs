@@ -99,6 +99,7 @@ public partial class PasswordDialog : Window
         Mode = mode;
         InitializeComponent();
         Util.AcrylicFallbackHelper.Attach(this);
+        Util.AccentTintHelper.Attach(this);
 
         Opened += (_, _) => _passwordBox?.Focus();
     }
