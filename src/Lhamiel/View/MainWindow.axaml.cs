@@ -54,6 +54,7 @@ public partial class MainWindow : Window
         try
         {
             InitializeComponent();
+            Util.AcrylicFallbackHelper.Attach(this);
             var pickExtractionFolder = () => PickFolderAsync(App.Text("Settings.Output.BrowseExtraction"));
             var pickCompressionFolder = () => PickFolderAsync(App.Text("Settings.Output.BrowseCompression"));
             void ShowProgressWindow(ProgressWindow w)

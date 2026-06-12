@@ -55,6 +55,7 @@ public partial class ErrorRecoveryDialog : Window
     {
         ErrorInfo = errorInfo;
         InitializeComponent();
+        Util.AcrylicFallbackHelper.Attach(this);
         SetErrorInfo();
     }
 

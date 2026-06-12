@@ -98,6 +98,7 @@ public partial class PasswordDialog : Window
         IsRetry = isRetry;
         Mode = mode;
         InitializeComponent();
+        Util.AcrylicFallbackHelper.Attach(this);
 
         Opened += (_, _) => _passwordBox?.Focus();
     }
