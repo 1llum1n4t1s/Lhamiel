@@ -54,10 +54,10 @@
             <Setter Property="Template">
                 <ControlTemplate TargetType="TabControl">
                     <Grid ColumnDefinitions="180,*">
-                        <!--  浮遊サイドバーパネル  -->
+                        <!--  浮遊サイドバーパネル（下マージンは BoxShadow のフェード領域: ウィンドウ下端 16px と合わせて影の伸び ~28px を収める）  -->
                         <Border
                             Grid.Column="0"
-                            Margin="0,0,12,0"
+                            Margin="0,0,12,12"
                             Padding="6"
                             Background="{DynamicResource Brush.Container}"
                             BorderBrush="{DynamicResource Brush.Border}"
