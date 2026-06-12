@@ -59,7 +59,7 @@
 | `ExtractionOutputToSameDirectory` | bool | `false` | アーカイブと同じ場所に展開 |
 | `OpenExtractionOutputFolder` | bool | `true` | 展開後にフォルダを開く |
 | `CreateArchiveNameFolder` | bool | `true` | アーカイブ名でフォルダ作成（二重フォルダ防止含む） |
-| `VerifyAfterExtraction` | bool | `true` | 展開後に CRC 検証（`ArchiveIntegrityVerifier.Test()`）を実行 |
+| `VerifyAfterExtraction` | bool | `true` | **[Legacy / no-op]** v1.0.183 以降は参照されない。CRC は展開中に 7z.dll が常時照合し、不一致は展開自体が失敗する（展開後の二度読み再検証パスは廃止）。キーは既存 settings.json 互換のため維持 |
 | `NormalizeUnicodeFileNames` | bool | `true` | macOS HFS+ 由来の NFD ファイル名を NFC に正規化 |
 | `PropagateMarkOfTheWeb` | bool | `true` | 元アーカイブの Zone.Identifier ADS を展開ファイルに伝播 |
 

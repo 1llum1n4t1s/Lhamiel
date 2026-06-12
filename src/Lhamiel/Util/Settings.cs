@@ -252,7 +252,10 @@ public class Settings
     public int SevenZipCompressionLevel { get; set; } = 5; // Normal
 
     /// <summary>
-    /// 展開後にアーカイブの CRC 整合性検証を実行するかどうか
+    /// [Legacy / no-op] 展開後にアーカイブの CRC 整合性検証を実行するかどうか。
+    /// v1.0.183 以降は CRC を展開中に 7z.dll が常時照合する (不一致は展開自体が失敗する) ため、
+    /// 展開後の二度読み再検証パスは廃止され、この設定は参照されない。
+    /// 既存 settings.json との互換のためプロパティのみ維持する。
     /// </summary>
     public bool VerifyAfterExtraction { get; set; } = true;
 

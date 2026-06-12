@@ -227,22 +227,6 @@ public class HeaderEncryptedArchiveTests : IDisposable
     }
 
     [Fact]
-    public async Task VerifyArchiveAsync_HeaderEncrypted_PasswordEnablesRealVerification()
-    {
-        var archive = await CreateHeaderEncryptedArchiveAsync("data5");
-
-        // パスワード無し: ctor 失敗 → 「破損」と区別できず検証失敗扱い (既知の制約)
-        var withoutPw = await ArchiveIntegrityVerifier.VerifyArchiveAsync(
-            archive, TestContext.Current.CancellationToken);
-        Assert.False(withoutPw.IsValid);
-
-        // 検証済みパスワード付き: 実際に CRC 検証が走り正常判定になる
-        var withPw = await ArchiveIntegrityVerifier.VerifyArchiveAsync(
-            archive, TestContext.Current.CancellationToken, Password);
-        Assert.True(withPw.IsValid);
-    }
-
-    [Fact]
     public async Task ExtractArchiveAsync_HeaderEncrypted_CancelPrompt_CancelsExtraction()
     {
         // codex P2 #3385210131: 構造解析プロンプトの明示キャンセルは従来経路へ合流せず
@@ -317,10 +301,10 @@ public class HeaderEncryptedArchiveTests : IDisposable
     [Fact]
     public async Task ExtractArchive_HeaderVisibleEncrypted_PromptedPassword_InvokesCallback()
     {
-        // codex P2 #3386876537/#3386876542: ヘッダ可視の暗号化アーカイブ (パスワード ZIP /
+        // codex P2 #3386876537: ヘッダ可視の暗号化アーカイブ (パスワード ZIP /
         // he=off 7z) は展開中の AsyncPasswordQuery が平文パスワードを知る唯一の経路。
         // 入力されたパスワードが onPasswordPrompted で呼び出し側に通知される
-        // (上位層での redaction 登録 + CRC 検証用パスワードの捕捉に使う)。
+        // (上位層での redaction 登録に使う)。
         var archive = await CreateHeaderEncryptedArchiveAsync("data14", encryptFileNames: false);
         var stub = new CorrectPasswordDialog();
         ArchiveProcessor.PasswordDialogImpl = stub;
@@ -341,13 +325,12 @@ public class HeaderEncryptedArchiveTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtractArchiveAsync_HeaderVisibleEncrypted_PromptedPassword_CrcVerificationSucceeds()
+    public async Task ExtractArchiveAsync_HeaderVisibleEncrypted_PromptedPassword_CompletesWithoutErrors()
     {
-        // codex P2 #3386876542: knownPassword (構造解析で検証済み) を持たないヘッダ可視の
-        // 暗号化アーカイブでも、展開中プロンプトで受理されたパスワードが CRC 検証へ
-        // 引き回され、VerifyAfterExtraction=true で検証が完走する。誤った値が渡れば
-        // reader.Test() が WrongPassword で失敗してエラー通知が出るため、Errors が
-        // 空であること = 受理されたパスワードで検証されたことの裏付けになる。
+        // ヘッダ可視の暗号化アーカイブ (パスワード ZIP / he=off 7z) を、展開中プロンプトで
+        // 受理されたパスワードで最後まで展開できることの end-to-end 確認。
+        // CRC は展開中に 7z.dll が照合する (不一致なら reader.Save が失敗して Errors に出る)
+        // ため、Errors が空であること = 全エントリが CRC 検証済みで展開されたことの裏付け。
         var archive = await CreateHeaderEncryptedArchiveAsync("data15", encryptFileNames: false);
         var pwdStub = new CorrectPasswordDialog();
         var msgStub = new RecordingMessageService();
@@ -356,59 +339,12 @@ public class HeaderEncryptedArchiveTests : IDisposable
         ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var outDir = Path.Combine(_dir, "out15");
-        var snapshot = new Settings { VerifyAfterExtraction = true };
         var (outputPath, _) = await ArchiveProcessor.ExtractArchiveAsync(
-            archive, outDir, outputToSameDirectory: false, progressWindow: null,
-            settingsSnapshot: snapshot);
+            archive, outDir, outputToSameDirectory: false, progressWindow: null);
 
         Assert.NotNull(outputPath);
         Assert.True(File.Exists(Path.Combine(outputPath!, "data15", "secret.txt")));
-        Assert.Empty(msgStub.Errors); // CRC 検証失敗・展開エラーのいずれも発生していない
+        Assert.Empty(msgStub.Errors); // 展開エラー (CRC 不一致含む) が発生していない
         Assert.Equal(1, pwdStub.CallCount); // 展開中の 1 回のみ (ヘッダ可視なので構造解析プロンプトは不要)
-    }
-
-    [Fact]
-    public void SelectVerificationPassword_SingleSource_PicksAcceptedPassword()
-    {
-        // codex P2 #3389751072: 単一パスワード (または無し) なら従来どおり検証する。
-        // プロンプトが出た場合は最後の入力 = 受理されたパスワードを優先する。
-        Assert.Equal((null, false),
-            ArchiveProcessor.SelectVerificationPassword(null, null, []));
-        Assert.Equal(("known", false),
-            ArchiveProcessor.SelectVerificationPassword("known", null, []));
-        Assert.Equal(("typed", false),
-            ArchiveProcessor.SelectVerificationPassword(null, "typed", ["typed"]));
-        // knownPassword とプロンプト入力が同一文字列なら 1 種類なので検証する
-        Assert.Equal(("same", false),
-            ArchiveProcessor.SelectVerificationPassword("same", "same", ["same"]));
-    }
-
-    [Fact]
-    public void SelectVerificationPassword_MultipleDistinctPasswords_SkipsVerification()
-    {
-        // codex P2 #3389751072: 複数の異なるパスワードが 7z.dll に渡っていた場合、
-        // 単一パスワードの reader.Test() は別パスワードのエントリで CRC 失敗し
-        // 「破損」と誤表示されるため検証をスキップする。
-        Assert.Equal(((string?)null, true),
-            ArchiveProcessor.SelectVerificationPassword(null, "pw2", ["pw1", "pw2"]));
-        Assert.Equal(((string?)null, true),
-            ArchiveProcessor.SelectVerificationPassword("known", "typed", ["typed"]));
-    }
-
-    [Fact]
-    public async Task VerifyArchiveAsync_UnredactableShortPassword_SanitizesErrorDetail()
-    {
-        // codex P2 #3386732834: 1〜3 文字パスワード (Extract は既存書庫互換で受理) は
-        // Logger redaction (4 文字下限) の対象外のため、パスワード付き検証の失敗詳細は
-        // 生の例外メッセージではなく型名 + HResult に置き換えられる
-        // (ErrorMessage は呼び出し側がログ・ダイアログへ転載するため)。
-        var archive = await CreateHeaderEncryptedArchiveAsync("data13");
-
-        var result = await ArchiveIntegrityVerifier.VerifyArchiveAsync(
-            archive, TestContext.Current.CancellationToken, "xq1");
-
-        Assert.False(result.IsValid);
-        Assert.Contains("HResult=0x", result.ErrorMessage ?? "", StringComparison.Ordinal); // sanitized 形式
-        Assert.DoesNotContain("xq1", result.ErrorMessage ?? "", StringComparison.Ordinal);
     }
 }

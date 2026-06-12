@@ -281,38 +281,6 @@ public static class ArchiveProcessor
     }
 
     /// <summary>
-    /// 展開後 CRC 検証に使うパスワードを選択する。
-    /// プロンプト経由の最後の入力 = 7z.dll に受理されたパスワードを優先し
-    /// (プロンプトが出た = knownPassword が展開中に通らなかった場合のみ)、
-    /// 複数の異なるパスワードが 7z.dll に渡っていた場合は検証スキップを指示する。
-    /// <para>
-    /// エントリごとに異なるパスワードを持つアーカイブでは、単一パスワードの
-    /// reader.Test() が別パスワードのエントリで CRC 失敗し、展開成功直後に
-    /// 「破損」と誤表示されうる (codex P2 #3389751072)。どの入力がどのエントリで
-    /// 受理されたかは追跡できないため、複数の異なるパスワードが使われたときは
-    /// 検証をスキップする (誤った破損エラーを出すより安全側)。
-    /// なお現行ライブラリ (1llum1n4t1s.Sevenzip) は PasswordQuery が Save 単位で
-    /// パスワードをキャッシュし、誤パスワード (WrongPassword / DataError+PasswordTimes&gt;0)
-    /// は cache reset と同時に展開全体を中断するため、「複数の異なるパスワードを
-    /// 受理して展開成功」は現状到達不能 (実装確認済み)。ライブラリの再質問挙動が
-    /// 変わっても誤エラーを出さないための defense-in-depth として置く。
-    /// </para>
-    /// </summary>
-    /// <param name="knownPassword">構造解析 (he=on) で検証済みのパスワード</param>
-    /// <param name="lastPromptedPassword">展開中プロンプトの最後の入力</param>
-    /// <param name="promptedPasswords">展開中プロンプトで入力された全パスワード (重複なし)</param>
-    internal static (string? Password, bool SkipVerification) SelectVerificationPassword(
-        string? knownPassword, string? lastPromptedPassword, IReadOnlyCollection<string> promptedPasswords)
-    {
-        var distinct = new HashSet<string>(promptedPasswords, StringComparer.Ordinal);
-        if (knownPassword is not null)
-            distinct.Add(knownPassword);
-        if (distinct.Count >= 2)
-            return (null, true);
-        return (lastPromptedPassword ?? knownPassword, false);
-    }
-
-    /// <summary>
     /// アーカイブファイルの展開処理を実行
     /// </summary>
     /// <param name="filePath">展開するファイルのパス</param>
@@ -348,22 +316,18 @@ public static class ArchiveProcessor
             IDisposable? knownPasswordRedaction = null;
             string? knownPassword = null;
             // 展開中の AsyncPasswordQuery でユーザーが入力したパスワードの捕捉
-            // (codex P2 #3386876537 / #3386876542)。ヘッダ可視の暗号化アーカイブ (パスワード
-            // ZIP / he=off 7z) は構造解析プロンプトを通らず knownPassword が null のままなので、
-            // ExtractArchive からのコールバックで (1) この層の catch/finally 寿命の redaction
-            // scope を登録し、(2) CRC 検証へ渡す検証済みパスワードを捕捉する。
+            // (codex P2 #3386876537)。ヘッダ可視の暗号化アーカイブ (パスワード ZIP /
+            // he=off 7z) は構造解析プロンプトを通らず knownPassword が null のままなので、
+            // ExtractArchive からのコールバックでこの層の catch/finally 寿命の redaction
+            // scope を登録する。
             // コールバックは 7z.dll 由来のスレッドから呼ばれるためリスト自身を lock に使う。
             var promptedPasswordRedactions = new List<IDisposable>();
-            var promptedPasswords = new HashSet<string>(StringComparer.Ordinal);
-            string? lastPromptedPassword = null;
             var hasUnredactablePromptedPassword = false;
             void OnPasswordPrompted(string pw)
             {
                 lock (promptedPasswordRedactions)
                 {
                     promptedPasswordRedactions.Add(Logger.RegisterRedactionToken(pw));
-                    promptedPasswords.Add(pw);
-                    lastPromptedPassword = pw;
                     if (!Logger.CanRedactToken(pw))
                         hasUnredactablePromptedPassword = true;
                 }
@@ -571,40 +535,14 @@ public static class ArchiveProcessor
                         structurePromptExhausted,
                         OnPasswordPrompted);
 
-                    // 展開後 CRC 整合性検証（設定で有効な場合のみ）
-                    if (snapshot.VerifyAfterExtraction)
-                    {
-                        // 展開が成功した時点で、プロンプト経由の最後の入力 = 7z.dll に受理された
-                        // パスワード。knownPassword (構造解析で検証済み) を持たないヘッダ可視の
-                        // 暗号化アーカイブ (パスワード ZIP / he=off 7z) でも CRC 検証を実際に実行
-                        // できるようにする (codex P2 #3386876542)。複数の異なるパスワードが
-                        // 使われていた場合の扱いは SelectVerificationPassword 参照 (codex P2 #3389751072)。
-                        string? lastPrompted;
-                        HashSet<string> usedPasswords;
-                        lock (promptedPasswordRedactions)
-                        {
-                            lastPrompted = lastPromptedPassword;
-                            usedPasswords = new HashSet<string>(promptedPasswords, StringComparer.Ordinal);
-                        }
-                        var (verificationPassword, skipVerification) =
-                            SelectVerificationPassword(knownPassword, lastPrompted, usedPasswords);
-                        if (skipVerification)
-                        {
-                            Logger.Log($"複数の異なるパスワードが使用されたため展開後 CRC 検証をスキップ: {filePath}");
-                        }
-                        else
-                        {
-                            UiDispatcherImpl.Post(() => progressWindow?.SetIndeterminate(App.Text("Progress.VerifyingIntegrity")));
-                            var verification = await ArchiveIntegrityVerifier.VerifyArchiveAsync(filePath, cancellationToken, verificationPassword);
-                            if (!verification.IsValid)
-                            {
-                                Logger.Log($"展開後 CRC 検証失敗: {filePath} - {verification.ErrorMessage}", LogLevel.Warning);
-                                await UiDispatcherImpl.InvokeAsync(() =>
-                                    MessageServiceImpl.ShowError(
-                                        App.Text("Error.CrcVerificationFailed", Path.GetFileName(filePath), verification.ErrorMessage ?? "")));
-                            }
-                        }
-                    }
+                    // CRC 整合性は展開中に 7z.dll が照合済み (二度読みの再検証パスは v1.0.183 で廃止)。
+                    // エントリの CRC 不一致は SetOperationResult(CRCError) → ライブラリが Cancel を
+                    // 返して展開を中断 → reader.Save が SevenZipException を投げるため、
+                    // ExtractArchiveAsync が成功した時点で全エントリの CRC 検証が完了している
+                    // (ライブラリの ExtractCallback / CallbackBase.Make(Failed)=Cancel の構造的保証)。
+                    // 旧実装はここで ArchiveIntegrityVerifier.VerifyArchiveAsync (reader.Test()) を
+                    // 呼んでいたが、同じアーカイブの全エントリをもう一度フルデコードするだけの
+                    // 重複処理で、大型アーカイブでは展開時間を約 2 倍にしていた。
 
                     // Mark of the Web 伝播（設定で有効 かつ 元アーカイブに Zone.Identifier がある場合）
                     // 既存ファイルに誤って Zone.Identifier を付与しないよう、ディレクトリ全体ではなく
