@@ -591,16 +591,28 @@
                 <TabItem Header="{DynamicResource Text.Sidebar.Version}">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Margin="8,0,8,12">
-                            <TextBlock
-                                Margin="4,0,0,4"
-                                FontSize="28"
-                                FontWeight="Bold"
-                                Text="Lhamiel" />
-                            <TextBlock
+                            <!--  アプリアイコン + タイトル (横並び)  -->
+                            <StackPanel
                                 Margin="4,0,0,20"
-                                FontSize="14"
-                                Foreground="{DynamicResource Brush.FG2}"
-                                Text="{DynamicResource Text.Version.Description}" />
+                                Orientation="Horizontal">
+                                <Image
+                                    Width="64"
+                                    Height="64"
+                                    Margin="0,0,16,0"
+                                    VerticalAlignment="Center"
+                                    RenderOptions.BitmapInterpolationMode="HighQuality"
+                                    Source="avares://Lhamiel/icon/app_icon.png" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock
+                                        FontSize="28"
+                                        FontWeight="Bold"
+                                        Text="Lhamiel" />
+                                    <TextBlock
+                                        FontSize="14"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="{DynamicResource Text.Version.Description}" />
+                                </StackPanel>
+                            </StackPanel>
 
                             <!--  バージョン情報パネル  -->
                             <Border
