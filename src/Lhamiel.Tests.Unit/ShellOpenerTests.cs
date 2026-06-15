@@ -8,7 +8,10 @@ namespace Lhamiel.Tests.Unit;
 /// Issue #54 (Process.Start UI スレッド blocking) 対策で導入されたヘルパが、
 /// DryRun 経由でプロセス起動を抑止しつつ Task.Run 化されていることを保証する。
 /// </summary>
-[Collection("ShellOpener")]
+// FolderOpener コレクションと同一にして直列化する。FolderOpenerAsyncTests が
+// ShellOpener.DryRun と FolderOpener.DryRun を同時に操作するため、別コレクションで
+// 並列実行されると DryRun フラグが競合し、テスト中に実 explorer が起動しうる。
+[Collection("FolderOpener")]
 public class ShellOpenerTests : IDisposable
 {
     public ShellOpenerTests()

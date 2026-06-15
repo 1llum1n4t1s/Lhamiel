@@ -1100,18 +1100,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
             // そのまま Snapshot に流すと「TAR なのにパスワード入力ダイアログが出て CreateArchiveWriter
             // で InvalidOperationException」になる。Snapshot 段で TAR なら強制 false に押し下げる
             // (VM 側の値は保持されるので ZIP/7z に戻せば自動復活、codex P2 #3381085177)。
-            var isTar = string.Equals(SelectedCompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase);
-            _settingsManager.Mutate(s =>
-            {
-                // codex P2 #3381582652: 同じ mutation で CompressionFormat も UI 選択値で上書きする。
-                // debounced AutoSave 前に drop された場合、settings.CompressionFormat が古い値のまま
-                // isTar の計算結果と矛盾するスナップショットを作ると「TAR なのにパスワード保護 OFF が
-                // 効くが、フォーマットは ZIP/7z」という誤った非保護アーカイブを生成しうる。
-                s.CompressionFormat = SelectedCompressionFormat;
-                s.IsPasswordProtectionEnabled = IsPasswordProtectionEnabled && !isTar;
-                s.PasswordMode = PasswordMode;
-                s.EncryptFileNames = EncryptFileNames;
-            });
+            // Snapshot を取る前に VM の現在値を「全て」永続層へ同期する。AutoSave は 300ms
+            // デバウンスのため、設定を切り替えた直後にドロップすると snapshot が古い値を読む。
+            // 以前はここで password/format の 4 フィールドだけを Mutate していたが、
+            // OpenExtractionOutputFolder / CreateArchiveNameFolder / OpenCompressionOutputFolder /
+            // 出力ディレクトリ等の表示系設定は同期されず、「展開先を開く」を切り替えた直後の
+            // ドロップで snapshot が古い値を引きずる陳腐化レースがあった。ApplySettingsToManager()
+            // で全設定を確定させることで全フィールドの陳腐化を防ぐ (TAR 時のパスワード保護
+            // coerce も ApplySettingsToManager 内で同じく実施され、codex P2 #3381582652 /
+            // #3381085181 の意図「全部 VM の現在値を Settings に同期してから Snapshot」を満たす)。
+            ApplySettingsToManager();
             var settings = _settingsManager.CreateSnapshot();
 
             if (validPaths.Count == 1)
@@ -1140,8 +1138,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         progressWindow,
                         cancellationToken,
                         closeWindowOnCompletion: true);
-                    if (settings.OpenCompressionOutputFolder && !settings.CompressionOutputToSameDirectory)
-                        FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
+                    // 「元と同じ場所に保存」ON でも出力フォルダを開く（CLI 経路と挙動を統一）。
+                    if (settings.OpenCompressionOutputFolder)
+                        FolderOpener.OpenFolder(ResolveCompressionOutputFolder(settings, path));
                 }
             }
             else if (isExtraction)
@@ -1182,8 +1181,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         cancellationToken,
                         closeWindowOnCompletion: true);
                 }
-                if (settings.OpenCompressionOutputFolder && !settings.CompressionOutputToSameDirectory)
-                    FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
+                // 「元と同じ場所に保存」ON でも出力フォルダを開く（CLI 経路と挙動を統一）。
+                if (settings.OpenCompressionOutputFolder)
+                    FolderOpener.OpenFolder(ResolveCompressionOutputFolder(settings, validPaths[0]));
             }
         }
         catch (OperationCanceledException)
@@ -1399,6 +1399,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         foreach (var (_, outputPath, structureInfo) in extractionResults)
             FolderOpener.OpenExtractionResult(outputPath, structureInfo, createArchiveNameFolder);
+    }
+
+    /// <summary>
+    /// 圧縮後に開く出力フォルダを決定する。「元と同じ場所に保存」ON のときはソースのある
+    /// ディレクトリ（＝アーカイブが作られる場所）を、OFF のときは出力先ディレクトリ設定を返す。
+    /// CLI 経路（App.ProcessCompression / ProcessMergedCompression）と挙動を揃える。
+    /// </summary>
+    private static string ResolveCompressionOutputFolder(Settings settings, string firstSourcePath)
+    {
+        return settings.CompressionOutputToSameDirectory
+            ? (Path.GetDirectoryName(firstSourcePath) ?? settings.CompressionOutputDirectory)
+            : settings.CompressionOutputDirectory;
     }
 
     /// <summary>
