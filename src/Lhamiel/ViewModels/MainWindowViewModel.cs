@@ -1169,6 +1169,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         progressWindow,
                         cancellationToken,
                         closeWindowOnCompletion: true);
+                    // まとめ圧縮は単一アーカイブなので出力先も 1 つ。「元と同じ場所に保存」ON でも開く。
+                    if (settings.OpenCompressionOutputFolder)
+                        FolderOpener.OpenFolder(ResolveCompressionOutputFolder(settings, validPaths[0]));
                 }
                 else
                 {
@@ -1180,10 +1183,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
                         progressWindow,
                         cancellationToken,
                         closeWindowOnCompletion: true);
+                    // 個別圧縮は各アーカイブがソースと同じ場所に作られる。「元と同じ場所に保存」ON で
+                    // ソースが複数ディレクトリに跨る場合は、重複を除いた全出力ディレクトリを開く
+                    // (validPaths[0] だけだと 2 つ目以降の出力先が開かない、codex P2 #3415910507)。
+                    if (settings.OpenCompressionOutputFolder)
+                        OpenCompressionOutputFolders(settings, validPaths);
                 }
-                // 「元と同じ場所に保存」ON でも出力フォルダを開く（CLI 経路と挙動を統一）。
-                if (settings.OpenCompressionOutputFolder)
-                    FolderOpener.OpenFolder(ResolveCompressionOutputFolder(settings, validPaths[0]));
             }
         }
         catch (OperationCanceledException)
@@ -1411,6 +1416,31 @@ public sealed partial class MainWindowViewModel : ObservableObject
         return settings.CompressionOutputToSameDirectory
             ? (Path.GetDirectoryName(firstSourcePath) ?? settings.CompressionOutputDirectory)
             : settings.CompressionOutputDirectory;
+    }
+
+    /// <summary>
+    /// 個別圧縮（<see cref="CompressMultipleAsOne"/>=false）の出力フォルダを開く。
+    /// 「元と同じ場所に保存」ON のときは各アーカイブがソースと同じディレクトリに作られるため、
+    /// ソースが複数ディレクトリに跨る場合は重複を除いた全ディレクトリを開く。OFF のときは
+    /// 単一の出力先ディレクトリ設定を開く。
+    /// </summary>
+    private static void OpenCompressionOutputFolders(Settings settings, IReadOnlyList<string> sourcePaths)
+    {
+        if (!settings.CompressionOutputToSameDirectory)
+        {
+            FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
+            return;
+        }
+
+        var openedDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var source in sourcePaths)
+        {
+            var dir = Path.GetDirectoryName(source);
+            if (string.IsNullOrEmpty(dir))
+                dir = settings.CompressionOutputDirectory;
+            if (openedDirs.Add(dir))
+                FolderOpener.OpenFolder(dir);
+        }
     }
 
     /// <summary>
