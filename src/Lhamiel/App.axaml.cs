@@ -481,8 +481,14 @@ public partial class App : Application
                 Logger.Log($"複数ファイル展開が完了しました: {extractionResults.Count}/{filePaths.Length}個成功");
                 if (settings.OpenExtractionOutputFolder)
                 {
+                    // explorer 起動を並行で投げて Task.WhenAll でまとめて待つ。await することで
+                    // 直後の ShutdownIfNeeded より前に全フォルダの起動が完了する (自己終了する
+                    // CLI 経路でのシャットダウン競合を解消、v1.0.171 回帰の修正)。順次 await だと
+                    // アーカイブ数ぶん起動が直列化してシャットダウンが遅れるため並行化する (gemini)。
+                    var openTasks = new List<Task>();
                     foreach (var (_, outputPath, structureInfo) in extractionResults)
-                        FolderOpener.OpenExtractionResult(outputPath, structureInfo, settings.CreateArchiveNameFolder);
+                        openTasks.Add(FolderOpener.OpenExtractionResultAsync(outputPath, structureInfo, settings.CreateArchiveNameFolder));
+                    await Task.WhenAll(openTasks);
                 }
             }
             else
@@ -512,7 +518,8 @@ public partial class App : Application
                     var baseDir = settings.CompressionOutputToSameDirectory
                         ? Path.GetDirectoryName(sourcePaths[0]) ?? ""
                         : settings.CompressionOutputDirectory;
-                    FolderOpener.OpenFolder(baseDir);
+                    // await して ShutdownIfNeeded より前に explorer 起動を完了させる (v1.0.171 回帰の修正)。
+                    await FolderOpener.OpenFolderAsync(baseDir);
                 }
             }
             else
@@ -639,7 +646,8 @@ public partial class App : Application
             {
                 Logger.Log("ファイル展開処理が完了しました");
                 if (settings.OpenExtractionOutputFolder)
-                    FolderOpener.OpenExtractionResult(finalOutputPath, structureInfo, settings.CreateArchiveNameFolder);
+                    // await して ShutdownIfNeeded より前に explorer 起動を完了させる (v1.0.171 回帰の修正)。
+                    await FolderOpener.OpenExtractionResultAsync(finalOutputPath, structureInfo, settings.CreateArchiveNameFolder);
             }
             else
             {
@@ -669,7 +677,8 @@ public partial class App : Application
                         sourcePath, format, settings.CompressionOutputDirectory, settings.CompressionOutputToSameDirectory);
                     var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
                     if (directoryToOpen != null)
-                        FolderOpener.OpenFolder(directoryToOpen);
+                        // await して ShutdownIfNeeded より前に explorer 起動を完了させる (v1.0.171 回帰の修正)。
+                        await FolderOpener.OpenFolderAsync(directoryToOpen);
                 }
             }
             else
