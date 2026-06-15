@@ -481,10 +481,14 @@ public partial class App : Application
                 Logger.Log($"複数ファイル展開が完了しました: {extractionResults.Count}/{filePaths.Length}個成功");
                 if (settings.OpenExtractionOutputFolder)
                 {
-                    // await することで explorer 起動が直後の ShutdownIfNeeded より前に完了する
-                    // (自己終了する CLI 経路でのシャットダウン競合を解消、v1.0.171 回帰の修正)。
+                    // explorer 起動を並行で投げて Task.WhenAll でまとめて待つ。await することで
+                    // 直後の ShutdownIfNeeded より前に全フォルダの起動が完了する (自己終了する
+                    // CLI 経路でのシャットダウン競合を解消、v1.0.171 回帰の修正)。順次 await だと
+                    // アーカイブ数ぶん起動が直列化してシャットダウンが遅れるため並行化する (gemini)。
+                    var openTasks = new List<Task>();
                     foreach (var (_, outputPath, structureInfo) in extractionResults)
-                        await FolderOpener.OpenExtractionResultAsync(outputPath, structureInfo, settings.CreateArchiveNameFolder);
+                        openTasks.Add(FolderOpener.OpenExtractionResultAsync(outputPath, structureInfo, settings.CreateArchiveNameFolder));
+                    await Task.WhenAll(openTasks);
                 }
             }
             else
