@@ -347,12 +347,32 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnSelectedCompressionFormatChanged(string value) => AutoSave();
 
+    /// <summary>
+    /// 直近に関連付けへ適用済みのアイコンバリアント (正規化済み)。
+    /// 関連付けタブの ComboBox は <c>SelectedValue</c> + <c>SelectedValueBinding</c> で、
+    /// 初期化 (起動時 or タブ初表示時) に <c>SelectedFileIconVariant</c> を
+    /// 「現在値 → null/空 → 現在値」と書き戻すことがあり、そのたびに
+    /// <see cref="OnSelectedFileIconVariantChanged"/> が発火する。実際にバリアントが
+    /// 変わったときだけ関連付けアイコンを再適用するため、適用済みの値を保持して照合する
+    /// (これをしないと起動/タブ表示のたびに全関連付けを再登録 + SHChangeNotify する回帰になる)。
+    /// </summary>
+    private string? _appliedFileIconVariant;
+
     partial void OnSelectedFileIconVariantChanged(string value)
     {
         OnPropertyChanged(nameof(FileIconPreview));
         AutoSave();
-        if (!_isLoading)
-            ApplyAssociationSettings(refreshAssociatedIcons: true);
+        if (_isLoading)
+            return;
+
+        // 空値 (ComboBox 初期化中の一時的な書き戻し) と同値は無視し、
+        // 実際にアイコンバリアントが変わったときだけ関連付けを再適用する。
+        var normalized = Settings.NormalizeFileIconVariant(value);
+        if (string.IsNullOrEmpty(value) || string.Equals(normalized, _appliedFileIconVariant, StringComparison.Ordinal))
+            return;
+
+        _appliedFileIconVariant = normalized;
+        ApplyAssociationSettings(refreshAssociatedIcons: true);
     }
 
     partial void OnExtractionOutputDirectoryChanged(string value) => AutoSave();
@@ -844,6 +864,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             ? Settings.SupportedCompressionFormats.FirstOrDefault(f => f.Equals(format, StringComparison.OrdinalIgnoreCase))
             : null) ?? "ZIP";
         SelectedFileIconVariant = Settings.NormalizeFileIconVariant(s.FileIconVariant);
+        // 起動時の ComboBox 書き戻しで OnSelectedFileIconVariantChanged が誤発火しても
+        // 関連付けを再適用しないよう、読み込んだバリアントを「適用済み」として記録する。
+        _appliedFileIconVariant = Settings.NormalizeFileIconVariant(s.FileIconVariant);
         ExtractionOutputToSameDirectory = s.ExtractionOutputToSameDirectory;
         ExtractionOutputToDirectory = !s.ExtractionOutputToSameDirectory;
         CompressionOutputToSameDirectory = s.CompressionOutputToSameDirectory;

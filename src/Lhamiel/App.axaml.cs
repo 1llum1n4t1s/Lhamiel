@@ -427,6 +427,22 @@ public partial class App : Application
         string operationName, string errorResourceKey, bool shouldShutdown)
     {
         ProgressWindow? progressWindow = null;
+
+        // 自己終了する CLI / ファイル関連付け / アイコンドロップ経路 (shouldShutdown=true) では、
+        // 操作中だけ自動シャットダウン (ShutdownMode.OnLastWindowClose) を抑止する。
+        // ProgressWindow のクローズ (ArchiveProcessor が CloseSafe で Dispatcher に Post) が、
+        // 「展開先/圧縮先を開く」の explorer 起動 (await 中に別スレッドで Process.Start) の最中に
+        // 処理されると、最後のウィンドウクローズ → 自動シャットダウンが explorer 起動と競合し、
+        // 起動し切る前にプロセスが落ちてフォルダが開かない回帰があった (#61 の await 化だけでは
+        // 明示 ShutdownIfNeeded 経路しか守れず、暗黙の自動シャットダウンが残っていた)。
+        // 操作完了後は finally で元の ShutdownMode に戻し、明示 ShutdownIfNeeded、または
+        // 復帰後の OnLastWindowClose (ダイアログ表示でシャットダウンを見送ったケース) で終了する。
+        // IPC 経路 (shouldShutdown=false) は常駐 MainWindow が居るため触らない。
+        var desktop = ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+        var originalShutdownMode = desktop?.ShutdownMode;
+        if (shouldShutdown && desktop != null)
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
         try
         {
             (progressWindow, var cancellationTokenSource, var cancelHandler) = SetupProgressWindow(operationName);
@@ -448,6 +464,10 @@ public partial class App : Application
                 }
             }
 
+            // explorer 起動 (operation 内で await 済み) が完了してから ProgressWindow を閉じる。
+            // OnExplicitShutdown 中なのでこのクローズでは自動シャットダウンしない (ArchiveProcessor が
+            // 既に閉じていれば CloseSafe は no-op)。
+            progressWindow.CloseSafe();
             ShutdownIfNeeded(shouldShutdown);
         }
         catch (OperationCanceledException)
@@ -461,6 +481,14 @@ public partial class App : Application
             Logger.LogException($"{operationName}でエラーが発生", ex);
             _ = MessageService.ShowError(App.Text(errorResourceKey, ex.Message));
             ShutdownIfNeeded(shouldShutdown);
+        }
+        finally
+        {
+            // 自動シャットダウンを元に戻す。ShutdownIfNeeded が (ProgressWindow / エラーダイアログが
+            // まだ可視で) シャットダウンを見送った場合でも、最後のウィンドウが閉じた時点で
+            // OnLastWindowClose が確実に終了させる安全網になる。
+            if (desktop != null && originalShutdownMode.HasValue)
+                desktop.ShutdownMode = originalShutdownMode.Value;
         }
     }
 
