@@ -587,7 +587,10 @@ public static class ArchiveProcessor
                     return (outputPath, structureInfo);
                 }
             }
-            catch (OperationCanceledException) when (structurePromptExhausted && !cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException oce) when (
+                structurePromptExhausted
+                && !cancellationToken.IsCancellationRequested
+                && oce.Data.Contains(ArchiveExtractor.PasswordCancelledOceDataKey))
             {
                 // 構造解析でパスワードを使い切った（誤入力の繰り返し、または暗号化アーカイブを
                 // パスワード無しでは開けない）結果の OCE。これはユーザーの明示キャンセルではなく
@@ -595,6 +598,9 @@ public static class ArchiveProcessor
                 // 単一経路でダイアログ無し終了）にせず、暗号化/パスワード誤りエラーとして表示し
                 // 失敗として扱う（null 戻り = 呼び出し側で失敗計上、#5）。!cancellationToken... の
                 // ガードで「ユーザーが進捗ウィンドウでキャンセルした」本物のキャンセルは除外する。
+                // oce.Data sentinel で、DiskSpaceChecker の extractCts.Cancel() 由来 OCE
+                // (ArchiveExtractor 内のローカル CTS で、外側 cancellationToken は未キャンセル) を
+                // 区別する (CodeRabbit レビュー指摘)。disk 容量 cancel は別の通常エラー経路に流す。
                 Logger.Log($"暗号化アーカイブのパスワードを解決できなかったため展開に失敗しました: {filePath}", LogLevel.Warning);
                 if (closeWindowOnCompletion)
                 {

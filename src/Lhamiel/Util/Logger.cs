@@ -490,8 +490,17 @@ public static class Logger
             // redaction token の有無にかかわらず、平文化してから ApplyRedaction → MaskUserPath を通して
             // 1 行 Error で出す (構造化ログとのトレードオフだが安全側に倒す)。ToString は Message と
             // StackTrace を両方含むため、構造化経路と比べて診断情報は失われない。
-            var maskedException = MaskUserPath(ApplyRedaction(exception.ToString()));
-            _logger.Error($"{maskedMessage}{Environment.NewLine}{maskedException}");
+            // exception=null は契約違反だが、呼び出し側の typo (`LogException(msg, null!)`) や
+            // 将来のリファクタで通る可能性があるため fail-safe する。NullReferenceException で
+            // ロガー自体が落ちるとログ機能全体が機能停止するため、message だけは必ず吐く
+            // (gemini レビュー指摘)。
+            var maskedException = exception is not null
+                ? MaskUserPath(ApplyRedaction(exception.ToString()))
+                : string.Empty;
+            if (string.IsNullOrEmpty(maskedException))
+                _logger.Error(maskedMessage);
+            else
+                _logger.Error($"{maskedMessage}{Environment.NewLine}{maskedException}");
             return;
         }
 

@@ -633,6 +633,12 @@ public static class ArchiveExtractor
         catch (IOException) { return (false, false, 0, default); }
         catch (UnauthorizedAccessException) { return (false, false, 0, default); }
         catch (ArgumentException) { return (false, false, 0, default); }
+        // File.GetAttributes / FileInfo は、長すぎるパス・無効文字・CAS / Mark-of-the-Web 拒否
+        // 等で SecurityException や NotSupportedException も投げる。"存在しない扱い" に倒すのは
+        // 「衝突なし=ダイアログを出さない」を意味し、その後の展開で正規エラー経路に流れるので
+        // ここで未捕捉のままアプリを落とすより安全 (gemini レビュー指摘)。
+        catch (System.Security.SecurityException) { return (false, false, 0, default); }
+        catch (NotSupportedException) { return (false, false, 0, default); }
     }
 
     /// <summary>
@@ -1310,7 +1316,7 @@ public static class ArchiveExtractor
                     // 呼び出し元の Task が TaskStatus.Canceled に正しく遷移する。
                     // CT が未キャンセル（純粋にユーザーがダイアログ Cancel を押しただけ）でも
                     // OCE.CancellationToken プロパティに記録されるため診断情報が向上する。
-                    throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"), cancellationToken);
+                    throw CreatePasswordCancelledOce(cancellationToken);
                 }
 
                 // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）
@@ -1449,7 +1455,7 @@ public static class ArchiveExtractor
             // ではない)。フラグが立っている = この失敗は中止に起因するので、種別を問わず通常の
             // キャンセル扱いに変換する。一時ディレクトリは finally が掃除する。
             Logger.Log("パスワード取得が中止されたため展開を中止します");
-            throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"), cancellationToken);
+            throw CreatePasswordCancelledOce(cancellationToken);
         }
         catch (OperationCanceledException oce) when (!cancellationToken.IsCancellationRequested && oce.InnerException is not null)
         {
@@ -1593,6 +1599,24 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
+    /// 「パスワード関連でキャンセルされた」ことを示すマーカー キー。
+    /// OCE.Data に乗せて呼び出し側 (<see cref="ArchiveProcessor"/>) に区別可能なシグナルを伝える。
+    /// <see cref="DiskSpaceChecker"/> の <c>extractCts.Cancel()</c> 由来 OCE と判別するための
+    /// sentinel (CodeRabbit レビュー指摘)。
+    /// </summary>
+    internal const string PasswordCancelledOceDataKey = "Lhamiel.PasswordCancelled";
+
+    /// <summary>
+    /// パスワード関連キャンセル用の OCE を <see cref="PasswordCancelledOceDataKey"/> sentinel 付きで生成する。
+    /// </summary>
+    private static OperationCanceledException CreatePasswordCancelledOce(CancellationToken cancellationToken)
+    {
+        var oce = new OperationCanceledException(App.Text("Error.UserCancelledExtraction"), cancellationToken);
+        oce.Data[PasswordCancelledOceDataKey] = true;
+        return oce;
+    }
+
+    /// <summary>
     /// 退避済みバックアップを元のパスへ戻す（移動段で失敗したときのロールバック）。
     /// 退避だけ実装して復元が無いと、上書き展開が移動段でコケたとき原本が
     /// <c>.Lhamiel_backup_&lt;guid&gt;</c> サイドファイルに退避されたまま宛先が空/部分になり、
@@ -1603,8 +1627,14 @@ public static class ArchiveExtractor
     /// </summary>
     private static void RestoreFromBackup(List<(string Original, string Backup)> backups)
     {
-        foreach (var (original, backup) in backups)
+        // LIFO (登録逆順) で復元する。バックアップ作成は親 → 子の順で登録される可能性があり
+        // (例: `a/`, `a/b/`, `a/b/c.txt` を退避すると Move 時にこの順序で entries が積まれる)、
+        // 戻すときは逆順 (子 → 親) で処理しないと、親ディレクトリ復元時にまだ残っている
+        // 子側の残骸と衝突する。ファイルシステム操作のロールバックは常に LIFO 順で行うのが
+        // 堅牢な実践 (gemini レビュー指摘)。
+        for (var index = backups.Count - 1; index >= 0; index--)
         {
+            var (original, backup) = backups[index];
             try
             {
                 // 移動段で original 側へ書き込まれた残骸を先に除去してから戻す
