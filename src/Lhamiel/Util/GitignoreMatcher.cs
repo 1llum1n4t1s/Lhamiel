@@ -643,8 +643,14 @@ public sealed class GitignoreMatcher
     {
         if (classBody.Length == 0 || classBody[^1] != '-')
             return classBody;
-        // 直前が '\\' なら既にエスケープ済み（`\-`）なのでそのまま返す。
-        if (classBody.Length >= 2 && classBody[^2] == '\\')
+        // 末尾 '-' の直前に連続する '\' の個数を数え、奇数のときだけ「既にエスケープ済み」と判定。
+        // 偶数のときは '\\' (リテラルバックスラッシュ) の連続でダッシュは未エスケープなので
+        // エスケープを足す。例: '\\-' は backslashCount=2 → 偶数 → ダッシュをエスケープ → '\\\-'。
+        // 単一 '\' で classBody[^2] のみ見る旧実装はこの偶数連続を誤判定していた。
+        var backslashCount = 0;
+        for (var i = classBody.Length - 2; i >= 0 && classBody[i] == '\\'; i--)
+            backslashCount++;
+        if (backslashCount % 2 == 1)
             return classBody;
         return classBody[..^1] + "\\-";
     }
