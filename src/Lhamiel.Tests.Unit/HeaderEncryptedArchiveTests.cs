@@ -263,19 +263,28 @@ public class HeaderEncryptedArchiveTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtractArchiveAsync_HeaderEncrypted_ExhaustedWrongPasswords_NoSecondPromptSet()
+    public async Task ExtractArchiveAsync_HeaderEncrypted_ExhaustedWrongPasswords_ShowsErrorNotSilentCancel()
     {
         // codex P2 #3386575724: 構造解析で 3 回パスワードを間違えたら、従来経路の
-        // AsyncPasswordQuery でさらに 3 回プロンプトを出さず、キャンセル扱いで中止する。
+        // AsyncPasswordQuery でさらに 3 回プロンプトを出さない（CallCount==3 のまま）。
+        // #5: ただし結果は「無言キャンセル（OCE）」ではなく「暗号化/パスワード誤り」エラーとして
+        // 表示し、失敗（null 戻り）として扱う。旧挙動はタイプミス/失念のユーザーに何の
+        // フィードバックも出さず、バッチでは成功にも失敗にも計上されず消えていた。
         var archive = await CreateHeaderEncryptedArchiveAsync("data10");
-        var stub = new WrongPasswordDialog();
-        ArchiveProcessor.PasswordDialogImpl = stub;
+        var pwdStub = new WrongPasswordDialog();
+        var msgStub = new RecordingMessageService();
+        ArchiveProcessor.PasswordDialogImpl = pwdStub;
+        ArchiveProcessor.MessageServiceImpl = msgStub;
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var outDir = Path.Combine(_dir, "out10");
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            ArchiveProcessor.ExtractArchiveAsync(archive, outDir, outputToSameDirectory: false, progressWindow: null));
+        // 無言キャンセル (OCE) ではなく、エラー表示 + null 戻りで失敗を伝える
+        var (outputPath, _) = await ArchiveProcessor.ExtractArchiveAsync(
+            archive, outDir, outputToSameDirectory: false, progressWindow: null);
 
-        Assert.Equal(3, stub.CallCount); // 構造解析の 3 回のみ。展開段の再プロンプト無し
+        Assert.Null(outputPath);            // 展開は失敗として扱われる
+        Assert.Equal(3, pwdStub.CallCount); // 構造解析の 3 回のみ。展開段の再プロンプト無し
+        Assert.NotEmpty(msgStub.Errors);    // 無言ではなくエラーが表示された
     }
 
     [Fact]
