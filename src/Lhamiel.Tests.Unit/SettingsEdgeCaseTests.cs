@@ -159,6 +159,43 @@ public class SettingsEdgeCaseTests
         Assert.Equal(expected, settings.Theme);
     }
 
+    [Theory]
+    [InlineData(0, 0)]    // 有効値はそのまま
+    [InlineData(1, 1)]
+    [InlineData(3, 3)]
+    [InlineData(5, 5)]
+    [InlineData(7, 7)]
+    [InlineData(9, 9)]
+    [InlineData(-1, 0)]   // 下限割れ → 最小の有効値
+    [InlineData(-100, 0)]
+    [InlineData(2, 1)]    // 同距離 (|2-1|=|2-3|=1) はより軽い方
+    [InlineData(4, 3)]    // 同距離 (|4-3|=|4-5|=1) はより軽い方
+    [InlineData(6, 5)]
+    [InlineData(8, 7)]
+    [InlineData(10, 9)]   // 上限超え → 最大の有効値
+    [InlineData(999, 9)]
+    public void SnapToValidCompressionLevel_SnapsToNearestValid(int input, int expected)
+    {
+        Assert.Equal(expected, Settings.SnapToValidCompressionLevel(input));
+    }
+
+    [Theory]
+    [InlineData(999, 9)]
+    [InlineData(-1, 0)]
+    [InlineData(2, 1)]
+    public void SanitizeAfterLoad_OutOfRangeCompressionLevel_SnappedToValid(int input, int expected)
+    {
+        // settings.json 改竄/旧ビルド/手書きで範囲外値が入っても、ArchiveCompressor の
+        // (CompressionLevel)int 直キャストに渡る前に有効値へ矯正されることを保証する
+        // (VM を通さない CLI/シェル圧縮経路の防御線)。
+        var settings = new Settings { ZipCompressionLevel = input, SevenZipCompressionLevel = input };
+        settings.SanitizeAfterLoad();
+        Assert.Equal(expected, settings.ZipCompressionLevel);
+        Assert.Equal(expected, settings.SevenZipCompressionLevel);
+        Assert.Contains(settings.ZipCompressionLevel, Settings.ValidCompressionLevels);
+        Assert.Contains(settings.SevenZipCompressionLevel, Settings.ValidCompressionLevels);
+    }
+
     [Fact]
     public void SanitizeAfterLoad_UnmountedDriveOutputDirectory_PreservedNotOverwritten()
     {

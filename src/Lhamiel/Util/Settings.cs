@@ -551,6 +551,17 @@ public class Settings
         LogMaxSizeMB = Math.Clamp(LogMaxSizeMB, 1, 200);
         LogRetentionDays = Math.Clamp(LogRetentionDays, 0, 365);
 
+        // 圧縮レベルの allow-list 化。有効値は {0,1,3,5,7,9}（UI 提示値）のみだが、
+        // ZipCompressionLevel/SevenZipCompressionLevel はプレーンな int なので settings.json
+        // 改竄/旧ビルド/手書きで範囲外値 (999 / -1 / 2 等) が入りうる。VM 経路は
+        // OnZipCompressionLevelChanged の自己修復で矯正されるが、VM を通さない CLI/シェル
+        // 関連付け圧縮経路 (App.ProcessCompression → ArchiveCompressor) には防御が無く、
+        // ArchiveCompressor の (CompressionLevel)int 直キャストで未定義 enum 値が native
+        // 7z.dll に渡り不透明な圧縮エラーになる。Log 容量 Clamp と同じ load 時防御として、
+        // 最近傍の有効値にスナップする。
+        ZipCompressionLevel = SnapToValidCompressionLevel(ZipCompressionLevel);
+        SevenZipCompressionLevel = SnapToValidCompressionLevel(SevenZipCompressionLevel);
+
         // PasswordMode の allow-list 化（未知値は PromptEachTime に矯正）。
         PasswordMode = Array.Find(SupportedPasswordModes,
                           m => string.Equals(m, PasswordMode, StringComparison.OrdinalIgnoreCase))
@@ -584,6 +595,34 @@ public class Settings
         // という意図をくむ。TryResolveCompressionPasswordAsync 側で null ciphertext を
         // 「初回プロンプト → 保存」として正しく扱うため、ここで PromptEachTime に
         // 巻き戻すと Remember 選好が失われる (CodeRabbit/codex #3381313190)。
+    }
+
+    /// <summary>
+    /// 圧縮レベルの有効値（UI 提示値）。0=無圧縮 〜 9=最大圧縮。
+    /// ライブラリ (Cube.FileSystem.SevenZip) の CompressionLevel enum の定義値に対応する。
+    /// MainWindowViewModel.CompressionLevels の Level と同期させること。
+    /// </summary>
+    internal static readonly int[] ValidCompressionLevels = [0, 1, 3, 5, 7, 9];
+
+    /// <summary>
+    /// 範囲外の圧縮レベルを最近傍の有効値 (<see cref="ValidCompressionLevels"/>) にスナップする。
+    /// 同距離のときはより軽い (小さい) 圧縮レベルを選ぶ。未定義 enum 値が native 7z.dll に
+    /// 渡るのを防ぐための load 時防御。
+    /// </summary>
+    internal static int SnapToValidCompressionLevel(int level)
+    {
+        var nearest = ValidCompressionLevels[0];
+        var bestDistance = Math.Abs(level - nearest);
+        foreach (var valid in ValidCompressionLevels)
+        {
+            var distance = Math.Abs(level - valid);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                nearest = valid;
+            }
+        }
+        return nearest;
     }
 
     private static bool IsUsableOutputDirectory(string? path)
@@ -671,7 +710,14 @@ public class Settings
         try
         {
             File.WriteAllText(tmpPath, content);
-            File.Move(tmpPath, destinationPath, overwrite: true);
+            // tmp → 本ファイルの上書き move は、AV / 検索インデクサ / バックアップが
+            // settings.json を一瞬掴むと SHARING_VIOLATION / 一時 AccessDenied で散発失敗する
+            // (300ms デバウンス AutoSave・Remember パスワード保存・IgnoreUpdateTag 書込が競合し
+            // うる)。プロジェクト共通の LockedFileRetryPolicy (指数バックオフ) でリトライして
+            // 一時ロックを乗り越える。永続エラー (ディスクフル / パス不正等) は即時打ち切りされる。
+            LockedFileRetryPolicy.Execute(
+                () => File.Move(tmpPath, destinationPath, overwrite: true),
+                destinationPath);
         }
         catch
         {
