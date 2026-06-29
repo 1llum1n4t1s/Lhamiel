@@ -150,10 +150,12 @@ public class FileAssociation
             Logger.Log($"[関連付け解除] アプリケーション識別子キー削除: {appKeyPath}", LogLevel.Debug);
             Registry.CurrentUser.DeleteSubKeyTree(appKeyPath, false);
 
-            // OpenWithでの関連付けも削除
-            var openWithKeyPath = $"Software\\Classes\\Applications\\{Path.GetFileName(AppPath)}";
-            Logger.Log($"[関連付け解除] OpenWithキー削除: {openWithKeyPath}", LogLevel.Debug);
-            Registry.CurrentUser.DeleteSubKeyTree(openWithKeyPath, false);
+            // 共有 OpenWith キー `Software\Classes\Applications\<exe>` はここでは削除しない (#9)。
+            // このキーは拡張子に依存せず exe 名だけでキーされ、Windows シェルの「プログラムから開く」が
+            // 全ファイル種に対して使う共有登録（ユーザーが手動で『プログラムから開く > Lhamiel』した
+            // 履歴）であり、AssociateFileType も作成しない。1 拡張子の解除ごとに無条件削除すると、
+            // 他の関連付け済み拡張子やシェルレベルの「Lhamiel で開く」まで巻き添えに消してしまう。
+            // 個別拡張子の解除では per-extension キー (上の userKeyPath / appKeyPath) のみを削除する。
 
             Logger.Log($"[関連付け解除] 完了: {extension}", LogLevel.Debug);
             return true;
