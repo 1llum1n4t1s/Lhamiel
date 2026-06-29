@@ -56,7 +56,14 @@ internal static class ArchiveProgressHelper
             {
                 baseline = getCompletedCount();
             }
-            var overallProgress = (int)((baseline + info.Percentage / 100.0) / totalCount * 100);
+            // in-flight (処理中アイテム) の全体進捗は [0,99] に抑える (#8)。
+            // baseline は完了済み件数で、報告中のアイテムが Progress<T> のスレッドプール配送
+            // 遅延で「既に完了計上された後」に届くと baseline + frac が totalCount に達し、
+            // overallProgress が 100 (以上) になりうる。共有 ProgressThrottler は単調増加保証のため
+            // 一度 100 を報告すると以後の中間値 (1..99) を恒久ドロップする設計なので、in-flight の
+            // 早期 100 を渡すとバー更新が止まる。確定 100 / 完了表示は throttler を介さない別経路
+            // (完了件数ベースの UpdateProgress / SetCompleted) が駆動するため、ここでは 99 で頭打ちにする。
+            var overallProgress = Math.Clamp((int)((baseline + info.Percentage / 100.0) / totalCount * 100), 0, 99);
             if (throttler.ShouldReport(overallProgress))
                 Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(overallProgress));
         });
