@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Security;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -43,16 +44,38 @@ internal static class MotwPropagator
         if (!Directory.Exists(directoryPath))
             return;
 
-        List<string> files;
-        try
+        // ジャンクション/シンボリックリンクを辿らない手書き DFS で列挙する。
+        // AttributesToSkip=ReparsePoint は「結果に含めない（ShouldIncludeEntry）」だけで、
+        // RecurseSubdirectories=true の再帰（ShouldRecurseIntoEntry）自体は止めない。そのため
+        // 展開ツリー内に junction があると、その先（ディスク上の任意の場所、例 C:\Windows）の
+        // 実ファイルにまで Zone.Identifier を書いてしまう（展開ツリー外への MotW 書き込み）。
+        // 各ディレクトリを非再帰で列挙し、reparse point でないサブディレクトリだけ stack に積む
+        // ことで out-of-tree 書き込みを防ぐ（ArchiveCompressor の圧縮スキャンと同じ対策）。
+        var files = new List<string>();
+        var enumOpts = new EnumerationOptions
         {
-            files = [.. Directory.EnumerateFiles(directoryPath, "*",
-                new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true, AttributesToSkip = FileAttributes.ReparsePoint })];
-        }
-        catch (Exception ex)
+            RecurseSubdirectories = false,
+            IgnoreInaccessible = true,
+            // reparse point は結果からもサブディレクトリ列挙からも除外され、stack に積まれない。
+            AttributesToSkip = FileAttributes.ReparsePoint,
+        };
+        var stack = new Stack<string>();
+        stack.Push(directoryPath);
+        while (stack.Count > 0)
         {
-            Logger.Log($"MotW 伝播の列挙中にエラー: {directoryPath} - {ex.Message}", LogLevel.Warning);
-            return;
+            cancellationToken.ThrowIfCancellationRequested();
+            var current = stack.Pop();
+            try
+            {
+                files.AddRange(Directory.EnumerateFiles(current, "*", enumOpts));
+                foreach (var sub in Directory.EnumerateDirectories(current, "*", enumOpts))
+                    stack.Push(sub);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                // 個別ディレクトリの列挙失敗はスキップして続行（全体を止めない）。
+                Logger.Log($"MotW 伝播の列挙中にエラー (スキップ): {current} - {ex.Message}", LogLevel.Warning);
+            }
         }
 
         if (files.Count == 0)
