@@ -611,11 +611,16 @@ public class Settings
     /// </summary>
     internal static int SnapToValidCompressionLevel(int level)
     {
+        // (long) キャストして距離計算する: level が int.MinValue のとき
+        // `level - 0` の int 結果は int.MinValue で、Math.Abs(int.MinValue) は
+        // OverflowException を投げる。改竄された settings.json を Load() の catch
+        // が SanitizeAfterLoad の途中で吐き出して、せっかくの load 時防御が
+        // バイパスされて (CompressionLevel)int.MinValue が native 7z.dll に届いてしまう。
         var nearest = ValidCompressionLevels[0];
-        var bestDistance = Math.Abs(level - nearest);
+        var bestDistance = Math.Abs((long)level - nearest);
         foreach (var valid in ValidCompressionLevels)
         {
-            var distance = Math.Abs(level - valid);
+            var distance = Math.Abs((long)level - valid);
             if (distance < bestDistance)
             {
                 bestDistance = distance;

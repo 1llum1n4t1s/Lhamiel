@@ -168,6 +168,8 @@ public class SettingsEdgeCaseTests
     [InlineData(9, 9)]
     [InlineData(-1, 0)]   // 下限割れ → 最小の有効値
     [InlineData(-100, 0)]
+    [InlineData(int.MinValue, 0)] // Math.Abs オーバーフロー境界 (long キャストで救済)
+    [InlineData(int.MaxValue, 9)] // 対称な境界
     [InlineData(2, 1)]    // 同距離 (|2-1|=|2-3|=1) はより軽い方
     [InlineData(4, 3)]    // 同距離 (|4-3|=|4-5|=1) はより軽い方
     [InlineData(6, 5)]
@@ -182,6 +184,7 @@ public class SettingsEdgeCaseTests
     [Theory]
     [InlineData(999, 9)]
     [InlineData(-1, 0)]
+    [InlineData(int.MinValue, 0)] // Load 時オーバーフロー防御 (改竄 settings.json の最悪値)
     [InlineData(2, 1)]
     public void SanitizeAfterLoad_OutOfRangeCompressionLevel_SnappedToValid(int input, int expected)
     {
