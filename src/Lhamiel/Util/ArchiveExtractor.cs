@@ -1639,10 +1639,16 @@ public static class ArchiveExtractor
             {
                 // 移動段で original 側へ書き込まれた残骸を先に除去してから戻す
                 // （残骸が残っていると Directory.Move/File.Move が失敗するため）。
+                // ファイル残骸・ディレクトリ残骸とも read-only 属性を先に解除する。
+                // 展開で MotW 由来 read-only ファイルが original へ移動済みのケースでは、
+                // 属性を解除せず File.Delete すると UnauthorizedAccessException で残骸が残り、
+                // 直後の File.Exists(original) が true のままバックアップ復元を見送ってしまう
+                // （上書き失敗時に原本を失う実質データ損失、codex P2 #3389... 指摘）。
                 try
                 {
                     if (File.Exists(original))
                     {
+                        RemoveReadOnlyAttributes(original);
                         File.Delete(original);
                     }
                     else if (Directory.Exists(original))
