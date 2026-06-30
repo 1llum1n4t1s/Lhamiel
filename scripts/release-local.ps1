@@ -95,11 +95,20 @@ if (-not $vpkInstalled) {
 }
 
 # Cloudflare トークン (アップロード時のみ必要)
+# zone 解決もここで行う: トークンに zone:read / cache purge 権限が無い場合に
+# R2 アップロード後の途中失敗 (新ファイルだけ R2 に乗ってパージ・クリーンアップが
+# 走らない半端なリリース) を避け、何もアップロードしていない時点で fail fast する
 if (-not $SkipUpload) {
     $secrets = Get-Content $SecretsPath -Raw | ConvertFrom-Json
     if (-not $secrets.cloudflare.api_token) { throw "secrets.json に cloudflare.api_token が見つかりません" }
     $env:CLOUDFLARE_API_TOKEN = $secrets.cloudflare.api_token
     $env:CLOUDFLARE_ACCOUNT_ID = $AccountId
+
+    $cfHeaders = @{ Authorization = "Bearer $($env:CLOUDFLARE_API_TOKEN)" }
+    $zoneResp = Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones?name=$ZoneName" -Headers $cfHeaders -TimeoutSec 30
+    if (-not $zoneResp.success -or @($zoneResp.result).Count -eq 0) { throw "Cloudflare zone '$ZoneName' の取得に失敗しました (トークンの zone:read 権限を確認してください)" }
+    $zoneId = $zoneResp.result[0].id
+    Write-Host "Cloudflare zone: $ZoneName ($zoneId)"
 }
 
 if (Test-Path $WorkDir) { Remove-Item $WorkDir -Recurse -Force }
@@ -190,10 +199,7 @@ Write-Host "✅ R2 アップロード完了: $uploaded ファイル"
 # パージしないと新規ダウンロード・自動更新が旧バージョンを掴む。アップロード直後に該当 URL をパージして
 # 伝播を確定する。バージョン付き nupkg は URL が一意 (旧キャッシュなし) のためパージ不要。
 Write-Host '== Cloudflare キャッシュパージ ==' -ForegroundColor Cyan
-$cfHeaders = @{ Authorization = "Bearer $($env:CLOUDFLARE_API_TOKEN)" }
-$zoneResp = Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones?name=$ZoneName" -Headers $cfHeaders -TimeoutSec 30
-if (-not $zoneResp.success -or @($zoneResp.result).Count -eq 0) { throw "Cloudflare zone '$ZoneName' の取得に失敗しました" }
-$zoneId = $zoneResp.result[0].id
+# $zoneId / $cfHeaders はプリフライト (Cloudflare トークン取得時) で解決・検証済み
 $purgeUrls = @(Get-ChildItem $ArtifactsDir -File | Where-Object { $_.Name -notlike '*.nupkg' } | ForEach-Object { "$BaseUrl/$($_.Name)" })
 if ($purgeUrls.Count -gt 0) {
     $purgeBody = ConvertTo-Json -InputObject @{ files = $purgeUrls } -Compress
