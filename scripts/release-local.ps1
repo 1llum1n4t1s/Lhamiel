@@ -33,6 +33,8 @@ Write-Host "vpk 最新安定版: $VpkVersion"
 $WranglerVersion = '4.92.0'         # サプライチェーン対策でバージョン固定
 $Bucket = 'lhamiel-updates'
 $BaseUrl = 'https://lhamiel.nephilim.jp'
+$ZoneName = 'nephilim.jp'           # Cloudflare zone (apex)。$BaseUrl の Host から正規表現で推測すると
+                                     # apex / co.jp 等の複合 TLD で誤判定するため定数で固定する
 $AccountId = '10901bfadbf1005164774a7350082985'
 $SecretsPath = 'C:\Users\IMT\dev\Secret\secrets.json'
 $CertSubjectName = 'Open Source Developer Yuichiro Shinozaki'
@@ -93,11 +95,20 @@ if (-not $vpkInstalled) {
 }
 
 # Cloudflare トークン (アップロード時のみ必要)
+# zone 解決もここで行う: トークンに zone:read / cache purge 権限が無い場合に
+# R2 アップロード後の途中失敗 (新ファイルだけ R2 に乗ってパージ・クリーンアップが
+# 走らない半端なリリース) を避け、何もアップロードしていない時点で fail fast する
 if (-not $SkipUpload) {
     $secrets = Get-Content $SecretsPath -Raw | ConvertFrom-Json
     if (-not $secrets.cloudflare.api_token) { throw "secrets.json に cloudflare.api_token が見つかりません" }
     $env:CLOUDFLARE_API_TOKEN = $secrets.cloudflare.api_token
     $env:CLOUDFLARE_ACCOUNT_ID = $AccountId
+
+    $cfHeaders = @{ Authorization = "Bearer $($env:CLOUDFLARE_API_TOKEN)" }
+    $zoneResp = Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones?name=$ZoneName" -Headers $cfHeaders -TimeoutSec 30
+    if (-not $zoneResp.success -or @($zoneResp.result).Count -eq 0) { throw "Cloudflare zone '$ZoneName' の取得に失敗しました (トークンの zone:read 権限を確認してください)" }
+    $zoneId = $zoneResp.result[0].id
+    Write-Host "Cloudflare zone: $ZoneName ($zoneId)"
 }
 
 if (Test-Path $WorkDir) { Remove-Item $WorkDir -Recurse -Force }
@@ -181,6 +192,35 @@ foreach ($f in Get-ChildItem $ArtifactsDir -File) {
     $uploaded++
 }
 Write-Host "✅ R2 アップロード完了: $uploaded ファイル"
+
+# ---- 2.5 Cloudflare エッジキャッシュのパージ ----
+# 固定名ファイル (Setup.exe / Portable.zip / RELEASES / releases.*.json / assets.*.json) は
+# 毎リリースで中身が変わるのに URL が不変。CDN エッジが旧版を Cache-Control の max-age 分保持するため、
+# パージしないと新規ダウンロード・自動更新が旧バージョンを掴む。アップロード直後に該当 URL をパージして
+# 伝播を確定する。バージョン付き nupkg は URL が一意 (旧キャッシュなし) のためパージ不要。
+# R2 アップロードは既に成功済みのため、パージ失敗はリリースを止めず Step 5 と同じ
+# warning-and-continue 方針にする (CDN は max-age 経過で自然に新版へ追従する)。
+Write-Host '== Cloudflare キャッシュパージ ==' -ForegroundColor Cyan
+# $zoneId / $cfHeaders はプリフライト (Cloudflare トークン取得時) で解決・検証済み
+$purgeUrls = @(Get-ChildItem $ArtifactsDir -File | Where-Object { $_.Name -notlike '*.nupkg' } | ForEach-Object { "$BaseUrl/$($_.Name)" })
+if ($purgeUrls.Count -gt 0) {
+    try {
+        # purge_cache は 1 リクエストあたり最大 30 URL までのため分割送信する
+        for ($i = 0; $i -lt $purgeUrls.Count; $i += 30) {
+            $batch = $purgeUrls[$i..[Math]::Min($i + 29, $purgeUrls.Count - 1)]
+            $purgeBody = ConvertTo-Json -InputObject @{ files = $batch } -Compress
+            $purgeResp = Invoke-RestMethod -Method Post -Uri "https://api.cloudflare.com/client/v4/zones/$zoneId/purge_cache" `
+                -Headers $cfHeaders -ContentType 'application/json' -Body $purgeBody -TimeoutSec 30
+            if (-not $purgeResp.success) { throw "Cloudflare キャッシュパージに失敗しました: $($purgeResp.errors | ConvertTo-Json -Compress)" }
+        }
+        Write-Host "  ✅ パージ: $($purgeUrls.Count) URL"
+        $purgeUrls | ForEach-Object { Write-Host "     $_" }
+    } catch {
+        Write-Warning "  Cloudflare キャッシュパージに失敗しました（アップロード済みリリースには影響なし、max-age 経過で自然反映されます）— $($_.Exception.Message)"
+    }
+} else {
+    Write-Host '  パージ対象なし'
+}
 
 # ---- 3. 配信確認 (CDN/edge 伝播チェック) ----
 Write-Host '== 配信確認 ==' -ForegroundColor Cyan
