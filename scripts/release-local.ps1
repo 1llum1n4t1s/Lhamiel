@@ -182,6 +182,29 @@ foreach ($f in Get-ChildItem $ArtifactsDir -File) {
 }
 Write-Host "✅ R2 アップロード完了: $uploaded ファイル"
 
+# ---- 2.5 Cloudflare エッジキャッシュのパージ ----
+# 固定名ファイル (Setup.exe / Portable.zip / RELEASES / releases.*.json / assets.*.json) は
+# 毎リリースで中身が変わるのに URL が不変。CDN エッジが旧版を Cache-Control の max-age 分保持するため、
+# パージしないと新規ダウンロード・自動更新が旧バージョンを掴む。アップロード直後に該当 URL をパージして
+# 伝播を確定する。バージョン付き nupkg は URL が一意 (旧キャッシュなし) のためパージ不要。
+Write-Host '== Cloudflare キャッシュパージ ==' -ForegroundColor Cyan
+$cfHeaders = @{ Authorization = "Bearer $($env:CLOUDFLARE_API_TOKEN)" }
+$zoneName = ([uri]$BaseUrl).Host -replace '^[^.]+\.', ''   # <sub>.nephilim.jp → nephilim.jp (apex)
+$zoneResp = Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones?name=$zoneName" -Headers $cfHeaders -TimeoutSec 30
+if (-not $zoneResp.success -or @($zoneResp.result).Count -eq 0) { throw "Cloudflare zone '$zoneName' の取得に失敗しました" }
+$zoneId = $zoneResp.result[0].id
+$purgeUrls = @(Get-ChildItem $ArtifactsDir -File | Where-Object { $_.Name -notlike '*.nupkg' } | ForEach-Object { "$BaseUrl/$($_.Name)" })
+if ($purgeUrls.Count -gt 0) {
+    $purgeBody = "{`"files`":$(ConvertTo-Json -InputObject $purgeUrls -AsArray -Compress)}"
+    $purgeResp = Invoke-RestMethod -Method Post -Uri "https://api.cloudflare.com/client/v4/zones/$zoneId/purge_cache" `
+        -Headers $cfHeaders -ContentType 'application/json' -Body $purgeBody -TimeoutSec 30
+    if (-not $purgeResp.success) { throw "Cloudflare キャッシュパージに失敗しました: $($purgeResp.errors | ConvertTo-Json -Compress)" }
+    Write-Host "  ✅ パージ: $($purgeUrls.Count) URL"
+    $purgeUrls | ForEach-Object { Write-Host "     $_" }
+} else {
+    Write-Host '  パージ対象なし'
+}
+
 # ---- 3. 配信確認 (CDN/edge 伝播チェック) ----
 Write-Host '== 配信確認 ==' -ForegroundColor Cyan
 foreach ($runtime in $Runtimes) {
