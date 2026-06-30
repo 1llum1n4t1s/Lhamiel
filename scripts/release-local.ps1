@@ -198,16 +198,26 @@ Write-Host "✅ R2 アップロード完了: $uploaded ファイル"
 # 毎リリースで中身が変わるのに URL が不変。CDN エッジが旧版を Cache-Control の max-age 分保持するため、
 # パージしないと新規ダウンロード・自動更新が旧バージョンを掴む。アップロード直後に該当 URL をパージして
 # 伝播を確定する。バージョン付き nupkg は URL が一意 (旧キャッシュなし) のためパージ不要。
+# R2 アップロードは既に成功済みのため、パージ失敗はリリースを止めず Step 5 と同じ
+# warning-and-continue 方針にする (CDN は max-age 経過で自然に新版へ追従する)。
 Write-Host '== Cloudflare キャッシュパージ ==' -ForegroundColor Cyan
 # $zoneId / $cfHeaders はプリフライト (Cloudflare トークン取得時) で解決・検証済み
 $purgeUrls = @(Get-ChildItem $ArtifactsDir -File | Where-Object { $_.Name -notlike '*.nupkg' } | ForEach-Object { "$BaseUrl/$($_.Name)" })
 if ($purgeUrls.Count -gt 0) {
-    $purgeBody = ConvertTo-Json -InputObject @{ files = $purgeUrls } -Compress
-    $purgeResp = Invoke-RestMethod -Method Post -Uri "https://api.cloudflare.com/client/v4/zones/$zoneId/purge_cache" `
-        -Headers $cfHeaders -ContentType 'application/json' -Body $purgeBody -TimeoutSec 30
-    if (-not $purgeResp.success) { throw "Cloudflare キャッシュパージに失敗しました: $($purgeResp.errors | ConvertTo-Json -Compress)" }
-    Write-Host "  ✅ パージ: $($purgeUrls.Count) URL"
-    $purgeUrls | ForEach-Object { Write-Host "     $_" }
+    try {
+        # purge_cache は 1 リクエストあたり最大 30 URL までのため分割送信する
+        for ($i = 0; $i -lt $purgeUrls.Count; $i += 30) {
+            $batch = $purgeUrls[$i..[Math]::Min($i + 29, $purgeUrls.Count - 1)]
+            $purgeBody = ConvertTo-Json -InputObject @{ files = $batch } -Compress
+            $purgeResp = Invoke-RestMethod -Method Post -Uri "https://api.cloudflare.com/client/v4/zones/$zoneId/purge_cache" `
+                -Headers $cfHeaders -ContentType 'application/json' -Body $purgeBody -TimeoutSec 30
+            if (-not $purgeResp.success) { throw "Cloudflare キャッシュパージに失敗しました: $($purgeResp.errors | ConvertTo-Json -Compress)" }
+        }
+        Write-Host "  ✅ パージ: $($purgeUrls.Count) URL"
+        $purgeUrls | ForEach-Object { Write-Host "     $_" }
+    } catch {
+        Write-Warning "  Cloudflare キャッシュパージに失敗しました（アップロード済みリリースには影響なし、max-age 経過で自然反映されます）— $($_.Exception.Message)"
+    }
 } else {
     Write-Host '  パージ対象なし'
 }
