@@ -1255,7 +1255,14 @@ public static class ArchiveCompressor
     {
         RecurseSubdirectories = false,
         IgnoreInaccessible = true,
-        AttributesToSkip = includeHiddenAndSystemEntries ? 0 : FileAttributes.Hidden | FileAttributes.System,
+        // ReparsePoint（ジャンクション / シンボリックリンク）は常に除外する。手書き DFS
+        // (EnumerateFilesWithPruning / EnumerateDirectoriesWithPruning) は RecurseSubdirectories=false で
+        // 自前再帰するため .NET 組込みのループ保護が効かず、自己 / 祖先参照ジャンクションを push すると
+        // 無限ループ（スキャンがハング）、ツリー外向きジャンクションを辿るとドロップ対象外のファイルを
+        // アーカイブに含めてしまう（情報漏えい）。MotwPropagator も同じ理由で ReparsePoint を除外する。
+        AttributesToSkip = includeHiddenAndSystemEntries
+            ? FileAttributes.ReparsePoint
+            : FileAttributes.Hidden | FileAttributes.System | FileAttributes.ReparsePoint,
     };
 
     

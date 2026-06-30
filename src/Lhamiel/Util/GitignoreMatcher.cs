@@ -460,7 +460,26 @@ public sealed class GitignoreMatcher
                 var searchFrom = (contentStart < pattern.Length && pattern[contentStart] == ']')
                     ? contentStart + 1
                     : contentStart;
-                var end = pattern.IndexOf(']', searchFrom);
+                // 文字クラスの終端 ']' を探す。gitignore 仕様ではクラス内の '\' が次の 1 文字を
+                // エスケープするため、'\]' は終端ではなくメンバの ']' として扱う。単純な
+                // IndexOf(']') だと '[a\]b]'（エスケープされた ] を含むクラス）で最初の '\]' を
+                // 終端と誤認し、classBody が末尾バックスラッシュ 'a\' になって不正な subtraction
+                // regex '[a\-[/]]' を生成 → 何にもマッチしない fail-open 除外漏れになる。
+                // '\' でエスケープされた次の 1 文字を読み飛ばして真の終端を探す。
+                var end = -1;
+                for (var j = searchFrom; j < pattern.Length; j++)
+                {
+                    if (pattern[j] == '\\' && j + 1 < pattern.Length)
+                    {
+                        j++; // エスケープされた次の 1 文字は終端判定から除外
+                        continue;
+                    }
+                    if (pattern[j] == ']')
+                    {
+                        end = j;
+                        break;
+                    }
+                }
                 if (end < 0)
                     return null;
 
@@ -481,7 +500,10 @@ public sealed class GitignoreMatcher
                     // range が '/' (0x2F) を含む場合 (例: [!.-0]) も [^.-0/] と書けば
                     // '/' は補集合の対象になり結果的にマッチ対象から外れる。
                     sb.Append("[^");
-                    sb.Append(classBody);
+                    // 末尾のリテラル '-' をエスケープする。`[!a-]` → `[^a-/]` だと
+                    // `a`(0x61) から `/`(0x2F) への降順レンジと解釈され ArgumentException →
+                    // ルールが丸ごと破棄され「除外したいファイルが黙って含まれる」(fail-open)。
+                    sb.Append(EscapeTrailingDash(classBody));
                     if (!classBody.Contains('/'))
                         sb.Append('/');
                     sb.Append(']');
@@ -516,8 +538,11 @@ public sealed class GitignoreMatcher
                     {
                         // 標準ケース: subtraction で確実に '/' を除外
                         // 例: [abc] → [abc-[/]], [.-0] → [.-0-[/]] (range に潜む '/' も除外)
+                        // 末尾のリテラル '-' はエスケープする。`[a-]` → `[a--[/]]` だと
+                        // `a`(0x61) から `-`(0x2D) への降順レンジと解釈され ArgumentException →
+                        // ルールが丸ごと破棄され除外漏れ (fail-open) になるため。
                         sb.Append('[');
-                        sb.Append(clean);
+                        sb.Append(EscapeTrailingDash(clean));
                         sb.Append("-[/]]");
                     }
                 }
@@ -605,6 +630,29 @@ public sealed class GitignoreMatcher
         if (c is '.' or '*' or '?' or '(' or ')' or '[' or ']' or '{' or '}' or '^' or '$' or '+' or '|' or '\\')
             sb.Append('\\');
         sb.Append(c);
+    }
+
+    /// <summary>
+    /// 文字クラス本体が末尾にリテラルの <c>-</c> を持つ場合、<c>\-</c> にエスケープして返す。
+    /// 後続に subtraction（<c>-[/]</c>）や <c>/</c> を連結すると、末尾 <c>-</c> が
+    /// 降順レンジ（例 <c>a--[/]</c> = a→-、<c>a-/</c> = a→/）と解釈されて
+    /// .NET regex パーサが <see cref="ArgumentException"/> を投げ、ルールが丸ごと破棄されて
+    /// 除外漏れ（fail-open）になるのを防ぐ。既に <c>\-</c> でエスケープ済みの場合は二重化しない。
+    /// </summary>
+    private static string EscapeTrailingDash(string classBody)
+    {
+        if (classBody.Length == 0 || classBody[^1] != '-')
+            return classBody;
+        // 末尾 '-' の直前に連続する '\' の個数を数え、奇数のときだけ「既にエスケープ済み」と判定。
+        // 偶数のときは '\\' (リテラルバックスラッシュ) の連続でダッシュは未エスケープなので
+        // エスケープを足す。例: '\\-' は backslashCount=2 → 偶数 → ダッシュをエスケープ → '\\\-'。
+        // 単一 '\' で classBody[^2] のみ見る旧実装はこの偶数連続を誤判定していた。
+        var backslashCount = 0;
+        for (var i = classBody.Length - 2; i >= 0 && classBody[i] == '\\'; i--)
+            backslashCount++;
+        if (backslashCount % 2 == 1)
+            return classBody;
+        return classBody[..^1] + "\\-";
     }
 
     /// <param name="Regex">通常マッチ用の regex (末尾 <c>(?:/.*)?$</c> 付きで descendant も巻き込む)。flat 経路で使用。</param>

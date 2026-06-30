@@ -527,12 +527,10 @@ public static class ArchiveExtractor
 
             foreach (var item in reader.Items)
             {
-                if (item.IsDirectory) continue;
-
                 var relativePath = item.FullName.Replace('\\', '/');
 
-                // システムファイル・ディレクトリの除外
-                var fileName = Path.GetFileName(relativePath);
+                // システムファイル・ディレクトリの除外（ディレクトリエントリの末尾 '/' を除いて名前判定）
+                var fileName = Path.GetFileName(relativePath.TrimEnd('/'));
                 if (IgnoredSystemFiles.Contains(fileName)) continue;
                 if (ContainsIgnoredDirectory(relativePath)) continue;
 
@@ -542,31 +540,49 @@ public static class ArchiveExtractor
                     Logger.Log($"展開衝突検出で境界外パスを検出しスキップ: {relativePath}", LogLevel.Warning);
                     continue;
                 }
-                // FileInfo は遅延 stat で、Exists / Length / LastWriteTime は同一インスタンス内でキャッシュされる。
-                // 旧実装の File.Exists + new FileInfo で 2 回 stat していたのを 1 回にまとめる。
-                // 数千ファイルのアーカイブで I/O コール数を半減できる。
-                var destInfo = new FileInfo(destFilePath);
+                // ディレクトリエントリは Path.GetFullPath が末尾区切りを残すことがあるので、
+                // 実体（ファイル/ディレクトリ）判定の前に除去して既存ファイルと突き合わせられるようにする。
+                destFilePath = TrimTrailingSeparators(destFilePath);
+
+                // 宛先に存在する実体を 1 回の stat で判定する（ファイルかディレクトリか + サイズ/更新日時）。
+                var existing = ProbeExistingEntry(destFilePath);
 
                 // NFC 正規化 ON の場合、destFilePath は NFC 形のパスになる。一方、ライブラリの
                 // reader.Save は生のエントリ名 (macOS 由来は NFD) でファイルを書くため、過去に展開した
                 // 既存ファイルは NFD 形で残っていることがある。NFC 形だけで存在チェックすると、その
                 // NFD 既存ファイルとの衝突を取りこぼし「上書き確認なし」で消えてしまう。生エントリ形でも
                 // 突き合わせて、NFD/NFC のズレで衝突警告が抜けないようにする（MotW 伝播は実体列挙のため影響なし）。
-                if (!destInfo.Exists && normalizeUnicode &&
+                if (!existing.Exists && normalizeUnicode &&
                     TryResolveSafeEntryPathFromNormalized(normalizedOutputBase, relativePath, out var rawDestPath, normalizeUnicode: false) &&
                     !string.Equals(rawDestPath, destFilePath, StringComparison.Ordinal))
                 {
-                    var rawInfo = new FileInfo(rawDestPath);
-                    if (rawInfo.Exists) destInfo = rawInfo;
+                    var rawTrimmed = TrimTrailingSeparators(rawDestPath);
+                    var rawProbe = ProbeExistingEntry(rawTrimmed);
+                    if (rawProbe.Exists)
+                    {
+                        destFilePath = rawTrimmed;
+                        existing = rawProbe;
+                    }
                 }
 
-                if (!destInfo.Exists) continue;
+                if (!existing.Exists) continue;
 
-                // 衝突発見: 左=アーカイブ内ファイル（ソース）、右=既存ファイル（宛先）
+                // パス型衝突の判定:
+                //  - アーカイブのファイルエントリ × 既存ファイル/ディレクトリ → 衝突（上書き / 型衝突）。
+                //  - アーカイブのディレクトリエントリ × 既存ファイル → 衝突（型衝突）。
+                //  - アーカイブのディレクトリエントリ × 既存ディレクトリ → 衝突にしない（マージされ、
+                //    配下の個別ファイルはそれぞれのエントリで検出される）。
+                // 旧実装は item.IsDirectory を continue で飛ばし、かつ FileInfo.Exists が
+                // ディレクトリに対して false だったため、dir↔file の型衝突を両方向とも取りこぼし、
+                // 直接展開経路（parentWindow==null: CLI / 関連付け / アイコンドロップ）で
+                // 上書き確認なしに既存を破壊していた。temp フォルダ経路の DetectFileSystemConflicts と判定を揃える。
+                if (item.IsDirectory && existing.IsDirectory) continue;
+
+                // 衝突発見: 左=アーカイブ内エントリ（ソース）、右=既存ファイル/ディレクトリ（宛先）
                 var archiveEntry = new Models.FileConflictEntry(
-                    archivePath, relativePath, item.Length, item.LastWriteTime);
+                    archivePath, relativePath, item.IsDirectory ? 0 : item.Length, item.LastWriteTime);
                 var existingEntry = new Models.FileConflictEntry(
-                    destFilePath, relativePath, destInfo.Length, destInfo.LastWriteTime);
+                    destFilePath, relativePath, existing.Size, existing.LastWrite);
 
                 conflicts.Add(new Models.FileConflictGroup
                 {
@@ -586,6 +602,43 @@ public static class ArchiveExtractor
         }
 
         return conflicts;
+    }
+
+    /// <summary>
+    /// 末尾のディレクトリ区切り（<c>\</c> / <c>/</c>）を除去する。ルート（例 <c>C:\</c>）を
+    /// 削り切って空文字にならないよう、全部消えた場合は元の文字列を返す。
+    /// </summary>
+    private static string TrimTrailingSeparators(string path)
+    {
+        var trimmed = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return trimmed.Length == 0 ? path : trimmed;
+    }
+
+    /// <summary>
+    /// 指定パスに存在する実体を 1 回の stat で判定する（ファイル / ディレクトリ / サイズ / 更新日時）。
+    /// File.Exists + Directory.Exists + FileInfo の多重 stat を避けるため File.GetAttributes を 1 回だけ呼ぶ。
+    /// </summary>
+    private static (bool Exists, bool IsDirectory, long Size, DateTime LastWrite) ProbeExistingEntry(string path)
+    {
+        try
+        {
+            var attrs = File.GetAttributes(path);
+            if ((attrs & FileAttributes.Directory) != 0)
+                return (true, true, 0, Directory.GetLastWriteTime(path));
+            var info = new FileInfo(path);
+            return (true, false, info.Length, info.LastWriteTime);
+        }
+        catch (FileNotFoundException) { return (false, false, 0, default); }
+        catch (DirectoryNotFoundException) { return (false, false, 0, default); }
+        catch (IOException) { return (false, false, 0, default); }
+        catch (UnauthorizedAccessException) { return (false, false, 0, default); }
+        catch (ArgumentException) { return (false, false, 0, default); }
+        // File.GetAttributes / FileInfo は、長すぎるパス・無効文字・CAS / Mark-of-the-Web 拒否
+        // 等で SecurityException や NotSupportedException も投げる。"存在しない扱い" に倒すのは
+        // 「衝突なし=ダイアログを出さない」を意味し、その後の展開で正規エラー経路に流れるので
+        // ここで未捕捉のままアプリを落とすより安全 (gemini レビュー指摘)。
+        catch (System.Security.SecurityException) { return (false, false, 0, default); }
+        catch (NotSupportedException) { return (false, false, 0, default); }
     }
 
     /// <summary>
@@ -1263,7 +1316,7 @@ public static class ArchiveExtractor
                     // 呼び出し元の Task が TaskStatus.Canceled に正しく遷移する。
                     // CT が未キャンセル（純粋にユーザーがダイアログ Cancel を押しただけ）でも
                     // OCE.CancellationToken プロパティに記録されるため診断情報が向上する。
-                    throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"), cancellationToken);
+                    throw CreatePasswordCancelledOce(cancellationToken);
                 }
 
                 // キャンセルされていたらここで一度だけスロー（コールバック内ではスローしない）
@@ -1313,7 +1366,7 @@ public static class ArchiveExtractor
 
             // 最終的な展開先への移動処理（原子性のため既存は削除せず退避し、移動成功後にバックアップを削除）
             Logger.Log($"一時ディレクトリから最終展開先へ移動します: {tempOutputPath} -> {outputPath}");
-            var backupPaths = new List<string>();
+            var backupPaths = new List<(string Original, string Backup)>();
 
             // 上書きが許可された（または確認済み）の場合は既存の対象を退避（削除せず移動で原子性を確保）
             try
@@ -1340,6 +1393,9 @@ public static class ArchiveExtractor
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 Logger.Log($"既存対象の退避に失敗しました: {ex.Message}");
+                // 退避を途中まで行った分を元へ戻してから中止する（一部だけ退避された
+                // 状態で放置すると、その原本が .Lhamiel_backup_<guid> に残ったまま消える）。
+                RestoreFromBackup(backupPaths);
                 throw new InvalidOperationException(App.Text("Error.PreparationFailed"), ex);
             }
 
@@ -1357,15 +1413,15 @@ public static class ArchiveExtractor
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {
                 Logger.Log($"一時ディレクトリの内容移動に失敗しました: {ex.Message}");
-                foreach (var backup in backupPaths)
-                {
-                    Logger.Log($"退避先（復元可能）: {backup}");
-                }
+                // 退避済みの原本を元の場所へ戻す（原子性の完成）。退避だけで復元しないと、
+                // 失敗時に原本が .Lhamiel_backup_<guid> に退避されたまま宛先が空/部分になり、
+                // ユーザーは「失敗＝元のまま」と誤認したまま原本を失う。
+                RestoreFromBackup(backupPaths);
                 throw new InvalidOperationException(App.Text("Error.MoveFailed"), ex);
             }
 
             // 移動成功後のみバックアップを削除（原子性の完了）
-            foreach (var backupPath in backupPaths)
+            foreach (var (_, backupPath) in backupPaths)
             {
                 try
                 {
@@ -1399,7 +1455,7 @@ public static class ArchiveExtractor
             // ではない)。フラグが立っている = この失敗は中止に起因するので、種別を問わず通常の
             // キャンセル扱いに変換する。一時ディレクトリは finally が掃除する。
             Logger.Log("パスワード取得が中止されたため展開を中止します");
-            throw new OperationCanceledException(App.Text("Error.UserCancelledExtraction"), cancellationToken);
+            throw CreatePasswordCancelledOce(cancellationToken);
         }
         catch (OperationCanceledException oce) when (!cancellationToken.IsCancellationRequested && oce.InnerException is not null)
         {
@@ -1522,7 +1578,7 @@ public static class ArchiveExtractor
     /// <param name="path">退避対象のパス（ファイルまたはディレクトリ）</param>
     /// <param name="backupPaths">退避先パスを追加するリスト</param>
     /// <returns>退避を行った場合はtrue、対象が存在しなかった場合はfalse</returns>
-    private static bool MoveExistingToBackup(string path, List<string> backupPaths)
+    private static bool MoveExistingToBackup(string path, List<(string Original, string Backup)> backups)
     {
         var isDirectory = Directory.Exists(path);
         if (!isDirectory && !File.Exists(path))
@@ -1538,8 +1594,93 @@ public static class ArchiveExtractor
         {
             MoveWithRetry(() => File.Move(path, backupPath), path);
         }
-        backupPaths.Add(backupPath);
+        backups.Add((path, backupPath));
         return true;
+    }
+
+    /// <summary>
+    /// 「パスワード関連でキャンセルされた」ことを示すマーカー キー。
+    /// OCE.Data に乗せて呼び出し側 (<see cref="ArchiveProcessor"/>) に区別可能なシグナルを伝える。
+    /// <see cref="DiskSpaceChecker"/> の <c>extractCts.Cancel()</c> 由来 OCE と判別するための
+    /// sentinel (CodeRabbit レビュー指摘)。
+    /// </summary>
+    internal const string PasswordCancelledOceDataKey = "Lhamiel.PasswordCancelled";
+
+    /// <summary>
+    /// パスワード関連キャンセル用の OCE を <see cref="PasswordCancelledOceDataKey"/> sentinel 付きで生成する。
+    /// </summary>
+    private static OperationCanceledException CreatePasswordCancelledOce(CancellationToken cancellationToken)
+    {
+        var oce = new OperationCanceledException(App.Text("Error.UserCancelledExtraction"), cancellationToken);
+        oce.Data[PasswordCancelledOceDataKey] = true;
+        return oce;
+    }
+
+    /// <summary>
+    /// 退避済みバックアップを元のパスへ戻す（移動段で失敗したときのロールバック）。
+    /// 退避だけ実装して復元が無いと、上書き展開が移動段でコケたとき原本が
+    /// <c>.Lhamiel_backup_&lt;guid&gt;</c> サイドファイルに退避されたまま宛先が空/部分になり、
+    /// ユーザーは「失敗＝元のまま」と誤認したまま原本を失う（実質データ損失）。
+    /// 圧縮側（<c>ArchiveProcessor</c> の atomic swap）と同様に「移動先の残骸を除去 →
+    /// バックアップを元へ戻す」best-effort 復元を行う。復元できなかったバックアップは
+    /// 削除せず保持し、手動復旧の余地を残す。
+    /// </summary>
+    private static void RestoreFromBackup(List<(string Original, string Backup)> backups)
+    {
+        // LIFO (登録逆順) で復元する。バックアップ作成は親 → 子の順で登録される可能性があり
+        // (例: `a/`, `a/b/`, `a/b/c.txt` を退避すると Move 時にこの順序で entries が積まれる)、
+        // 戻すときは逆順 (子 → 親) で処理しないと、親ディレクトリ復元時にまだ残っている
+        // 子側の残骸と衝突する。ファイルシステム操作のロールバックは常に LIFO 順で行うのが
+        // 堅牢な実践 (gemini レビュー指摘)。
+        for (var index = backups.Count - 1; index >= 0; index--)
+        {
+            var (original, backup) = backups[index];
+            try
+            {
+                // 移動段で original 側へ書き込まれた残骸を先に除去してから戻す
+                // （残骸が残っていると Directory.Move/File.Move が失敗するため）。
+                // ファイル残骸・ディレクトリ残骸とも read-only 属性を先に解除する。
+                // 展開で MotW 由来 read-only ファイルが original へ移動済みのケースでは、
+                // 属性を解除せず File.Delete すると UnauthorizedAccessException で残骸が残り、
+                // 直後の File.Exists(original) が true のままバックアップ復元を見送ってしまう
+                // （上書き失敗時に原本を失う実質データ損失、codex P2 #3389... 指摘）。
+                try
+                {
+                    if (File.Exists(original))
+                    {
+                        RemoveReadOnlyAttributes(original);
+                        File.Delete(original);
+                    }
+                    else if (Directory.Exists(original))
+                    {
+                        RemoveReadOnlyAttributes(original);
+                        Directory.Delete(original, true);
+                    }
+                }
+                catch (Exception residueEx) when (residueEx is IOException or UnauthorizedAccessException or SecurityException)
+                {
+                    Logger.Log($"復元前の残骸除去に失敗しました: {original} ({residueEx.Message})", LogLevel.Warning);
+                }
+
+                // 残骸を除去できたときだけ復元する（残骸が残ったまま move すると失敗するため）。
+                if (!File.Exists(original) && !Directory.Exists(original))
+                {
+                    if (Directory.Exists(backup))
+                        MoveWithRetry(() => Directory.Move(backup, original), backup);
+                    else if (File.Exists(backup))
+                        MoveWithRetry(() => File.Move(backup, original), backup);
+                    Logger.Log($"バックアップから復元しました: {backup} -> {original}");
+                }
+                else
+                {
+                    Logger.Log($"残骸を除去できず復元を見送りました（バックアップは保持）: {backup}", LogLevel.Warning);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                Logger.Log($"バックアップからの復元に失敗しました（手動復旧可能）: {backup} -> {original} ({ex.Message})", LogLevel.Warning);
+            }
+        }
     }
 
     /// <summary>

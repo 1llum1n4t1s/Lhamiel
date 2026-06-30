@@ -127,14 +127,21 @@ public static class Logger
         var candidates = new List<string>(2);
         try
         {
+            // ユーザー名候補は最小長ガード (MinRedactionTokenLength=4) を満たすものだけ採用する。
+            // 置換は裸のユーザー名を IgnoreCase で全行から探す部分一致なので、短い語
+            // ("PC" / "Dev" / "D" 等の短いユーザー名) を候補にすると、無関係な単語の一部
+            // (例: "development" → "<USER>elopment") まで <USER> に潰れ、ログ・サポート ZIP の
+            // 診断性が壊滅する。redaction token 側の CanRedactToken と同じ 4 文字フロアで
+            // 対称化し、過剰マスクを防ぐ (4 文字未満のユーザー名はマスクせず字面のまま残すが、
+            // 短語の過剰マスクの害の方が大きいため許容)。
             var envUser = Environment.GetEnvironmentVariable("USERNAME");
-            if (!string.IsNullOrEmpty(envUser))
+            if (!string.IsNullOrEmpty(envUser) && envUser.Length >= MinRedactionTokenLength)
                 candidates.Add(envUser);
 
             var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var profileLeaf = Path.GetFileName(
                 profile.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-            if (!string.IsNullOrEmpty(profileLeaf) &&
+            if (!string.IsNullOrEmpty(profileLeaf) && profileLeaf.Length >= MinRedactionTokenLength &&
                 !candidates.Contains(profileLeaf, StringComparer.OrdinalIgnoreCase))
             {
                 candidates.Add(profileLeaf);
@@ -471,26 +478,29 @@ public static class Logger
     public static void LogException(string message, Exception exception)
     {
         // 平文 redaction → ユーザーパス mask → 相関 ID suffix の順で常に適用する。
-        // CodeRabbit #3381597792: 通常経路 (構造化 Error) でも redaction 経路 (1 行 Error) でも
-        // MaskUserPath / GetCorrelationSuffix を統一的に通す。WriteToLogger は exception 引数を
-        // 取らないので LogException 専用に同じ前処理を直接呼ぶ。
+        // CodeRabbit #3381597792: 通常経路でも redaction 経路でも MaskUserPath / GetCorrelationSuffix を
+        // 統一的に通す。WriteToLogger は exception 引数を取らないので LogException 専用に同じ前処理を直接呼ぶ。
         var maskedMessage = MaskUserPath(ApplyRedaction(message)) + GetCorrelationSuffix();
         if (_logger != null)
         {
-            if (_redactionTokens.IsEmpty)
-            {
-                // 通常経路: 構造化ログのまま渡す (StackTrace 保持)。
-                _logger.Error(maskedMessage, exception);
-            }
+            // 例外オブジェクトをそのまま構造化ログ (_logger.Error(msg, exception)) に渡すと、
+            // SuperLightLogger のレイアウト (${exception:format=tostring}) が内部で exception.ToString() を
+            // MaskUserPath を通さずにレンダリングし、Message / StackTrace 経由でユーザー名 (PII) や
+            // 圧縮パスワード平文が生ログ・サポート ZIP に残る (#7 / codex P2 #3381085189)。
+            // redaction token の有無にかかわらず、平文化してから ApplyRedaction → MaskUserPath を通して
+            // 1 行 Error で出す (構造化ログとのトレードオフだが安全側に倒す)。ToString は Message と
+            // StackTrace を両方含むため、構造化経路と比べて診断情報は失われない。
+            // exception=null は契約違反だが、呼び出し側の typo (`LogException(msg, null!)`) や
+            // 将来のリファクタで通る可能性があるため fail-safe する。NullReferenceException で
+            // ロガー自体が落ちるとログ機能全体が機能停止するため、message だけは必ず吐く
+            // (gemini レビュー指摘)。
+            var maskedException = exception is not null
+                ? MaskUserPath(ApplyRedaction(exception.ToString()))
+                : string.Empty;
+            if (string.IsNullOrEmpty(maskedException))
+                _logger.Error(maskedMessage);
             else
-            {
-                // Redaction token が登録されているとき: 例外オブジェクトをそのまま渡すと
-                // SuperLightLogger 内部で ToString() を呼んで Message/StackTrace を出すため
-                // password 平文が漏れる経路が残る。平文化してから redaction → mask を通し、Error 1 行で出す
-                // (codex P2 #3381085189 対応、構造化ログとのトレードオフだが安全側に倒す)。
-                var maskedException = MaskUserPath(ApplyRedaction(exception.ToString()));
                 _logger.Error($"{maskedMessage}{Environment.NewLine}{maskedException}");
-            }
             return;
         }
 

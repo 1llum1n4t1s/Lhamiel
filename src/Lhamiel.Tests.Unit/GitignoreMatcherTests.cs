@@ -670,4 +670,32 @@ public class GitignoreMatcherTests
         // ファイル名が node_modules でも directoryOnly なので（traversal でも）一致しない
         Assert.False(m.IsExcluded("node_modules", isDirectory: false, traversalMode: true));
     }
+
+    [Fact]
+    public void CharClass_EscapedClosingBracketDoesNotPrematurelyEndClass()
+    {
+        // gitignore 仕様: 文字クラス内の `\]` はメンバの ']' であって終端ではない。
+        // 旧実装は pattern.IndexOf(']') が `\]` を終端と誤認して classBody が末尾バックスラッシュ
+        // になり、不正な subtraction regex を生成 → 何にもマッチしない fail-open 除外漏れだった。
+        // パターン `[a\]b]` は a / ] / b のいずれかのファイル名にマッチすべき。
+        var m = GitignoreMatcher.Compile([@"[a\]b]"]);
+        Assert.True(m.HasRules);
+        Assert.True(m.IsExcluded("a", isDirectory: false));
+        Assert.True(m.IsExcluded("]", isDirectory: false));
+        Assert.True(m.IsExcluded("b", isDirectory: false));
+        Assert.False(m.IsExcluded("c", isDirectory: false));
+    }
+
+    [Fact]
+    public void CharClass_EvenBackslashRun_BeforeTrailingDash_IsEscapedCorrectly()
+    {
+        // 旧 EscapeTrailingDash は classBody[^2] == '\\' だけを見て「既に \- でエスケープ済み」と
+        // 判定していたため、`\\-` (バックスラッシュ偶数連続 + 裸ダッシュ) を誤判定して
+        // subtraction 連結時に降順レンジ扱いの不正 regex を生成 → ArgumentException → ルール破棄
+        // → fail-open 除外漏れになっていた。連続 '\' の偶奇で正しく判定されるべき。
+        // ここでは `[\\-]` (= リテラル '\' またはリテラル '-' を含むクラス) が破棄されないことを担保。
+        var m = GitignoreMatcher.Compile([@"[\\-]"]);
+        Assert.True(m.HasRules);
+        Assert.True(m.IsExcluded("-", isDirectory: false));
+    }
 }

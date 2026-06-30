@@ -315,6 +315,10 @@ public static class ArchiveProcessor
             // 例外詳細を生ログしない分岐、codex P2 #3386732834) ため try の外で宣言する。
             IDisposable? knownPasswordRedaction = null;
             string? knownPassword = null;
+            // he=on 構造解析でパスワードを使い切ったか（誤入力の繰り返し、または暗号化アーカイブを
+            // パスワード無しでは開けない）。展開段で出る OCE を「無言キャンセル」ではなく
+            // 「暗号化/パスワード誤り」エラーとして扱うため catch から参照する必要があり、try の外で宣言する (#5)。
+            var structurePromptExhausted = false;
             // 展開中の AsyncPasswordQuery でユーザーが入力したパスワードの捕捉
             // (codex P2 #3386876537)。ヘッダ可視の暗号化アーカイブ (パスワード ZIP /
             // he=off 7z) は構造解析プロンプトを通らず knownPassword が null のままなので、
@@ -370,8 +374,7 @@ public static class ArchiveProcessor
                 // 抑止する (suppressPasswordPrompt)。本当に破損したアーカイブはパスワード
                 // コールバック自体が呼ばれずエラー表示経路に進むため UX は変わらない。
                 // 明示キャンセルは展開ごと中止する。
-                // (knownPassword の宣言は catch から参照するため try の外にある)
-                var structurePromptExhausted = false;
+                // (knownPassword / structurePromptExhausted の宣言は catch から参照するため try の外にある)
                 if (rawStructureInfo.OpenFailed && extension is ".7z" or ".rar")
                 {
                     const int MaxStructurePasswordAttempts = 3;
@@ -583,6 +586,31 @@ public static class ArchiveProcessor
                     }
                     return (outputPath, structureInfo);
                 }
+            }
+            catch (OperationCanceledException oce) when (
+                structurePromptExhausted
+                && !cancellationToken.IsCancellationRequested
+                && oce.Data.Contains(ArchiveExtractor.PasswordCancelledOceDataKey))
+            {
+                // 構造解析でパスワードを使い切った（誤入力の繰り返し、または暗号化アーカイブを
+                // パスワード無しでは開けない）結果の OCE。これはユーザーの明示キャンセルではなく
+                // 「展開失敗」なので、無言キャンセル（バッチで成功にも失敗にも計上されず消滅、
+                // 単一経路でダイアログ無し終了）にせず、暗号化/パスワード誤りエラーとして表示し
+                // 失敗として扱う（null 戻り = 呼び出し側で失敗計上、#5）。!cancellationToken... の
+                // ガードで「ユーザーが進捗ウィンドウでキャンセルした」本物のキャンセルは除外する。
+                // oce.Data sentinel で、DiskSpaceChecker の extractCts.Cancel() 由来 OCE
+                // (ArchiveExtractor 内のローカル CTS で、外側 cancellationToken は未キャンセル) を
+                // 区別する (CodeRabbit レビュー指摘)。disk 容量 cancel は別の通常エラー経路に流す。
+                Logger.Log($"暗号化アーカイブのパスワードを解決できなかったため展開に失敗しました: {filePath}", LogLevel.Warning);
+                if (closeWindowOnCompletion)
+                {
+                    progressWindow?.CloseSafe();
+                }
+                await UiDispatcherImpl.InvokeAsync(() =>
+                    MessageServiceImpl.ShowError(
+                        $"{App.Text("ErrorHandler.EncryptedOrWrongPassword")}\n\n{App.Text("ErrorHandler.EncryptedOrWrongPasswordAction")}",
+                        App.Text("Error.ExtractionTitle")));
+                return ((string?)null, (ArchiveExtractor.ArchiveStructureInfo?)null);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
