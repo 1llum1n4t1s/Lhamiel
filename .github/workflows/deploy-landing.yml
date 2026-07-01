@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: リポジトリをチェックアウト
         # actions/checkout@v4.2.2
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
           # zizmor: artipacked 警告対策。チェックアウト後の git 設定に GITHUB_TOKEN を
           # 残さず、後続ステップでの資格情報露出を防ぐ（ここでは push しないので不要）。
