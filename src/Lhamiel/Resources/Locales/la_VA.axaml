@@ -35,6 +35,8 @@
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Forma Compressionis Praefinita</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Compendium</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Creare Compendium in Mensa</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">Tabula Contextualis</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">Monstrare «Lhamielへ» in tabula contextualis fasciculorum et directoriorum</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Lingua</x:String>
 
   <!-- Output Settings -->

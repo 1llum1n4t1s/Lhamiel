@@ -1,0 +1,94 @@
+using Microsoft.Win32;
+using System.Runtime.Versioning;
+
+namespace Lhamiel.Util;
+
+/// <summary>
+/// エクスプローラーのファイル／フォルダ右クリックメニューに Lhamiel の静的 verb を登録する。
+/// </summary>
+[SupportedOSPlatform("windows")]
+internal static class ShellContextMenu
+{
+    internal const string MenuText = "Lhamielへ";
+    internal const string VerbName = "Lhamiel.SendTo";
+    private const string ClassesRootPath = @"Software\Classes";
+
+    private static readonly string[] TargetClasses = ["*", "Directory"];
+
+    /// <summary>
+    /// 右クリックメニューの登録状態を切り替える。
+    /// </summary>
+    internal static bool SetEnabled(bool enabled)
+    {
+        try
+        {
+            var appPath = AppPathResolver.ExecutablePath;
+            if (enabled && string.IsNullOrWhiteSpace(appPath))
+            {
+                Logger.Log("右クリックメニューの登録に必要な実行ファイルパスを取得できませんでした。", LogLevel.Warning);
+                return false;
+            }
+
+            if (enabled)
+                Register(Registry.CurrentUser, ClassesRootPath, appPath);
+            else
+                Unregister(Registry.CurrentUser, ClassesRootPath);
+
+            FileAssociation.NotifyExplorer();
+            Logger.Log(enabled
+                ? "ファイルとフォルダの右クリックメニューに「Lhamielへ」を登録しました。"
+                : "ファイルとフォルダの右クリックメニューから「Lhamielへ」を解除しました。",
+                LogLevel.Debug);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException(enabled
+                ? "右クリックメニューの登録に失敗しました"
+                : "右クリックメニューの解除に失敗しました", ex);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 指定したレジストリ配下へファイル／フォルダ共通の verb を登録する。
+    /// テストでは分離したキーを渡して実レジストリ設定を汚さない。
+    /// </summary>
+    internal static void Register(RegistryKey root, string classesRootPath, string appPath)
+    {
+        if (string.IsNullOrWhiteSpace(appPath))
+            throw new ArgumentException("実行ファイルパスが空です。", nameof(appPath));
+
+        var command = BuildCommand(appPath);
+        var icon = $"\"{appPath}\",0";
+
+        foreach (var targetClass in TargetClasses)
+        {
+            var verbPath = BuildVerbPath(classesRootPath, targetClass);
+            using var verbKey = root.CreateSubKey(verbPath)
+                ?? throw new InvalidOperationException($"レジストリキーを作成できませんでした: {verbPath}");
+            verbKey.SetValue("", MenuText, RegistryValueKind.String);
+            verbKey.SetValue("Icon", icon, RegistryValueKind.String);
+            // 複数選択時も選択項目を同じ Lhamiel プロセスへ渡せるようにする。
+            verbKey.SetValue("MultiSelectModel", "Player", RegistryValueKind.String);
+
+            using var commandKey = verbKey.CreateSubKey("command")
+                ?? throw new InvalidOperationException($"command キーを作成できませんでした: {verbPath}");
+            commandKey.SetValue("", command, RegistryValueKind.String);
+        }
+    }
+
+    /// <summary>
+    /// 指定したレジストリ配下から Lhamiel が所有する verb だけを削除する。
+    /// </summary>
+    internal static void Unregister(RegistryKey root, string classesRootPath)
+    {
+        foreach (var targetClass in TargetClasses)
+            root.DeleteSubKeyTree(BuildVerbPath(classesRootPath, targetClass), throwOnMissingSubKey: false);
+    }
+
+    internal static string BuildCommand(string appPath) => $"\"{appPath}\" \"%1\"";
+
+    internal static string BuildVerbPath(string classesRootPath, string targetClass) =>
+        $@"{classesRootPath}\{targetClass}\shell\{VerbName}";
+}

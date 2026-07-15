@@ -35,6 +35,8 @@
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Default na Format ng Compression</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Shortcut</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Gumawa ng Desktop Shortcut</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">Context Menu</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">Ipakita ang “Lhamielへ” sa right-click menu ng mga file at folder</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Wika</x:String>
 
   <!-- Output Settings (shared) -->

@@ -202,6 +202,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _check4UpdatesOnStartup = true;
 
+    /// <summary>
+    /// ファイルとフォルダの右クリックメニューに「Lhamielへ」を表示するかどうか。
+    /// </summary>
+    [ObservableProperty]
+    private bool _addToContextMenu;
+
     [ObservableProperty]
     private int _selectedDirectoryStructureMode;
 
@@ -282,6 +288,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.IncludeHiddenAndSystemEntries = IncludeHiddenAndSystemEntries;
             s.RespectNestedGitignore = RespectNestedGitignore;
             s.Check4UpdatesOnStartup = Check4UpdatesOnStartup;
+            s.AddToContextMenu = AddToContextMenu;
             s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
             s.ZipCompressionLevel = ZipCompressionLevel;
             s.SevenZipCompressionLevel = SevenZipCompressionLevel;
@@ -542,6 +549,31 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     partial void OnCheck4UpdatesOnStartupChanged(bool value) => AutoSave();
+
+    partial void OnAddToContextMenuChanged(bool value)
+    {
+        if (_isLoading)
+            return;
+
+        if (ShellContextMenu.SetEnabled(value))
+        {
+            AutoSave();
+            return;
+        }
+
+        // 適用に失敗した場合は、UI と永続設定を実際の変更前の状態へ戻す。
+        _isLoading = true;
+        try
+        {
+            AddToContextMenu = !value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+
+        _ = MessageService.ShowError(App.Text("Error.ApplyAssociation"));
+    }
 
     partial void OnSelectedDirectoryStructureModeChanged(int value) => AutoSave();
 
@@ -878,6 +910,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         IncludeHiddenAndSystemEntries = s.IncludeHiddenAndSystemEntries;
         RespectNestedGitignore = s.RespectNestedGitignore;
         Check4UpdatesOnStartup = s.Check4UpdatesOnStartup;
+        AddToContextMenu = s.AddToContextMenu;
         IgnoredUpdateTag = s.IgnoreUpdateTag ?? string.Empty;
         SelectedDirectoryStructureMode = (int)s.DirectoryStructureMode;
         SelectedLocale = string.IsNullOrEmpty(s.Locale) ? App.DetectDefaultLocale() : s.Locale;

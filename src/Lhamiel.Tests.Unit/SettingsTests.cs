@@ -19,6 +19,7 @@ public class SettingsTests
         Assert.False(settings.CompressionOutputToSameDirectory);
         Assert.Equal("https://lhamiel.nephilim.jp", settings.UpdateBaseUrl);
         Assert.Equal("release", settings.UpdateChannel);
+        Assert.False(settings.AddToContextMenu);
     }
 
     [Fact]
@@ -62,7 +63,8 @@ public class SettingsTests
             CompressionFormat = "7z",
             ExtractionOutputToSameDirectory = true,
             CompressionOutputToSameDirectory = true,
-            UpdateChannel = "beta"
+            UpdateChannel = "beta",
+            AddToContextMenu = true
         };
 
         // Act
@@ -74,6 +76,7 @@ public class SettingsTests
         Assert.False(settings.CompressionOutputToSameDirectory);
         Assert.Equal("https://lhamiel.nephilim.jp", settings.UpdateBaseUrl);
         Assert.Equal("release", settings.UpdateChannel);
+        Assert.False(settings.AddToContextMenu);
     }
 
     [Fact]

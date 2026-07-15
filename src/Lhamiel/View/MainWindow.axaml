@@ -118,6 +118,13 @@
                                     Content="{DynamicResource Text.Settings.Shortcut.Create}" />
                             </primitives:HeaderedContentControl>
 
+                            <!--  エクスプローラーの右クリックメニュー  -->
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.ContextMenu.Header}">
+                                <CheckBox
+                                    Content="{DynamicResource Text.Settings.ContextMenu.Enable}"
+                                    IsChecked="{Binding AddToContextMenu}" />
+                            </primitives:HeaderedContentControl>
+
                             <!--  説明テキスト  -->
                             <TextBlock
                                 Margin="4,4,0,0"

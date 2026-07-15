@@ -9,6 +9,13 @@ namespace Lhamiel.Util;
 [SupportedOSPlatform("windows")]
 public class FileAssociation
 {
+    private const string ClassesRootPath = @"Software\Classes";
+    private static readonly string[] SupportedTypes =
+    [
+        "zip", "7z", "tar", "gz", "bz2", "lzma", "xz", "rar", "lzh",
+        "cab", "arj", "z", "tgz", "tbz2", "tbz", "tlz", "txz", "tz"
+    ];
+
     private static string AppPath => AppPathResolver.ExecutablePath;
 
     /// <summary>
@@ -138,17 +145,7 @@ public class FileAssociation
         try
         {
             Logger.Log($"[関連付け解除] 開始: {extension}", LogLevel.Debug);
-            if (!extension.StartsWith("."))
-            {
-                extension = "." + extension;
-            }
-            var appId = $"Lhamiel{extension}";
-            var userKeyPath = $"Software\\Classes\\{extension}";
-            Logger.Log($"[関連付け解除] レジストリキー削除: {userKeyPath}", LogLevel.Debug);
-            Registry.CurrentUser.DeleteSubKeyTree(userKeyPath, false);
-            var appKeyPath = $"Software\\Classes\\{appId}";
-            Logger.Log($"[関連付け解除] アプリケーション識別子キー削除: {appKeyPath}", LogLevel.Debug);
-            Registry.CurrentUser.DeleteSubKeyTree(appKeyPath, false);
+            DisassociateFileType(Registry.CurrentUser, ClassesRootPath, extension);
 
             // 共有 OpenWith キー `Software\Classes\Applications\<exe>` はここでは削除しない (#9)。
             // このキーは拡張子に依存せず exe 名だけでキーされ、Windows シェルの「プログラムから開く」が
@@ -165,6 +162,62 @@ public class FileAssociation
             Logger.LogException($"[関連付け解除] エラー: {extension}", ex);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Lhamiel がサポートする全拡張子の関連付けを解除する。
+    /// アンインストール時に使用し、エクスプローラーへの変更通知は最後に一度だけ行う。
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    public static bool DisassociateAllFileTypes()
+    {
+        try
+        {
+            Logger.Log("[関連付け一括解除] 開始", LogLevel.Debug);
+            DisassociateFileTypes(Registry.CurrentUser, ClassesRootPath, SupportedTypes);
+            NotifyExplorer();
+            Logger.Log("[関連付け一括解除] 完了", LogLevel.Debug);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("[関連付け一括解除] エラー", ex);
+            return false;
+        }
+    }
+
+    internal static void DisassociateFileTypes(
+        RegistryKey root,
+        string classesRootPath,
+        IEnumerable<string> extensions)
+    {
+        foreach (var extension in extensions)
+            DisassociateFileType(root, classesRootPath, extension);
+    }
+
+    internal static void DisassociateFileType(
+        RegistryKey root,
+        string classesRootPath,
+        string extension)
+    {
+        if (!extension.StartsWith('.'))
+            extension = "." + extension;
+
+        var appId = $"Lhamiel{extension}";
+        var extensionKeyPath = $@"{classesRootPath}\{extension}";
+
+        // 拡張子キーは他アプリも共有するため、Lhamiel が現在所有する既定値だけを外す。
+        // 別アプリへ変更済みなら、その関連付けと OpenWith 情報をそのまま維持する。
+        using (var extensionKey = root.OpenSubKey(extensionKeyPath, writable: true))
+        {
+            if (extensionKey is not null &&
+                string.Equals(extensionKey.GetValue("") as string, appId, StringComparison.OrdinalIgnoreCase))
+                extensionKey.DeleteValue("", throwOnMissingValue: false);
+        }
+
+        // ProgID は Lhamiel 固有なので、子キーを含めて安全に削除できる。
+        var appKeyPath = $@"{classesRootPath}\{appId}";
+        root.DeleteSubKeyTree(appKeyPath, throwOnMissingSubKey: false);
     }
 
     /// <summary>
@@ -217,10 +270,9 @@ public class FileAssociation
     [SupportedOSPlatform("windows")]
     public static Dictionary<string, bool> GetCurrentAssociationStatus()
     {
-        var supportedTypes = new[] { "zip", "7z", "tar", "gz", "bz2", "lzma", "xz", "rar", "lzh", "cab", "arj", "z", "tgz", "tbz2", "tbz", "tlz", "txz", "tz" };
         var status = new Dictionary<string, bool>();
 
-        foreach (var type in supportedTypes)
+        foreach (var type in SupportedTypes)
         {
             status[type] = IsFileTypeAssociated(type);
         }

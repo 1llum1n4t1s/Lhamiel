@@ -17,6 +17,7 @@ public class SettingsEdgeCaseTests
             Theme = "Dark",
             CreateArchiveNameFolder = false,
             DirectoryStructureMode = DirectoryStructureMode.Flat,
+            AddToContextMenu = true,
         };
         reset.ResetToDefaults();
 
@@ -36,6 +37,7 @@ public class SettingsEdgeCaseTests
         // v1.0.160 で導入 → 同 ver 取り下げ → 再リリースで再導入: ResetToDefaults の漏れ修正を検証
         Assert.Equal(fresh.CreateArchiveNameFolder, reset.CreateArchiveNameFolder);
         Assert.Equal(fresh.DirectoryStructureMode, reset.DirectoryStructureMode);
+        Assert.Equal(fresh.AddToContextMenu, reset.AddToContextMenu);
     }
 
     [Fact]

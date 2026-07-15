@@ -41,7 +41,7 @@ internal class Program
                 StartupRegistration.Register();
                 NotifyShellIconRefresh();
             })
-            .OnBeforeUninstallFastCallback(v => StartupRegistration.Unregister())
+            .OnBeforeUninstallFastCallback(v => CleanupBeforeUninstall())
             .Run();
 
         // サイレント更新チェックモード
@@ -60,6 +60,20 @@ internal class Program
             Logger.LogException("アプリケーション起動エラー", ex);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Velopack のアンインストール前フックで、Lhamiel が追加したシェル統合を解除する。
+    /// FastCallback 内で完了できるよう、UIを表示せず同期処理だけを実行する。
+    /// </summary>
+    internal static void CleanupBeforeUninstall(
+        Action? unregisterStartup = null,
+        Func<bool, bool>? setContextMenuEnabled = null,
+        Func<bool>? disassociateAllFileTypes = null)
+    {
+        (unregisterStartup ?? StartupRegistration.Unregister)();
+        _ = (setContextMenuEnabled ?? ShellContextMenu.SetEnabled)(false);
+        _ = (disassociateAllFileTypes ?? FileAssociation.DisassociateAllFileTypes)();
     }
 
     /// <summary>

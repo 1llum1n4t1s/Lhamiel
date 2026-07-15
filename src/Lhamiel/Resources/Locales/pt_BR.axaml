@@ -35,6 +35,8 @@
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Formato de Compressão Padrão</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Atalho</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Criar Atalho na Área de Trabalho</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">Menu de Contexto</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">Mostrar “Lhamielへ” no menu de contexto de arquivos e pastas</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Idioma</x:String>
 
   <!-- Output Settings (shared) -->

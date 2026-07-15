@@ -32,6 +32,8 @@
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Default Compression Format</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Shortcut</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Create Desktop Shortcut</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">Context Menu</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">Show “Lhamielへ” in file and folder context menus</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Language</x:String>
 
   <!-- Output Settings (shared) -->

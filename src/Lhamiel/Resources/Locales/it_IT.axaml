@@ -35,6 +35,8 @@
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Formato di compressione predefinito</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Collegamento</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Crea collegamento sul desktop</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">Menu contestuale</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">Mostra «Lhamielへ» nel menu contestuale di file e cartelle</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Lingua</x:String>
 
   <!-- Output Settings (shared) -->

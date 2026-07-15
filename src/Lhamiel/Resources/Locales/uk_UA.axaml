@@ -35,6 +35,8 @@
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Формат стиснення за замовчуванням</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Ярлик</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Створити ярлик на робочому столі</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">Контекстне меню</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">Показувати «Lhamielへ» у контекстному меню файлів і папок</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Мова</x:String>
 
   <!-- Output Settings (shared) -->

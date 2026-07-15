@@ -104,6 +104,11 @@ public class Settings
     public bool Check4UpdatesOnStartup { get; set; } = true;
 
     /// <summary>
+    /// ファイルとフォルダの右クリックメニューに「Lhamielへ」を表示するかどうか。
+    /// </summary>
+    public bool AddToContextMenu { get; set; }
+
+    /// <summary>
     /// ユーザーが「このバージョンをスキップ」を選択した Velopack リリースタグ名（例: "v1.0.166"）。
     /// 自動更新チェック (manually=false) でこのタグ名と一致するリリースが見つかった場合はダイアログを開かない。
     /// 手動チェック (manually=true) は無視タグを無視して常に最新を表示する。
@@ -752,6 +757,7 @@ public class Settings
         IncludeHiddenAndSystemEntries = true;
         UpdateChannel = "release";
         Check4UpdatesOnStartup = true;
+        AddToContextMenu = false;
         IgnoreUpdateTag = "";
         LogMaxSizeMB = 10;
         LogRetentionDays = 7;
@@ -808,6 +814,7 @@ public class Settings
             if (TryGetString(root, nameof(UpdateChannel), out var uc)) { s.UpdateChannel = uc!; recoveredCount++; }
             if (TryGetString(root, nameof(IgnoreUpdateTag), out var iut)) { s.IgnoreUpdateTag = iut!; recoveredCount++; }
             if (TryGetBool(root, nameof(Check4UpdatesOnStartup), out var c4uos)) { s.Check4UpdatesOnStartup = c4uos; recoveredCount++; }
+            if (TryGetBool(root, nameof(AddToContextMenu), out var atcm)) { s.AddToContextMenu = atcm; recoveredCount++; }
 
             if (TryGetBool(root, nameof(ExtractionOutputToSameDirectory), out var eotsd)) { s.ExtractionOutputToSameDirectory = eotsd; recoveredCount++; }
             if (TryGetBool(root, nameof(CompressionOutputToSameDirectory), out var cotsd)) { s.CompressionOutputToSameDirectory = cotsd; recoveredCount++; }
