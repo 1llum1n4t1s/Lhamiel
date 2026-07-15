@@ -35,10 +35,15 @@ internal class Program
         }
 
         VelopackApp.Build()
-            .OnAfterInstallFastCallback(v => StartupRegistration.Register())
+            .OnAfterInstallFastCallback(v =>
+            {
+                StartupRegistration.Register();
+                RefreshShellContextMenuRegistration();
+            })
             .OnAfterUpdateFastCallback(v =>
             {
                 StartupRegistration.Register();
+                RefreshShellContextMenuRegistration();
                 NotifyShellIconRefresh();
             })
             .OnBeforeUninstallFastCallback(v => CleanupBeforeUninstall())
@@ -60,6 +65,15 @@ internal class Program
             Logger.LogException("アプリケーション起動エラー", ex);
             throw;
         }
+    }
+
+    /// <summary>
+    /// インストール／更新で実行ファイルの外部配置先が変わったとき、
+    /// Windows 11 の sparse パッケージを現在の場所へ張り直す。
+    /// </summary>
+    private static void RefreshShellContextMenuRegistration()
+    {
+        _ = ShellContextMenu.SetEnabled(SettingsManager.Instance.Current.AddToContextMenu);
     }
 
     /// <summary>

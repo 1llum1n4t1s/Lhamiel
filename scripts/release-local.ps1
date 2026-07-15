@@ -132,6 +132,13 @@ foreach ($runtime in $Runtimes) {
         }
     }
 
+    Invoke-Native "Windows 11 Shell 統合の生成 ($runtime)" {
+        pwsh scripts/build-shell-integration.ps1 `
+            -Runtime $runtime `
+            -PublishDir $publishDir `
+            -CertificateSubjectName $CertSubjectName
+    }
+
     # README.txt 生成 (CI 版の Markdown 除去ロジックを移植)
     $content = Get-Content 'README.md' -Raw -Encoding utf8
     $content = $content -replace '!\[.*?\]\(.*?\)\r?\n?', ''

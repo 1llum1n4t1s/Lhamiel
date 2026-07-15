@@ -49,6 +49,7 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 │  - FileIconHelper（Shell API）      │
 │  - ShortcutCreator（COM）           │
 │  - StartupRegistration（HKCU\Run）  │
+│  - ShellContextMenu（Win11/従来メニュー）│
 │  - PathValidator                    │
 │  - NativeLibraryManager（7z.dll）   │
 │  - IpcService（Named Pipe）         │
