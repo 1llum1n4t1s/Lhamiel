@@ -157,7 +157,7 @@ vpk pack `
   --packDir publish/win-x64 `
   --outputDir releases/win `
   --channel win `
-  --shortcuts "StartMenu,Desktop" `
+  --shortcuts "StartMenuRoot,Desktop" `
   --signParams $signParams `
   --signParallel 1   # HSM 経路は逐次署名が安全
 

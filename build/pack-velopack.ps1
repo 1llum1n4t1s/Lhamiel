@@ -65,7 +65,7 @@ vpk pack `
     --icon $iconPath `
     --outputDir $releaseDir `
     --channel $Channel `
-    --shortcuts "StartMenu,Desktop"
+    --shortcuts "StartMenuRoot,Desktop"
 
 if ($LASTEXITCODE -ne 0) {
     Write-Error "vpk pack failed with exit code $LASTEXITCODE"
