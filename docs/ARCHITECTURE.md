@@ -162,8 +162,8 @@ D&D → MainWindowViewModel.ProcessDroppedPathsAsync
 
 ## Velopack 自動更新 (配信戦略)
 
-- **配信元**: Cloudflare R2 単独 (`https://lhamiel.nephilim.jp`)。`SimpleWebSource` 経由で取得。中立ドメイン `nephilim.jp` に移行済み（旧 `lhamiel.1llum1n4t1.com` はクラウド/企業 egress の SNI フィルタで false positive を起こすため）。
-- **旧クライアント救済**: GitHub Releases には `nephilim.jp` 版を **踏み台** として publish。旧 GithubSource クライアント (v1.0.167 以下) 救済のため永続保持。通常リリースは R2 のみへ配信。
+- **配信元**: Cloudflare R2 単独 (`https://lhamiel.kagayoi.com`)。`SimpleWebSource` 経由で取得。中立ドメイン `kagayoi.com` に移行済み（旧 `lhamiel.1llum1n4t1.com` はクラウド/企業 egress の SNI フィルタで false positive を起こすため）。
+- **旧クライアント救済**: GitHub Releases には `kagayoi.com` 版を **踏み台** として publish。旧 GithubSource クライアント (v1.0.167 以下) 救済のため永続保持。通常リリースは R2 のみへ配信。
 - **2 系統経路**: (1) `Program.cs --update-check` サイレント CLI 経路（`StartupRegistration` HKCU\Run から発火、UI 無し）、(2) `App.Check4Update` UI 経路（`VelopackUpdateDialog.Avalonia` 経由、`Check4UpdatesOnStartup=true` で起動時自動 + メニューから手動）。
 - **配信元固定の根拠**: `Settings.UpdateBaseUrl` は `[JsonIgnore]` + getter-only でハードコード固定 (`CanonicalUpdateBaseUrl`)、settings.json 改竄経由の悪意ある第三者ホスト誘導を防ぐ。
 - 詳細は CLAUDE.md の Velopack セクションを Single Source of Truth として参照。

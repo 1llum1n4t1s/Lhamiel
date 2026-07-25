@@ -32,8 +32,8 @@ if (-not $VpkVersion) { throw 'vpk の最新安定版バージョンの取得に
 Write-Host "vpk 最新安定版: $VpkVersion"
 $WranglerVersion = '4.92.0'         # サプライチェーン対策でバージョン固定
 $Bucket = 'lhamiel-updates'
-$BaseUrl = 'https://lhamiel.nephilim.jp'
-$ZoneName = 'nephilim.jp'           # Cloudflare zone (apex)。$BaseUrl の Host から正規表現で推測すると
+$BaseUrl = 'https://lhamiel.kagayoi.com'
+$ZoneName = 'kagayoi.com'           # Cloudflare zone (apex)。$BaseUrl の Host から正規表現で推測すると
                                      # apex / co.jp 等の複合 TLD で誤判定するため定数で固定する
 $AccountId = '10901bfadbf1005164774a7350082985'
 $SecretsPath = 'C:\Users\IMT\dev\Secret\secrets.json'

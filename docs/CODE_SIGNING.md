@@ -46,7 +46,7 @@ Lhamiel の Setup.exe / Update.exe / 同梱バイナリに Authenticode 署名�
              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │ Cloudflare R2 bucket: lhamiel-updates                           │
-│  └─ https://lhamiel.nephilim.jp 経由でクライアント配信           │
+│  └─ https://lhamiel.kagayoi.com 経由でクライアント配信           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -178,7 +178,7 @@ Get-AuthenticodeSignature releases/win/Lhamiel-win-Setup.exe | Format-List
 # Status='Valid'、SignerCertificate.Subject に Open Source Developer + ゆろさん氏名が入っていれば OK
 
 # 配信後 R2 経由でも検証
-$url = "https://lhamiel.nephilim.jp/Lhamiel-win-Setup.exe"
+$url = "https://lhamiel.kagayoi.com/Lhamiel-win-Setup.exe"
 Invoke-WebRequest $url -OutFile $env:TEMP/Lhamiel-Setup.exe
 Get-AuthenticodeSignature $env:TEMP/Lhamiel-Setup.exe | Format-List
 ```

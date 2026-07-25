@@ -147,7 +147,7 @@ C:\Users\IMT\dev\
 
 | プロパティ | 型 | デフォルト | 説明 |
 |-----------|------|----------|------|
-| `UpdateBaseUrl` | string | `"https://lhamiel.nephilim.jp"` | **設定不可（固定）**。Cloudflare R2 上の `lhamiel-updates` バケットへマップされた中立カスタムドメイン。`[JsonIgnore]` により `settings.json` の読み書き対象外。記述しても反映されない |
+| `UpdateBaseUrl` | string | `"https://lhamiel.kagayoi.com"` | **設定不可（固定）**。Cloudflare R2 上の `lhamiel-updates` バケットへマップされた中立カスタムドメイン。`[JsonIgnore]` により `settings.json` の読み書き対象外。記述しても反映されない |
 | `UpdateChannel` | string | `"release"` | 更新チャンネル（`"release"` / `"prerelease"`）。case-insensitive で受理し、canonical な小文字（`release` / `prerelease`）に正規化される。未知の値は `release` にサイレントフォールバック |
 | `Check4UpdatesOnStartup` | bool | `true` | メイン画面起動時に Velopack 自動更新チェックを実行するか。`App.Check4Update(manually:false)` UI 経路の ON/OFF を切り替える。「全般」設定タブの「起動時にアップデートを確認」チェックボックスで変更可能 |
 | `IgnoreUpdateTag` | string | `""` | 「このバージョンをスキップ」で記録された Velopack リリースタグ名（例: `"v1.0.166"`）。自動チェックで一致タグの更新は VelopackUpdateDialog で抑止される。手動チェックは無視タグを無視する。`SanitizeAfterLoad` で長さ 256 超 / 制御文字混入時は空文字に正規化される。「バージョン」設定タブの「スキップを取り消す」ボタンでクリア可能 |

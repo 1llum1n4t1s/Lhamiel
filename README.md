@@ -12,7 +12,7 @@ Lhamiel（ラミエル）は、Windows向けの使いやすいアーカイブ管
 >
 > v1.0.172 では「バージョン」設定タブの **「アップデート確認」ボタンを押すと `更新の確認に失敗しました！ Could not find file 'NuGet.Versioning'`** と表示される不具合があります。**対処は不要です** — バックグラウンドの自動更新は正常に動作しているため、次回のアプリ起動（または Windows ログイン）時に自動的に最新版へ更新され、解消されます。
 >
-> すぐに更新したい場合は、最新の Setup.exe を手動インストールしてください（[x64](https://lhamiel.nephilim.jp/Lhamiel-win-Setup.exe) / [ARM64](https://lhamiel.nephilim.jp/Lhamiel-win-arm64-Setup.exe)）。
+> すぐに更新したい場合は、最新の Setup.exe を手動インストールしてください（[x64](https://lhamiel.kagayoi.com/Lhamiel-win-Setup.exe) / [ARM64](https://lhamiel.kagayoi.com/Lhamiel-win-arm64-Setup.exe)）。
 
 ## 主な特徴
 
@@ -31,13 +31,13 @@ Lhamiel（ラミエル）は、Windows向けの使いやすいアーカイブ管
 - **テーマ切替** — ダーク / ライト / システム追従の3モード対応（アクリルブラー背景）
 - **17言語対応** — 日本語・英語をはじめ17言語のUIローカライズに対応
 - **ネイティブ AOT ビルド** — .NET ランタイム不要で起動が速く、Windows x64 / ARM64 の両方に対応
-- **自動更新** — Velopack による差分アップデート。メイン画面起動時に Cloudflare R2 配信元（`lhamiel.nephilim.jp`）を `SimpleWebSource` 経由で自動チェックし、新バージョンが見つかれば `VelopackUpdateDialog.Avalonia` のダイアログで案内（「ダウンロード＆インストール」「このバージョンをスキップ」を選択可能）。手動チェックは「バージョン」タブの「アップデート確認」ボタンから実行可能
+- **自動更新** — Velopack による差分アップデート。メイン画面起動時に Cloudflare R2 配信元（`lhamiel.kagayoi.com`）を `SimpleWebSource` 経由で自動チェックし、新バージョンが見つかれば `VelopackUpdateDialog.Avalonia` のダイアログで案内（「ダウンロード＆インストール」「このバージョンをスキップ」を選択可能）。手動チェックは「バージョン」タブの「アップデート確認」ボタンから実行可能
 
 ## インストール方法
 
 1. 最新の `Setup.exe` をダウンロード（Cloudflare R2 配信、固定 URL のため常に最新版が落ちてきます）
-   - **x64**: <https://lhamiel.nephilim.jp/Lhamiel-win-Setup.exe>
-   - **ARM64**: <https://lhamiel.nephilim.jp/Lhamiel-win-arm64-Setup.exe>
+   - **x64**: <https://lhamiel.kagayoi.com/Lhamiel-win-Setup.exe>
+   - **ARM64**: <https://lhamiel.kagayoi.com/Lhamiel-win-arm64-Setup.exe>
 2. `Setup.exe` を実行してインストール
 3. デスクトップやスタートメニューから Lhamiel を起動
 
@@ -131,7 +131,7 @@ Windows の「設定」→「アプリ」→「インストールされている
 - **クラッシュダンプの場所** — `%LocalAppData%\Lhamiel\dumps\*.dmp`（未処理例外時に自動生成、最新 5 件まで保持）。サポート問い合わせ時に診断 ZIP に含まれる
 - **診断情報の取得方法** — サポート問い合わせの際は「バージョン」設定タブの「診断 ZIP を出力」ボタンを使用してください。マスク済み設定・ログ・環境情報・MiniDump がまとめて ZIP 化されます
 - **一時ファイルの自動削除** — アプリ起動時に `%TEMP%\Lhamiel_Temp_*` の 30 分以上前の残骸を自動で掃除します（前回クラッシュ時の中間ファイル等）
-- **自動更新が失敗する場合** — Velopack 自動更新が動かない場合は、Cloudflare R2 配信元から最新の Setup.exe を手動ダウンロードして上書きインストールしてください（x64: <https://lhamiel.nephilim.jp/Lhamiel-win-Setup.exe> / ARM64: <https://lhamiel.nephilim.jp/Lhamiel-win-arm64-Setup.exe>）
+- **自動更新が失敗する場合** — Velopack 自動更新が動かない場合は、Cloudflare R2 配信元から最新の Setup.exe を手動ダウンロードして上書きインストールしてください（x64: <https://lhamiel.kagayoi.com/Lhamiel-win-Setup.exe> / ARM64: <https://lhamiel.kagayoi.com/Lhamiel-win-arm64-Setup.exe>）
 - **アップデートダイアログが起動毎に出る** — 「このバージョンをスキップ」を押すと該当タグが `settings.json` の `IgnoreUpdateTag` に保存され、次回以降の自動チェックではダイアログを表示しません。完全に無効化したい場合は「全般」設定の「起動時にアップデートを確認」を OFF にしてください
 - **スキップしたバージョンを取り消したい** — 「バージョン」設定タブにスキップ中のバージョン情報と「スキップを取り消す」ボタンが表示されます。ボタンを押すと即座に取り消され、次回起動時から再びアップデート通知が出ます
 - **手動でアップデートを確認したい** — 「バージョン」設定タブの「アップデート確認」ボタンを押すと、`VelopackUpdateDialog` ダイアログが開いて最新バージョンを確認できます（手動チェックは「このバージョンをスキップ」を無視して常に最新を表示します）
@@ -253,12 +253,12 @@ Windows の「設定」→「アプリ」→「インストールされている
 - **ネスト `.gitignore` 取り込み（オプトイン）** — 「全般」設定の「サブフォルダの `.gitignore` も尊重する」を ON にすると、圧縮対象のサブディレクトリ内にある `.gitignore` を自動で取り込んで除外判定に使用。プロジェクトコードをそのまま圧縮するときに `.gitignore` で除外しているファイルをまとめて外せる
 - **フィードバックボタン押下後の UI フリーズを修正 (Issue #54)** — 「バージョン」設定タブの「フィードバックを送る (GitHub)」を押下した直後にアプリ全体が操作不能になる事象を修正。「展開後にフォルダを開く」「除外設定ファイルを開く」など外部アプリを起動する他の経路も同じ仕組みで統一し、ブラウザ・エクスプローラー・エディタの起動時に UI が固まらなくなった
 - **USB ドライブ抜去時のエラー判定を安定化** — 展開・圧縮処理中に USB ドライブを抜いた際のエラー検出が誤判定するケースを修正
-- **ダウンロード導線を R2 直リンクに変更** — README の「インストール方法」と「自動更新が失敗する場合」のリンクを Cloudflare R2 配信元の直リンク（x64: `https://lhamiel.nephilim.jp/Lhamiel-win-Setup.exe` / ARM64: `Lhamiel-win-arm64-Setup.exe`）に変更。固定 URL なので常に最新版がダウンロードされる
+- **ダウンロード導線を R2 直リンクに変更** — README の「インストール方法」と「自動更新が失敗する場合」のリンクを Cloudflare R2 配信元の直リンク（x64: `https://lhamiel.kagayoi.com/Lhamiel-win-Setup.exe` / ARM64: `Lhamiel-win-arm64-Setup.exe`）に変更。固定 URL なので常に最新版がダウンロードされる
 - **品質改善** — `.gitignore` パターン解釈の仕様準拠強化（`**` 境界、ネゲート文字クラス、character class range 内の `/` 除外、否定ディレクトリルールの挙動など）、設定ファイル破損時の段階的フォールバック整理、起動失敗時の緊急ログ書き出し、ロック中ファイルのリトライ動作改善など多数の内部品質改善
 
 ### v1.0.170 (2026-05-20)
 
-- **自動更新の配信ドメインを中立ドメイン `lhamiel.nephilim.jp` に移行** — 旧 `lhamiel.1llum1n4t1.com` はクラウド/企業の egress セキュリティが SNI ベースのフィルタで誤検知し、更新確認時に `Received an unexpected EOF or 0 bytes from the transport stream` を引き起こす事例があったため、中立ドメインへ切替。配信元の R2 バケット (`lhamiel-updates`) は変更なし。旧ドメインは配信期間が短くクリーン廃止。超旧 `GithubSource` クライアント (v1.0.167 以下) 救済のため GitHub Releases には本バージョン (nephilim.jp 版) を踏み台として publish。アプリ機能の変更はなし
+- **自動更新の配信ドメインを中立ドメイン `lhamiel.kagayoi.com` に移行** — 旧 `lhamiel.1llum1n4t1.com` はクラウド/企業の egress セキュリティが SNI ベースのフィルタで誤検知し、更新確認時に `Received an unexpected EOF or 0 bytes from the transport stream` を引き起こす事例があったため、中立ドメインへ切替。配信元の R2 バケット (`lhamiel-updates`) は変更なし。旧ドメインは配信期間が短くクリーン廃止。超旧 `GithubSource` クライアント (v1.0.167 以下) 救済のため GitHub Releases には本バージョン (kagayoi.com 版) を踏み台として publish。アプリ機能の変更はなし
 
 ### v1.0.169 (2026-05-20)
 
