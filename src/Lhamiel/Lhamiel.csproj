@@ -62,7 +62,7 @@
     <PackageReference Include="CRDebugger.Avalonia" Version="1.0.28" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="MessageBox.Avalonia" Version="12.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.83" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.84" />
     <PackageReference Include="SuperLightLogger" Version="1.0.10" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.2" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。

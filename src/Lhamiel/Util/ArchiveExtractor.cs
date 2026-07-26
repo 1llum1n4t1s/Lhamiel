@@ -1019,26 +1019,34 @@ public static class ArchiveExtractor
     ///   <item>クラウドストレージ同期クライアントが書き込み完了直後にハッシュ計算でロック</item>
     /// </list>
     ///
-    /// これらは数百 ms 以内に解放されることが多いので、<see cref="LockedFileRetryPolicy.ExecuteAsync"/>
-    /// で指数バックオフリトライする（既定 3 回 / 200ms→400ms）。永続的ロックや破損ファイルは
+    /// これらは数百 ms 以内に解放されることが多いので、<see cref="LockedFileRetryPolicy.Execute{T}"/>
+    /// で指数バックオフリトライする（3 回 / 200ms→400ms）。永続的ロックや破損ファイルは
     /// <see cref="LockedFileRetryPolicy.IsTransientLockError"/> が false を返すので即時 throw される。
+    ///
+    /// 同期版を使う理由: 旧実装は内側の <c>Task.Run</c> で reader を生成し、呼び出し側は
+    /// <c>await</c> の継続スレッドで <c>Save</c> / <c>Dispose</c> していたため、生成と使用が
+    /// 別のスレッドプールスレッドに分かれていた。ライブラリ (1llum1n4t1s.Sevenzip) の契約は
+    /// 1.0.84 で「同時に触るスレッドは常に 1 つ」へ緩和され、<see cref="NativeArchiveGate"/> で
+    /// 直列化していればスレッドを跨いでも合法になったが、同期化しておくと reader の全寿命が
+    /// 1 スレッドに収まって追いやすく、<c>Task</c> 割り当てと async ステートマシンも 1 つ減る。
+    /// 呼び出し元は既に <c>Task.Run</c> 配下（<see cref="ExtractArchiveAsync"/> 参照）で、直後の
+    /// <c>reader.Save</c> が同じスレッドを長時間占有するため、ここでブロックしても問題ない。
+    /// リトライ待機も <see cref="System.Threading.Thread.Sleep(int)"/> 直呼びではなく
+    /// <see cref="WaitHandle"/> ベースのキャンセル対応版なので、CT の応答性は落ちない。
     /// </summary>
-    private static async Task<ArchiveReader> OpenArchiveReaderWithRetry(
+    private static ArchiveReader OpenArchiveReaderWithRetry(
         string archivePath,
         AsyncPasswordQuery passwordQuery,
         ArchiveOption extractOption,
-        CancellationToken cancellationToken)
-    {
-        ArchiveReader? reader = null;
-        await LockedFileRetryPolicy.ExecuteAsync(
-            () => Task.Run(() =>
-            {
-                reader = new ArchiveReader(archivePath, passwordQuery, extractOption);
-            }, cancellationToken),
+        CancellationToken cancellationToken) =>
+        // maxAttempts / initialDelayMs は非同期版の既定値 (3 回 / 200ms) を明示継承する。
+        // 同期版の既定は 6 回 / 50ms 起点で挙動が変わってしまうため省略しない。
+        LockedFileRetryPolicy.Execute(
+            () => new ArchiveReader(archivePath, passwordQuery, extractOption),
             archivePath,
+            maxAttempts: 3,
+            initialDelayMs: 200,
             cancellationToken: cancellationToken);
-        return reader!;
-    }
 
     public static async Task ExtractArchive(string archivePath, string outputPath, Action<ProgressInfo>? progressCallback = null, Window? parentWindow = null, bool overwriteConfirmed = false, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, HashSet<string>? skipRelativePaths = null, bool normalizeUnicode = true, string? knownPassword = null, bool suppressPasswordPrompt = false, Action<string>? onPasswordPrompted = null)
     {
@@ -1251,8 +1259,14 @@ public static class ArchiveExtractor
             // 生成 → Save → Dispose 全体を 1 スロットに直列化する（バッチ展開の IoBoundParallelism
             // 並列実行時もネイティブ接触が重ならないよう保証）。reader 生成前に取得し、reader の
             // using より外側で取得することで「Acquire → 使用 → Dispose」全体を覆う。
+            //
+            // スレッド固定: ゲート取得の await から復帰したスレッド上で「生成 → Save → Dispose」を
+            // 完結させる。OpenArchiveReaderWithRetry は同期メソッドで、この using ブロック内に
+            // await は 1 つも無い（ライブラリ 1.0.84 の契約はスレッドを跨いでも直列なら合法だが、
+            // await を足すと nativeGate の保持中に別の非ネイティブ処理が挟まってゲートの
+            // 保持時間が伸びるので、ここには await を置かない）。
             using (var nativeGate = await NativeArchiveGate.EnterAsync(cancellationToken))
-            using (var reader = await OpenArchiveReaderWithRetry(archivePath, passwordQuery, extractOption, cancellationToken))
+            using (var reader = OpenArchiveReaderWithRetry(archivePath, passwordQuery, extractOption, cancellationToken))
             {
                 Logger.Log($"一時ディレクトリへの展開処理開始: {archivePath} -> {tempOutputPath}");
 

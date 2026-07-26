@@ -4,9 +4,9 @@
     "net10.0-windows8.0": {
       "1llum1n4t1s.Sevenzip": {
         "type": "Direct",
-        "requested": "[1.0.83, )",
-        "resolved": "1.0.83",
-        "contentHash": "eRaHNDdiq8oBTg69s93Ts7bqblA3NJvjxtvKjOt9GEQPJJATtcouCi79Zx/eWryaTYZDdXZqQDavr1nftKH3mA=="
+        "requested": "[1.0.84, )",
+        "resolved": "1.0.84",
+        "contentHash": "2cYyfvDV4OBuHzINoZwTh08orC/1kPtb23k0STR+3BWro7JvMr9vHxauWEGjD2e8MAugQDezLwJsK4w2xpWZTA=="
       },
       "Avalonia": {
         "type": "Direct",
@@ -345,9 +345,9 @@
     "net10.0-windows8.0/win-x64": {
       "1llum1n4t1s.Sevenzip": {
         "type": "Direct",
-        "requested": "[1.0.83, )",
-        "resolved": "1.0.83",
-        "contentHash": "eRaHNDdiq8oBTg69s93Ts7bqblA3NJvjxtvKjOt9GEQPJJATtcouCi79Zx/eWryaTYZDdXZqQDavr1nftKH3mA=="
+        "requested": "[1.0.84, )",
+        "resolved": "1.0.84",
+        "contentHash": "2cYyfvDV4OBuHzINoZwTh08orC/1kPtb23k0STR+3BWro7JvMr9vHxauWEGjD2e8MAugQDezLwJsK4w2xpWZTA=="
       },
       "Microsoft.DotNet.ILCompiler": {
         "type": "Direct",

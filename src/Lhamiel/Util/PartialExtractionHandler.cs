@@ -139,24 +139,38 @@ public class PartialExtractionHandler
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→Save→Dispose を覆う）。
-            // reader はメソッド全体で保持され、ExtractArchiveToTemporaryPath の Save がネイティブ接触。
-            // 以降の TryExtractEntryAsync は temp ディレクトリからのファイルコピー、AnalyzeError は
-            // 例外分類のみでいずれもネイティブ archive を開かないため、ゲートの入れ子は発生しない。
-            using var nativeGate = await NativeArchiveGate.EnterAsync(cancellationToken);
-            using var reader = new ArchiveReader(archivePath);
-            var items = reader.Items.ToList();
+            // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→Save→Dispose を覆う）と
+            // reader の寿命を、ネイティブ接触が実際に起きる区間だけに絞る。
+            //
+            // 理由: 後続はすべて temp ディレクトリからのファイルコピーと例外分類で、ネイティブ
+            // archive を開かない。reader とゲートをメソッド全体で保持すると、後続の await
+            // （TryExtractEntryAsync / ユーザー選択ダイアログ）で人間の応答を待っている間ずっと
+            // ネイティブゲートを占有し、バッチ展開の他アイテム（IoBoundParallelism 2〜4）を
+            // 止めてしまう。
+            //
+            // このブロック内には await を置かないこと（ゲートの保持時間が伸びる）。なお
+            // ライブラリ (1llum1n4t1s.Sevenzip) の契約は 1.0.84 で「同時に触るスレッドは常に 1 つ」
+            // へ緩和されたので、直列化されていればスレッドを跨ぐこと自体は問題ない。
+            List<ArchiveEntity> items;
+            string tempPath;
+            Exception? extractionException;
+            using (var nativeGate = await NativeArchiveGate.EnterAsync(cancellationToken))
+            using (var reader = new ArchiveReader(archivePath))
+            {
+                items = reader.Items.ToList();
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                (tempPath, extractionException) = ExtractArchiveToTemporaryPath(reader, cancellationToken);
+            }
+
             result.TotalFiles = items.Count;
 
-            // 出力ディレクトリを作成
+            // 出力ディレクトリを作成（一時展開先とは独立なので reader / ゲートの解放後で良い）
             if (!Directory.Exists(outputPath))
             {
                 Directory.CreateDirectory(outputPath);
             }
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var (tempPath, extractionException) = ExtractArchiveToTemporaryPath(reader, cancellationToken);
 
             try
             {

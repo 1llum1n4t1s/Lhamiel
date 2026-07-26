@@ -214,3 +214,13 @@ Tests in `Lhamiel.Tests.Unit/` using **xUnit 3** + Moq. The test project referen
 - `docs/ARCHITECTURE.md` — detailed system design and data flows
 - `docs/SETTINGS_SCHEMA.md` — complete settings.json reference
 - `docs/PARALLEL_IMPLEMENTATION_REPORT.md` — parallel processing research
+
+## ドメイン移行（2026-07 開始・期限 2027/05/31）
+
+屋号を **Kagayoi** に統一したため、配信ドメインを `nephilim.jp` から `kagayoi.com` へ移行中。方針の全体像はユーザーグローバルの `CLAUDE.md` §屋号とドメイン を参照する。
+
+- **旧ドメイン `nephilim.jp` はレジストラで廃止申請済みで 2027/05/31 に失効する**（延長しない）。それまでに出荷済みバイナリを新ドメインへ移行しきる。
+- 旧ホストの Worker route / custom domain は**期限まで消さない**。消すと出荷済みアプリの自動更新が止まる。
+- `nephilim.jp` の Redirect Rules は `/` だけを 301 する。`releases.*.json` / `*.nupkg` / `*-Setup.exe` は転送せず R2 が配信を続ける。
+- 配信は `lhamiel.kagayoi.com`（R2 `lhamiel-updates`）。旧 `lhamiel.nephilim.jp` は route に併記して残してある。
+- sparse MSIX のパッケージ名 `Nephilim.Lhamiel.ContextMenu` は**改名しない**。Publisher が Certum 証明書の Subject と一致している必要があり、変えると Windows 11 の右クリックメニュー登録が壊れる。
