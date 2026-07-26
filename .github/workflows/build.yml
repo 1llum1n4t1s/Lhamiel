@@ -19,12 +19,12 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: リポジトリをチェックアウト
-        # actions/checkout@v4.2.2
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        # actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: .NET SDK をセットアップ
-        # actions/setup-dotnet@v4.3.1
-        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        # actions/setup-dotnet@v6.0.0
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
           dotnet-version: '10.0.x'
 
@@ -46,7 +46,7 @@ jobs:
           Write-Host "Lhamiel.exe と 7z.dll (NuGet 同梱版) を確認完了"
 
       - name: 成果物をアップロード
-        # actions/upload-artifact@v4.4.3
+        # actions/upload-artifact@v7.0.1
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: lhamiel.${{ matrix.runtime }}

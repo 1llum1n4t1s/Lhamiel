@@ -18,18 +18,18 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: リポジトリをチェックアウト
-        # actions/checkout@v4.2.2
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        # actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: .NET SDK をセットアップ
-        # actions/setup-dotnet@v4.3.1
-        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        # actions/setup-dotnet@v6.0.0
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
           dotnet-version: '10.0.x'
 
       - name: CodeQL を初期化
-        # github/codeql-action/init@v4.35.3
-        uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e
+        # github/codeql-action/init@v4.37.3
+        uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81
         with:
           languages: csharp
           build-mode: manual
@@ -38,7 +38,7 @@ jobs:
         run: dotnet build Lhamiel.slnx -c Release
 
       - name: CodeQL 解析を実行
-        # github/codeql-action/analyze@v4.35.3
-        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e
+        # github/codeql-action/analyze@v4.37.3
+        uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81
         with:
           category: /language:csharp
