@@ -33,7 +33,6 @@ public partial class FileConflictDialog : Window
         _isTwoPane = isTwoPane;
         InitializeComponent();
         Util.AcrylicFallbackHelper.Attach(this);
-        Util.AccentTintHelper.Attach(this);
 
         if (conflictGroups.Count == 0)
         {

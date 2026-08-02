@@ -33,12 +33,10 @@
             <ExperimentalAcrylicBorder.Material>
                 <ExperimentalAcrylicMaterial
                     BackgroundSource="Digger"
-                    MaterialOpacity="0.85"
-                    TintColor="{DynamicResource Color.Window}"
-                    TintOpacity="0.9" />
+                    TintOpacity="0.4"
+                    TintColor="{DynamicResource Color.Window}" />
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
-        <!--  アクセントカラーオーバーレイは AccentTintHelper がここ（アクリル直後）に挿入する  -->
         <Grid>
             <!--  ═══ サイドバー + コンテンツ ═══  -->
             <TabControl Margin="16,36,16,16" Classes="sidebar">

@@ -1,4 +1,4 @@
-﻿<Window
+<Window
     x:Class="Lhamiel.View.ErrorRecoveryDialog"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -20,9 +20,8 @@
             <ExperimentalAcrylicBorder.Material>
                 <ExperimentalAcrylicMaterial
                     BackgroundSource="Digger"
-                    MaterialOpacity="0.65"
-                    TintColor="{DynamicResource Color.Window}"
-                    TintOpacity="0.8" />
+                    TintOpacity="0.4"
+                    TintColor="{DynamicResource Color.Window}" />
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
     <Grid Margin="20,40,20,20">

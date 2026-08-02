@@ -10,7 +10,6 @@ public partial class ConfirmDialog : Window
     {
         AvaloniaXamlLoader.Load(this);
         Util.AcrylicFallbackHelper.Attach(this);
-        Util.AccentTintHelper.Attach(this);
     }
 
     public ConfirmDialog(string message, string title) : this()
