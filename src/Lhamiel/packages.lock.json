@@ -66,6 +66,18 @@
         "resolved": "8.4.2",
         "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="
       },
+      "CRDebugger.Avalonia": {
+        "type": "Direct",
+        "requested": "[1.0.28, )",
+        "resolved": "1.0.28",
+        "contentHash": "sA+blTBvgk7r0dG0M1PyRjrleXY9gYU87QTzIyzH6jmfZNK2ZNG+Wn0r9eBeRC2HzhkAgcfVVbtqxj672OnMDQ==",
+        "dependencies": {
+          "Avalonia": "12.1.0",
+          "Avalonia.Themes.Fluent": "12.1.0",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.10",
+          "SuperLightLogger": "1.0.10"
+        }
+      },
       "MessageBox.Avalonia": {
         "type": "Direct",
         "requested": "[12.0.0, )",
