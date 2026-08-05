@@ -5,10 +5,19 @@ updates:
     schedule:
       interval: weekly
       day: monday
+      time: "09:00"
+      timezone: Asia/Tokyo
     open-pull-requests-limit: 10
     labels:
       - dependencies
       - nuget
+    groups:
+      nuget-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
 
   - package-ecosystem: github-actions
     directory: /
@@ -18,3 +27,10 @@ updates:
     labels:
       - dependencies
       - ci
+    groups:
+      actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
