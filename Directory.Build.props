@@ -6,15 +6,20 @@
     <PlatformTarget Condition="'$(PlatformTarget)' == ''">x64</PlatformTarget>
     <Platforms>x64;ARM64</Platforms>
     <SupportedOSPlatformVersion>8.0</SupportedOSPlatformVersion>
-    <Version>1.0.194</Version>
+    <Version>1.0.195</Version>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyTitle>Lhamiel</AssemblyTitle>
     <AssemblyDescription>圧縮・展開ソフトウェア</AssemblyDescription>
-    <AssemblyCompany>1llum1n4t1s</AssemblyCompany>
+    <Company>Kagayoi</Company>
     <AssemblyProduct>Lhamiel</AssemblyProduct>
-    <AssemblyCopyright>Copyright © 2025-2026 ゆろち</AssemblyCopyright>
+    <Copyright>Copyright © 2025-2026 Kagayoi</Copyright>
     <Title>Lhamiel</Title>
-    <Authors>ゆろち</Authors>
+    <Authors>Kagayoi</Authors>
+    <!-- IDE コードスタイル分析をビルド時にも強制する（.editorconfig で IDE0005/IDE0055 等を warning 指定済み）。 -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- IDE0005 (不要な using 検出) にはドキュメント生成が必須。XML コメント未記載の CS1591 は抑制する。 -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 </Project>

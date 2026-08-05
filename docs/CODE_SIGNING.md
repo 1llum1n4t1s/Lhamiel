@@ -151,7 +151,7 @@ vpk pack `
   --packId Lhamiel `
   --packVersion <VERSION> `
   --packTitle "Lhamiel" `
-  --packAuthors "Lhamiel" `
+  --packAuthors "Kagayoi" `
   --mainExe Lhamiel.exe `
   --icon src/Lhamiel/icon/app.ico `
   --packDir publish/win-x64 `

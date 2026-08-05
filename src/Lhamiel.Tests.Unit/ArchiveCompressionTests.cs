@@ -51,8 +51,7 @@ public class ArchiveCompressionTests
     /// アーカイブ内のファイル数と内容を検証する
     /// </summary>
     /// <param name="extractedDir">展開されたディレクトリ</param>
-    /// <param name="expectedFilesCount">期待されるファイル数</param>
-    private static void VerifyExtractedContent(string extractedDir, int expectedFilesCount = 4)
+    private static void VerifyExtractedContent(string extractedDir)
     {
         // 展開されたディレクトリが存在することを確認
         Assert.True(Directory.Exists(extractedDir), $"Expected directory not found: {extractedDir}");

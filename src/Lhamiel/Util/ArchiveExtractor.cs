@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Threading;
 using Cube.FileSystem.SevenZip;
 using System.Security;
 namespace Lhamiel.Util;
@@ -509,6 +508,7 @@ public static class ArchiveExtractor
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
     /// <param name="outputPath">展開先ディレクトリのパス</param>
+    /// <param name="normalizeUnicode">ファイル名を Unicode NFC 正規化して突き合わせるか</param>
     /// <param name="password">ヘッダ暗号化 (he=on) アーカイブの一覧取得に使うパスワード (通常は null)</param>
     /// <returns>衝突するファイルの競合グループリスト。衝突がなければ空リスト</returns>
     public static List<Models.FileConflictGroup> DetectExtractionConflicts(string archivePath, string outputPath, bool normalizeUnicode = true, string? password = null)
@@ -663,7 +663,11 @@ public static class ArchiveExtractor
     /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
+    /// <param name="progressWindow">進捗表示ウィンドウ（マーキー切替や通知の表示に使う。null なら表示しない）</param>
+    /// <param name="precomputedUncompressedSize">構造解析で集計済みの非圧縮サイズ。-1 ならここで再集計する</param>
+    /// <param name="normalizeUnicode">展開時にファイル名を Unicode NFC 正規化するか</param>
     /// <param name="knownPassword">構造解析時に検証済みのパスワード (he=on 7z 等)。初回のパスワード要求をダイアログなしでこの値で応答する</param>
+    /// <param name="suppressPasswordPrompt">展開中の AsyncPasswordQuery でダイアログを出さずに失敗させるか（構造解析側で既に試行済みの場合の二重プロンプト防止）</param>
     /// <param name="onPasswordPrompted">展開中の AsyncPasswordQuery でユーザーがパスワードを入力するたびに呼ばれるコールバック (7z.dll 由来のスレッドから呼ばれる)。呼び出し側 (ArchiveProcessor) が自身の catch/finally 寿命での redaction 登録と CRC 検証用パスワードの捕捉に使う (codex P2 #3386876537/#3386876542)</param>
     /// <returns>展開処理の完了を表すTask</returns>
     public static async Task ExtractArchiveAsync(string archivePath, string outputPath, IProgress<ProgressInfo>? progress = null, Window? parentWindow = null, CancellationToken cancellationToken = default, IReadOnlyList<string>? overwriteCheckPaths = null, View.ProgressWindow? progressWindow = null, long precomputedUncompressedSize = -1, bool normalizeUnicode = true, string? knownPassword = null, bool suppressPasswordPrompt = false, Action<string>? onPasswordPrompted = null)
@@ -999,16 +1003,6 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
-    /// アーカイブを展開する
-    /// </summary>
-    /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <param name="outputPath">展開先ディレクトリのパス</param>
-    /// <param name="progressCallback">進捗コールバック</param>
-    /// <param name="parentWindow">親ウィンドウ（上書き確認ダイアログ用）</param>
-    /// <param name="overwriteConfirmed">上書き確認が既に完了しているかどうか</param>
-    /// <param name="cancellationToken">キャンセルトークン</param>
-    /// <param name="overwriteCheckPaths">上書き確認を行う対象パス（nullの場合はoutputPathで判定）</param>
-/// <summary>
     /// <see cref="ArchiveReader"/> の生成（内部で <c>FormatFactory.From(string)</c> がアーカイブを
     /// 排他オープンする）が「使用中（SHARING_VIOLATION）」例外で失敗するケースを救済する。
     ///
@@ -1034,6 +1028,11 @@ public static class ArchiveExtractor
     /// リトライ待機も <see cref="System.Threading.Thread.Sleep(int)"/> 直呼びではなく
     /// <see cref="WaitHandle"/> ベースのキャンセル対応版なので、CT の応答性は落ちない。
     /// </summary>
+    /// <param name="archivePath">アーカイブファイルのパス</param>
+    /// <param name="passwordQuery">パスワード要求時に呼ばれるコールバック</param>
+    /// <param name="extractOption">展開オプション</param>
+    /// <param name="cancellationToken">キャンセルトークン</param>
+    /// <returns>生成された <see cref="ArchiveReader"/></returns>
     private static ArchiveReader OpenArchiveReaderWithRetry(
         string archivePath,
         AsyncPasswordQuery passwordQuery,
@@ -1590,7 +1589,7 @@ public static class ArchiveExtractor
     /// 既存のファイルまたはディレクトリを退避用バックアップパスへ移動する（原子性のため削除せず移動）
     /// </summary>
     /// <param name="path">退避対象のパス（ファイルまたはディレクトリ）</param>
-    /// <param name="backupPaths">退避先パスを追加するリスト</param>
+    /// <param name="backups">退避元と退避先のペアを追加するリスト</param>
     /// <returns>退避を行った場合はtrue、対象が存在しなかった場合はfalse</returns>
     private static bool MoveExistingToBackup(string path, List<(string Original, string Backup)> backups)
     {

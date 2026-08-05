@@ -317,8 +317,8 @@ public class Settings
     /// 圧縮時にファイル名（アーカイブヘッダ）も暗号化するかどうか（7z の <c>he=on</c> 相当）。
     /// ZIP は仕様上ファイル名を暗号化できないので無視される。
     /// <para>
-    /// この値は <see cref="JsonIgnore"/> で永続化対象外（decision #4: パスワード ON のたびに ON 強制リセット）。
-    /// VM 側で <see cref="ObservableProperty"/> として保持し、ドロップ直前に
+    /// この値は <c>[JsonIgnore]</c> で永続化対象外（decision #4: パスワード ON のたびに ON 強制リセット）。
+    /// VM 側で <c>[ObservableProperty]</c> として保持し、ドロップ直前に
     /// <see cref="SettingsManager.Mutate"/> でこのフィールドへ同期させて Snapshot 経由で
     /// <see cref="ArchiveProcessor.TryResolveCompressionPasswordAsync"/> まで伝播させる。
     /// </para>
@@ -332,12 +332,12 @@ public class Settings
     /// UI スレッド側の設定変更との race を回避する。
     /// </summary>
     /// <remarks>
-    /// ⚠️ 重要: <see cref="MemberwiseClone"/> は参照型フィールドを「参照のみ」コピーするため、
+    /// ⚠️ 重要: <c>MemberwiseClone</c> は参照型フィールドを「参照のみ」コピーするため、
     /// 新しく <see cref="List{T}"/> / <see cref="Dictionary{TKey,TValue}"/> / その他 mutable コレクションを
     /// 追加した場合は、必ず下記に明示的な深コピーを追加すること。漏れるとバックグラウンド処理中に
     /// UI スレッド側の変更を拾ってしまい、<c>InvalidOperationException</c>（列挙中変更）の race が
     /// 発生する。値型・不変型（<see cref="string"/> / <see cref="int"/> / <see cref="bool"/> / enum）は
-    /// <see cref="MemberwiseClone"/> で安全にコピーされるので追記不要。
+    /// <c>MemberwiseClone</c> で安全にコピーされるので追記不要。
     /// </remarks>
     public Settings Snapshot()
     {

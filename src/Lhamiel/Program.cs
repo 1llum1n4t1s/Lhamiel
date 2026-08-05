@@ -1,4 +1,3 @@
-using System;
 using Avalonia;
 using Lhamiel.Util;
 using Velopack;
@@ -13,7 +12,6 @@ internal class Program
     /// アプリケーションのエントリーポイント。Velopack のブートストラップを実行後、Avalonia を起動する。
     /// --update-check 引数が指定された場合は UI なしでサイレント更新チェックのみ実行する。
     /// </summary>
-    /// <param name="args">コマンドライン引数</param>
     /// <summary>
     /// プロセスに設定する AppUserModelID。
     /// Velopack がショートカット（タスクバーピン含む）へ書き込む AUMID（"velopack.{packId}" 規約）と

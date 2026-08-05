@@ -1,4 +1,3 @@
-using System;
 using Lhamiel.Util;
 using Xunit;
 

@@ -1126,8 +1126,9 @@ public static class ArchiveCompressor
     /// HashSet 差分で高速に算出する。
     /// </remarks>
     /// <param name="rootDir">ルートディレクトリ</param>
-    /// <param name="excludedPatternSet">除外パターン</param>
+    /// <param name="matcher">除外判定に使う .gitignore 互換マッチャ</param>
     /// <param name="directoriesWithFiles">ファイルが存在するディレクトリのセット</param>
+    /// <param name="includeHiddenAndSystemEntries">Hidden/System 属性のエントリも列挙対象に含めるか</param>
     /// <returns>空ディレクトリのパスリスト</returns>
     private static List<string> CollectEmptyDirectories(
         string rootDir,
@@ -1191,7 +1192,8 @@ public static class ArchiveCompressor
     /// ディレクトリ内のファイルを再帰的に取得する（除外フィルタ適用）
     /// </summary>
     /// <param name="directoryPath">ディレクトリパス</param>
-    /// <param name="excludedPatternSet">除外パターンの HashSet</param>
+    /// <param name="matcher">除外判定に使う .gitignore 互換マッチャ</param>
+    /// <param name="includeHiddenAndSystemEntries">Hidden/System 属性のエントリも列挙対象に含めるか</param>
     /// <returns>ファイルパスのリスト</returns>
     private static IEnumerable<string> GetFilesRecursively(string directoryPath, GitignoreMatcher matcher, bool includeHiddenAndSystemEntries)
     {
@@ -1265,6 +1267,6 @@ public static class ArchiveCompressor
             : FileAttributes.Hidden | FileAttributes.System | FileAttributes.ReparsePoint,
     };
 
-    
+
 
 }

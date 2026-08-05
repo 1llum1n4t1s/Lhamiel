@@ -8,7 +8,7 @@ namespace Lhamiel.Tests.Unit;
 /// (<see cref="Settings.IsPasswordProtectionEnabled"/> /
 /// <see cref="Settings.PasswordMode"/> /
 /// <see cref="Settings.EncryptedCompressionPassword"/>) に対する
-/// <see cref="Settings.SanitizeAfterLoad"/> と <see cref="Settings.TryRecoverFromJsonDocument"/> のテスト。
+/// <see cref="Settings.SanitizeAfterLoad"/> と <c>Settings.TryRecoverFromJsonDocument</c> のテスト。
 /// </summary>
 public class SettingsPasswordTests
 {

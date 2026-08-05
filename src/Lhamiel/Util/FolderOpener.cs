@@ -63,6 +63,8 @@ public static class FolderOpener
     /// この順で参照することで、展開中のユーザー設定変更に対しても
     /// 「作成したフォルダ」と「開くフォルダ」の整合性を保つ。
     /// </remarks>
+    /// <param name="outputPath">展開先として指定されたベースディレクトリ</param>
+    /// <param name="structureInfo">アーカイブ構造の解析結果。展開時にキャプチャした設定値を含む</param>
     /// <param name="createArchiveNameFolder">展開時に使用された設定値。nullの場合は structureInfo か現在の設定を参照する。</param>
     internal static string GetExtractionFolderToOpen(
         string outputPath,

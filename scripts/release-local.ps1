@@ -159,7 +159,7 @@ foreach ($runtime in $Runtimes) {
             --packId Lhamiel `
             --packVersion $version `
             --packTitle 'Lhamiel' `
-            --packAuthors 'Lhamiel' `
+            --packAuthors 'Kagayoi' `
             --mainExe Lhamiel.exe `
             --icon (Join-Path 'src' 'Lhamiel' 'icon' 'app.ico') `
             --packDir $publishDir `

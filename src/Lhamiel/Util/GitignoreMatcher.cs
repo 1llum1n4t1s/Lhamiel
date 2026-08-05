@@ -36,7 +36,7 @@ namespace Lhamiel.Util;
 /// </list>
 ///
 /// 階層対応:
-/// <see cref="CompileLayered"/> で複数の <c>.gitignore</c> をスコープごとに合成できる。
+/// <c>CompileLayered</c> で複数の <c>.gitignore</c> をスコープごとに合成できる。
 /// 各 layer は <c>baseRelativePath</c>（source root からの相対）を持ち、その配下のパスにのみ評価される。
 /// </summary>
 public sealed class GitignoreMatcher
@@ -75,7 +75,7 @@ public sealed class GitignoreMatcher
 
     /// <summary>
     /// 複数の <c>.gitignore</c> 由来 layer を合成した <see cref="GitignoreMatcher"/> を構築する。
-    /// 各 layer は <paramref name="baseRelativePath"/>（source root からの相対パス）を持ち、
+    /// 各 layer は <c>baseRelativePath</c>（source root からの相対パス）を持ち、
     /// 評価時はその配下のパスにのみ適用される。layer の評価順は引数順（深い scope を後ろに置けば後勝ち）。
     /// </summary>
     public static GitignoreMatcher CompileLayered(IEnumerable<(string baseRelativePath, IEnumerable<string> lines)> layerSources)
@@ -668,6 +668,9 @@ public sealed class GitignoreMatcher
     /// 生成されず（<c>null</c>）、traversal でも通常 Regex を使う。
     /// </para>
     /// </param>
+    /// <param name="Negated">否定ルール（<c>!</c> 始まり）かどうか。マッチしたエントリを再包含する。</param>
+    /// <param name="DirectoryOnly">ディレクトリ限定ルール（末尾 <c>/</c>）かどうか。</param>
+    /// <param name="Anchored">アンカー付きルール（先頭 <c>/</c> や中間 <c>/</c> を含む）かどうか。layer の base 基準で照合する。</param>
     private sealed record Rule(Regex Regex, Regex? ExactPathRegex, bool Negated, bool DirectoryOnly, bool Anchored);
 
     /// <summary>

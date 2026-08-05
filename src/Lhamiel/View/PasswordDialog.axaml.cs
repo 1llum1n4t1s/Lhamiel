@@ -4,7 +4,6 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Lhamiel.Util;
-using System.Threading.Tasks;
 namespace Lhamiel.View;
 
 /// <summary>
@@ -27,7 +26,7 @@ public enum PasswordDialogMode
 /// <remarks>
 /// <para>
 /// プロパティはコンストラクタ初期化のみで動的変更がない（モードも作成時に固定）ため、
-/// <see cref="INotifyPropertyChanged"/> を実装せず compiled binding に任せる。
+/// <c>INotifyPropertyChanged</c> を実装せず compiled binding に任せる。
 /// 警告メッセージの表示切替だけ code-behind 直接操作で行う。
 /// </para>
 /// </remarks>

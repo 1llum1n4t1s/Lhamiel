@@ -79,6 +79,7 @@ public class FileAssociation
     /// Windows 11対応：ユーザーレベルの設定を使用
     /// </summary>
     /// <param name="extension">関連付けるファイル拡張子（例: .zip）</param>
+    /// <param name="fileIconVariant">登録するアイコンのバリアント名。null なら現在の設定値を使う</param>
     /// <returns>設定が成功した場合はtrue、そうでなければfalse</returns>
     [SupportedOSPlatform("windows")]
     public static bool AssociateFileType(string extension, string? fileIconVariant = null)

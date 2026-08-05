@@ -359,7 +359,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// 関連付けタブの ComboBox は <c>SelectedValue</c> + <c>SelectedValueBinding</c> で、
     /// 初期化 (起動時 or タブ初表示時) に <c>SelectedFileIconVariant</c> を
     /// 「現在値 → null/空 → 現在値」と書き戻すことがあり、そのたびに
-    /// <see cref="OnSelectedFileIconVariantChanged"/> が発火する。実際にバリアントが
+    /// <c>OnSelectedFileIconVariantChanged</c> が発火する。実際にバリアントが
     /// 変わったときだけ関連付けアイコンを再適用するため、適用済みの値を保持して照合する
     /// (これをしないと起動/タブ表示のたびに全関連付けを再登録 + SHChangeNotify する回帰になる)。
     /// </summary>

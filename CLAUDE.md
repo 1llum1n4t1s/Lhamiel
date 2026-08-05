@@ -36,7 +36,7 @@ dotnet run --project src/Lhamiel/Lhamiel.csproj
 
 # ローカルインストーラー作成（Native AOT 不使用、テスト確認用）
 dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r win-x64 -p:PublishAot=false --self-contained -o local-publish
-vpk pack --packId Lhamiel --packVersion <VERSION> --packTitle "Lhamiel" --packAuthors "Lhamiel" --mainExe Lhamiel.exe --icon src/Lhamiel/icon/app.ico --packDir local-publish --outputDir local-installer --channel win --shortcuts "StartMenuRoot,Desktop"
+vpk pack --packId Lhamiel --packVersion <VERSION> --packTitle "Lhamiel" --packAuthors "Kagayoi" --mainExe Lhamiel.exe --icon src/Lhamiel/icon/app.ico --packDir local-publish --outputDir local-installer --channel win --shortcuts "StartMenuRoot,Desktop"
 # → local-installer/Lhamiel-win-Setup.exe が生成される
 ```
 

@@ -70,7 +70,7 @@ public class ArchiveErrorHandlerTests
     public void AnalyzeError_JapaneseCorruptionKeyword_ClassifiedAsCorruptedFile(string msg)
     {
         // 日本語 OS で CLR が例外メッセージを翻訳したケース
-    // （v1.0.160 で追加 → 同 ver 取り下げ → 再リリースで再導入された日本語フォールバック）
+        // （v1.0.160 で追加 → 同 ver 取り下げ → 再リリースで再導入された日本語フォールバック）
         var ex = new InvalidOperationException(msg);
         var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\broken.zip", @"C:\out");
         Assert.Equal(ArchiveErrorType.CorruptedFile, info.ErrorType);

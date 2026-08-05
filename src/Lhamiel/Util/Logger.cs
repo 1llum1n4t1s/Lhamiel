@@ -327,7 +327,7 @@ public static class Logger
     /// <remarks>
     /// <para>
     /// defense-in-depth: Lhamiel コード自体はパスワードを直接ログに流さない設計だが、ライブラリ例外メッセージや
-    /// 将来の改修ミスで混入した場合の保険。性能影響は登録 token が無いとき <see cref="ConcurrentDictionary{TKey,TValue}.IsEmpty"/>
+    /// 将来の改修ミスで混入した場合の保険。性能影響は登録 token が無いとき <c>ConcurrentDictionary&lt;TKey,TValue&gt;.IsEmpty</c>
     /// による即座 return で最小化される。
     /// </para>
     /// <para>

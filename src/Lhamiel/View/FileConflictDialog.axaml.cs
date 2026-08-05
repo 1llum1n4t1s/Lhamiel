@@ -461,6 +461,8 @@ public partial class FileConflictDialog : Window
     /// <summary>
     /// バックグラウンドスレッドから競合ダイアログを表示する。
     /// </summary>
+    /// <param name="groups">表示する衝突グループのリスト</param>
+    /// <param name="parentWindow">親ウィンドウ。null の場合はダイアログを表示せず全件選択で返す</param>
     /// <param name="isTwoPane">true: 左右2ペイン（展開時）、false: 縦1列（圧縮時）</param>
     public static async Task<(FileConflictResult result, List<(string fullPath, string relativePath)> selectedFiles)>
         ShowFromBackgroundAsync(List<FileConflictGroup> groups, Window? parentWindow, bool isTwoPane = true)

@@ -1,7 +1,4 @@
-using System;
-using System.Linq;
 using System.Runtime.InteropServices;
-using Avalonia;
 using Avalonia.Controls;
 using Microsoft.Win32;
 

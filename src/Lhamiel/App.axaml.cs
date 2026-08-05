@@ -8,8 +8,6 @@ using Lhamiel.Util;
 using Lhamiel.View;
 using System.Diagnostics;
 using System.Globalization;
-using Velopack;
-using Velopack.Sources;
 namespace Lhamiel;
 
 /// <summary>
@@ -103,7 +101,6 @@ public partial class App : Application
     /// <summary>
     /// アプリケーション起動時の処理
     /// </summary>
-    /// <param name="e">起動イベント引数</param>
     public override async void OnFrameworkInitializationCompleted()
     {
         // 1. UIスレッド（画面操作など）で発生した未処理の例外をキャッチする
@@ -924,129 +921,129 @@ public partial class App : Application
         {
             var op = Dispatcher.UIThread.InvokeAsync(async () =>
             {
-            try
-            {
-                // UpdateManager 組み立ては UpdateChecker.TryBuildUpdateManager に集約 (DRY)。
-                // サイレント経路 (Program.cs --update-check) と同一の組み立てロジックを共有する。
-                var settings = SettingsManager.Instance.CreateSnapshot();
-                var built = UpdateChecker.TryBuildUpdateManager(settings);
-                if (built is null)
-                {
-                    Logger.Log("更新元リポジトリが未設定のため自動更新チェックをスキップします。", LogLevel.Warning);
-                    // 手動チェック時はサイレント return すると「ボタン押しても何も起きない」に見えるため
-                    // ユーザーに理由を明示する。
-                    if (manually)
-                        await MessageService.ShowInfo(App.Text("Update.RepoNotConfigured"));
-                    return;
-                }
-                var (mgr, baseUrl, channel) = built.Value;
-                var isPrerelease = channel.Equals("prerelease", StringComparison.OrdinalIgnoreCase);
-
-                if (!mgr.IsInstalled)
-                {
-                    // IsInstalled=false は (1) `dotnet run` 等の開発実行、または
-                    // (2) Velopack manifest 破損 / 手動 ZIP 配置 / current/ シンボリックリンク欠損 のいずれか。
-                    // サポート時の切り分けのため ProcessPath を併記する。
-                    Logger.Log(
-                        $"Velopack の IsInstalled=false のため自動更新チェックをスキップ (開発実行 or manifest 破損の可能性): ProcessPath={Environment.ProcessPath ?? "(unknown)"}",
-                        LogLevel.Warning);
-                    // 手動チェック時はサイレント return すると「ボタン押しても何も起きない」に見えるため
-                    // 開発環境スキップである旨を明示する。
-                    if (manually)
-                        await MessageService.ShowInfo(App.Text("Update.DevSkip"));
-                    return;
-                }
-
-                // VelopackUpdateDialog.Avalonia 1.0.3 の IgnoredTagName を使用する。
-                // パッケージ側の ShowAsync 自動チェック分岐が「Available && tag != IgnoredTagName」のときだけ
-                // Window を開くので、ホスト側で UpToDate / Failed / IgnoredTag 一致を先回り判定する必要はない。
-                // 手動チェック (manualCheck:true) では IgnoredTagName を無視して常に最新を表示する。
-                var options = new VelopackUpdateDialog.UpdateDialogOptions
-                {
-                    Strings = Models.LhamielUpdateStrings.Instance,
-                    IgnoredTagName = SettingsManager.Instance.Current.IgnoreUpdateTag,
-                };
-                options.VersionIgnored += tag =>
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        // MutateAndSave で atomic にする (Mutate と Save の間に別 thread が割り込まない)。
-                        // Save 失敗時はメモリ状態を巻き戻してから例外を表に出し、ユーザーに通知する
-                        // ("スキップしたのに次回再表示" のサイレント失効を防ぐ)。
-                        var oldTag = SettingsManager.Instance.Current.IgnoreUpdateTag;
-                        try
-                        {
-                            SettingsManager.Instance.MutateAndSave(s => s.IgnoreUpdateTag = tag);
-                            Logger.Log($"IgnoreUpdateTag を保存: {tag}", LogLevel.Warning);
-                        }
-                        catch (Exception saveEx)
-                        {
-                            SettingsManager.Instance.Mutate(s => s.IgnoreUpdateTag = oldTag);
-                            Logger.LogException("IgnoreUpdateTag の保存に失敗", saveEx);
-                            _ = MessageService.ShowError(App.Text("Error.SaveSettingsFailed", saveEx.Message));
-                        }
-                    });
-                options.ErrorOccurred += ex =>
-                    // フルスタックトレースは DiagnosticsCollector 経由で第三者配布される ZIP に含まれる懸念
-                    // (内部 URL / プロキシ情報 / 例外チェーンが露出)。要点のみ Warning で記録する。
-                    Logger.Log(
-                        $"Velopack 更新失敗: {ex.GetType().Name}: {ex.Message}",
-                        LogLevel.Warning);
-
-                var owner = (Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
-
-                Logger.Log(
-                    $"Velopack 自動更新チェック開始: manually={manually}, baseUrl={baseUrl}, channel={(isPrerelease ? "prerelease" : "release")}",
-                    LogLevel.Warning);
-
-                // VelopackUpdateDialog.Avalonia 1.0.3 の ShowAsync が自動分岐で
-                // 「Available && tag != IgnoredTagName」のときだけ Window を開く。
-                // UpToDate / Failed / IgnoredTag 一致はパッケージ側で内部処理されダイアログは開かない。
-                // 手動チェック (manualCheck:true) では IgnoredTagName を無視して常に最新を表示する。
-                //
-                // タイムアウトは自動チェックのみ 30 秒で設定する。
-                // Velopack の半開き TCP / DNS 異常で長時間ロックされるのを防ぐ。
-                // 手動チェックはユーザーが待てる前提で無制限（Close で中断可）。
-                CancellationToken cancelToken = CancellationToken.None;
-                CancellationTokenSource? autoCts = null;
-                if (!manually)
-                {
-                    autoCts = new CancellationTokenSource(AutomaticUpdateCheckTimeout);
-                    cancelToken = autoCts.Token;
-                }
-
                 try
                 {
-                    await VelopackUpdateDialog.UpdateDialogWindow.ShowAsync(
-                        owner, mgr, options, manualCheck: manually, cancelToken);
-                }
-                catch (OperationCanceledException)
-                {
+                    // UpdateManager 組み立ては UpdateChecker.TryBuildUpdateManager に集約 (DRY)。
+                    // サイレント経路 (Program.cs --update-check) と同一の組み立てロジックを共有する。
+                    var settings = SettingsManager.Instance.CreateSnapshot();
+                    var built = UpdateChecker.TryBuildUpdateManager(settings);
+                    if (built is null)
+                    {
+                        Logger.Log("更新元リポジトリが未設定のため自動更新チェックをスキップします。", LogLevel.Warning);
+                        // 手動チェック時はサイレント return すると「ボタン押しても何も起きない」に見えるため
+                        // ユーザーに理由を明示する。
+                        if (manually)
+                            await MessageService.ShowInfo(App.Text("Update.RepoNotConfigured"));
+                        return;
+                    }
+                    var (mgr, baseUrl, channel) = built.Value;
+                    var isPrerelease = channel.Equals("prerelease", StringComparison.OrdinalIgnoreCase);
+
+                    if (!mgr.IsInstalled)
+                    {
+                        // IsInstalled=false は (1) `dotnet run` 等の開発実行、または
+                        // (2) Velopack manifest 破損 / 手動 ZIP 配置 / current/ シンボリックリンク欠損 のいずれか。
+                        // サポート時の切り分けのため ProcessPath を併記する。
+                        Logger.Log(
+                            $"Velopack の IsInstalled=false のため自動更新チェックをスキップ (開発実行 or manifest 破損の可能性): ProcessPath={Environment.ProcessPath ?? "(unknown)"}",
+                            LogLevel.Warning);
+                        // 手動チェック時はサイレント return すると「ボタン押しても何も起きない」に見えるため
+                        // 開発環境スキップである旨を明示する。
+                        if (manually)
+                            await MessageService.ShowInfo(App.Text("Update.DevSkip"));
+                        return;
+                    }
+
+                    // VelopackUpdateDialog.Avalonia 1.0.3 の IgnoredTagName を使用する。
+                    // パッケージ側の ShowAsync 自動チェック分岐が「Available && tag != IgnoredTagName」のときだけ
+                    // Window を開くので、ホスト側で UpToDate / Failed / IgnoredTag 一致を先回り判定する必要はない。
+                    // 手動チェック (manualCheck:true) では IgnoredTagName を無視して常に最新を表示する。
+                    var options = new VelopackUpdateDialog.UpdateDialogOptions
+                    {
+                        Strings = Models.LhamielUpdateStrings.Instance,
+                        IgnoredTagName = SettingsManager.Instance.Current.IgnoreUpdateTag,
+                    };
+                    options.VersionIgnored += tag =>
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            // MutateAndSave で atomic にする (Mutate と Save の間に別 thread が割り込まない)。
+                            // Save 失敗時はメモリ状態を巻き戻してから例外を表に出し、ユーザーに通知する
+                            // ("スキップしたのに次回再表示" のサイレント失効を防ぐ)。
+                            var oldTag = SettingsManager.Instance.Current.IgnoreUpdateTag;
+                            try
+                            {
+                                SettingsManager.Instance.MutateAndSave(s => s.IgnoreUpdateTag = tag);
+                                Logger.Log($"IgnoreUpdateTag を保存: {tag}", LogLevel.Warning);
+                            }
+                            catch (Exception saveEx)
+                            {
+                                SettingsManager.Instance.Mutate(s => s.IgnoreUpdateTag = oldTag);
+                                Logger.LogException("IgnoreUpdateTag の保存に失敗", saveEx);
+                                _ = MessageService.ShowError(App.Text("Error.SaveSettingsFailed", saveEx.Message));
+                            }
+                        });
+                    options.ErrorOccurred += ex =>
+                        // フルスタックトレースは DiagnosticsCollector 経由で第三者配布される ZIP に含まれる懸念
+                        // (内部 URL / プロキシ情報 / 例外チェーンが露出)。要点のみ Warning で記録する。
+                        Logger.Log(
+                            $"Velopack 更新失敗: {ex.GetType().Name}: {ex.Message}",
+                            LogLevel.Warning);
+
+                    var owner = (Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+
                     Logger.Log(
-                        $"自動更新チェックがタイムアウトしました（{AutomaticUpdateCheckTimeout.TotalSeconds:F0} 秒）: baseUrl={baseUrl}, channel={(isPrerelease ? "prerelease" : "release")}",
+                        $"Velopack 自動更新チェック開始: manually={manually}, baseUrl={baseUrl}, channel={(isPrerelease ? "prerelease" : "release")}",
                         LogLevel.Warning);
-                    return;
+
+                    // VelopackUpdateDialog.Avalonia 1.0.3 の ShowAsync が自動分岐で
+                    // 「Available && tag != IgnoredTagName」のときだけ Window を開く。
+                    // UpToDate / Failed / IgnoredTag 一致はパッケージ側で内部処理されダイアログは開かない。
+                    // 手動チェック (manualCheck:true) では IgnoredTagName を無視して常に最新を表示する。
+                    //
+                    // タイムアウトは自動チェックのみ 30 秒で設定する。
+                    // Velopack の半開き TCP / DNS 異常で長時間ロックされるのを防ぐ。
+                    // 手動チェックはユーザーが待てる前提で無制限（Close で中断可）。
+                    CancellationToken cancelToken = CancellationToken.None;
+                    CancellationTokenSource? autoCts = null;
+                    if (!manually)
+                    {
+                        autoCts = new CancellationTokenSource(AutomaticUpdateCheckTimeout);
+                        cancelToken = autoCts.Token;
+                    }
+
+                    try
+                    {
+                        await VelopackUpdateDialog.UpdateDialogWindow.ShowAsync(
+                            owner, mgr, options, manualCheck: manually, cancelToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Logger.Log(
+                            $"自動更新チェックがタイムアウトしました（{AutomaticUpdateCheckTimeout.TotalSeconds:F0} 秒）: baseUrl={baseUrl}, channel={(isPrerelease ? "prerelease" : "release")}",
+                            LogLevel.Warning);
+                        return;
+                    }
+                    finally
+                    {
+                        autoCts?.Dispose();
+                        // Velopack の UpdateManager が IDisposable を実装している場合の Dispose。
+                        // タイムアウト時の HttpClient リーク防止 + 確実なリソース解放のため。
+                        (mgr as IDisposable)?.Dispose();
+                    }
+
+                    Logger.Log(
+                        $"Velopack 自動更新チェック完了: manually={manually}",
+                        LogLevel.Warning);
+                }
+                catch (Exception e)
+                {
+                    Logger.LogException("更新チェック失敗", e);
                 }
                 finally
                 {
-                    autoCts?.Dispose();
-                    // Velopack の UpdateManager が IDisposable を実装している場合の Dispose。
-                    // タイムアウト時の HttpClient リーク防止 + 確実なリソース解放のため。
-                    (mgr as IDisposable)?.Dispose();
+                    EndUpdateCheck();
                 }
-
-                Logger.Log(
-                    $"Velopack 自動更新チェック完了: manually={manually}",
-                    LogLevel.Warning);
-            }
-            catch (Exception e)
-            {
-                Logger.LogException("更新チェック失敗", e);
-            }
-            finally
-            {
-                EndUpdateCheck();
-            }
-        });
+            });
 
             // InvokeAsync の DispatcherOperation がキャンセル / 失敗で lambda が走らなかった場合の
             // _isCheckingUpdate フォールバックリセット。Dispatcher shutdown 中の OperationCanceledException
@@ -1171,7 +1168,7 @@ public partial class App : Application
     private string? _activeLocaleKey;
 
     /// <summary>
-    /// 選択ロケールのみ <see cref="MergedDictionaries"/> に挿入する。
+    /// 選択ロケールのみ <c>Resources.MergedDictionaries</c> に挿入する。
     /// 辞書自体は App.axaml の ResourceInclude で登録し、Native AOT / compiled XAML でも
     /// ビルド成果物に含まれるようにする。
     /// </summary>

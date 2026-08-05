@@ -231,11 +231,6 @@ public static class PathValidator
         return true;
     }
 
-    /// <summary>
-    /// 指定されたパスが保護されたディレクトリ（デスクトップ、マイドキュメント、ドライブのルートなど）かどうかを判定する
-    /// </summary>
-    /// <param name="path">検証するパス</param>
-    /// <returns>保護されている場合はtrue</returns>
     // 保護フォルダのキャッシュ（初回アクセス時に構築）。
     // 「上書き／削除のターゲットとしてその shell folder 自身を指定された場合」に
     // 再帰削除を拒否するためのもの。エクスプローラの Desktop / Documents / Downloads 等を
