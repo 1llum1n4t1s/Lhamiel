@@ -1,36 +1,26 @@
 version: 2
 updates:
-  - package-ecosystem: nuget
-    directory: /
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
-      interval: weekly
-      day: monday
+      interval: "weekly"
+      day: "monday"
       time: "09:00"
-      timezone: Asia/Tokyo
-    open-pull-requests-limit: 10
-    labels:
-      - dependencies
-      - nuget
+      timezone: "Asia/Tokyo"
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
     groups:
       nuget-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - minor
-          - patch
-
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: monthly
-    open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - ci
-    groups:
-      actions-minor-patch:
-        patterns:
-          - "*"
-        update-types:
-          - minor
-          - patch
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
