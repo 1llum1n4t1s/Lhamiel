@@ -21,6 +21,16 @@ public enum DirectoryStructureMode
 /// </summary>
 public class Settings
 {
+    internal const int MaxSourceIgnoreFileNames = 16;
+    internal const int MaxSourceIgnoreFileNameLength = 255;
+
+    private static readonly HashSet<string> ReservedSourceIgnoreFileNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    };
+
     /// <summary>
     /// アプリケーションデータディレクトリ
     /// </summary>
@@ -192,11 +202,15 @@ public class Settings
 
     public const string FileIconVariantClassic = "Classic";
     public const string FileIconVariantFolder = "Folder";
+    public const string FileIconVariantCute = "Cute";
+    public const string FileIconVariantIce = "Ice";
 
     public static readonly string[] SupportedFileIconVariants =
     [
         FileIconVariantClassic,
-        FileIconVariantFolder
+        FileIconVariantFolder,
+        FileIconVariantCute,
+        FileIconVariantIce
     ];
 
     internal static string NormalizeFileIconVariant(string? variant) =>
@@ -283,6 +297,14 @@ public class Settings
     /// </summary>
     public bool RespectNestedGitignore { get; set; } = false;
 
+    /// <summary>
+    /// <see cref="RespectNestedGitignore"/> が有効なとき、圧縮元の各ディレクトリで探す
+    /// 除外ルールファイル名。上から順に確認し、最初に存在する 1 ファイルだけを使用する。
+    /// 子孫では祖先と同じ候補またはより高優先の候補だけを使用し、低優先候補へは戻らない。
+    /// この候補一覧自体は全圧縮に共通するグローバル設定。
+    /// </summary>
+    public string[] SourceIgnoreFileNames { get; set; } = CreateDefaultSourceIgnoreFileNames();
+
     // ──────────────────────────────────────────────────────────
     // パスワード保護（v1.0.181+）
     // ──────────────────────────────────────────────────────────
@@ -343,6 +365,7 @@ public class Settings
     {
         var copy = (Settings)MemberwiseClone();
         // 参照型コレクションは明示的に深コピー（新しく追加した場合は下に追記すること）
+        copy.SourceIgnoreFileNames = [.. SourceIgnoreFileNames];
         // 除外パターンは .lhaignore ファイルが真の源なので Settings 上に状態は持たない。
         // EncryptedCompressionPassword (byte[]?) は wholesale-replace 規約のため参照共有で安全
         //   （Array.Clear 等で in-place 破壊しない、必ず別の byte[] を代入する。CompressionPasswordSession
@@ -527,6 +550,13 @@ public class Settings
 
         FileIconVariant = NormalizeFileIconVariant(FileIconVariant);
 
+        // 圧縮元内で探す除外ルールファイル名は単純ファイル名だけを許可する。
+        // settings.json の手書き編集・破損でパスやワイルドカードが入った場合は、既存動作と
+        // 互換な既定候補 `.gitignore` へ戻す。
+        if (!TryNormalizeSourceIgnoreFileNames(SourceIgnoreFileNames, out var sourceIgnoreFileNames))
+            sourceIgnoreFileNames = CreateDefaultSourceIgnoreFileNames();
+        SourceIgnoreFileNames = sourceIgnoreFileNames;
+
         // IgnoreUpdateTag は VelopackUpdateDialog の VersionIgnored イベント経由でユーザーが
         // 「このバージョンをスキップ」を押した GitHub Release タグ名が保存される。
         // settings.json 直接編集や JSON null (System.Text.Json が non-nullable string に null を代入する経路)、
@@ -683,6 +713,72 @@ public class Settings
     }
 
     /// <summary>
+    /// 圧縮元内で探す除外ルールファイル名の既定候補を返す。
+    /// 配列を呼び出し毎に作成し、Settings インスタンス間の参照共有を避ける。
+    /// </summary>
+    public static string[] CreateDefaultSourceIgnoreFileNames() => [".gitignore"];
+
+    /// <summary>
+    /// 除外ルールファイル名候補を Trim・大小無視重複除去し、安全な単純ファイル名だけに正規化する。
+    /// 空行は無視する。1 件でも不正な名前がある、候補が 0 件、上限を超える場合は false。
+    /// </summary>
+    internal static bool TryNormalizeSourceIgnoreFileNames(
+        IEnumerable<string>? fileNames,
+        out string[] normalizedFileNames)
+    {
+        normalizedFileNames = [];
+        if (fileNames is null)
+            return false;
+
+        var result = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var rawName in fileNames)
+        {
+            if (rawName is null)
+                return false;
+
+            var name = rawName.Trim();
+            if (name.Length == 0)
+                continue;
+            if (!IsValidSourceIgnoreFileName(name))
+                return false;
+            if (!seen.Add(name))
+                continue;
+
+            result.Add(name);
+            if (result.Count > MaxSourceIgnoreFileNames)
+                return false;
+        }
+
+        if (result.Count == 0)
+            return false;
+
+        normalizedFileNames = [.. result];
+        return true;
+    }
+
+    private static bool IsValidSourceIgnoreFileName(string name)
+    {
+        if (name.Length > MaxSourceIgnoreFileNameLength
+            || name is "." or ".."
+            || name.EndsWith(' ')
+            || name.EndsWith('.')
+            || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
+            || name.Contains(Path.DirectorySeparatorChar)
+            || name.Contains(Path.AltDirectorySeparatorChar))
+        {
+            return false;
+        }
+
+        // Windows の予約デバイス名は拡張子の有無にかかわらず無効になる。
+        // Path.GetFileNameWithoutExtension("CON.rules.txt") は "CON.rules" となるため、
+        // 最初のピリオドより前を照合する（先頭がピリオドの通常の dotfile は許可）。
+        var firstDot = name.IndexOf('.');
+        var deviceStem = firstDot >= 0 ? name[..firstDot] : name;
+        return deviceStem.Length == 0 || !ReservedSourceIgnoreFileNames.Contains(deviceStem);
+    }
+
+    /// <summary>
     /// 設定をファイルに保存するメソッド。
     /// <para>
     /// ⚠️ atomic 性: <c>File.WriteAllText</c> は OS のディスクキャッシュへの flush タイミングと
@@ -769,6 +865,7 @@ public class Settings
         NormalizeUnicodeFileNames = true;
         PropagateMarkOfTheWeb = true;
         RespectNestedGitignore = false;
+        SourceIgnoreFileNames = CreateDefaultSourceIgnoreFileNames();
         IsPasswordProtectionEnabled = false;
         PasswordMode = "PromptEachTime";
         EncryptedCompressionPassword = null;
@@ -827,6 +924,11 @@ public class Settings
             if (TryGetBool(root, nameof(NormalizeUnicodeFileNames), out var nufn)) { s.NormalizeUnicodeFileNames = nufn; recoveredCount++; }
             if (TryGetBool(root, nameof(PropagateMarkOfTheWeb), out var pmotw)) { s.PropagateMarkOfTheWeb = pmotw; recoveredCount++; }
             if (TryGetBool(root, nameof(RespectNestedGitignore), out var rng)) { s.RespectNestedGitignore = rng; recoveredCount++; }
+            if (TryGetStringArray(root, nameof(SourceIgnoreFileNames), out var sourceIgnoreFileNames))
+            {
+                s.SourceIgnoreFileNames = sourceIgnoreFileNames;
+                recoveredCount++;
+            }
 
             if (TryGetInt(root, nameof(LogMaxSizeMB), out var lms)) { s.LogMaxSizeMB = lms; recoveredCount++; }
             if (TryGetInt(root, nameof(LogRetentionDays), out var lrd)) { s.LogRetentionDays = lrd; recoveredCount++; }
@@ -915,6 +1017,24 @@ public class Settings
         if (root.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out value))
             return true;
         return false;
+    }
+
+    private static bool TryGetStringArray(JsonElement root, string name, out string[] value)
+    {
+        value = [];
+        if (!root.TryGetProperty(name, out var el) || el.ValueKind != JsonValueKind.Array)
+            return false;
+
+        var result = new List<string>();
+        foreach (var item in el.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String)
+                return false;
+            result.Add(item.GetString()!);
+        }
+
+        value = [.. result];
+        return true;
     }
 
     private static bool TryGetEnum<T>(JsonElement root, string name, out T value) where T : struct, Enum

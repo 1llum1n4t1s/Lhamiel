@@ -18,6 +18,7 @@ public class SettingsEdgeCaseTests
             CreateArchiveNameFolder = false,
             DirectoryStructureMode = DirectoryStructureMode.Flat,
             AddToContextMenu = true,
+            SourceIgnoreFileNames = [".lhamielignore", ".gitignore"],
         };
         reset.ResetToDefaults();
 
@@ -38,6 +39,7 @@ public class SettingsEdgeCaseTests
         Assert.Equal(fresh.CreateArchiveNameFolder, reset.CreateArchiveNameFolder);
         Assert.Equal(fresh.DirectoryStructureMode, reset.DirectoryStructureMode);
         Assert.Equal(fresh.AddToContextMenu, reset.AddToContextMenu);
+        Assert.Equal(fresh.SourceIgnoreFileNames, reset.SourceIgnoreFileNames);
     }
 
     [Fact]
@@ -290,6 +292,8 @@ public class SettingsEdgeCaseTests
     [Theory]
     [InlineData("classic", "Classic")]
     [InlineData("FOLDER", "Folder")]
+    [InlineData("cute", "Cute")]
+    [InlineData("ICE", "Ice")]
     public void SanitizeAfterLoad_FileIconVariant_NormalizedToCanonicalCase(string input, string expected)
     {
         var settings = new Settings { FileIconVariant = input };

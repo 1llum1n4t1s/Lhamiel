@@ -414,8 +414,8 @@
       },
       "System.Security.Cryptography.ProtectedData": {
         "type": "Transitive",
-        "resolved": "10.0.10",
-        "contentHash": "BKt0SQgq2lq3ESE68jkeLwv95ypANrPDtkTOIFGcnhg2aRUeUUBDrQlkVDZctrg1WenVcvn5P5XZnuYI7q6rFQ=="
+        "resolved": "10.0.11",
+        "contentHash": "PNoxCTPb+Tlux+GJyq4c89ddYdpioVSqfGx8pqOF6shCSKwUNNctXhQtRkCICjbJmGrJJsW8NY52kVYO/b8mlQ=="
       },
       "Velopack": {
         "type": "Transitive",
@@ -513,7 +513,7 @@
           "CommunityToolkit.Mvvm": "[8.4.2, )",
           "MessageBox.Avalonia": "[12.0.0, )",
           "SuperLightLogger": "[1.0.12, )",
-          "System.Security.Cryptography.ProtectedData": "[10.0.10, )",
+          "System.Security.Cryptography.ProtectedData": "[10.0.11, )",
           "Tmds.DBus.Protocol": "[0.94.2, )",
           "VelopackUpdateDialog.Avalonia": "[1.0.14, )"
         }

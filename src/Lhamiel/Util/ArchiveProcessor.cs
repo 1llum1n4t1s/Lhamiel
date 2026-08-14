@@ -30,6 +30,8 @@ public static class ArchiveProcessor
     internal static IUiDispatcher UiDispatcherImpl { get; set; } = new DefaultUiDispatcher();
     internal static IConflictDialogService ConflictDialogImpl { get; set; } = new DefaultConflictDialogService();
     internal static IPasswordDialogService PasswordDialogImpl { get; set; } = new DefaultPasswordDialogService();
+    internal static Func<string, long, Window?, CancellationToken, Task<bool>> EnsureDiskSpaceAsyncImpl { get; set; }
+        = DiskSpaceChecker.EnsureDiskSpaceAsync;
 
     /// <summary>
     /// ヘッダ暗号化 (he=on) 構造解析のパスワードプロンプトをプロセス全体で 1 つに直列化するゲート。
@@ -481,6 +483,11 @@ public static class ArchiveProcessor
                     Logger.Log($"フォルダ作成ON: {outputPath}");
                 }
 
+                // NativeArchiveGate は reader の使用中だけを直列化し、展開後の一時フォルダから
+                // outputPath への最終移動はゲート外で実行される。同名アーカイブやフォルダ作成 OFF の
+                // バッチが同じ outputPath に到達した場合は上書き判定と最終移動が競合するため、
+                // 実際に競合する展開先だけを処理完了まで直列化する。異なる展開先は従来どおり並行する。
+                using var destinationGate = await ExtractionDestinationGate.EnterAsync(outputPath, cancellationToken);
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // 2. 展開実行
@@ -909,45 +916,34 @@ public static class ArchiveProcessor
                 IProgress<ProgressInfo> compressionProgress = progressReporter
                     ?? new Progress<ProgressInfo>(info => ArchiveProgressHelper.DispatchProgress(progressWindow, info));
 
-                // 圧縮前のディスク容量チェック。サイズ見積りは対象ツリーの再帰列挙で
-                // 数十万ファイル規模では数十秒かかるため、経過をマーキー表示で伝える。
-                compressionProgress.Report(new ProgressInfo(App.Text("Progress.CheckingDiskSpace")));
-                var estimatedSize = DiskSpaceChecker.GetTotalFileSize([sourcePath]);
-                if (estimatedSize > 0)
-                {
-                    var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(
-                        outputPath, estimatedSize, progressWindow, actualCancellationToken);
-                    if (!hasSpace)
-                        throw new OperationCanceledException(App.Text("Error.DiskSpaceCancelled"));
-                }
-
                 // 圧縮処理を実行
                 Logger.Log($"ArchiveCompressor.CompressFilesAsyncを呼び出し: sourcePath={sourcePath}, outputPath={outputPath}, format={format}");
 
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
 
-                // Flatモードで個別圧縮時にrelativePath重複があれば競合ダイアログを表示。
-                // settings はメソッド冒頭で確保済み。
-                List<(string fullPath, string relativePath)>? resolvedFiles = null;
+                // 容量見積りと実際の圧縮が同じ対象一覧を使うよう、全モードで先に 1 回だけスキャンする。
+                // sourcePath を SearchOption.AllDirectories で別途走査すると、.lhaignore と
+                // SourceIgnoreFileNames を無視するだけでなく、除外対象の reparse point 配下まで辿って
+                // 過大な空き容量を要求し得る。ここで得た一覧は CompressFilesAsync にもそのまま渡す。
+                var lhaignoreLines = LhaignoreFile.ReadLines();
+                var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
+                compressionProgress.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", 0)));
+                List<(string fullPath, string relativePath)> resolvedFiles = await ArchiveCompressor.ScanSourceFiles(
+                    [sourcePath],
+                    ignoreMatcher,
+                    actualCancellationToken,
+                    dirModeOverride: settings.DirectoryStructureMode,
+                    normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames,
+                    includeHiddenAndSystemEntriesOverride: settings.IncludeHiddenAndSystemEntries,
+                    respectNestedGitignore: settings.RespectNestedGitignore,
+                    globalIgnoreLines: lhaignoreLines,
+                    sourceIgnoreFileNames: settings.SourceIgnoreFileNames,
+                    progress: compressionProgress);
+
+                // Flatモードで個別圧縮時に relativePath 重複があれば競合ダイアログを表示。
                 if (settings.DirectoryStructureMode == DirectoryStructureMode.Flat && Directory.Exists(sourcePath))
                 {
-                    // 除外パターンは .lhaignore（gitignore 互換）から圧縮実行毎に読み直す。
-                    // RespectNestedGitignore=true なら各サブツリーの .gitignore も layered matcher として合成する。
-                    var lhaignoreLines = LhaignoreFile.ReadLines();
-                    var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
-                    compressionProgress.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", 0)));
-                    var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
-                        [sourcePath],
-                        ignoreMatcher,
-                        actualCancellationToken,
-                        dirModeOverride: settings.DirectoryStructureMode,
-                        normalizeUnicodeOverride: settings.NormalizeUnicodeFileNames,
-                        includeHiddenAndSystemEntriesOverride: settings.IncludeHiddenAndSystemEntries,
-                        respectNestedGitignore: settings.RespectNestedGitignore,
-                        globalIgnoreLines: lhaignoreLines,
-                        progress: compressionProgress);
-
-                    var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);
+                    var conflicts = ArchiveCompressor.DetectConflicts(resolvedFiles);
                     if (conflicts.Count > 0)
                     {
                         var (result, selectedFiles) = await ConflictDialogImpl.ShowFromBackgroundAsync(conflicts, progressWindow, isTwoPane: false);
@@ -958,17 +954,28 @@ public static class ArchiveProcessor
                         var conflictingPaths = new HashSet<string>(
                             conflicts.SelectMany(g => g.Entries.Select(e => e.FullPath)),
                             StringComparer.OrdinalIgnoreCase);
-                        resolvedFiles = scannedFiles
+                        resolvedFiles = resolvedFiles
                             .Where(f => !conflictingPaths.Contains(f.fullPath))
                             .Concat(selectedFiles)
                             .ToList();
                         if (resolvedFiles.Count == 0)
                             return false;
                     }
-                    else
-                    {
-                        resolvedFiles = scannedFiles;
-                    }
+                }
+
+                // 空ディレクトリマーカーの fullPath は実ディレクトリを指すため、ここで
+                // GetTotalFileSize に渡すと再帰列挙が復活する。通常ファイルだけを合計する。
+                compressionProgress.Report(new ProgressInfo(App.Text("Progress.CheckingDiskSpace")));
+                var estimatedSize = DiskSpaceChecker.GetTotalFileSize(
+                    resolvedFiles
+                        .Where(f => !f.relativePath.EndsWith("/", StringComparison.Ordinal))
+                        .Select(f => f.fullPath));
+                if (estimatedSize > 0)
+                {
+                    var hasSpace = await EnsureDiskSpaceAsyncImpl(
+                        outputPath, estimatedSize, progressWindow, actualCancellationToken);
+                    if (!hasSpace)
+                        throw new OperationCanceledException(App.Text("Error.DiskSpaceCancelled"));
                 }
 
                 var inaccessibleSkipped = await ArchiveCompressor.CompressFilesAsync(
@@ -1473,7 +1480,8 @@ public static class ArchiveProcessor
 
                 // ファイルリストをスキャン。
                 // 除外パターンは .lhaignore（gitignore 互換）から圧縮実行毎に読み直す。
-                // RespectNestedGitignore=true なら各サブツリーの .gitignore も layered matcher として合成する。
+                // RespectNestedGitignore=true なら各サブツリーで優先候補から選んだ除外ルールファイルも
+                // layered matcher として合成する。
                 var lhaignoreLines = LhaignoreFile.ReadLines();
                 var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
                 progress.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", 0)));
@@ -1484,6 +1492,7 @@ public static class ArchiveProcessor
                     includeHiddenAndSystemEntriesOverride: settings.IncludeHiddenAndSystemEntries,
                     respectNestedGitignore: settings.RespectNestedGitignore,
                     globalIgnoreLines: lhaignoreLines,
+                    sourceIgnoreFileNames: settings.SourceIgnoreFileNames,
                     progress: progress);
 
                 // 衝突検出
@@ -1524,7 +1533,7 @@ public static class ArchiveProcessor
                 });
                 if (estimatedMergeSize > 0)
                 {
-                    var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(
+                    var hasSpace = await EnsureDiskSpaceAsyncImpl(
                         outputPath, estimatedMergeSize, progressWindow, actualCancellationToken);
                     if (!hasSpace)
                         throw new OperationCanceledException(App.Text("Error.DiskSpaceCancelled"));

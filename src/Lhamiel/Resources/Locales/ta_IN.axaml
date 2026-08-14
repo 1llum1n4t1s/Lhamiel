@@ -18,11 +18,13 @@
   <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ பொது</x:String>
   <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 பிரித்தெடுத்தல்</x:String>
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 சுருக்கம்</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 சுருக்க விலக்கு அமைப்புகள்</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 கோப்பு தொடர்புகள்</x:String>
   <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ பதிப்பு</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ பொது</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 பிரித்தல்</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 சுருக்கம்</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 சுருக்க விலக்குகள்</x:String>
   <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 இணைப்பு</x:String>
   <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ பதிப்பு</x:String>
 
@@ -66,16 +68,26 @@
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z சுருக்க நிலை</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">மறை/System கோப்புகள் மற்றும் கோப்புறைகளைச் சேர்க்கவும்</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden அல்லது System பண்புள்ள உருப்படிகளும் காப்பகத்தில் சேர்க்கப்படும்.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">சுருக்க விலக்கு பட்டியல்</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">இந்த பட்டியலில் உள்ள வடிவங்கள் சுருக்கும்போது தவிர்க்கப்படும். .gitignore-உடன் இணக்கமான தொடரியல் (எ.கா. *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">சுருக்க விலக்கு அமைப்புகள்</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">இந்தப் பக்கத்தின் அமைப்புகள் இந்த Windows பயனரின் அனைத்து Lhamiel சுருக்கங்களுக்கும் பொருந்தும். ஒவ்வொரு மூலக் கோப்புறைக்கான விலக்குகளை அதன் விதிக் கோப்பில் அமைக்கவும்.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">பொதுவான விலக்கு விதிகள்</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">இங்கு சேர்க்கப்படும் வடிவங்கள் அனைத்து சுருக்க மூலங்களுக்கும் பொருந்தும். .gitignore இணக்கமான தொடரியல் ஆதரிக்கப்படுகிறது.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Path" xml:space="preserve">சேமிப்பு: %LocalAppData%\Lhamiel\.lhaignore</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">எ.கா. *.log அல்லது node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">சேர்</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">அகற்று</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">இயல்புகளுக்கு மீட்டமை</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">விலக்கல் கோப்பைத் திற</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">முன்னிருப்பு உரை எடிட்டரில் .lhaignore-ஐத் திறக்கும்</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">மூலத்தில் உள்ள .gitignore-களையும் பயன்படுத்து</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">மூலத்தின் துணை அடைவில் .gitignore இருந்தால், அதன் விதிகள் அந்த எல்லைக்குள் பயன்படுத்தப்படும்</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">பொதுவான விதிகளை மீட்டமை</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">பொதுவான விலக்கு கோப்பைத் திற</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">பொதுவான விதிகள் உள்ள .lhaignore கோப்பை முன்னிருப்பு உரைத் திருத்தியில் திறக்கும்</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Header" xml:space="preserve">கோப்புறை சார்ந்த விதிகளை ஏற்று</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Description" xml:space="preserve">மூலக் கோப்புறைகளில் விதிக் கோப்புகளைத் தேடி, ஒவ்வொரு கோப்பையும் அதன் கோப்புறைக்குக் கீழே பயன்படுத்தும். இந்த ஏற்றுக் கொள்கை அனைத்து சுருக்கங்களுக்கும் பொதுவானது.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">மூலக் கோப்புறைகளின் விலக்கு விதிகளைப் பயன்படுத்து</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">ஒவ்வொரு கோப்புறையிலும் வேட்புக் கோப்பைத் தேடி, தேர்ந்த விதிகளை அதன் கீழே பயன்படுத்தும்</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Label" xml:space="preserve">அறியப்படும் கோப்புப் பெயர்கள் (மேலே அதிக முன்னுரிமை)</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Placeholder" xml:space="preserve">எ.கா. .lhamielignore</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Tip" xml:space="preserve">ஒரு வரிக்கு ஒரு கோப்புப் பெயரை உள்ளிடவும். துணைக் கோப்புறைகள் மரபாகப் பெற்ற வேட்பைத் தொடரும் அல்லது அதிக முன்னுரிமை வேட்புக்கு மாறும்; குறைந்த முன்னுரிமைக்கு மீண்டும் செல்லாது.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Invalid" xml:space="preserve">ஒரு வரிக்கு ஒரு எளிய கோப்புப் பெயரை உள்ளிடவும். பாதைகள், காட்டுக்குறிகள் மற்றும் ஒதுக்கப்பட்ட பெயர்கள் அனுமதிக்கப்படாது.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Notice" xml:space="preserve">இந்தப் பெயர் பட்டியல் Lhamiel முழுவதற்குமான அமைப்பு. இது தேட வேண்டிய கோப்புகளைச் சொல்கிறது; விலக்கு விதிகளை அல்ல.</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">சுருக்கமில்லை</x:String>
@@ -91,6 +103,8 @@
   <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">கோப்பு ஐகான்</x:String>
   <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">பாரம்பரியம்</x:String>
   <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">கோப்புறை</x:String>
+  <x:String x:Key="Text.Settings.Association.IconCute" xml:space="preserve">அழகிய ரிப்பன்</x:String>
+  <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">பனிக் கோப்புறை</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>

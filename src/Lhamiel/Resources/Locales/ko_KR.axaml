@@ -18,11 +18,13 @@
   <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ 일반</x:String>
   <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 해제</x:String>
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 압축</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 압축 제외 설정</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 파일 연결</x:String>
   <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ 버전</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ 일반</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 압축 해제</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 압축</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 압축 제외</x:String>
   <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 연결</x:String>
   <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ 버전</x:String>
 
@@ -66,16 +68,26 @@
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z 압축 수준</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">숨김/System 파일 및 폴더 포함</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden 또는 System 특성이 있는 항목도 아카이브에 추가합니다.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">압축 제외 목록</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">이 목록의 패턴은 압축 시 건너뜁니다. .gitignore 호환 구문 지원 (예: *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">압축 제외 설정</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">이 페이지의 설정은 현재 Windows 사용자가 Lhamiel로 수행하는 모든 압축에 공통으로 적용됩니다. 소스별 제외 내용은 각 폴더 안의 규칙 파일에서 설정합니다.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">공통 제외 규칙</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">여기에 등록한 패턴은 모든 압축 소스에 적용됩니다. .gitignore 호환 구문을 지원합니다.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Path" xml:space="preserve">저장 위치: %LocalAppData%\Lhamiel\.lhaignore</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">예: *.log 또는 node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">추가</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">제거</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">기본값 복원</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">제외 파일 열기</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">.lhaignore를 기본 텍스트 편집기에서 엽니다</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">소스 내부의 .gitignore도 함께 사용</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">소스의 하위 디렉토리에 .gitignore가 있으면 해당 범위에서 규칙을 적용합니다</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">공통 규칙 기본값 복원</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">공통 제외 파일 열기</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">공통 규칙을 저장하는 .lhaignore를 기본 텍스트 편집기에서 엽니다</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Header" xml:space="preserve">폴더별 규칙 불러오기</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Description" xml:space="preserve">소스 폴더에서 제외 규칙 파일을 찾아 해당 폴더 아래에 적용합니다. 불러오기 방식은 모든 압축에 공통입니다.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">소스 폴더의 제외 규칙 사용</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">각 폴더에서 후보 파일을 찾아 선택된 규칙을 해당 폴더 아래에 적용합니다</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Label" xml:space="preserve">인식할 파일 이름(위쪽 우선)</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Placeholder" xml:space="preserve">예: .lhamielignore</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Tip" xml:space="preserve">한 줄에 파일 이름 하나를 입력합니다. 하위 폴더는 상속된 후보를 유지하거나 더 높은 우선순위 후보로 전환하며, 더 낮은 우선순위로 돌아가지 않습니다.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Invalid" xml:space="preserve">한 줄에 단순 파일 이름 하나를 입력하세요. 경로, 와일드카드, 예약 이름은 사용할 수 없습니다.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Notice" xml:space="preserve">이 파일 이름 목록은 Lhamiel 전체 설정입니다. 여기서는 제외 규칙 내용이 아니라 찾을 파일 이름을 지정합니다.</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">압축 없음</x:String>
@@ -91,6 +103,8 @@
   <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">파일 아이콘</x:String>
   <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">클래식</x:String>
   <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">폴더</x:String>
+  <x:String x:Key="Text.Settings.Association.IconCute" xml:space="preserve">귀여운 리본</x:String>
+  <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">얼음 폴더</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>

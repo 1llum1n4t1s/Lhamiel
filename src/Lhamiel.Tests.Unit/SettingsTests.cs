@@ -36,6 +36,8 @@ public class SettingsTests
         Assert.True(settings.OpenExtractionOutputFolder);
         Assert.True(settings.OpenCompressionOutputFolder);
         Assert.True(settings.IncludeHiddenAndSystemEntries);
+        Assert.False(settings.RespectNestedGitignore);
+        Assert.Equal([".gitignore"], settings.SourceIgnoreFileNames);
         Assert.Equal(10, settings.LogMaxSizeMB);
         Assert.Equal(7, settings.LogRetentionDays);
     }
@@ -51,6 +53,51 @@ public class SettingsTests
         Assert.Contains("Thumbs.db", content, StringComparison.Ordinal);
         Assert.Contains("__MACOSX", content, StringComparison.Ordinal);
         Assert.Contains("desktop.ini", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SourceIgnoreFileNames_NormalizePreservesPriorityAndDeduplicates()
+    {
+        var success = Settings.TryNormalizeSourceIgnoreFileNames(
+            [" .lhamielignore ", ".gitignore", ".LHAMIELIGNORE", ""],
+            out var result);
+
+        Assert.True(success);
+        Assert.Equal([".lhamielignore", ".gitignore"], result);
+    }
+
+    [Theory]
+    [InlineData("../rules")]
+    [InlineData("folder/.gitignore")]
+    [InlineData("*.ignore")]
+    [InlineData("CON")]
+    [InlineData("CON.rules.txt")]
+    [InlineData(".")]
+    [InlineData("rules.")]
+    public void SourceIgnoreFileNames_InvalidNameIsRejected(string invalidName)
+    {
+        Assert.False(Settings.TryNormalizeSourceIgnoreFileNames([invalidName], out _));
+    }
+
+    [Fact]
+    public void SanitizeAfterLoad_InvalidSourceIgnoreFileNamesRestoresGitignoreDefault()
+    {
+        var settings = new Settings { SourceIgnoreFileNames = ["../outside"] };
+
+        settings.SanitizeAfterLoad();
+
+        Assert.Equal([".gitignore"], settings.SourceIgnoreFileNames);
+    }
+
+    [Fact]
+    public void Snapshot_SourceIgnoreFileNamesAreDeepCopied()
+    {
+        var settings = new Settings { SourceIgnoreFileNames = [".lhamielignore", ".gitignore"] };
+
+        var snapshot = settings.Snapshot();
+        settings.SourceIgnoreFileNames[0] = ".changed";
+
+        Assert.Equal([".lhamielignore", ".gitignore"], snapshot.SourceIgnoreFileNames);
     }
 
     [Fact]
@@ -77,6 +124,7 @@ public class SettingsTests
         Assert.Equal("https://lhamiel.kagayoi.com", settings.UpdateBaseUrl);
         Assert.Equal("release", settings.UpdateChannel);
         Assert.False(settings.AddToContextMenu);
+        Assert.Equal([".gitignore"], settings.SourceIgnoreFileNames);
     }
 
     [Fact]

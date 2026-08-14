@@ -120,7 +120,8 @@ public static class ArchiveCompressor
         // 設定スナップショットを取得（race を避けるため処理開始時点で1回だけ）
         var settings = settingsOverride ?? SettingsManager.Instance.CreateSnapshot();
         // 除外パターンは .lhaignore（gitignore 互換）から圧縮実行毎に読み直す。
-        // RespectNestedGitignore=true なら各サブツリーの .gitignore も layered matcher として合成する。
+        // RespectNestedGitignore=true なら各サブツリーで優先候補から選んだ除外ルールファイルも
+        // layered matcher として合成する。
         var lhaignoreLines = LhaignoreFile.ReadLines();
         var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
 
@@ -146,6 +147,7 @@ public static class ArchiveCompressor
                 settings.IncludeHiddenAndSystemEntries,
                 respectNestedGitignore: settings.RespectNestedGitignore,
                 globalIgnoreLines: lhaignoreLines,
+                sourceIgnoreFileNames: settings.SourceIgnoreFileNames,
                 progress: progress);
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
@@ -435,6 +437,7 @@ public static class ArchiveCompressor
         bool? includeHiddenAndSystemEntriesOverride = null,
         bool respectNestedGitignore = false,
         IReadOnlyList<string>? globalIgnoreLines = null,
+        IReadOnlyList<string>? sourceIgnoreFileNames = null,
         IProgress<ProgressInfo>? progress = null)
     {
         var filesToCompress = new List<(string fullPath, string relativePath)>();
@@ -462,8 +465,9 @@ public static class ArchiveCompressor
             {
                 Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
 
-                // 圧縮対象ディレクトリ内に .gitignore があれば layered matcher を構築する（その source 限定）。
-                // .lhaignore (= matcher 引数) で枝刈りしながら探索するので、node_modules/ 内の .gitignore は読まない。
+                // 圧縮対象ディレクトリ内に候補の除外ルールファイルがあれば layered matcher を構築する
+                // （その source 限定）。.lhaignore (= matcher 引数) で枝刈りしながら探索するので、
+                // node_modules/ 等の除外済みサブツリー内のルールファイルは読まない。
                 // ⚠️ Codex P2 指摘対応 (#3305241279): BuildLayeredMatcherForSource は matcher (= fallbackMatcher) を
                 // 必ず base layer として保持するので、globalIgnoreLines が null でも .lhaignore ルールは保証される。
                 var effectiveMatcher = respectNestedGitignore
@@ -471,7 +475,8 @@ public static class ArchiveCompressor
                         sourcePath,
                         globalIgnoreLines,
                         matcher,
-                        includeHiddenAndSystemEntries)
+                        includeHiddenAndSystemEntries,
+                        sourceIgnoreFileNames)
                     : matcher;
 
                 var files = GetFilesRecursively(sourcePath, effectiveMatcher, includeHiddenAndSystemEntries);
@@ -567,9 +572,12 @@ public static class ArchiveCompressor
     }
 
     /// <summary>
-    /// 圧縮対象ディレクトリ <paramref name="sourceDir"/> 配下から <c>.gitignore</c> を発見し、
-    /// 各 <c>.gitignore</c> をその親ディレクトリ相対の layer として合成した <see cref="GitignoreMatcher"/> を返す。
-    /// 既に <c>.lhaignore</c> で除外されるディレクトリ（例: <c>node_modules/</c>）配下の <c>.gitignore</c> は読み込まない。
+    /// 圧縮対象ディレクトリ <paramref name="sourceDir"/> 配下で、各ディレクトリごとに
+    /// <paramref name="sourceIgnoreFileNames"/> を上から確認して除外ルールファイルを選び、
+    /// 親ディレクトリ相対の layer として合成した <see cref="GitignoreMatcher"/> を返す。
+    /// 子孫では祖先と同じ候補または祖先より高優先の候補だけを選べるため、階層を下る途中で
+    /// 一度選ばれた高優先候補から低優先候補へ戻ることはない。
+    /// 既に <c>.lhaignore</c> で除外されるディレクトリ（例: <c>node_modules/</c>）配下は探索しない。
     /// <para>
     /// Codex P2 指摘対応: <paramref name="globalIgnoreLines"/> が <c>null</c> の場合でも
     /// <paramref name="fallbackMatcher"/> のルールを必ず保持する。旧実装は <c>globalIgnoreLines ?? []</c> で
@@ -581,9 +589,16 @@ public static class ArchiveCompressor
         string sourceDir,
         IReadOnlyList<string>? globalIgnoreLines,
         GitignoreMatcher fallbackMatcher,
-        bool includeHiddenAndSystemEntries)
+        bool includeHiddenAndSystemEntries,
+        IReadOnlyList<string>? sourceIgnoreFileNames = null)
     {
         ArgumentNullException.ThrowIfNull(fallbackMatcher);
+
+        var normalizedSourceIgnoreFileNames = Settings.TryNormalizeSourceIgnoreFileNames(
+            sourceIgnoreFileNames ?? Settings.CreateDefaultSourceIgnoreFileNames(),
+            out var normalizedNames)
+            ? normalizedNames
+            : Settings.CreateDefaultSourceIgnoreFileNames();
 
         // ベース matcher は呼び出し元から渡された fallbackMatcher (= 既にコンパイル済みの .lhaignore matcher)。
         // globalIgnoreLines が非 null なら、それを source root スコープの追加 layer として最初に重ねる。
@@ -595,10 +610,14 @@ public static class ArchiveCompressor
             additionalLayers.Add((string.Empty, globalIgnoreLines));
         }
 
-        // 枝刈り用 prune matcher は fallback + global lines + root .gitignore (もしあれば) を合成する。
-        // DiscoverGitignoreFiles が yield する layer は呼び出し時点でこの prune matcher で枝刈り済み。
-        foreach (var (relativeDir, lines) in DiscoverGitignoreFiles(
-                     sourceDir, fallbackMatcher, globalIgnoreLines, includeHiddenAndSystemEntries))
+        // 枝刈り用 prune matcher は fallback + global lines + root の選択済みルール（もしあれば）を合成する。
+        // DiscoverSourceIgnoreFiles が yield する layer は呼び出し時点でこの prune matcher で枝刈り済み。
+        foreach (var (relativeDir, lines) in DiscoverSourceIgnoreFiles(
+                     sourceDir,
+                     fallbackMatcher,
+                     globalIgnoreLines,
+                     includeHiddenAndSystemEntries,
+                     normalizedSourceIgnoreFileNames))
         {
             additionalLayers.Add((relativeDir, lines));
         }
@@ -608,27 +627,31 @@ public static class ArchiveCompressor
             : GitignoreMatcher.CompileLayered(fallbackMatcher, additionalLayers);
     }
 
-    private static IEnumerable<(string relativeDir, string[] lines)> DiscoverGitignoreFiles(
+    private static IEnumerable<(string relativeDir, string[] lines)> DiscoverSourceIgnoreFiles(
         string sourceDir,
         GitignoreMatcher fallbackMatcher,
         IReadOnlyList<string>? globalIgnoreLines,
-        bool includeHiddenAndSystemEntries)
+        bool includeHiddenAndSystemEntries,
+        IReadOnlyList<string> sourceIgnoreFileNames)
     {
-        // source root 自身の .gitignore（あれば）を先に読む。
-        // ⚠️ ここで読んだ root の .gitignore は、その後のサブディレクトリ走査 (= さらなる nested
-        // .gitignore を探す再帰探索) でも枝刈りに使う。これをしないと、root .gitignore で除外される
+        // source root 自身で最優先の除外ルールファイル（あれば）を先に読む。
+        // ⚠️ ここで読んだ root ルールは、その後のサブディレクトリ走査 (= さらなる folder-local
+        // ルールを探す再帰探索) でも枝刈りに使う。これをしないと、root ルールで除外される
         // 大規模サブツリー (vendor/, build/, node_modules/.pnpm/ 等) も毎回完全に走査されて
         // O(tree size) の無駄なスキャンコストが発生する。RTK レビュー Codex P2 指摘対応。
         string[]? rootLines = null;
-        var rootGitignore = Path.Combine(sourceDir, ".gitignore");
-        if (File.Exists(rootGitignore))
+        var rootIgnoreFile = FindFirstSourceIgnoreFile(
+            sourceDir,
+            sourceIgnoreFileNames,
+            sourceIgnoreFileNames.Count - 1);
+        if (rootIgnoreFile is { } rootSelection)
         {
-            rootLines = TryReadGitignoreLines(rootGitignore);
+            rootLines = TryReadIgnoreFileLines(rootSelection.path);
             if (rootLines is not null)
                 yield return (string.Empty, rootLines);
         }
 
-        // 枝刈り matcher = fallbackMatcher + global lines + root .gitignore の 3 段合流。
+        // 枝刈り matcher = fallbackMatcher + global lines + root の選択済みルールの 3 段合流。
         // fallbackMatcher のルールを必ず保持することで、呼び出し元から渡された .lhaignore ルールが
         // silent ドロップされる経路を排除する (Codex P2 指摘 #3305241279)。
         var pruneAdditional = new List<(string baseRelativePath, IEnumerable<string> lines)>();
@@ -641,13 +664,33 @@ public static class ArchiveCompressor
             ? fallbackMatcher
             : GitignoreMatcher.CompileLayered(fallbackMatcher, pruneAdditional);
 
+        // 各分岐で現在有効な候補順位を引き継ぐ。候補 index は小さいほど高優先なので、
+        // 子では inherited index 以下だけを探索する。これにより
+        // root=.gitignore → child=.lhamielignore の昇格は許可し、
+        // root=.lhamielignore → child=.gitignore の降格は抑止する。
+        var activePriorityByDirectory = new Dictionary<string, int?>(PathComparer)
+        {
+            [Path.GetFullPath(sourceDir)] = rootIgnoreFile?.candidateIndex,
+        };
+
         // ディレクトリツリーを併合 matcher で枝刈りしながら走査
         foreach (var dir in EnumerateDirectoriesWithPruning(sourceDir, pruneMatcher, includeHiddenAndSystemEntries))
         {
-            var giPath = Path.Combine(dir, ".gitignore");
-            if (!File.Exists(giPath))
+            var fullDir = Path.GetFullPath(dir);
+            var parentDir = Directory.GetParent(fullDir)?.FullName;
+            var inheritedPriority = parentDir is not null
+                && activePriorityByDirectory.TryGetValue(parentDir, out var parentPriority)
+                    ? parentPriority
+                    : rootIgnoreFile?.candidateIndex;
+
+            var maxCandidateIndex = inheritedPriority ?? sourceIgnoreFileNames.Count - 1;
+            var ignoreFile = FindFirstSourceIgnoreFile(dir, sourceIgnoreFileNames, maxCandidateIndex);
+            var activePriority = ignoreFile?.candidateIndex ?? inheritedPriority;
+            activePriorityByDirectory[fullDir] = activePriority;
+
+            if (ignoreFile is not { } selection)
                 continue;
-            var lines = TryReadGitignoreLines(giPath);
+            var lines = TryReadIgnoreFileLines(selection.path);
             if (lines is null)
                 continue;
             var rel = Path.GetRelativePath(sourceDir, dir);
@@ -655,7 +698,24 @@ public static class ArchiveCompressor
         }
     }
 
-    private static string[]? TryReadGitignoreLines(string path)
+    private static (string path, int candidateIndex)? FindFirstSourceIgnoreFile(
+        string directory,
+        IReadOnlyList<string> sourceIgnoreFileNames,
+        int maxCandidateIndex)
+    {
+        var lastCandidateIndex = Math.Min(maxCandidateIndex, sourceIgnoreFileNames.Count - 1);
+        for (var candidateIndex = 0; candidateIndex <= lastCandidateIndex; candidateIndex++)
+        {
+            var fileName = sourceIgnoreFileNames[candidateIndex];
+            var path = Path.Combine(directory, fileName);
+            if (File.Exists(path))
+                return (path, candidateIndex);
+        }
+
+        return null;
+    }
+
+    private static string[]? TryReadIgnoreFileLines(string path)
     {
         try
         {
@@ -663,7 +723,7 @@ public static class ArchiveCompressor
         }
         catch (Exception ex)
         {
-            Logger.Log($".gitignore の読み込みに失敗しました: {path}, {ex.Message}", LogLevel.Warning);
+            Logger.Log($"除外ルールファイルの読み込みに失敗しました: {path}, {ex.Message}", LogLevel.Warning);
             return null;
         }
     }

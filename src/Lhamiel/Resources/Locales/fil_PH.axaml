@@ -18,11 +18,13 @@
   <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Pangkalahatan</x:String>
   <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Pag-extract</x:String>
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Pag-compress</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 Mga Pagbubukod sa Pag-compress</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Mga File Association</x:String>
   <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Bersyon</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Pangkalahatan</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Extraction</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Compression</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 Mga Pagbubukod</x:String>
   <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Associations</x:String>
   <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Version</x:String>
 
@@ -66,16 +68,26 @@
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Antas ng 7z Compression</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Isama ang hidden/System na file at folder</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Isinasama rin sa archive ang mga entry na may Hidden o System attribute.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Listahan ng Hindi Isasama sa Compression</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Nilalaktawan sa compression ang mga pattern sa listahang ito. Sumusuporta sa .gitignore-compatible syntax (hal. *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Mga Hindi Isasama sa Compression</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Nalalapat ang mga setting sa pahinang ito sa lahat ng compression ng Lhamiel para sa Windows user na ito. Ilagay ang source-specific na exclusions sa rule files sa bawat source folder.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">Mga shared exclusion rule</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">Nalalapat sa lahat ng compression source ang mga pattern dito. Sinusuportahan ang .gitignore-compatible syntax.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Path" xml:space="preserve">Naka-save sa: %LocalAppData%\Lhamiel\.lhaignore</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">hal. *.log o node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">Idagdag</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">Alisin</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Ibalik sa Default</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Buksan ang exclusion file</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Binubuksan ang .lhaignore sa default na text editor</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Gamitin din ang .gitignore sa loob ng source</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">Kung ang subdirectory sa source ay naglalaman ng .gitignore, ilalapat ang mga panuntunan nito sa scope na iyon</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">I-reset ang shared rules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Buksan ang shared exclusion file</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Binubuksan ang .lhaignore na naglalaman ng shared rules sa default na text editor</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Header" xml:space="preserve">I-load ang folder-specific rules</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Description" xml:space="preserve">Naghahanap ng exclusion rule files sa source folders at inilalapat ang bawat file sa ilalim ng folder nito. Ang loading policy na ito ay para sa lahat ng compression.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Gamitin ang exclusion rules mula sa source folders</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">Naghahanap ng candidate file sa bawat folder at inilalapat ang napiling rules sa ilalim nito</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Label" xml:space="preserve">Mga kinikilalang file name (pinakamataas ang nasa itaas)</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Placeholder" xml:space="preserve">hal. .lhamielignore</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Tip" xml:space="preserve">Maglagay ng isang file name bawat linya. Pinapanatili ng mga child folder ang minanang candidate o lumilipat sa mas mataas ang priority; hindi sila bumabalik sa mas mababang priority.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Invalid" xml:space="preserve">Maglagay ng simpleng file name bawat linya. Hindi pinapayagan ang path, wildcard, at reserved name.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Notice" xml:space="preserve">Global na setting ng Lhamiel ang listahang ito. Tinutukoy nito ang mga file na hahanapin, hindi ang exclusion rules mismo.</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Walang Compression</x:String>
@@ -91,6 +103,8 @@
   <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">Icon ng file</x:String>
   <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">Classic</x:String>
   <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">Folder</x:String>
+  <x:String x:Key="Text.Settings.Association.IconCute" xml:space="preserve">Cute na ribbon</x:String>
+  <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">Nagyelong folder</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>

@@ -360,6 +360,10 @@ public partial class App : Application
     {
         if (filePaths.Length == 0) return;
 
+        // 起動時 CLI と常駐インスタンスの IPC は同じ入口を通る。先行するドロップ操作も含めて
+        // トップレベル操作をキュー化し、進捗ウィンドウ・上書き確認・最終移動を重ねない。
+        using var operationGate = await ArchiveOperationGate.EnterAsync();
+
         // codex P2 #3384706125: VM の AutoSave は 300ms デバウンスされるため、設定パネル操作の
         // 直後にシェル/IPC 経由で圧縮・展開が始まると、下の CreateSnapshot が変更前の古い設定を
         // 掴むことがある (ドロップ経路は VM が直接スナップショットを押し下げるのに対し、この経路は

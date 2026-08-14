@@ -18,11 +18,13 @@
   <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ General</x:String>
   <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Extracción</x:String>
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Compresión</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 Exclusiones de compresión</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Asociaciones de archivos</x:String>
   <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Versión</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ General</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Extracción</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Compresión</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 Exclusiones</x:String>
   <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Asociaciones</x:String>
   <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Versión</x:String>
 
@@ -66,16 +68,26 @@
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Nivel de compresión 7z</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Incluir archivos y carpetas ocultos/del sistema</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">También se agregan al archivo las entradas con atributos Hidden o System.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Lista de exclusión de compresión</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Los patrones de esta lista se omiten al comprimir. Sintaxis compatible con .gitignore (p. ej. *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Exclusiones de compresión</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">La configuración de esta página se aplica a todas las compresiones de Lhamiel para este usuario de Windows. Defina las exclusiones específicas del origen en archivos de reglas dentro de cada carpeta.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">Reglas de exclusión compartidas</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">Los patrones registrados aquí se aplican a todos los orígenes de compresión. Se admite la sintaxis compatible con .gitignore.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Path" xml:space="preserve">Guardado en: %LocalAppData%\Lhamiel\.lhaignore</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">p. ej. *.log o node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">Agregar</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">Quitar</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Restaurar predeterminados</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Abrir archivo de exclusión</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Abre .lhaignore en el editor de texto predeterminado</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Usar también archivos .gitignore dentro del origen</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">Si un subdirectorio del origen contiene un .gitignore, sus reglas se aplican en ese ámbito</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Restablecer reglas compartidas</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Abrir archivo de exclusión compartido</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Abre el archivo .lhaignore que guarda las reglas compartidas en el editor de texto predeterminado</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Header" xml:space="preserve">Cargar reglas específicas de carpetas</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Description" xml:space="preserve">Busca archivos de reglas de exclusión en las carpetas de origen y aplica cada archivo debajo de su carpeta. Esta política de carga es común a todas las compresiones.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Usar reglas de exclusión de las carpetas de origen</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">Busca un archivo candidato en cada carpeta y aplica las reglas seleccionadas debajo de ella</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Label" xml:space="preserve">Nombres de archivo reconocidos (mayor prioridad primero)</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Placeholder" xml:space="preserve">p. ej. .lhamielignore</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Tip" xml:space="preserve">Escriba un nombre de archivo por línea. Las subcarpetas conservan el candidato heredado o cambian a uno de mayor prioridad; nunca vuelven a uno de menor prioridad.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Invalid" xml:space="preserve">Escriba un nombre de archivo simple por línea. No se permiten rutas, comodines ni nombres reservados.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Notice" xml:space="preserve">Esta lista de nombres es una configuración global de Lhamiel. Indica qué archivos buscar, no las reglas de exclusión.</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Sin compresión</x:String>
@@ -91,6 +103,8 @@
   <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">Icono de archivo</x:String>
   <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">Clásico</x:String>
   <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">Carpeta</x:String>
+  <x:String x:Key="Text.Settings.Association.IconCute" xml:space="preserve">Lazo adorable</x:String>
+  <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">Carpeta helada</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>

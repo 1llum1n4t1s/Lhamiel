@@ -18,11 +18,13 @@
   <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Generalia</x:String>
   <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Extractio</x:String>
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Compressio</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 Exclusiones compressionis</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Consociationes Fasciculorum</x:String>
   <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Versio</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Generalia</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Extractio</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Compressio</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 Exclusiones</x:String>
   <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Consociationes</x:String>
   <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Versio</x:String>
 
@@ -66,16 +68,26 @@
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Gradus Compressionis 7z</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Includere fasciculos et folders occultos/systema</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Elementa attributis Hidden vel System etiam in archivum adduntur.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Index exclusionis compressionis</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Formae in hoc indice compressione omittuntur. Syntaxis cum .gitignore compatibilis (ex. *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Exclusiones compressionis</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Huius paginae configurationes omnibus compressionibus Lhamiel huius usoris Windows valent. Exclusiones proprias fontis in fasciculis regularum cuiusque directorii constitue.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">Regulae exclusionis communes</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">Formae hic inscriptae omnibus fontibus compressionis valent. Syntaxis cum .gitignore compatibilis sustinetur.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Path" xml:space="preserve">Servatur in: %LocalAppData%\Lhamiel\.lhaignore</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">ex. *.log vel node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">Addere</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">Removere</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Restituere praevalores</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Aperi tabellam exclusionis</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Aperit .lhaignore in editore textus praedefinito</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Adhibe etiam .gitignore intra fontem</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">Si subdirectorium fontis .gitignore continet, regulae eius in eo ambitu adhibentur</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Restitue regulas communes</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Aperi fasciculum exclusionis communem</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Aperit fasciculum .lhaignore regularum communium in editore textus praedefinito</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Header" xml:space="preserve">Lege regulas directoriorum proprias</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Description" xml:space="preserve">Fasciculos regularum in directoriis fontis quaerit et unumquemque infra suum directorium adhibet. Haec ratio omnibus compressionibus communis est.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Adhibe regulas exclusionis ex directoriis fontis</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">In quoque directorio fasciculum candidatum quaerit et regulas electas infra illud adhibet</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Label" xml:space="preserve">Nomina fasciculorum agnita (prioritas summa primum)</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Placeholder" xml:space="preserve">ex. .lhamielignore</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Tip" xml:space="preserve">Unum nomen fasciculi per lineam inscribe. Subdirectoria candidatum hereditum retinent aut ad candidatum maioris prioritatis transeunt; ad minorem prioritatem non redeunt.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Invalid" xml:space="preserve">Unum simplex nomen per lineam inscribe. Viae, signa universalia et nomina reservata non licent.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Notice" xml:space="preserve">Hic index nominum configuratio universalis Lhamiel est. Fasciculos quaerendos, non ipsas regulas exclusionis, definit.</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Nulla Compressio</x:String>
@@ -91,6 +103,8 @@
   <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">Icon Fasciculi</x:String>
   <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">Classicum</x:String>
   <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">Theca</x:String>
+  <x:String x:Key="Text.Settings.Association.IconCute" xml:space="preserve">Taenia venusta</x:String>
+  <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">Theca glacialis</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>

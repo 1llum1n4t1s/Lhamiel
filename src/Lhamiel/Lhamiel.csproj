@@ -67,7 +67,7 @@
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.94.2" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。
          Windows 専用 (Lhamiel 自体 Windows 専用なので問題なし)。Native AOT 対応 (10.x)。 -->
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.10" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
     <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.14" />
   </ItemGroup>
@@ -88,6 +88,8 @@
     <Copy SourceFiles="icon\app.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\file.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\file_folder.ico" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="icon\file_cute.ico" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="icon\file_ice.ico" DestinationFolder="$(PublishDir)" />
   </Target>
 
   <!-- Build 出力にもコピー（dev 実行での関連付けアイコン解決・設定画面プレビュー用） -->
@@ -95,6 +97,8 @@
     <Copy SourceFiles="icon\app.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="icon\file.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="icon\file_folder.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="icon\file_cute.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="icon\file_ice.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
 
 

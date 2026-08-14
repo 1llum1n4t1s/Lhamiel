@@ -13,6 +13,7 @@
   "Theme": "System",
   "Locale": "",
   "CompressionFormat": "ZIP",
+  "FileIconVariant": "Classic",
   "ExtractionOutputDirectory": "C:\\Users\\YourName\\Desktop",
   "CompressionOutputDirectory": "C:\\Users\\YourName\\Desktop",
   "ExtractionOutputToSameDirectory": false,
@@ -24,6 +25,9 @@
   "DirectoryStructureMode": "IncludeRoot",
   "IncludeHiddenAndSystemEntries": true,
   "RespectNestedGitignore": false,
+  "SourceIgnoreFileNames": [
+    ".gitignore"
+  ],
   "VerifyAfterExtraction": true,
   "NormalizeUnicodeFileNames": true,
   "PropagateMarkOfTheWeb": true,
@@ -50,6 +54,12 @@
 |-----------|------|----------|------|
 | `Theme` | string | `"System"` | テーマ。`"System"`, `"Dark"`, `"Light"` |
 | `Locale` | string | `""` | ロケール。空文字はシステム自動検出。例: `"ja_JP"`, `"en_US"` |
+
+### 関連付け設定
+
+| プロパティ | 型 | デフォルト | 説明 |
+|-----------|------|----------|------|
+| `FileIconVariant` | string | `"Classic"` | 関連付けファイルのアイコン。`"Classic"`, `"Folder"`, `"Cute"`, `"Ice"`。大文字・小文字は読み込み時に正規化され、不明な値は `"Classic"` に戻る |
 
 ### 展開設定
 
@@ -84,11 +94,11 @@
 
 > **`EncryptedCompressionPassword` の取り扱い**: DPAPI scope は `CurrentUser`。同じ Windows ユーザー + 同じ PC でのみ復号可能。別 PC への `settings.json` コピーや Windows パスワードリセット後は復号失敗 → UI で「再設定してください」と促す。Settings 側は自動 wipe しない（OneDrive 同期等の一時的失敗でパスワードを失わないため）。`PasswordMode="Remember"` で ciphertext 空の場合は起動時に `"PromptEachTime"` へ自動 degrade される。
 
-> **除外パターンは別ファイル**: 圧縮時の除外パターンは `settings.json` ではなく [`%LocalAppData%\Lhamiel\.lhaignore`](#圧縮時の除外パターン-lhaignore) に保存される。`v1.0.171` 以降、`.gitignore` 互換構文に対応。
+> **除外設定には 2 種類ある**: 設定画面で編集する共通ルールは [`%LocalAppData%\Lhamiel\.lhaignore`](#すべての圧縮に共通する除外ルール-lhaignore) に保存され、すべての圧縮に適用される。`RespectNestedGitignore` と `SourceIgnoreFileNames` は、圧縮元フォルダー内のルールファイルをどう探すかを定めるグローバル設定。実際のフォルダー別ルールは各圧縮元に置く。
 
-### 圧縮時の除外パターン (.lhaignore)
+### すべての圧縮に共通する除外ルール (.lhaignore)
 
-`.lhaignore` は `%LocalAppData%\Lhamiel\.lhaignore` に置かれるテキストファイルで、`.gitignore` と同じ構文で圧縮対象から除外するパターンを記述する。設定タブの「除外設定ファイルを開く」ボタンから既定のテキストエディタで開ける。
+`.lhaignore` は `%LocalAppData%\Lhamiel\.lhaignore` に置かれるテキストファイルで、`.gitignore` と同じ構文で圧縮対象から除外するパターンを記述する。このファイルのルールは、この Windows ユーザーの Lhamiel で行うすべての圧縮に共通して適用される。設定タブの「共通除外ファイルを開く」ボタンから既定のテキストエディターで開ける。
 
 主要構文:
 
@@ -108,31 +118,60 @@
 - ディレクトリ除外（`node_modules/` など）は配下を枝刈りするため、`!node_modules/keep.txt` での再包含は機能しない。
 - 旧 `settings.json` の `ExcludedFilePatterns` 配列は初回起動時に自動で `.lhaignore` へ移行され、次回 Save で JSON から消える。
 
-### ネストされた `.gitignore` の併用
+### 圧縮元フォルダー別ルールの読み込み
 
-設定 `RespectNestedGitignore` (デフォルト `false` / オプトイン) を有効にすると、圧縮対象のディレクトリツリー内にある `.gitignore` をスキャン前に発見し、各 `.gitignore` をそのディレクトリのスコープで `.lhaignore` のルールに **追加で** 適用する。
+設定 `RespectNestedGitignore`（デフォルト `false` / オプトイン）を有効にすると、圧縮対象のディレクトリツリー内で `SourceIgnoreFileNames` の候補を上から順に探す。各ディレクトリで最初に存在する 1 ファイルだけを採用し、そのディレクトリ以下のスコープで共通 `.lhaignore` のルールに追加して評価する。
 
-例: `C:\Users\IMT\dev` を圧縮するときに、
+候補順位は圧縮元の各分岐で継承する。子ディレクトリでは、祖先と同じ候補または祖先より高優先（一覧で上）の候補だけを採用できる。一度高優先の候補へ切り替わった分岐では、それより低優先の候補へ戻らない。兄弟ディレクトリは互いに独立した順位を継承する。
+
+候補一覧自体は `settings.json` に保存される全圧縮共通の設定であり、実際の除外内容は各圧縮元フォルダー内のファイルへ記述する。既定候補は `.gitignore` だけなので、既存設定からのアップグレード後も従来動作を維持する。
+
+例:
+
+```json
+{
+  "RespectNestedGitignore": true,
+  "SourceIgnoreFileNames": [
+    ".lhamielignore",
+    ".gitignore"
+  ]
+}
+```
+
+同じディレクトリに `.lhamielignore` と `.gitignore` がある場合は `.lhamielignore` だけを採用する。高優先のファイルが空でも「存在するファイル」として採用し、その分岐の子孫でも低優先候補へはフォールバックしない。
+
+例: 上記設定で `C:\Users\IMT\dev` を圧縮するときに、
 
 ```
+%LocalAppData%\Lhamiel\.lhaignore  ← 共通ルール（すべての source に適用）
+
 C:\Users\IMT\dev\
-├── .lhaignore                  ← グローバル除外（全 source に適用）
 ├── repoA\
-│   ├── .gitignore              ← repoA 配下にのみ適用
-│   └── build\                  ← repoA/.gitignore に "build/" があれば除外
+│   ├── .lhamielignore          ← repoA ではこちらを採用
+│   ├── .gitignore              ← 同じ場所の低優先候補なので読まない
+│   └── src\
+│       └── .gitignore          ← 祖先で .lhamielignore を採用済みなので読まない
 └── repoB\
-    └── .gitignore              ← repoB 配下にのみ適用
+    ├── .gitignore              ← repoB ではこちらを採用
+    └── src\
+        ├── .lhamielignore      ← より高優先なので、この分岐はここから切り替え
+        └── child\
+            └── .gitignore      ← 高優先へ切替済みなので読まない
 ```
 
-各 `.gitignore` は独立してスコープされるので、`repoA/.gitignore` に書いた `/build` は `repoA/build` だけにマッチし、`repoB/build` には影響しない。
+各採用ファイルは独立してスコープされるので、`repoA/.lhamielignore` に書いた `/build` は `repoA/build` だけにマッチし、`repoB/build` には影響しない。`repoB/src/.lhamielignore` は祖先の `repoB/.gitignore` に後から重なり、`repoB/src` 以下だけでルールを上書きできる。
 
-- 探索は `.lhaignore` の枝刈り後のディレクトリのみ対象（`node_modules/` 内の `.gitignore` は読まない）
-- 圧縮実行毎に最新の `.gitignore` を読み直すため、編集後の再圧縮で即反映される
-- 設定 UI: 「圧縮設定」タブ → 除外設定セクションの「圧縮対象内の .gitignore も併用する」チェックボックス
+- 探索は共通 `.lhaignore` とルートで採用したルールによる枝刈り後のディレクトリだけが対象
+- 圧縮実行ごとに最新の候補ファイルを選択・読み込みするため、編集後の再圧縮で即反映される
+- 候補には単純なファイル名だけを指定できる。パス、ワイルドカード、Windows 予約名は不可
+- 空行は無視し、大文字小文字を区別せず重複を除去する。候補は最大 16 件、1 件 255 文字まで
+- 選択したルールファイル自身は暗黙には除外しない。必要ならルールファイル内または共通ルールで明示的に除外する
+- 設定 UI: 「圧縮除外」タブ → 「フォルダー別ルールの読み込み」
 
 | プロパティ | 型 | デフォルト | 説明 |
 |-----------|------|----------|------|
-| `RespectNestedGitignore` | bool | `false` | 圧縮対象のサブディレクトリにある `.gitignore` を自動で除外ルールに追加 |
+| `RespectNestedGitignore` | bool | `false` | 圧縮元フォルダー内の除外ルールファイルを読み込むか。名称は既存 `settings.json` 互換のため維持 |
+| `SourceIgnoreFileNames` | string[] | `[".gitignore"]` | 各ディレクトリで探すファイル名候補。上ほど高優先。子孫では同順位または高優先への切替だけを許可 |
 
 ### ログ設定
 

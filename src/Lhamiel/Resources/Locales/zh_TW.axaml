@@ -18,11 +18,13 @@
   <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ 一般</x:String>
   <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 解壓縮</x:String>
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 壓縮</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 壓縮排除設定</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 檔案關聯</x:String>
   <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ 版本</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ 一般</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 解壓</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 壓縮</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 壓縮排除</x:String>
   <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 關聯</x:String>
   <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ 版本</x:String>
 
@@ -66,16 +68,26 @@
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z 壓縮等級</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">包含隱藏/System 檔案與資料夾</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">具有 Hidden 或 System 屬性的項目也會加入壓縮檔。</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">壓縮排除清單</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">此清單中的樣式會在壓縮時略過。支援 .gitignore 相容語法（例如 *.log、node_modules/、!keep.txt）。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">壓縮排除設定</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">此頁面的設定適用於目前 Windows 使用者透過 Lhamiel 進行的所有壓縮。各來源專用的排除內容請在相應資料夾內的規則檔案中設定。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">共用排除規則</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">此處登錄的樣式適用於所有壓縮來源。支援與 .gitignore 相容的語法。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Path" xml:space="preserve">儲存位置：%LocalAppData%\Lhamiel\.lhaignore</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">例如 *.log 或 node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">新增</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">移除</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">還原預設值</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">開啟排除檔案</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">在預設文字編輯器中開啟 .lhaignore</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">同時使用來源中的 .gitignore</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">如果來源的子目錄中包含 .gitignore，則在該範圍內套用其規則</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">重設共用規則</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">開啟共用排除檔案</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">在預設文字編輯器中開啟儲存共用規則的 .lhaignore</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Header" xml:space="preserve">載入資料夾專用規則</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Description" xml:space="preserve">在來源資料夾內尋找排除規則檔案，並將每個檔案套用於其所在資料夾以下。此載入方式適用於所有壓縮。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">使用來源資料夾內的排除規則</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">在每個資料夾中尋找候選檔案，並將選取的規則套用於該資料夾以下</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Label" xml:space="preserve">辨識的檔案名稱（越上方優先）</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Placeholder" xml:space="preserve">例如 .lhamielignore</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Tip" xml:space="preserve">每行輸入一個檔案名稱。子資料夾會保留繼承的候選檔案或切換至優先順序更高的候選檔案，不會退回較低優先順序。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Invalid" xml:space="preserve">請每行輸入一個單純檔案名稱。不允許使用路徑、萬用字元或保留名稱。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Notice" xml:space="preserve">此檔案名稱清單是 Lhamiel 的全域設定。它指定要尋找的檔案，而不是排除規則本身。</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">不壓縮</x:String>
@@ -91,6 +103,8 @@
   <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">檔案圖示</x:String>
   <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">經典</x:String>
   <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">資料夾</x:String>
+  <x:String x:Key="Text.Settings.Association.IconCute" xml:space="preserve">甜美緞帶</x:String>
+  <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">冰封資料夾</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>

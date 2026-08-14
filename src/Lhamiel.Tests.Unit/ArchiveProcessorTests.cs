@@ -15,12 +15,14 @@ public class ArchiveProcessorTests : IDisposable
     private readonly IMessageService _originalMessage;
     private readonly IUiDispatcher _originalDispatcher;
     private readonly IConflictDialogService _originalConflict;
+    private readonly Func<string, long, Window?, CancellationToken, Task<bool>> _originalEnsureDiskSpaceAsync;
 
     public ArchiveProcessorTests()
     {
         _originalMessage = ArchiveProcessor.MessageServiceImpl;
         _originalDispatcher = ArchiveProcessor.UiDispatcherImpl;
         _originalConflict = ArchiveProcessor.ConflictDialogImpl;
+        _originalEnsureDiskSpaceAsync = ArchiveProcessor.EnsureDiskSpaceAsyncImpl;
     }
 
     public void Dispose()
@@ -28,6 +30,7 @@ public class ArchiveProcessorTests : IDisposable
         ArchiveProcessor.MessageServiceImpl = _originalMessage;
         ArchiveProcessor.UiDispatcherImpl = _originalDispatcher;
         ArchiveProcessor.ConflictDialogImpl = _originalConflict;
+        ArchiveProcessor.EnsureDiskSpaceAsyncImpl = _originalEnsureDiskSpaceAsync;
     }
 
     // --- スタブ実装 ---
@@ -143,6 +146,67 @@ public class ArchiveProcessorTests : IDisposable
         finally
         {
             File.Delete(testFile);
+        }
+    }
+
+    [Fact]
+    public async Task CompressItemAsync_DiskEstimateUsesOnlyFilesSelectedByIgnoreRules()
+    {
+        var testDir = Path.Combine(Path.GetTempPath(), $"lhamiel_proc_capacity_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testDir, "source");
+        var outputDir = Path.Combine(testDir, "output");
+        Directory.CreateDirectory(sourceDir);
+        Directory.CreateDirectory(outputDir);
+
+        try
+        {
+            var includedPath = Path.Combine(sourceDir, "included.bin");
+            await File.WriteAllBytesAsync(
+                includedPath,
+                new byte[37],
+                TestContext.Current.CancellationToken);
+            await File.WriteAllBytesAsync(
+                Path.Combine(sourceDir, "excluded.bin"),
+                new byte[4096],
+                TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(
+                Path.Combine(sourceDir, ".gitignore"),
+                "*\n!included.bin\n",
+                TestContext.Current.CancellationToken);
+
+            long? requiredBytes = null;
+            ArchiveProcessor.EnsureDiskSpaceAsyncImpl = (_, bytes, _, _) =>
+            {
+                requiredBytes = bytes;
+                // 容量確認の直後に中止し、ネイティブ圧縮はこのテストでは実行しない。
+                return Task.FromResult(false);
+            };
+
+            var settings = new Settings
+            {
+                DirectoryStructureMode = DirectoryStructureMode.IncludeRoot,
+                RespectNestedGitignore = true,
+                SourceIgnoreFileNames = [".gitignore"],
+                IncludeHiddenAndSystemEntries = true,
+                IsPasswordProtectionEnabled = false,
+            };
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() =>
+                ArchiveProcessor.CompressItemAsync(
+                    sourceDir,
+                    outputDir,
+                    outputToSameDirectory: false,
+                    format: "zip",
+                    progressWindow: null,
+                    cancellationToken: TestContext.Current.CancellationToken,
+                    settingsSnapshot: settings));
+
+            Assert.Equal(new FileInfo(includedPath).Length, requiredBytes);
+        }
+        finally
+        {
+            if (Directory.Exists(testDir))
+                Directory.Delete(testDir, true);
         }
     }
 

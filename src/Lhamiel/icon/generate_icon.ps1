@@ -146,17 +146,25 @@ if (-not $scriptDir) {
     exit 1
 }
 
-$appIconPath = Join-Path -Path $scriptDir -ChildPath "app_icon.png"
-$appIcoPath = Join-Path -Path $scriptDir -ChildPath "app.ico"
-
 $allSuccess = $true
 
-if (Test-Path $appIconPath) {
-    # メソッド呼び出し: アイコン生成の実行
-    $success = Create-IconFromPng -PngPath $appIconPath -OutputIcoPath $appIcoPath
-    if (-not $success) { $allSuccess = $false }
-} else {
-    Write-Host "WARNING: app_icon.png が見つかりません: $appIconPath" -ForegroundColor Yellow
+$iconDefinitions = @(
+    @{ Png = "app_icon.png"; Ico = "app.ico" },
+    @{ Png = "file_cute_icon.png"; Ico = "file_cute.ico" },
+    @{ Png = "file_ice_icon.png"; Ico = "file_ice.ico" }
+)
+
+foreach ($definition in $iconDefinitions) {
+    $pngPath = Join-Path -Path $scriptDir -ChildPath $definition.Png
+    $icoPath = Join-Path -Path $scriptDir -ChildPath $definition.Ico
+
+    if (Test-Path $pngPath) {
+        $success = Create-IconFromPng -PngPath $pngPath -OutputIcoPath $icoPath
+        if (-not $success) { $allSuccess = $false }
+    } else {
+        Write-Host "WARNING: PNGファイルが見つかりません: $pngPath" -ForegroundColor Yellow
+        $allSuccess = $false
+    }
 }
 
 if ($allSuccess) {

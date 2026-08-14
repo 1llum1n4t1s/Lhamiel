@@ -431,71 +431,154 @@
                                 </StackPanel>
                             </primitives:HeaderedContentControl>
 
-                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.ExcludedPatterns.Header}">
-                                <StackPanel Spacing="8">
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!--  ━━━ 圧縮除外設定タブ ━━━  -->
+                <TabItem Header="{DynamicResource Text.Sidebar.CompressionExclusions}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,0">
+                            <TextBlock
+                                Margin="4,0,0,12"
+                                FontSize="20"
+                                FontWeight="SemiBold"
+                                Text="{DynamicResource Text.Settings.Tab.CompressionExclusions}" />
+
+                            <StackPanel Spacing="12">
                                     <TextBlock
                                         FontSize="12"
                                         Foreground="{DynamicResource Brush.FG2}"
                                         Text="{DynamicResource Text.Settings.ExcludedPatterns.Description}"
                                         TextWrapping="Wrap" />
 
-                                    <CheckBox
-                                        Content="{DynamicResource Text.Settings.ExcludedPatterns.RespectGitignore}"
-                                        IsChecked="{Binding RespectNestedGitignore}"
-                                        ToolTip.Tip="{DynamicResource Text.Settings.ExcludedPatterns.RespectGitignore.Tip}" />
+                                    <!--  全圧縮へ直接適用する共通ルール  -->
+                                    <Border
+                                        Padding="12"
+                                        Background="{DynamicResource Brush.Container}"
+                                        BorderBrush="{DynamicResource Brush.Border}"
+                                        BorderThickness="1"
+                                        CornerRadius="12">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock
+                                                FontWeight="SemiBold"
+                                                Text="{DynamicResource Text.Settings.ExcludedPatterns.Global.Header}" />
+                                            <TextBlock
+                                                FontSize="12"
+                                                Foreground="{DynamicResource Brush.FG2}"
+                                                Text="{DynamicResource Text.Settings.ExcludedPatterns.Global.Description}"
+                                                TextWrapping="Wrap" />
+                                            <TextBlock
+                                                FontFamily="Consolas"
+                                                FontSize="11"
+                                                Foreground="{DynamicResource Brush.FG2}"
+                                                Text="{DynamicResource Text.Settings.ExcludedPatterns.Global.Path}"
+                                                TextWrapping="Wrap" />
 
-                                    <ListBox
-                                        Height="220"
-                                        ItemsSource="{Binding CompressionExcludedFilePatterns}"
-                                        SelectedItem="{Binding SelectedExcludedFilePattern}">
-                                        <ListBox.ItemTemplate>
-                                            <DataTemplate x:DataType="sys:String">
-                                                <TextBlock Text="{Binding .}" />
-                                            </DataTemplate>
-                                        </ListBox.ItemTemplate>
-                                    </ListBox>
+                                            <ListBox
+                                                Height="180"
+                                                ItemsSource="{Binding CompressionExcludedFilePatterns}"
+                                                SelectedItem="{Binding SelectedExcludedFilePattern}">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate x:DataType="sys:String">
+                                                        <TextBlock Text="{Binding .}" />
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
 
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <TextBox
-                                            Grid.Column="0"
-                                            VerticalContentAlignment="Center"
-                                            PlaceholderText="{DynamicResource Text.Settings.ExcludedPatterns.Placeholder}"
-                                            Text="{Binding NewExcludedFilePattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                        <Button
-                                            Grid.Column="1"
-                                            Margin="8,0,0,0"
-                                            Command="{Binding AddExcludedPatternCommand}"
-                                            Content="{DynamicResource Text.Settings.ExcludedPatterns.Add}" />
-                                    </Grid>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox
+                                                    Grid.Column="0"
+                                                    VerticalContentAlignment="Center"
+                                                    PlaceholderText="{DynamicResource Text.Settings.ExcludedPatterns.Placeholder}"
+                                                    Text="{Binding NewExcludedFilePattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                                <Button
+                                                    Grid.Column="1"
+                                                    Margin="8,0,0,0"
+                                                    Command="{Binding AddExcludedPatternCommand}"
+                                                    Content="{DynamicResource Text.Settings.ExcludedPatterns.Add}" />
+                                            </Grid>
 
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Button
-                                            Grid.Column="0"
-                                            Command="{Binding OpenExcludedPatternsFileCommand}"
-                                            Content="{DynamicResource Text.Settings.ExcludedPatterns.OpenFile}"
-                                            ToolTip.Tip="{DynamicResource Text.Settings.ExcludedPatterns.OpenFile.Tip}" />
-                                        <Button
-                                            Grid.Column="2"
-                                            Margin="0,0,8,0"
-                                            Command="{Binding RemoveExcludedPatternCommand}"
-                                            Content="{DynamicResource Text.Settings.ExcludedPatterns.Remove}" />
-                                        <Button
-                                            Grid.Column="3"
-                                            Command="{Binding ResetExcludedPatternsCommand}"
-                                            Content="{DynamicResource Text.Settings.ExcludedPatterns.Reset}" />
-                                    </Grid>
-                                </StackPanel>
-                            </primitives:HeaderedContentControl>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <Button
+                                                    Grid.Column="0"
+                                                    Command="{Binding OpenExcludedPatternsFileCommand}"
+                                                    Content="{DynamicResource Text.Settings.ExcludedPatterns.OpenFile}"
+                                                    ToolTip.Tip="{DynamicResource Text.Settings.ExcludedPatterns.OpenFile.Tip}" />
+                                                <Button
+                                                    Grid.Column="2"
+                                                    Margin="0,0,8,0"
+                                                    Command="{Binding RemoveExcludedPatternCommand}"
+                                                    Content="{DynamicResource Text.Settings.ExcludedPatterns.Remove}" />
+                                                <Button
+                                                    Grid.Column="3"
+                                                    Command="{Binding ResetExcludedPatternsCommand}"
+                                                    Content="{DynamicResource Text.Settings.ExcludedPatterns.Reset}" />
+                                            </Grid>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!--  読み込み方針はグローバル、ルール内容は圧縮元フォルダー別  -->
+                                    <Border
+                                        Padding="12"
+                                        Background="{DynamicResource Brush.Container}"
+                                        BorderBrush="{DynamicResource Brush.Border}"
+                                        BorderThickness="1"
+                                        CornerRadius="12">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock
+                                                FontWeight="SemiBold"
+                                                Text="{DynamicResource Text.Settings.ExcludedPatterns.Folder.Header}" />
+                                            <TextBlock
+                                                FontSize="12"
+                                                Foreground="{DynamicResource Brush.FG2}"
+                                                Text="{DynamicResource Text.Settings.ExcludedPatterns.Folder.Description}"
+                                                TextWrapping="Wrap" />
+                                            <CheckBox
+                                                Content="{DynamicResource Text.Settings.ExcludedPatterns.RespectGitignore}"
+                                                IsChecked="{Binding RespectNestedGitignore}"
+                                                ToolTip.Tip="{DynamicResource Text.Settings.ExcludedPatterns.RespectGitignore.Tip}" />
+
+                                            <StackPanel
+                                                IsEnabled="{Binding RespectNestedGitignore}"
+                                                Spacing="6">
+                                                <TextBlock Text="{DynamicResource Text.Settings.ExcludedPatterns.SourceFileNames.Label}" />
+                                                <TextBox
+                                                    MinHeight="88"
+                                                    AcceptsReturn="True"
+                                                    PlaceholderText="{DynamicResource Text.Settings.ExcludedPatterns.SourceFileNames.Placeholder}"
+                                                    Text="{Binding SourceIgnoreFileNamesText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                    ToolTip.Tip="{DynamicResource Text.Settings.ExcludedPatterns.SourceFileNames.Tip}" />
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    Foreground="{DynamicResource Brush.FG2}"
+                                                    Text="{DynamicResource Text.Settings.ExcludedPatterns.SourceFileNames.Tip}"
+                                                    TextWrapping="Wrap" />
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    Foreground="Red"
+                                                    IsVisible="{Binding HasInvalidSourceIgnoreFileNames}"
+                                                    Text="{DynamicResource Text.Settings.ExcludedPatterns.SourceFileNames.Invalid}"
+                                                    TextWrapping="Wrap" />
+                                                <TextBlock
+                                                    FontSize="11"
+                                                    Foreground="{DynamicResource Brush.FG2}"
+                                                    Text="{DynamicResource Text.Settings.ExcludedPatterns.SourceFileNames.Notice}"
+                                                    TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                            </StackPanel>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

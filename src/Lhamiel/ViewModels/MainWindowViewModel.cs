@@ -104,6 +104,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _respectNestedGitignore;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasInvalidSourceIgnoreFileNames))]
+    private string _sourceIgnoreFileNamesText = ".gitignore";
+
+    /// <summary>
+    /// 圧縮元内で探す除外ルールファイル名が、単純ファイル名の優先リストとして有効かどうか。
+    /// 不正入力中は直前の有効な永続値を保持し、UI に検証エラーだけを表示する。
+    /// </summary>
+    public bool HasInvalidSourceIgnoreFileNames =>
+        !TryParseSourceIgnoreFileNamesText(SourceIgnoreFileNamesText, out _);
+
     // ──────────────────────────────────────────────
     // パスワード保護 (v1.0.181+)
     // ──────────────────────────────────────────────
@@ -271,6 +282,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void ApplySettingsToManager()
     {
+        var hasValidSourceIgnoreFileNames = TryParseSourceIgnoreFileNamesText(
+            SourceIgnoreFileNamesText,
+            out var sourceIgnoreFileNames);
+
         _settingsManager.Mutate(s =>
         {
             s.Theme = SelectedTheme;
@@ -287,6 +302,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.CompressMultipleAsOne = CompressMultipleAsOne;
             s.IncludeHiddenAndSystemEntries = IncludeHiddenAndSystemEntries;
             s.RespectNestedGitignore = RespectNestedGitignore;
+            if (hasValidSourceIgnoreFileNames)
+                s.SourceIgnoreFileNames = sourceIgnoreFileNames;
             s.Check4UpdatesOnStartup = Check4UpdatesOnStartup;
             s.AddToContextMenu = AddToContextMenu;
             s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
@@ -396,6 +413,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnIncludeHiddenAndSystemEntriesChanged(bool value) => AutoSave();
     partial void OnRespectNestedGitignoreChanged(bool value) => AutoSave();
+    partial void OnSourceIgnoreFileNamesTextChanged(string value)
+    {
+        if (!HasInvalidSourceIgnoreFileNames)
+            AutoSave();
+    }
+
+    private static bool TryParseSourceIgnoreFileNamesText(string text, out string[] fileNames) =>
+        Settings.TryNormalizeSourceIgnoreFileNames(text.Split('\n'), out fileNames);
 
     // ──────────────────────────────────────────────
     // パスワード保護のハンドラ + コマンド
@@ -692,13 +717,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private static readonly FileIconOption[] _fileIconOptions =
     [
         new(Settings.FileIconVariantClassic, "Settings.Association.IconClassic"),
-        new(Settings.FileIconVariantFolder, "Settings.Association.IconFolder")
+        new(Settings.FileIconVariantFolder, "Settings.Association.IconFolder"),
+        new(Settings.FileIconVariantCute, "Settings.Association.IconCute"),
+        new(Settings.FileIconVariantIce, "Settings.Association.IconIce")
     ];
     public FileIconOption[] FileIconOptions => _fileIconOptions;
 
     /// <summary>
     /// バリアント → プレビュー Bitmap のキャッシュ。
-    /// 候補は 2 種で固定のためアプリ存続期間中保持し、選択切替のたびの
+    /// 候補は 4 種で固定のためアプリ存続期間中保持し、選択切替のたびの
     /// LoadImage P/Invoke + ピクセル変換を 1 回限りにする。
     /// </summary>
     private static readonly Dictionary<string, Avalonia.Media.Imaging.Bitmap?> _fileIconPreviewCache = new(StringComparer.Ordinal);
@@ -909,6 +936,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CompressMultipleAsOne = s.CompressMultipleAsOne;
         IncludeHiddenAndSystemEntries = s.IncludeHiddenAndSystemEntries;
         RespectNestedGitignore = s.RespectNestedGitignore;
+        SourceIgnoreFileNamesText = string.Join(Environment.NewLine, s.SourceIgnoreFileNames);
         Check4UpdatesOnStartup = s.Check4UpdatesOnStartup;
         AddToContextMenu = s.AddToContextMenu;
         IgnoredUpdateTag = s.IgnoreUpdateTag ?? string.Empty;
@@ -1125,6 +1153,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public async Task ProcessDroppedPathsAsync(IReadOnlyList<string> paths)
     {
         if (paths.Count == 0) return;
+
+        // IPC/CLI とドロップが同時に開始されてもトップレベルのアーカイブ操作は 1 件ずつ実行する。
+        // バッチ内部の安全な並列処理は、このゲートの内側で従来どおり維持される。
+        using var operationGate = await ArchiveOperationGate.EnterAsync();
+
         ProgressWindow? progressWindow = null;
         try
         {

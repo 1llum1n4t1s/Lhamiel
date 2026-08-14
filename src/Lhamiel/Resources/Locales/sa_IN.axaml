@@ -18,11 +18,13 @@
   <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ सामान्यम्</x:String>
   <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 निष्कर्षणम्</x:String>
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 सङ्कोचनम्</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 सङ्कोचनबहिष्करणम्</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 सञ्चिकासम्बन्धाः</x:String>
   <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ संस्करणम्</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ सामान्यम्</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 निष्कर्षणम्</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 सङ्कोचनम्</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 बहिष्करणम्</x:String>
   <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 सम्बन्धाः</x:String>
   <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ संस्करणम्</x:String>
 
@@ -66,16 +68,26 @@
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z सङ्कोचनस्तरः</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">गुप्त/System सञ्चिकाः कोशाश्च समावेशय</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden अथवा System गुणयुक्तानि अपि सञ्चिकागारे योज्यन्ते।</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">सङ्कोचनवर्जनसूची</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">अस्यां सूच्यां स्थिताः प्रतिमाः सङ्कोचने वर्ज्यन्ते। .gitignore-योग्या वाक्यरचना (उदा. *.log, node_modules/, !keep.txt)।</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">सङ्कोचनवर्जनविन्यासाः</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">अस्य पृष्ठस्य विन्यासाः अस्य Windows-उपयोक्तुः सर्वेषु Lhamiel-सङ्कोचनेषु प्रवर्तन्ते। प्रत्येकस्रोतसः वर्जनानि तस्य सञ्चिकासु लिखन्तु।</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">सामान्यवर्जननियमाः</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">अत्र लिखिताः प्रतिमाः सर्वेषु सङ्कोचनस्रोतेषु प्रवर्तन्ते। .gitignore-योग्या वाक्यरचना समर्थिता।</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Path" xml:space="preserve">सञ्चयस्थानम्: %LocalAppData%\Lhamiel\.lhaignore</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">उदा. *.log अथवा node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">योजय</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">अपाकुरु</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">मूल्यम् पुनःस्थापय</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">वर्जन-सञ्चिकां उद्घाटयतु</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">.lhaignore-सञ्चिकां प्रामाणिक-पाठ्य-सम्पादके उद्घाटयति</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">मूले स्थिताः .gitignore-सञ्चिकाः अपि उपयुङ्क्तु</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">यदि मूलस्य उपसञ्चिकायां .gitignore अस्ति, तस्य नियमाः तस्मिन् क्षेत्रे प्रवर्तन्ते</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">सामान्यनियमान् पुनःस्थापय</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">सामान्यवर्जनसञ्चिकाम् उद्घाटयतु</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">सामान्यनियमयुक्तां .lhaignore-सञ्चिकां प्रामाणिकपाठ्यसम्पादके उद्घाटयति</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Header" xml:space="preserve">सञ्चिकाविशिष्टनियमान् पठतु</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Description" xml:space="preserve">स्रोतसि वर्जननियमसञ्चिकाः अन्विष्य ताः स्वसञ्चिकाधः प्रयुङ्क्ते। एषा पठननीतिः सर्वेषु सङ्कोचनेषु सामान्या।</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">स्रोतसः वर्जननियमान् उपयुङ्क्तु</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">प्रत्येकसञ्चिकायां प्रत्याशी-सञ्चिकाम् अन्विष्य चयनितनियमान् तदधः प्रयुङ्क्ते</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Label" xml:space="preserve">ज्ञातसञ्चिकानामानि (उपरि उच्चप्राथमिकता)</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Placeholder" xml:space="preserve">उदा. .lhamielignore</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Tip" xml:space="preserve">प्रतिपङ्क्ति एकं सञ्चिकानाम लिखतु। उपनिर्देशिकाः उत्तराधिकारप्राप्तं प्रत्याशिनं धारयन्ति अथवा उच्चतरप्राथमिकतायुक्तं गृह्णन्ति; निम्नतरप्राथमिकतां न प्रत्यागच्छन्ति।</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Invalid" xml:space="preserve">प्रतिपङ्क्ति सरलसञ्चिकानाम लिखतु। मार्गाः, सार्वचिह्नानि, आरक्षितनामानि च न अनुमतानि।</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Notice" xml:space="preserve">एषा नामसूची Lhamiel-सामान्यविन्यासः। सा अन्वेष्टव्यसञ्चिकाः निर्दिशति, न वर्जननियमान्।</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">सङ्कोचनं नास्ति</x:String>
@@ -91,6 +103,8 @@
   <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">सञ्चिकाचिह्नम्</x:String>
   <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">पारम्परिकम्</x:String>
   <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">सञ्चिकाकोशः</x:String>
+  <x:String x:Key="Text.Settings.Association.IconCute" xml:space="preserve">रम्यपट्टिका</x:String>
+  <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">हिमसञ्चिकाकोशः</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>

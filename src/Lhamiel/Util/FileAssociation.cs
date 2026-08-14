@@ -30,6 +30,8 @@ public class FileAssociation
     /// </summary>
     private static readonly string FileIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "file.ico");
     private static readonly string FileFolderIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "file_folder.ico");
+    private static readonly string FileCuteIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "file_cute.ico");
+    private static readonly string FileIceIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "file_ice.ico");
 
     /// <summary>
     /// アプリケーション名
@@ -37,20 +39,30 @@ public class FileAssociation
     /// </summary>
     private static readonly string AppName = "Lhamiel";
 
+    internal static string GetPreferredFileIconFileName(string? variant) =>
+        Settings.NormalizeFileIconVariant(variant) switch
+        {
+            Settings.FileIconVariantFolder => "file_folder.ico",
+            Settings.FileIconVariantCute => "file_cute.ico",
+            Settings.FileIconVariantIce => "file_ice.ico",
+            _ => "file.ico"
+        };
+
     internal static string ResolveFileIconPath(string? variant = null)
     {
         variant ??= SettingsManager.Instance.Current.FileIconVariant;
-        var normalized = Settings.NormalizeFileIconVariant(variant);
-        var selectedPath = string.Equals(normalized, Settings.FileIconVariantFolder, StringComparison.Ordinal)
-            ? FileFolderIconPath
-            : FileIconPath;
+        var selectedPath = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory,
+            GetPreferredFileIconFileName(variant));
 
         if (File.Exists(selectedPath))
             return selectedPath;
-        if (File.Exists(FileIconPath))
-            return FileIconPath;
-        if (File.Exists(FileFolderIconPath))
-            return FileFolderIconPath;
+
+        foreach (var fallbackPath in new[] { FileIconPath, FileFolderIconPath, FileCuteIconPath, FileIceIconPath })
+        {
+            if (File.Exists(fallbackPath))
+                return fallbackPath;
+        }
 
         return IconPath;
     }
@@ -110,7 +122,7 @@ public class FileAssociation
             shellKey?.SetValue("", command);
             Logger.Log($"[関連付け設定] シェルコマンド: {command}", LogLevel.Debug);
 
-            // ファイル関連付けアイコンを設定（file.icoがあれば使用、なければapp.icoを使用）
+            // 選択中のファイル関連付けアイコンを設定（利用不可なら既存バリアント → app.ico の順でフォールバック）
             var fileIconToUse = ResolveFileIconPath(fileIconVariant);
             if (File.Exists(fileIconToUse))
             {

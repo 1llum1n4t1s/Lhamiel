@@ -18,11 +18,13 @@
   <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Umum</x:String>
   <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Ekstraksi</x:String>
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Kompresi</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 Pengecualian kompresi</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Asosiasi Berkas</x:String>
   <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Versi</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Umum</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Ekstraksi</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Kompresi</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 Pengecualian</x:String>
   <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Asosiasi</x:String>
   <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Versi</x:String>
 
@@ -66,16 +68,26 @@
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Tingkat Kompresi 7z</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Sertakan file dan folder tersembunyi/sistem</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Entri dengan atribut Hidden atau System juga ditambahkan ke arsip.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Daftar Pengecualian Kompresi</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Pola dalam daftar ini dilewati saat kompresi. Sintaksis kompatibel .gitignore (mis. *.log, node_modules/, !keep.txt).</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Pengecualian Kompresi</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Pengaturan di halaman ini berlaku untuk semua kompresi Lhamiel bagi pengguna Windows ini. Tentukan pengecualian khusus sumber dalam berkas aturan di setiap folder sumber.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">Aturan pengecualian bersama</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">Pola yang didaftarkan di sini berlaku untuk semua sumber kompresi. Sintaksis kompatibel .gitignore didukung.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Path" xml:space="preserve">Disimpan di: %LocalAppData%\Lhamiel\.lhaignore</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">mis. *.log atau node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">Tambah</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">Hapus</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Pulihkan Default</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Buka berkas pengecualian</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Buka .lhaignore di editor teks default</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Gunakan juga .gitignore di dalam sumber</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">Jika subdirektori sumber berisi .gitignore, terapkan aturannya dalam cakupan tersebut</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">Pulihkan aturan bersama</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">Buka berkas pengecualian bersama</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">Membuka .lhaignore yang menyimpan aturan bersama di editor teks default</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Header" xml:space="preserve">Muat aturan khusus folder</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Description" xml:space="preserve">Mencari berkas aturan dalam folder sumber dan menerapkan setiap berkas di bawah foldernya. Kebijakan pemuatan ini berlaku untuk semua kompresi.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">Gunakan aturan pengecualian dari folder sumber</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">Mencari berkas kandidat di setiap folder dan menerapkan aturan terpilih di bawah folder tersebut</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Label" xml:space="preserve">Nama berkas yang dikenali (prioritas tertinggi di atas)</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Placeholder" xml:space="preserve">mis. .lhamielignore</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Tip" xml:space="preserve">Masukkan satu nama berkas per baris. Subfolder mempertahankan kandidat warisan atau beralih ke kandidat berprioritas lebih tinggi; tidak pernah kembali ke prioritas yang lebih rendah.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Invalid" xml:space="preserve">Masukkan satu nama berkas sederhana per baris. Jalur, karakter pengganti, dan nama cadangan tidak diizinkan.</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Notice" xml:space="preserve">Daftar nama ini adalah pengaturan global Lhamiel. Ini menentukan berkas yang dicari, bukan isi aturan pengecualian.</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">Tanpa Kompresi</x:String>
@@ -91,6 +103,8 @@
   <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">Ikon berkas</x:String>
   <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">Klasik</x:String>
   <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">Folder</x:String>
+  <x:String x:Key="Text.Settings.Association.IconCute" xml:space="preserve">Pita imut</x:String>
+  <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">Folder beku</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>

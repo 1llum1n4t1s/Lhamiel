@@ -18,11 +18,13 @@
   <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ 全般設定</x:String>
   <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 展開用設定</x:String>
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 圧縮用設定</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 圧縮除外設定</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 関連付け設定</x:String>
   <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ バージョン</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ 全般</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 展開</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 圧縮</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 圧縮除外</x:String>
   <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 関連付け</x:String>
   <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ バージョン</x:String>
 
@@ -66,16 +68,26 @@
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z 圧縮レベル</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">隠し/System属性のファイル・フォルダも含める</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden または System 属性の項目もアーカイブに含めます。</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">圧縮時の除外リスト</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">ここに登録したパターンは圧縮時に除外します。.gitignore 互換の構文に対応 (例: *.log, node_modules/, !keep.txt)。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">圧縮時の除外設定</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">この画面の設定は、この Windows ユーザーの Lhamiel で行うすべての圧縮に共通です。圧縮元ごとの除外内容は、各フォルダー内の除外ルールファイルで設定します。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">共通の除外ルール</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">ここに登録したパターンは、すべての圧縮元に共通して適用されます。.gitignore 互換の構文に対応しています。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Path" xml:space="preserve">保存先: %LocalAppData%\Lhamiel\.lhaignore</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Placeholder" xml:space="preserve">例: *.log または node_modules/</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Add" xml:space="preserve">追加</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Remove" xml:space="preserve">削除</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">既定に戻す</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">除外設定ファイルを開く</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">.lhaignore を既定のテキストエディタで開きます</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">圧縮対象内の .gitignore も併用する</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">圧縮対象のサブディレクトリに .gitignore があれば、そのディレクトリ以下のスコープでルールを追加適用します（例: 作業フォルダを圧縮すると配下の各リポジトリの .gitignore が有効になります）</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Reset" xml:space="preserve">共通ルールを既定に戻す</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile" xml:space="preserve">共通除外ファイルを開く</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.OpenFile.Tip" xml:space="preserve">共通ルールを保存する .lhaignore を既定のテキストエディターで開きます</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Header" xml:space="preserve">フォルダー別ルールの読み込み</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.Folder.Description" xml:space="preserve">圧縮元フォルダー内の除外ルールファイルを探し、そのファイルが置かれたフォルダー以下に適用します。読み込み方針はすべての圧縮に共通です。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore" xml:space="preserve">圧縮元フォルダー内の除外ルールを使用する</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.RespectGitignore.Tip" xml:space="preserve">各フォルダーで候補ファイルを探し、見つかったルールをそのフォルダー以下に適用します</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Label" xml:space="preserve">認識するファイル名（上ほど優先）</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Placeholder" xml:space="preserve">例: .lhamielignore</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Tip" xml:space="preserve">1 行に 1 ファイル名を入力します。子フォルダーでは同じ候補またはより上位の候補だけを使用し、一度選ばれた上位候補から下位候補には戻りません。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Invalid" xml:space="preserve">単純なファイル名を 1 行に 1 件入力してください。パス、ワイルドカード、予約名は使用できません。</x:String>
+  <x:String x:Key="Text.Settings.ExcludedPatterns.SourceFileNames.Notice" xml:space="preserve">このファイル名一覧は Lhamiel 全体の設定です。ここで指定するのは探すファイル名であり、除外ルールの内容ではありません。</x:String>
 
   <!-- Compression Level Names -->
   <x:String x:Key="Text.CompressionLevel.None" xml:space="preserve">無圧縮</x:String>
@@ -91,6 +103,8 @@
   <x:String x:Key="Text.Settings.Association.IconHeader" xml:space="preserve">ファイルアイコン</x:String>
   <x:String x:Key="Text.Settings.Association.IconClassic" xml:space="preserve">クラシック</x:String>
   <x:String x:Key="Text.Settings.Association.IconFolder" xml:space="preserve">フォルダ</x:String>
+  <x:String x:Key="Text.Settings.Association.IconCute" xml:space="preserve">ゆるふわリボン</x:String>
+  <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">氷のフォルダ</x:String>
 
   <!-- Version Tab -->
   <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>

@@ -425,6 +425,131 @@ public class ArchiveCompressorTests
     }
 
     [Fact]
+    public async Task ScanSourceFiles_SourceIgnoreFileNames_HigherPriorityIsInheritedByDescendants()
+    {
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var childDir = Path.Combine(testRoot, "child");
+        try
+        {
+            Directory.CreateDirectory(childDir);
+            File.WriteAllText(Path.Combine(testRoot, ".lhamielignore"), "*.tmp");
+            File.WriteAllText(Path.Combine(testRoot, ".gitignore"), "*.log");
+            File.WriteAllText(Path.Combine(testRoot, "root.tmp"), "excluded by the higher-priority file");
+            File.WriteAllText(Path.Combine(testRoot, "root.log"), "must remain because root .gitignore is not merged");
+
+            // ルートで最優先の .lhamielignore が選ばれた後は、子孫で低優先の .gitignore へ戻らない。
+            File.WriteAllText(Path.Combine(childDir, ".gitignore"), "*.log");
+            File.WriteAllText(Path.Combine(childDir, "child.log"), "must remain because priority never decreases");
+            File.WriteAllText(Path.Combine(childDir, "child.txt"), "included");
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [testRoot],
+                GitignoreMatcher.Empty,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true,
+                globalIgnoreLines: [],
+                sourceIgnoreFileNames: [".lhamielignore", ".gitignore"]);
+
+            Assert.DoesNotContain(result, r => r.fullPath.EndsWith("root.tmp"));
+            Assert.Contains(result, r => r.fullPath.EndsWith("root.log"));
+            Assert.Contains(result, r => r.fullPath.EndsWith("child.log"));
+            Assert.Contains(result, r => r.fullPath.EndsWith("child.txt"));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
+    public async Task ScanSourceFiles_SourceIgnoreFileNames_HigherPriorityCanTakeOverWithinOneBranch()
+    {
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var customDir = Path.Combine(testRoot, "custom");
+        var customChildDir = Path.Combine(customDir, "child");
+        var legacyDir = Path.Combine(testRoot, "legacy");
+        try
+        {
+            Directory.CreateDirectory(customChildDir);
+            Directory.CreateDirectory(legacyDir);
+
+            // ルートでは低優先の .gitignore から開始する。
+            File.WriteAllText(Path.Combine(testRoot, ".gitignore"), "*.log");
+            File.WriteAllText(Path.Combine(testRoot, "root.log"), "excluded by root .gitignore");
+
+            // custom 分岐では高優先の .lhamielignore へ昇格し、親の除外から keep.log を救う。
+            File.WriteAllText(Path.Combine(customDir, ".lhamielignore"), "!keep.log");
+            File.WriteAllText(Path.Combine(customDir, "keep.log"), "included by higher-priority child rule");
+            File.WriteAllText(Path.Combine(customDir, "debug.log"), "still excluded by inherited root rule");
+
+            // 一度 .lhamielignore へ昇格した分岐では、さらに下の .gitignore へ戻らない。
+            File.WriteAllText(Path.Combine(customChildDir, ".gitignore"), "*.txt");
+            File.WriteAllText(Path.Combine(customChildDir, "note.txt"), "must remain");
+
+            // 兄弟分岐は root の .gitignore 優先度を独立して継承し、同名ルールを追加できる。
+            File.WriteAllText(Path.Combine(legacyDir, ".gitignore"), "*.txt");
+            File.WriteAllText(Path.Combine(legacyDir, "note.txt"), "excluded in the legacy branch");
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [testRoot],
+                GitignoreMatcher.Empty,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true,
+                globalIgnoreLines: [],
+                sourceIgnoreFileNames: [".lhamielignore", ".gitignore"]);
+
+            Assert.DoesNotContain(result, r => r.fullPath.EndsWith("root.log"));
+            Assert.Contains(result, r => r.fullPath.EndsWith(Path.Combine("custom", "keep.log")));
+            Assert.DoesNotContain(result, r => r.fullPath.EndsWith(Path.Combine("custom", "debug.log")));
+            Assert.Contains(result, r => r.fullPath.EndsWith(Path.Combine("custom", "child", "note.txt")));
+            Assert.DoesNotContain(result, r => r.fullPath.EndsWith(Path.Combine("legacy", "note.txt")));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
+    public async Task ScanSourceFiles_SourceIgnoreFileNames_EmptyHigherPriorityFileSuppressesFallback()
+    {
+        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
+        var childDir = Path.Combine(testRoot, "child");
+        try
+        {
+            Directory.CreateDirectory(childDir);
+            File.WriteAllText(Path.Combine(testRoot, ".lhamielignore"), string.Empty);
+            File.WriteAllText(Path.Combine(testRoot, ".gitignore"), "*.log");
+            File.WriteAllText(Path.Combine(testRoot, "debug.log"), "must remain");
+            File.WriteAllText(Path.Combine(childDir, ".gitignore"), "*.log");
+            File.WriteAllText(Path.Combine(childDir, "debug.log"), "must also remain");
+
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [testRoot],
+                GitignoreMatcher.Empty,
+                cancellationToken: TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true,
+                globalIgnoreLines: [],
+                sourceIgnoreFileNames: [".lhamielignore", ".gitignore"]);
+
+            Assert.Contains(result, r => r.fullPath.Equals(
+                Path.Combine(testRoot, "debug.log"),
+                StringComparison.OrdinalIgnoreCase));
+            Assert.Contains(result, r => r.fullPath.EndsWith(Path.Combine("child", "debug.log")));
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot))
+                Directory.Delete(testRoot, true);
+        }
+    }
+
+    [Fact]
     public async Task ScanSourceFiles_LhaignorePrunesSubtreeBeforeDiscoveringNestedGitignore()
     {
         // .lhaignore でディレクトリが枝刈りされていれば、その配下の .gitignore は読まれず
