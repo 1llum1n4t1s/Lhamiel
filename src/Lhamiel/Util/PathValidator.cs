@@ -13,6 +13,21 @@ public static class PathValidator
         "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
     };
 
+    /// <summary>
+    /// ファイル名が Windows の予約デバイス名かどうかを判定する。
+    /// CON.txt や CON.rules.txt のように拡張子が複数あっても、最初のドットより前を判定する。
+    /// </summary>
+    internal static bool IsReservedDeviceName(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        var fileName = Path.GetFileName(path).TrimEnd(' ', '.');
+        var firstDot = fileName.IndexOf('.');
+        var deviceName = firstDot >= 0 ? fileName[..firstDot] : fileName;
+        return ReservedDeviceNames.Contains(deviceName);
+    }
+
     // 不正文字セットをキャッシュ（毎回配列生成を避ける）
     private static readonly HashSet<char> InvalidPathCharSet = new(Path.GetInvalidPathChars());
     private static readonly HashSet<char> InvalidFileNameCharSet = new(Path.GetInvalidFileNameChars());
@@ -216,7 +231,7 @@ public static class PathValidator
             if (string.IsNullOrEmpty(filename))
                 return true;
 
-            if (ReservedDeviceNames.Contains(filename))
+            if (IsReservedDeviceName(path))
             {
                 errorMessage = App.Text("Validation.ReservedDeviceName", filename);
                 return false;

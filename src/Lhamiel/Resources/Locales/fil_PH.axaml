@@ -34,6 +34,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">System (Sundin ang OS)</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Madilim</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Maliwanag</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">Icon ng app</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">Piliin ang icon na ipinapakita sa mga window at shortcut.</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">Classic</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">Pastel crystal</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Default na Format ng Compression</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Shortcut</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Gumawa ng Desktop Shortcut</x:String>
@@ -167,6 +171,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Hindi natagpuan ang tinukoy na file.\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Hindi natagpuan ang tinukoy na file o folder.\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">Hindi makausap ang tumatakbong Lhamiel instance. Maaaring nag-a-update ito. Hindi naproseso ang iyong kahilingan; pakisubukang muli maya-maya.</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Hindi suportadong format ng file.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Hindi suportadong format ng compression.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">May naganap na error habang nag-e-extract.\n{0}</x:String>

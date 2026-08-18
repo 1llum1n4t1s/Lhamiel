@@ -8,6 +8,20 @@ namespace Lhamiel.Util;
 [SupportedOSPlatform("windows")]
 internal static partial class NativeMethods
 {
+    private const uint MB_OK = 0x00000000;
+    private const uint MB_ICONERROR = 0x00000010;
+    private const uint MB_SETFOREGROUND = 0x00010000;
+
+    [LibraryImport("user32.dll", EntryPoint = "MessageBoxW", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial int MessageBox(nint hWnd, string text, string caption, uint type);
+
+    internal static void ShowErrorMessageBox(string message, string title)
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+        _ = MessageBox(0, message, title, MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
+    }
+
     /// <summary>
     /// ウィンドウを前面に表示し、フォーカスを当てる
     /// </summary>

@@ -34,6 +34,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">Systema (Sequi OS)</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Obscurum</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Lucidum</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">Icon applicationis</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">Iconem in fenestris et compendiis ostendendam elige.</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">Classicum</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">Crystallum pastellum</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Forma Compressionis Praefinita</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Compendium</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Creare Compendium in Mensa</x:String>
@@ -167,6 +171,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Fasciculus designatus non inventus est.\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Fasciculus vel directorium designatum non inventum est.\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">Cum exemplari Lhamiel iam currente communicari non potuit. Fortasse renovatur. Petitio tua non processa est; paulo post iterum tenta.</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Forma fasciculi non sustinetur.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Forma compressionis non sustinetur.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Error accidit in extractione.\n{0}</x:String>

@@ -34,6 +34,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">Sistema (seguir el SO)</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Oscuro</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Claro</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">Icono de la aplicación</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">Elige el icono que se muestra en las ventanas y los accesos directos.</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">Clásico</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">Cristal pastel</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Formato de compresión predeterminado</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Acceso directo</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Crear acceso directo en el escritorio</x:String>
@@ -167,6 +171,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">No se encontró el archivo especificado.\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">No se encontró el archivo o carpeta especificado.\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">No se pudo comunicar con la instancia de Lhamiel en ejecución. Es posible que se esté actualizando. La solicitud no se procesó; inténtelo de nuevo en unos momentos.</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Formato de archivo no compatible.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Formato de compresión no compatible.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Se produjo un error durante la extracción.\n{0}</x:String>

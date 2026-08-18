@@ -105,6 +105,7 @@ public class PathValidatorTests
     [Theory]
     [InlineData(@"C:\temp\CON.txt")]
     [InlineData(@"C:\temp\NUL.log")]
+    [InlineData(@"C:\temp\CON.rules.txt")]
     public void IsValidFilePath_WithReservedNameAndExtension_ReturnsFalse(string path)
     {
         // CON.txt のようにファイル名部分が予約名の場合も拒否すべき

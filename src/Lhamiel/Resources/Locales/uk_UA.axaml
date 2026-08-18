@@ -34,6 +34,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">Системна (відповідно до ОС)</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Темна</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Світла</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">Піктограма програми</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">Виберіть піктограму для вікон і ярликів.</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">Класична</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">Пастельний кристал</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Формат стиснення за замовчуванням</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Ярлик</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Створити ярлик на робочому столі</x:String>
@@ -167,6 +171,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Вказаний файл не знайдено.\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Вказаний файл або папку не знайдено.\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">Не вдалося зв’язатися із запущеним екземпляром Lhamiel. Можливо, триває оновлення. Запит не оброблено; повторіть спробу за мить.</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Непідтримуваний формат файлу.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Непідтримуваний формат стиснення.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Під час розпакування сталася помилка.\n{0}</x:String>

@@ -8,6 +8,8 @@ namespace Lhamiel.Util;
 /// </summary>
 public static class ArchiveExtractor
 {
+    private const string FallbackArchiveBaseName = "archive";
+
     /// <summary>
     /// 定数: サポートされている展開形式の一覧
     /// </summary>
@@ -45,22 +47,56 @@ public static class ArchiveExtractor
     {
         var name = Path.GetFileName(filePath);
         var ext = Path.GetExtension(name);
-        if (string.IsNullOrEmpty(ext) || !SupportedExtensions.Contains(ext)) return name;
-
-        // 最外の拡張子を除去
-        name = Path.GetFileNameWithoutExtension(name);
-
-        // 圧縮のみの拡張子だった場合、内側が .tar なら追加除去（.tar.gz → foo）
-        if (CompressionOnlyExtensions.Contains(ext))
+        if (!string.IsNullOrEmpty(ext) && SupportedExtensions.Contains(ext))
         {
-            var innerExt = Path.GetExtension(name);
-            if (string.Equals(innerExt, ".tar", StringComparison.OrdinalIgnoreCase))
+            // 最外の拡張子を除去
+            name = Path.GetFileNameWithoutExtension(name);
+
+            // 圧縮のみの拡張子だった場合、内側が .tar なら追加除去（.tar.gz → foo）
+            if (CompressionOnlyExtensions.Contains(ext))
             {
-                name = Path.GetFileNameWithoutExtension(name);
+                var innerExt = Path.GetExtension(name);
+                if (string.Equals(innerExt, ".tar", StringComparison.OrdinalIgnoreCase))
+                {
+                    name = Path.GetFileNameWithoutExtension(name);
+                }
             }
         }
 
+        // 出力フォルダ名は必ず安全な単一セグメントにする。
+        // 空 / . / .. は基準ディレクトリ自身または親へ正規化され、予約デバイス名や
+        // 末尾のドット・空白は Windows で作成不能または別名へ正規化されるため使用しない。
+        if (string.IsNullOrWhiteSpace(name)
+            || name is "." or ".."
+            || name.EndsWith('.')
+            || name.EndsWith(' ')
+            || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
+            || PathValidator.IsReservedDeviceName(name))
+        {
+            return FallbackArchiveBaseName;
+        }
+
         return name;
+    }
+
+    /// <summary>
+    /// 基準ディレクトリの直下に、安全なアーカイブ名フォルダを解決する。
+    /// </summary>
+    internal static string ResolveArchiveOutputDirectory(string baseDirectory, string archivePath)
+    {
+        var normalizedBase = Path.TrimEndingDirectorySeparator(Path.GetFullPath(baseDirectory));
+        var outputPath = Path.GetFullPath(Path.Combine(normalizedBase, GetArchiveBaseName(archivePath)));
+        var basePrefix = Path.EndsInDirectorySeparator(normalizedBase)
+            ? normalizedBase
+            : normalizedBase + Path.DirectorySeparatorChar;
+
+        if (string.Equals(outputPath, normalizedBase, StringComparison.OrdinalIgnoreCase)
+            || !outputPath.StartsWith(basePrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new SecurityException($"Archive output path escaped its base directory: {outputPath}");
+        }
+
+        return outputPath;
     }
 
     /// <summary>
@@ -93,7 +129,7 @@ public static class ArchiveExtractor
     public static string GetOutputDirectory(string archivePath, string defaultOutputDir, bool outputToSameDirectory = false)
     {
         var baseDir = GetBaseOutputDirectory(archivePath, defaultOutputDir, outputToSameDirectory);
-        return Path.Combine(baseDir, GetArchiveBaseName(archivePath));
+        return ResolveArchiveOutputDirectory(baseDir, archivePath);
     }
 
     /// <summary>
@@ -253,6 +289,7 @@ public static class ArchiveExtractor
     {
         var dir = Path.Combine(basePath ?? Path.GetTempPath(), $"{TempDirPrefix}{suffix}_{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
+        TempCleanup.RegisterTrackedDirectory(dir);
         return dir;
     }
 
@@ -823,7 +860,7 @@ public static class ArchiveExtractor
             {
                 if (Directory.Exists(tempDir))
                 {
-                    Directory.Delete(tempDir, recursive: true);
+                    TempCleanup.DeleteDirectorySafely(tempDir);
                     Logger.Log($"一時フォルダ削除完了: {tempDir}");
                 }
             }
@@ -831,6 +868,8 @@ public static class ArchiveExtractor
             {
                 Logger.Log($"一時フォルダ削除失敗: {ex.Message}");
             }
+            if (!Directory.Exists(tempDir))
+                TempCleanup.UnregisterTrackedDirectory(tempDir);
         }
     }
 
@@ -865,7 +904,8 @@ public static class ArchiveExtractor
         if (!Directory.Exists(destDir))
             return conflicts;
 
-        foreach (var sourceFile in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories))
+        var (_, sourceFiles) = EnumerateExtractionTreeSafely(sourceDir);
+        foreach (var sourceFile in sourceFiles)
         {
             var relativePath = Path.GetRelativePath(sourceDir, sourceFile).Replace('\\', '/');
             var destFile = Path.Combine(destDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
@@ -942,18 +982,26 @@ public static class ArchiveExtractor
             }
             Directory.CreateDirectory(destDir);
 
+            var (sourceDirectories, sourceFiles) = EnumerateExtractionTreeSafely(sourceDir, cancellationToken);
+            var normalizedDest = NormalizeBaseDirectory(destDir);
+
             // 空ディレクトリも保持するため、先にディレクトリ構造を作成する。
             // （ファイル側ループ内の CreateDirectory は親ディレクトリにしか届かないため、
             //   子孫空ディレクトリを確実に保持するにはこの 1 回の走査が必要）
-            foreach (var sourceSubDir in Directory.EnumerateDirectories(sourceDir, "*", SearchOption.AllDirectories))
+            foreach (var sourceSubDir in sourceDirectories)
             {
                 var relDir = Path.GetRelativePath(sourceDir, sourceSubDir);
-                var destSubDir = Path.Combine(destDir, relDir);
+                if (!TryResolveSafeEntryPathFromNormalized(
+                        normalizedDest,
+                        relDir,
+                        out var destSubDir,
+                        normalizeUnicode: false))
+                    throw new SecurityException($"Extracted directory escaped its destination: {relDir}");
                 if (!Directory.Exists(destSubDir))
                     Directory.CreateDirectory(destSubDir);
             }
 
-            foreach (var sourceFile in Directory.EnumerateFiles(sourceDir, "*", SearchOption.AllDirectories))
+            foreach (var sourceFile in sourceFiles)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
@@ -963,7 +1011,12 @@ public static class ArchiveExtractor
                 if (skipPaths != null && skipPaths.Contains(relativePath))
                     continue;
 
-                var destFile = Path.Combine(destDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
+                if (!TryResolveSafeEntryPathFromNormalized(
+                        normalizedDest,
+                        relativePath,
+                        out var destFile,
+                        normalizeUnicode: false))
+                    throw new SecurityException($"Extracted file escaped its destination: {relativePath}");
                 // 親ディレクトリは上のディレクトリ構造作成ループで既に作られているため
                 // CreateDirectory の重複呼び出しは基本的に不要。ただし空ディレクトリ列挙で
                 // 親が拾えないエッジケース（権限等）に備えて、未存在時のみ作成する。
@@ -973,7 +1026,11 @@ public static class ArchiveExtractor
 
                 // パス型衝突: 宛先にディレクトリがあるがソースはファイルの場合は削除
                 if (Directory.Exists(destFile))
+                {
+                    if (PathValidator.IsProtectedDirectory(destFile))
+                        throw new SecurityException($"Protected directory cannot be replaced by an extracted file: {destFile}");
                     Directory.Delete(destFile, recursive: true);
+                }
 
                 // 上書き移動（ReadOnly属性がある場合は解除してから実行、失敗時はロールバック）
                 FileAttributes originalAttrs = 0;
@@ -1000,6 +1057,47 @@ public static class ArchiveExtractor
                 }
             }
         }, cancellationToken);
+    }
+
+    internal static (IReadOnlyList<string> Directories, IReadOnlyList<string> Files)
+        EnumerateExtractionTreeSafely(string rootDirectory, CancellationToken cancellationToken = default)
+    {
+        var directories = new List<string>();
+        var files = new List<string>();
+        var options = new EnumerationOptions
+        {
+            RecurseSubdirectories = false,
+            IgnoreInaccessible = false,
+            AttributesToSkip = 0,
+            ReturnSpecialDirectories = false,
+        };
+        var stack = new Stack<string>();
+        stack.Push(rootDirectory);
+
+        while (stack.Count > 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var current = stack.Pop();
+            foreach (var entry in Directory.EnumerateFileSystemEntries(current, "*", options))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var attributes = File.GetAttributes(entry);
+                if ((attributes & FileAttributes.ReparsePoint) != 0)
+                    throw new SecurityException($"Reparse point in extracted archive is not allowed: {entry}");
+
+                if ((attributes & FileAttributes.Directory) != 0)
+                {
+                    directories.Add(entry);
+                    stack.Push(entry);
+                }
+                else
+                {
+                    files.Add(entry);
+                }
+            }
+        }
+
+        return (directories, files);
     }
 
     /// <summary>
@@ -1488,7 +1586,7 @@ public static class ArchiveExtractor
                 if (Directory.Exists(tempOutputPath))
                 {
                     RemoveReadOnlyAttributes(tempOutputPath);
-                    Directory.Delete(tempOutputPath, true);
+                    TempCleanup.DeleteDirectorySafely(tempOutputPath);
                 }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
@@ -1571,6 +1669,8 @@ public static class ArchiveExtractor
             {
                 Logger.Log($"一時展開ディレクトリの最終掃除に失敗しました（手動削除可能）: {tempOutputPath}, {ex.Message}", LogLevel.Warning);
             }
+            if (!Directory.Exists(tempOutputPath))
+                TempCleanup.UnregisterTrackedDirectory(tempOutputPath);
 
             // 展開中プロンプト入力パスワードの redaction を解放する。finally は同レベル catch の
             // ログ出力後に走るため、ここのエラーログはマスク済みで出力されている。呼び出し元

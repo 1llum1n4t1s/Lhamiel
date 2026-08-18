@@ -35,6 +35,11 @@ public record FileIconOption(string Key, string ResourceKey)
     public string DisplayName => App.Text(ResourceKey);
 }
 
+public record AppIconOption(string Key, string ResourceKey)
+{
+    public string DisplayName => App.Text(ResourceKey);
+}
+
 public record LocaleItem(string Key, string DisplayName);
 
 /// <summary>
@@ -229,6 +234,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private string _selectedFileIconVariant = Settings.FileIconVariantClassic;
 
     [ObservableProperty]
+    private string _selectedAppIconVariant = Settings.AppIconVariantClassic;
+
+    [ObservableProperty]
     private int _zipCompressionLevel = 5;
 
     [ObservableProperty]
@@ -292,6 +300,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.Locale = SelectedLocale;
             s.CompressionFormat = SelectedCompressionFormat ?? "ZIP";
             s.FileIconVariant = Settings.NormalizeFileIconVariant(SelectedFileIconVariant);
+            s.AppIconVariant = Settings.NormalizeAppIconVariant(SelectedAppIconVariant);
             s.ExtractionOutputDirectory = ExtractionOutputDirectory;
             s.CompressionOutputDirectory = CompressionOutputDirectory;
             s.ExtractionOutputToSameDirectory = ExtractionOutputToSameDirectory;
@@ -361,6 +370,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         // ロケール変更後、App.Text() で動的に表示名を取得するドロップダウンを再描画
         OnPropertyChanged(nameof(ThemeOptions));
         OnPropertyChanged(nameof(FileIconOptions));
+        OnPropertyChanged(nameof(AppIconOptions));
         RefreshCompressionLevels();
         // 保存済みパスワード状態ラベル ("設定済み" / "未設定 (次回...)") も App.Text() ベースなので
         // ロケール変更で再評価が必要 (CodeRabbit outside-diff、MainWindowViewModel.cs:292-300)。
@@ -382,6 +392,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// </summary>
     private string? _appliedFileIconVariant;
 
+    /// <summary>
+    /// ComboBox の初期化時に生じる一時的な空値・同値の書き戻しで、
+    /// ウィンドウとショートカットのアイコンを不要に再適用しないためのガード。
+    /// </summary>
+    private string? _appliedAppIconVariant;
+
     partial void OnSelectedFileIconVariantChanged(string value)
     {
         OnPropertyChanged(nameof(FileIconPreview));
@@ -397,6 +413,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _appliedFileIconVariant = normalized;
         ApplyAssociationSettings(refreshAssociatedIcons: true);
+    }
+
+    partial void OnSelectedAppIconVariantChanged(string value)
+    {
+        OnPropertyChanged(nameof(AppIconPreview));
+        AutoSave();
+        if (_isLoading)
+            return;
+
+        var normalized = Settings.NormalizeAppIconVariant(value);
+        if (string.IsNullOrEmpty(value) || string.Equals(normalized, _appliedAppIconVariant, StringComparison.Ordinal))
+            return;
+
+        _appliedAppIconVariant = normalized;
+        AppIconManager.ApplyToOpenWindows(normalized);
+        ShortcutCreator.RefreshKnownApplicationShortcutIcons(normalized);
     }
 
     partial void OnExtractionOutputDirectoryChanged(string value) => AutoSave();
@@ -723,6 +755,43 @@ public sealed partial class MainWindowViewModel : ObservableObject
     ];
     public FileIconOption[] FileIconOptions => _fileIconOptions;
 
+    private static readonly AppIconOption[] _appIconOptions =
+    [
+        new(Settings.AppIconVariantClassic, "Settings.AppIcon.Classic"),
+        new(Settings.AppIconVariantCrystal, "Settings.AppIcon.Crystal")
+    ];
+    public AppIconOption[] AppIconOptions => _appIconOptions;
+
+    private static readonly Dictionary<string, Avalonia.Media.Imaging.Bitmap?> _appIconPreviewCache = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// 選択中のアプリアイコン。全般設定とバージョン画面の両方で使用する。
+    /// </summary>
+    public Avalonia.Media.Imaging.Bitmap? AppIconPreview
+    {
+        get
+        {
+            var variant = Settings.NormalizeAppIconVariant(SelectedAppIconVariant);
+            if (_appIconPreviewCache.TryGetValue(variant, out var cached))
+                return cached;
+
+            Avalonia.Media.Imaging.Bitmap? bitmap = null;
+            try
+            {
+                using var stream = Avalonia.Platform.AssetLoader.Open(
+                    new Uri(AppIconManager.GetPreviewResourceUri(variant)));
+                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogException("アプリアイコンのプレビュー読み込みに失敗しました", ex);
+            }
+
+            _appIconPreviewCache[variant] = bitmap;
+            return bitmap;
+        }
+    }
+
     /// <summary>
     /// バリアント → プレビュー Bitmap のキャッシュ。
     /// 候補は 4 種で固定のためアプリ存続期間中保持し、選択切替のたびの
@@ -926,6 +995,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         // 起動時の ComboBox 書き戻しで OnSelectedFileIconVariantChanged が誤発火しても
         // 関連付けを再適用しないよう、読み込んだバリアントを「適用済み」として記録する。
         _appliedFileIconVariant = Settings.NormalizeFileIconVariant(s.FileIconVariant);
+        SelectedAppIconVariant = Settings.NormalizeAppIconVariant(s.AppIconVariant);
+        _appliedAppIconVariant = Settings.NormalizeAppIconVariant(s.AppIconVariant);
         ExtractionOutputToSameDirectory = s.ExtractionOutputToSameDirectory;
         ExtractionOutputToDirectory = !s.ExtractionOutputToSameDirectory;
         CompressionOutputToSameDirectory = s.CompressionOutputToSameDirectory;
@@ -1110,7 +1181,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         try
         {
-            if (ShortcutCreator.CreateDesktopShortcut())
+            if (ShortcutCreator.CreateDesktopShortcut(SelectedAppIconVariant))
                 _ = MessageService.ShowSuccess(App.Text("Shortcut.Created"));
             else
                 _ = MessageService.ShowError(App.Text("Shortcut.Failed"));
@@ -1173,7 +1244,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 ? App.Text("Progress.Extracting")
                 : App.Text("Progress.Compressing");
 
-            progressWindow = new ProgressWindow(operationLabel) { WindowStartupLocation = WindowStartupLocation.CenterOwner };
+            progressWindow = new ProgressWindow(operationLabel, SelectedAppIconVariant) { WindowStartupLocation = WindowStartupLocation.CenterOwner };
             _showProgressWindow(progressWindow);
             await Task.Yield();
             var cancellationToken = progressWindow.GetCancellationToken();

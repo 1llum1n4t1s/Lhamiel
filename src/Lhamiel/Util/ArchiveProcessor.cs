@@ -478,8 +478,7 @@ public static class ArchiveProcessor
                 else
                 {
                     // フォルダ作成ON: アーカイブ名フォルダを作成
-                    var archiveName = ArchiveExtractor.GetArchiveBaseName(filePath);
-                    outputPath = Path.Combine(baseDirectory, archiveName);
+                    outputPath = ArchiveExtractor.ResolveArchiveOutputDirectory(baseDirectory, filePath);
                     Logger.Log($"フォルダ作成ON: {outputPath}");
                 }
 

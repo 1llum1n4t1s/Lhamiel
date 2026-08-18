@@ -34,6 +34,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">Sistem (Ikuti OS)</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Gelap</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Terang</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">Ikon aplikasi</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">Pilih ikon yang ditampilkan pada jendela dan pintasan.</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">Klasik</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">Kristal pastel</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Format Kompresi Bawaan</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Pintasan</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Buat Pintasan Desktop</x:String>
@@ -167,6 +171,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Berkas yang ditentukan tidak ditemukan.\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Berkas atau folder yang ditentukan tidak ditemukan.\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">Tidak dapat berkomunikasi dengan instans Lhamiel yang sedang berjalan. Aplikasi mungkin sedang diperbarui. Permintaan Anda belum diproses; coba lagi sebentar lagi.</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Format berkas tidak didukung.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Format kompresi tidak didukung.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Terjadi kesalahan saat ekstraksi.\n{0}</x:String>

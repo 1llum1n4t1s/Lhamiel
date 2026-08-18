@@ -31,6 +31,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">System (Follow OS)</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Dark</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Light</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">App icon</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">Choose the icon shown on windows and shortcuts.</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">Classic</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">Pastel crystal</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Default Compression Format</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Shortcut</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Create Desktop Shortcut</x:String>
@@ -164,6 +168,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">The specified file was not found.\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">The specified file or folder was not found.\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">Could not communicate with the running Lhamiel instance. It may be updating. Your request was not processed. Please try again shortly.</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Unsupported file format.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Unsupported compression format.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">An error occurred during extraction.\n{0}</x:String>

@@ -69,6 +69,37 @@
                                 </StackPanel>
                             </primitives:HeaderedContentControl>
 
+                            <!--  アプリアイコン選択  -->
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.AppIcon.Header}">
+                                <StackPanel Spacing="6">
+                                    <StackPanel Orientation="Horizontal" Spacing="12">
+                                        <ComboBox
+                                            Width="200"
+                                            VerticalAlignment="Center"
+                                            ItemsSource="{Binding AppIconOptions}"
+                                            SelectedValue="{Binding SelectedAppIconVariant}"
+                                            SelectedValueBinding="{Binding Key, DataType=vm:AppIconOption}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:AppIconOption">
+                                                    <TextBlock Text="{Binding DisplayName}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                        <Image
+                                            Width="80"
+                                            Height="80"
+                                            RenderOptions.BitmapInterpolationMode="HighQuality"
+                                            Source="{Binding AppIconPreview}"
+                                            Stretch="Uniform" />
+                                    </StackPanel>
+                                    <TextBlock
+                                        MaxWidth="420"
+                                        Opacity="0.7"
+                                        Text="{DynamicResource Text.Settings.AppIcon.Description}"
+                                        TextWrapping="Wrap" />
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
+
                             <!--  言語選択  -->
                             <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Language.Header}">
                                 <StackPanel Orientation="Horizontal">
@@ -689,7 +720,7 @@
                                     Margin="0,0,16,0"
                                     VerticalAlignment="Center"
                                     RenderOptions.BitmapInterpolationMode="HighQuality"
-                                    Source="avares://Lhamiel/icon/app_icon.png" />
+                                    Source="{Binding AppIconPreview}" />
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock
                                         FontSize="28"

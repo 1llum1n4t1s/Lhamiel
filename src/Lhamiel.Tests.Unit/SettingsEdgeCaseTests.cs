@@ -40,6 +40,7 @@ public class SettingsEdgeCaseTests
         Assert.Equal(fresh.DirectoryStructureMode, reset.DirectoryStructureMode);
         Assert.Equal(fresh.AddToContextMenu, reset.AddToContextMenu);
         Assert.Equal(fresh.SourceIgnoreFileNames, reset.SourceIgnoreFileNames);
+        Assert.Equal(fresh.AppIconVariant, reset.AppIconVariant);
     }
 
     [Fact]

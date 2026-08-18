@@ -34,6 +34,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">システム（追従）</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">ダーク</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">ライト</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">アプリアイコン</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">ウィンドウとショートカットに表示するアイコンを選択します</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">従来</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">パステルクリスタル</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">デフォルトの圧縮形式</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">ショートカット</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 デスクトップにショートカット作成</x:String>
@@ -167,6 +171,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">指定されたファイルが見つかりません。\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">指定されたファイルまたはフォルダが見つかりません。\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">起動中の Lhamiel と通信できませんでした。更新処理中の可能性があります。操作は処理されていないため、しばらくしてからもう一度お試しください。</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">サポートされていないファイル形式です。\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">サポートされていない圧縮形式です。\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">展開中にエラーが発生しました。\n{0}</x:String>

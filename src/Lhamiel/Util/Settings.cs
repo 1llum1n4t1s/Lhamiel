@@ -74,6 +74,11 @@ public class Settings
     public string FileIconVariant { get; set; } = FileIconVariantClassic;
 
     /// <summary>
+    /// ウィンドウおよびショートカットに表示するアプリアイコンのバリアント。
+    /// </summary>
+    public string AppIconVariant { get; set; } = AppIconVariantClassic;
+
+    /// <summary>
     /// 展開用出力ディレクトリの設定
     /// </summary>
     public string ExtractionOutputDirectory { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
@@ -216,6 +221,19 @@ public class Settings
     internal static string NormalizeFileIconVariant(string? variant) =>
         Array.Find(SupportedFileIconVariants, v => string.Equals(v, variant, StringComparison.OrdinalIgnoreCase))
         ?? FileIconVariantClassic;
+
+    public const string AppIconVariantClassic = "Classic";
+    public const string AppIconVariantCrystal = "Crystal";
+
+    public static readonly string[] SupportedAppIconVariants =
+    [
+        AppIconVariantClassic,
+        AppIconVariantCrystal
+    ];
+
+    internal static string NormalizeAppIconVariant(string? variant) =>
+        Array.Find(SupportedAppIconVariants, v => string.Equals(v, variant, StringComparison.OrdinalIgnoreCase))
+        ?? AppIconVariantClassic;
 
     /// <summary>
     /// サポートされている自動更新チャンネルの一覧（canonical な小文字形）。
@@ -549,6 +567,7 @@ public class Settings
                             ?? "ZIP";
 
         FileIconVariant = NormalizeFileIconVariant(FileIconVariant);
+        AppIconVariant = NormalizeAppIconVariant(AppIconVariant);
 
         // 圧縮元内で探す除外ルールファイル名は単純ファイル名だけを許可する。
         // settings.json の手書き編集・破損でパスやワイルドカードが入った場合は、既存動作と
@@ -842,6 +861,7 @@ public class Settings
         Theme = "System";
         CompressionFormat = "ZIP";
         FileIconVariant = FileIconVariantClassic;
+        AppIconVariant = AppIconVariantClassic;
         ExtractionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         CompressionOutputDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         ExtractionOutputToSameDirectory = false;
@@ -905,6 +925,7 @@ public class Settings
             if (TryGetString(root, nameof(Locale), out var locale)) { s.Locale = locale!; recoveredCount++; }
             if (TryGetString(root, nameof(CompressionFormat), out var cf)) { s.CompressionFormat = cf!; recoveredCount++; }
             if (TryGetString(root, nameof(FileIconVariant), out var fiv)) { s.FileIconVariant = fiv!; recoveredCount++; }
+            if (TryGetString(root, nameof(AppIconVariant), out var aiv)) { s.AppIconVariant = aiv!; recoveredCount++; }
             if (TryGetString(root, nameof(ExtractionOutputDirectory), out var eod)) { s.ExtractionOutputDirectory = eod!; recoveredCount++; }
             if (TryGetString(root, nameof(CompressionOutputDirectory), out var cod)) { s.CompressionOutputDirectory = cod!; recoveredCount++; }
             // UpdateBaseUrl は [JsonIgnore] ハードコード固定のため回収不要

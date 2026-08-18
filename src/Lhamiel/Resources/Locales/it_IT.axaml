@@ -34,6 +34,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">Sistema (segui il SO)</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Scuro</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Chiaro</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">Icona dell’app</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">Scegli l’icona mostrata nelle finestre e nei collegamenti.</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">Classica</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">Cristallo pastello</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Formato di compressione predefinito</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Collegamento</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Crea collegamento sul desktop</x:String>
@@ -167,6 +171,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Il file specificato non è stato trovato.\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Il file o la cartella specificata non è stata trovata.\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">Impossibile comunicare con l’istanza di Lhamiel in esecuzione. Potrebbe essere in corso un aggiornamento. La richiesta non è stata elaborata; riprova tra poco.</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Formato di file non supportato.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Formato di compressione non supportato.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Si è verificato un errore durante l'estrazione.\n{0}</x:String>

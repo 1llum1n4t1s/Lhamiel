@@ -45,11 +45,13 @@ public partial class ProgressWindow : Window
     /// コンストラクタ
     /// </summary>
     /// <param name="operationType">操作タイプ（タイトル表示用）</param>
-    public ProgressWindow(string operationType)
+    /// <param name="appIconVariant">表示するアプリアイコン。null の場合は保存済み設定から解決する。</param>
+    public ProgressWindow(string operationType, string? appIconVariant = null)
     {
         // コンポーネントの初期化
         InitializeComponent();
         Util.AcrylicFallbackHelper.Attach(this);
+        Util.AppIconManager.Apply(this, appIconVariant);
 
         // 操作タイプに応じたタイトルとラベルを設定
         Title = $"{operationType} - Lhamiel";

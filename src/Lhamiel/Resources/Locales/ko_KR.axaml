@@ -34,6 +34,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">시스템 (OS 설정에 따름)</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">다크</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">라이트</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">앱 아이콘</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">창과 바로 가기에 표시할 아이콘을 선택합니다.</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">클래식</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">파스텔 크리스털</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">기본 압축 형식</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">바로 가기</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 바탕화면 바로 가기 만들기</x:String>
@@ -167,6 +171,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">지정한 파일을 찾을 수 없습니다.\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">지정한 파일 또는 폴더를 찾을 수 없습니다.\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">실행 중인 Lhamiel 인스턴스와 통신할 수 없습니다. 업데이트 중일 수 있습니다. 요청이 처리되지 않았으므로 잠시 후 다시 시도해 주세요.</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">지원하지 않는 파일 형식입니다.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">지원하지 않는 압축 형식입니다.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">해제 중 오류가 발생했습니다.\n{0}</x:String>

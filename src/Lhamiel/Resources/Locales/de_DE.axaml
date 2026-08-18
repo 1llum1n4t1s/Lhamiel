@@ -34,6 +34,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">System (Betriebssystem folgen)</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">Dunkel</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">Hell</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">App-Symbol</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">Wählt das Symbol für Fenster und Verknüpfungen aus.</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">Klassisch</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">Pastellkristall</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Standard-Komprimierungsformat</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Verknüpfung</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Desktopverknüpfung erstellen</x:String>
@@ -167,6 +171,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">Die angegebene Datei wurde nicht gefunden.\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">Die angegebene Datei oder der Ordner wurde nicht gefunden.\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">Die laufende Lhamiel-Instanz konnte nicht erreicht werden. Möglicherweise wird sie gerade aktualisiert. Ihre Anfrage wurde nicht verarbeitet. Bitte versuchen Sie es in Kürze erneut.</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Nicht unterstütztes Dateiformat.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Nicht unterstütztes Komprimierungsformat.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Beim Entpacken ist ein Fehler aufgetreten.\n{0}</x:String>

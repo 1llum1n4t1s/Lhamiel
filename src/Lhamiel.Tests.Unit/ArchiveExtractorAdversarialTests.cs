@@ -1,4 +1,5 @@
 using Lhamiel.Util;
+using System.Security;
 using Xunit;
 
 namespace Lhamiel.Tests.Unit;
@@ -8,6 +9,46 @@ namespace Lhamiel.Tests.Unit;
 /// </summary>
 public class ArchiveExtractorAdversarialTests
 {
+    [Fact]
+    public void EnumerateExtractionTreeSafely_DirectorySymlinkIsRejectedWithoutFollowingTarget()
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+
+        var root = Path.Combine(Path.GetTempPath(), $"Lhamiel-ReparseTest-{Guid.NewGuid():N}");
+        var source = Path.Combine(root, "source");
+        var outside = Path.Combine(root, "outside");
+        var link = Path.Combine(source, "link");
+        Directory.CreateDirectory(source);
+        Directory.CreateDirectory(outside);
+        var outsideFile = Path.Combine(outside, "outside.txt");
+        File.WriteAllText(outsideFile, "preserve");
+        try
+        {
+            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                ArgumentList = { "/d", "/c", "mklink", "/J", link, outside },
+            });
+            Assert.NotNull(process);
+            process.WaitForExit();
+            Assert.True(process.ExitCode == 0, process.StandardError.ReadToEnd());
+            Assert.Throws<SecurityException>(() =>
+                ArchiveExtractor.EnumerateExtractionTreeSafely(source));
+            Assert.Equal("preserve", File.ReadAllText(outsideFile));
+        }
+        finally
+        {
+            if (Directory.Exists(link))
+                Directory.Delete(link);
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
     // ==============================
     // 🗡️ 境界値・極端入力 — IsSupportedArchiveType
     // ==============================
@@ -165,14 +206,13 @@ public class ArchiveExtractorAdversarialTests
 
     /// <summary>
     /// @adversarial @category boundary @severity high
-    /// アーカイブ名が拡張子のみ（.zip）→ GetFileNameWithoutExtension が空文字を返す
+    /// アーカイブ名が拡張子のみ（.zip）でも、基準ディレクトリ自身へ直接展開しない
     /// </summary>
     [Fact]
-    public void GetOutputDirectory_ExtensionOnlyFilename_ReturnsEmptyFolderName()
+    public void GetOutputDirectory_ExtensionOnlyFilename_UsesSafeFallbackFolderName()
     {
         var result = ArchiveExtractor.GetOutputDirectory(@"C:\dir\.zip", @"C:\output");
-        // Path.GetFileNameWithoutExtension(".zip") = "" なので、outputDir は "C:\output\" になる
-        Assert.Equal(Path.Combine(@"C:\output", ""), result);
+        Assert.Equal(Path.Combine(@"C:\output", "archive"), result);
     }
 
     /// <summary>
@@ -396,22 +436,56 @@ public class ArchiveExtractorAdversarialTests
 
     /// <summary>
     /// @adversarial @category boundary @severity medium
-    /// ドットだけのファイル名 → そのまま返す
+    /// ドットだけのファイル名 → 安全な代替名を返す
     /// </summary>
     [Fact]
-    public void GetArchiveBaseName_DotOnly_ReturnsAsIs()
+    public void GetArchiveBaseName_DotOnly_UsesSafeFallback()
     {
-        Assert.Equal(".", ArchiveExtractor.GetArchiveBaseName("."));
+        Assert.Equal("archive", ArchiveExtractor.GetArchiveBaseName("."));
     }
 
     /// <summary>
     /// @adversarial @category boundary @severity medium
-    /// 空文字列 → 空文字列を返す
+    /// 空文字列 → 安全な代替名を返す
     /// </summary>
     [Fact]
-    public void GetArchiveBaseName_EmptyString_ReturnsEmpty()
+    public void GetArchiveBaseName_EmptyString_UsesSafeFallback()
     {
-        Assert.Equal("", ArchiveExtractor.GetArchiveBaseName(""));
+        Assert.Equal("archive", ArchiveExtractor.GetArchiveBaseName(""));
+    }
+
+    /// <summary>
+    /// @adversarial @category security @severity high
+    /// 特殊名・予約名から作る出力フォルダは基準自身や親、デバイス名へ解決させない。
+    /// </summary>
+    [Theory]
+    [InlineData("...zip")]
+    [InlineData("..tar.gz")]
+    [InlineData("...tar.gz")]
+    [InlineData("CON.zip")]
+    [InlineData("CON.rules.zip")]
+    [InlineData("name..zip")]
+    public void GetArchiveBaseName_UnsafeOutputName_UsesSafeFallback(string archiveName)
+    {
+        Assert.Equal("archive", ArchiveExtractor.GetArchiveBaseName(archiveName));
+    }
+
+    /// <summary>
+    /// @adversarial @category security @severity high
+    /// アーカイブ由来の出力先は常に基準ディレクトリの子になる。
+    /// </summary>
+    [Theory]
+    [InlineData("...zip")]
+    [InlineData("..tar.gz")]
+    [InlineData("...tar.gz")]
+    [InlineData("CON.zip")]
+    public void ResolveArchiveOutputDirectory_UnsafeArchiveName_StaysInsideBase(string archiveName)
+    {
+        var baseDirectory = Path.Combine(Path.GetTempPath(), $"Lhamiel-OutputBase-{Guid.NewGuid():N}");
+        var result = ArchiveExtractor.ResolveArchiveOutputDirectory(baseDirectory, archiveName);
+
+        Assert.Equal(Path.Combine(Path.GetFullPath(baseDirectory), "archive"), result);
+        Assert.NotEqual(Path.GetFullPath(baseDirectory), result);
     }
 
     /// <summary>

@@ -34,6 +34,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">系统（跟随操作系统）</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">深色</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">浅色</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">应用图标</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">选择窗口和快捷方式中显示的图标。</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">经典</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">粉彩水晶</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">默认压缩格式</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">快捷方式</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 创建桌面快捷方式</x:String>
@@ -167,6 +171,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">未找到指定的文件。\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">未找到指定的文件或文件夹。\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">无法与正在运行的 Lhamiel 实例通信。应用可能正在更新。您的操作尚未处理，请稍后重试。</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">不支持的文件格式。\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">不支持的压缩格式。\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">解压过程中发生错误。\n{0}</x:String>

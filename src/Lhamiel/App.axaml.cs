@@ -138,7 +138,12 @@ public partial class App : Application
                     Logger.Log(startupArgs.Length > 0
                         ? "コマンドライン引数を既存のインスタンスに送信します。"
                         : "活性化要求（引数なし）を既存のインスタンスに送信します。");
-                    await IpcService.SendArgsToExistingInstanceAsync(startupArgs);
+                    var forwarded = await IpcService.SendArgsToExistingInstanceAsync(startupArgs);
+                    HandleIpcForwardResult(
+                        forwarded,
+                        () => NativeMethods.ShowErrorMessageBox(
+                            App.Text("Error.IpcForwardFailed"),
+                            App.Text("Dialog.Error")));
 
                     if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
                     {
@@ -358,7 +363,8 @@ public partial class App : Application
     /// </summary>
     private async Task ProcessCommandLineFiles(string[] filePaths, string compressionFormat = "default", bool shouldShutdown = true)
     {
-        if (filePaths.Length == 0) return;
+        if (TryFinishEmptyCommandLineRequest(filePaths.Length, shouldShutdown, ScheduleShutdownIfNeeded))
+            return;
 
         // 起動時 CLI と常駐インスタンスの IPC は同じ入口を通る。先行するドロップ操作も含めて
         // トップレベル操作をキュー化し、進捗ウィンドウ・上書き確認・最終移動を重ねない。
@@ -390,7 +396,8 @@ public partial class App : Application
                 Logger.Log($"指定されたパスが存在しません: {path}");
         }
 
-        if (validPaths.Count == 0) return;
+        if (TryFinishEmptyCommandLineRequest(validPaths.Count, shouldShutdown, ScheduleShutdownIfNeeded))
+            return;
 
         var settings = SettingsManager.Instance.CreateSnapshot();
 
@@ -417,6 +424,31 @@ public partial class App : Application
                 }
             }
         }
+    }
+
+    internal static bool HandleIpcForwardResult(bool forwarded, Action notifyFailure)
+    {
+        if (forwarded)
+            return true;
+
+        notifyFailure();
+        return false;
+    }
+
+    /// <summary>
+    /// 処理可能なパスが無い CLI 要求を完了し、自己終了経路なら明示的にシャットダウンする。
+    /// IPC 経路は <paramref name="shouldShutdown"/> が false のため常駐を維持する。
+    /// </summary>
+    internal static bool TryFinishEmptyCommandLineRequest(
+        int processablePathCount,
+        bool shouldShutdown,
+        Action<bool> scheduleShutdownIfNeeded)
+    {
+        if (processablePathCount != 0)
+            return false;
+
+        scheduleShutdownIfNeeded(shouldShutdown);
+        return true;
     }
 
     /// <summary>
@@ -731,6 +763,18 @@ public partial class App : Application
                 desktop.Shutdown();
             }
         }
+    }
+
+    /// <summary>
+    /// Avalonia のメインループ開始前でも安全に終了できるよう、Dispatcher の後続へ Shutdown を予約する。
+    /// 起動初期化中に同期 Shutdown すると StartCore が停止済み Dispatcher へ入り例外になる。
+    /// </summary>
+    private void ScheduleShutdownIfNeeded(bool shouldShutdown)
+    {
+        if (!shouldShutdown || ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            return;
+
+        Dispatcher.UIThread.Post(() => TryShutdownSafely(desktop));
     }
 
     /// <summary>

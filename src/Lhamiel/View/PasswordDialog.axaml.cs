@@ -98,6 +98,7 @@ public partial class PasswordDialog : Window
         Mode = mode;
         InitializeComponent();
         Util.AcrylicFallbackHelper.Attach(this);
+        Util.AppIconManager.Apply(this);
 
         Opened += (_, _) => _passwordBox?.Focus();
     }

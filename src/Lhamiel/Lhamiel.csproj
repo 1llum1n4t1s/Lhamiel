@@ -78,14 +78,18 @@
     <TrimmerRootAssembly Include="Velopack" />
   </ItemGroup>
 
-  <!-- バージョン画面に表示するアプリアイコンを Avalonia リソースとして埋め込む (avares://Lhamiel/icon/app_icon.png) -->
+  <!-- 設定画面とバージョン画面に表示するアプリアイコンを Avalonia リソースとして埋め込む -->
   <ItemGroup>
     <AvaloniaResource Include="icon\app_icon.png" />
+    <AvaloniaResource Include="icon\app_icon_classic.png" />
+    <AvaloniaResource Include="icon\app_icon_crystal.png" />
   </ItemGroup>
 
   <!-- アイコンを Publish 出力にコピー -->
   <Target Name="CopyIcons" AfterTargets="Publish">
     <Copy SourceFiles="icon\app.ico" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="icon\app_classic.ico" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="icon\app_crystal.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\file.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\file_folder.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\file_cute.ico" DestinationFolder="$(PublishDir)" />
@@ -95,6 +99,8 @@
   <!-- Build 出力にもコピー（dev 実行での関連付けアイコン解決・設定画面プレビュー用） -->
   <Target Name="CopyIconsBuild" AfterTargets="Build">
     <Copy SourceFiles="icon\app.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="icon\app_classic.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="icon\app_crystal.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="icon\file.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="icon\file_folder.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="icon\file_cute.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />

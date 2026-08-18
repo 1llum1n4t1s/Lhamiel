@@ -8,6 +8,8 @@ namespace Lhamiel;
 /// </summary>
 internal class Program
 {
+    private const string ShortcutIconRestoreMarkerFileName = ".shortcut-icon-restore-pending";
+
     /// <summary>
     /// アプリケーションのエントリーポイント。Velopack のブートストラップを実行後、Avalonia を起動する。
     /// --update-check 引数が指定された場合は UI なしでサイレント更新チェックのみ実行する。
@@ -42,7 +44,13 @@ internal class Program
             {
                 StartupRegistration.Register();
                 RefreshShellContextMenuRegistration();
+                MarkShortcutIconRestorePending();
                 NotifyShellIconRefresh();
+            })
+            .OnRestarted(v =>
+            {
+                RestoreSelectedApplicationShortcutIcons();
+                ClearShortcutIconRestorePending();
             })
             .OnBeforeUninstallFastCallback(v => CleanupBeforeUninstall())
             .Run();
@@ -53,6 +61,10 @@ internal class Program
             RunSilentUpdateCheck();
             return;
         }
+
+        // ApplyUpdatesAndExit を使うサイレント更新は OnRestarted を通らないため、
+        // 更新フックが残した保留マーカーを次の通常起動で一度だけ回収する。
+        RestoreSelectedApplicationShortcutIconsIfPending();
 
         try
         {
@@ -103,6 +115,81 @@ internal class Program
         }
         catch { /* best-effort */ }
     }
+
+    /// <summary>
+    /// Velopack が更新後に既存ショートカットを実行ファイルのアイコンへ戻した後、
+    /// ユーザーが選択しているアプリアイコンを再適用する。
+    /// </summary>
+    /// <remarks>
+    /// <c>OnAfterUpdateFastCallback</c> の実行後に Velopack 自身が .lnk を保存するため、
+    /// この処理はショートカット更新後に発火する <c>OnRestarted</c> から呼び出す。
+    /// </remarks>
+    internal static void RestoreSelectedApplicationShortcutIcons(
+        Action<string?>? refreshShortcutIcons = null,
+        string? appIconVariant = null)
+    {
+        var variant = Settings.NormalizeAppIconVariant(
+            appIconVariant ?? SettingsManager.Instance.Current.AppIconVariant);
+        (refreshShortcutIcons ?? ShortcutCreator.RefreshKnownApplicationShortcutIcons)(variant);
+    }
+
+    /// <summary>
+    /// Velopack がショートカットを書き戻した後にアイコン復元が必要であることを記録する。
+    /// </summary>
+    internal static bool MarkShortcutIconRestorePending(string? markerPath = null)
+    {
+        try
+        {
+            var path = markerPath ?? GetShortcutIconRestoreMarkerPath();
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
+            File.WriteAllText(path, "pending");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("ショートカットアイコン復元マーカーの作成に失敗しました", ex);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// サイレント更新後の次回起動で、保留中のアイコン復元を一度だけ実行する。
+    /// </summary>
+    internal static bool RestoreSelectedApplicationShortcutIconsIfPending(
+        string? markerPath = null,
+        Action<string?>? refreshShortcutIcons = null,
+        string? appIconVariant = null)
+    {
+        var path = markerPath ?? GetShortcutIconRestoreMarkerPath();
+        if (!File.Exists(path))
+            return false;
+
+        RestoreSelectedApplicationShortcutIcons(refreshShortcutIcons, appIconVariant);
+        ClearShortcutIconRestorePending(path);
+        return true;
+    }
+
+    /// <summary>
+    /// 復元完了後の保留マーカーを削除する。
+    /// </summary>
+    internal static void ClearShortcutIconRestorePending(string? markerPath = null)
+    {
+        try
+        {
+            var path = markerPath ?? GetShortcutIconRestoreMarkerPath();
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("ショートカットアイコン復元マーカーの削除に失敗しました", ex);
+        }
+    }
+
+    private static string GetShortcutIconRestoreMarkerPath() =>
+        Path.Combine(Settings.AppDataDirectory, ShortcutIconRestoreMarkerFileName);
 
     /// <summary>
     /// UI なしでサイレント更新チェックを実行する

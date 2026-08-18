@@ -34,6 +34,10 @@
   <x:String x:Key="Text.Settings.Theme.System" xml:space="preserve">அமைப்பு (OS ஐ பின்பற்று)</x:String>
   <x:String x:Key="Text.Settings.Theme.Dark" xml:space="preserve">இருண்ட</x:String>
   <x:String x:Key="Text.Settings.Theme.Light" xml:space="preserve">ஒளிர்</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Header" xml:space="preserve">பயன்பாட்டு சின்னம்</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">சாளரங்களிலும் குறுக்குவழிகளிலும் காட்டப்படும் சின்னத்தைத் தேர்ந்தெடுக்கவும்.</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">செம்மையான</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">மென்பசை படிகம்</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">இயல்புநிலை சுருக்க வடிவம்</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">குறுக்குவழி</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 டெஸ்க்டாப் குறுக்குவழியை உருவாக்கு</x:String>
@@ -167,6 +171,7 @@
   <!-- Error Messages -->
   <x:String x:Key="Text.Error.FileNotFound" xml:space="preserve">குறிப்பிட்ட கோப்பு கிடைக்கவில்லை.\n{0}</x:String>
   <x:String x:Key="Text.Error.FolderNotFound" xml:space="preserve">குறிப்பிட்ட கோப்பு அல்லது கோப்புறை கிடைக்கவில்லை.\n{0}</x:String>
+  <x:String x:Key="Text.Error.IpcForwardFailed">இயங்கிக்கொண்டிருக்கும் Lhamiel நிகழ்வுடன் தொடர்புகொள்ள முடியவில்லை. அது புதுப்பிக்கப்பட்டுக் கொண்டிருக்கலாம். உங்கள் கோரிக்கை செயலாக்கப்படவில்லை; சிறிது நேரம் கழித்து மீண்டும் முயலுங்கள்.</x:String>
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">ஆதரிக்கப்படாத கோப்பு வடிவம்.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">ஆதரிக்கப்படாத சுருக்க வடிவம்.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">பிரித்தெடுக்கும் போது பிழை ஏற்பட்டது.\n{0}</x:String>
