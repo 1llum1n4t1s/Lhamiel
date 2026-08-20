@@ -10,7 +10,7 @@ namespace Lhamiel.Tests.Unit;
 /// </summary>
 // FolderOpener コレクションと同一にして直列化する。FolderOpenerAsyncTests が
 // ShellOpener.DryRun と FolderOpener.DryRun を同時に操作するため、別コレクションで
-// 並列実行されると DryRun フラグが競合し、テスト中に実 explorer が起動しうる。
+// 並列実行されると DryRun フラグが競合し、テスト中に実ファイルマネージャーが起動しうる。
 [Collection("FolderOpener")]
 public class ShellOpenerTests : IDisposable
 {
@@ -34,9 +34,9 @@ public class ShellOpenerTests : IDisposable
     }
 
     [Fact]
-    public async Task OpenInExplorerAsync_DryRun_CompletesWithoutProcessStart()
+    public async Task OpenFolderWithDefaultHandlerAsync_DryRun_CompletesWithoutProcessStart()
     {
-        var task = ShellOpener.OpenInExplorerAsync(@"C:\Windows");
+        var task = ShellOpener.OpenFolderWithDefaultHandlerAsync(@"C:\Windows");
         await task;
         Assert.True(task.IsCompletedSuccessfully);
     }

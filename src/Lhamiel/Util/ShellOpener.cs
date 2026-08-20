@@ -1,9 +1,10 @@
+using System.ComponentModel;
 using System.Diagnostics;
 
 namespace Lhamiel.Util;
 
 /// <summary>
-/// 外部プロセス (ブラウザ / explorer.exe / 関連付けエディタ等) を起動するためのユーティリティ。
+/// 外部プロセス (ブラウザ / ファイルマネージャー / 関連付けエディタ等) を起動するためのユーティリティ。
 /// <para>
 /// すべての公開メソッドは <see cref="Task.Run(System.Action)"/> 経由で別スレッドから
 /// <see cref="Process.Start(ProcessStartInfo)"/> を呼び出す。これは <c>UseShellExecute=true</c>
@@ -46,24 +47,50 @@ public static class ShellOpener
         });
 
     /// <summary>
-    /// explorer.exe で指定フォルダを開く。
+    /// ユーザーが既定に設定したファイルマネージャーで指定フォルダを開く。
     /// <para>
-    /// 引数は <see cref="ProcessStartInfo.ArgumentList"/> で渡すため、<c>CommandLineToArgvW</c>
-    /// の規則通り安全にエスケープされ、スイッチ注入 (<c>/select,...</c> 等) を防ぐ。
+    /// フォルダパスを <c>UseShellExecute=true</c> でそのままシェルへ渡し、<c>ShellExecuteEx</c> に
+    /// 既定の verb を解決させる。<c>explorer.exe</c> を直接起動すると、ユーザーが
+    /// <c>Directory\shell</c> の既定 verb を Kiriha / Files 等のサードパーティ製ファイルマネージャーへ
+    /// 変更していても常に Windows 標準エクスプローラーが開いてしまうため
+    /// (ユーザー報告)、シェルに委ねる形にしている。標準構成 (既定 verb = <c>open</c>) では
+    /// <c>Directory\shell\open\command</c> が explorer を指すため、従来どおりエクスプローラーが開く。
+    /// </para>
+    /// <para>
+    /// 既定ハンドラの起動に失敗した場合 (登録されたファイルマネージャーが削除済み等) は
+    /// <c>explorer.exe</c> にフォールバックし、「フォルダが一切開かない」状態を避ける。
+    /// フォールバック側の引数は <see cref="ProcessStartInfo.ArgumentList"/> で渡すため、
+    /// <c>CommandLineToArgvW</c> の規則通り安全にエスケープされ、スイッチ注入
+    /// (<c>/select,...</c> 等) を防ぐ。
     /// </para>
     /// </summary>
     /// <param name="folderPath">開くフォルダの絶対パス。</param>
-    public static Task OpenInExplorerAsync(string folderPath) =>
+    public static Task OpenFolderWithDefaultHandlerAsync(string folderPath) =>
         Task.Run(() =>
         {
             if (DryRun) return;
-            var psi = new ProcessStartInfo
+            try
             {
-                FileName = "explorer.exe",
-                UseShellExecute = true,
-                CreateNoWindow = false,
-            };
-            psi.ArgumentList.Add(folderPath);
-            using var _ = Process.Start(psi);
+                using var _ = Process.Start(new ProcessStartInfo
+                {
+                    FileName = folderPath,
+                    UseShellExecute = true,
+                });
+            }
+            catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+            {
+                Logger.Log(
+                    $"既定のファイルマネージャーでフォルダを開けなかったため explorer.exe で開きます: {folderPath} ({ex.Message})",
+                    LogLevel.Warning);
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    UseShellExecute = true,
+                    CreateNoWindow = false,
+                };
+                psi.ArgumentList.Add(folderPath);
+                using var _ = Process.Start(psi);
+            }
         });
 }

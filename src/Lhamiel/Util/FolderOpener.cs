@@ -1,7 +1,8 @@
 namespace Lhamiel.Util;
 
 /// <summary>
-/// フォルダをWindowsエクスプローラーで開く機能を提供するクラス
+/// フォルダを既定のファイルマネージャー (Windows エクスプローラー、または Kiriha / Files 等の
+/// ユーザーが関連付けたアプリ) で開く機能を提供するクラス
 /// </summary>
 public static class FolderOpener
 {
@@ -27,15 +28,15 @@ public static class FolderOpener
     }
 
     /// <summary>
-    /// <see cref="OpenExtractionResult"/> の待機可能版。explorer 起動 (Process.Start のリターン)
-    /// まで完了する Task を返す。
+    /// <see cref="OpenExtractionResult"/> の待機可能版。ファイルマネージャー起動
+    /// (Process.Start のリターン) まで完了する Task を返す。
     /// </summary>
     /// <remarks>
     /// CLI / ファイル関連付け / アイコンドロップ起動の「処理後に自己終了する」経路で使う。
     /// 同期版は fire-and-forget のため、呼び出し元が直後に <c>desktop.Shutdown()</c> すると
-    /// explorer 起動がバックグラウンドスレッド上で走り切る前にプロセスが落ち、フォルダが
-    /// 開かない競合になる (v1.0.171 回帰)。この版を await すれば Shutdown 前に explorer 起動が
-    /// 完了する。explorer 起動自体は引き続き <see cref="ShellOpener.OpenInExplorerAsync"/> の
+    /// ファイルマネージャー起動がバックグラウンドスレッド上で走り切る前にプロセスが落ち、
+    /// フォルダが開かない競合になる (v1.0.171 回帰)。この版を await すれば Shutdown 前に起動が
+    /// 完了する。起動自体は引き続き <see cref="ShellOpener.OpenFolderWithDefaultHandlerAsync"/> の
     /// Task.Run で別スレッドに逃がすため、UI スレッドはブロックしない (Issue #54 対策を維持)。
     /// </remarks>
     public static async Task OpenExtractionResultAsync(
@@ -87,7 +88,7 @@ public static class FolderOpener
     }
 
     /// <summary>
-    /// 指定したフォルダをWindowsエクスプローラーで開く
+    /// 指定したフォルダを既定のファイルマネージャーで開く
     /// </summary>
     /// <param name="folderPath">開くフォルダのパス</param>
     public static void OpenFolder(string folderPath)
@@ -96,27 +97,27 @@ public static class FolderOpener
         if (preparedPath is null)
             return;
 
-        // explorer.exe 起動は ShellOpener が Task.Run で別スレッドへ逃がす (Issue #54 対策)。
+        // ファイルマネージャー起動は ShellOpener が Task.Run で別スレッドへ逃がす (Issue #54 対策)。
         // 戻り値の Task は fire-and-forget で投げる: 呼び出し元は同期 void シグネチャを
         // 維持するため await しない。例外はタスク内で catch してログに記録する。
         // 常駐インスタンス (ドラッグ&ドロップ / ダイアログ) 専用 — プロセスが生存し続けるため
         // detached な起動 Task は確実に完走する。自己終了する CLI 経路は OpenFolderAsync を使う。
-        _ = ShellOpener.OpenInExplorerAsync(preparedPath)
+        _ = ShellOpener.OpenFolderWithDefaultHandlerAsync(preparedPath)
             .ContinueWith(t =>
             {
                 if (t.IsFaulted && t.Exception is not null)
                     Logger.LogException($"フォルダを開く処理でエラーが発生しました: {preparedPath}", t.Exception.GetBaseException());
                 else if (t.IsCompletedSuccessfully)
-                    Logger.Log($"フォルダをエクスプローラーで開きました: {preparedPath}", LogLevel.Debug);
+                    Logger.Log($"フォルダを既定のファイルマネージャーで開きました: {preparedPath}", LogLevel.Debug);
             }, TaskScheduler.Default);
     }
 
     /// <summary>
-    /// <see cref="OpenFolder"/> の待機可能版。explorer 起動 (Process.Start のリターン) まで
-    /// 完了する Task を返す。処理後に <c>desktop.Shutdown()</c> する CLI / ファイル関連付け
-    /// 経路で await して使う (シャットダウン競合の解消)。explorer 起動は引き続き
-    /// <see cref="ShellOpener.OpenInExplorerAsync"/> の Task.Run で別スレッドに逃がすため
-    /// UI スレッドはブロックしない。
+    /// <see cref="OpenFolder"/> の待機可能版。ファイルマネージャー起動 (Process.Start の
+    /// リターン) まで完了する Task を返す。処理後に <c>desktop.Shutdown()</c> する CLI /
+    /// ファイル関連付け経路で await して使う (シャットダウン競合の解消)。起動は引き続き
+    /// <see cref="ShellOpener.OpenFolderWithDefaultHandlerAsync"/> の Task.Run で別スレッドに
+    /// 逃がすため UI スレッドはブロックしない。
     /// </summary>
     /// <param name="folderPath">開くフォルダのパス</param>
     public static async Task OpenFolderAsync(string folderPath)
@@ -127,8 +128,8 @@ public static class FolderOpener
 
         try
         {
-            await ShellOpener.OpenInExplorerAsync(preparedPath);
-            Logger.Log($"フォルダをエクスプローラーで開きました: {preparedPath}", LogLevel.Debug);
+            await ShellOpener.OpenFolderWithDefaultHandlerAsync(preparedPath);
+            Logger.Log($"フォルダを既定のファイルマネージャーで開きました: {preparedPath}", LogLevel.Debug);
         }
         catch (Exception ex)
         {
@@ -143,7 +144,7 @@ public static class FolderOpener
     /// <remarks>
     /// 相対パス (CLI で相対引数指定・「元と同じ場所に保存」で相対ソースパス等) は
     /// <see cref="Path.GetFullPath(string)"/> でプロセスの作業ディレクトリ基準で絶対化する。
-    /// explorer.exe は別プロセスとして起動するため相対パスを呼び出し元と同じ基準で解決できず、
+    /// ファイルマネージャーは別プロセスとして起動するため相対パスを呼び出し元と同じ基準で解決できず、
     /// フォルダオープンが失敗するか既定フォルダが開いてしまうため (gemini high)。存在チェックも
     /// 解決済みパスで行うことで、判定と起動のパスを一致させる。
     /// </remarks>

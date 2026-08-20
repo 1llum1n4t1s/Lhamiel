@@ -464,8 +464,8 @@ public partial class App : Application
         // 自己終了する CLI / ファイル関連付け / アイコンドロップ経路 (shouldShutdown=true) では、
         // 操作中だけ自動シャットダウン (ShutdownMode.OnLastWindowClose) を抑止する。
         // ProgressWindow のクローズ (ArchiveProcessor が CloseSafe で Dispatcher に Post) が、
-        // 「展開先/圧縮先を開く」の explorer 起動 (await 中に別スレッドで Process.Start) の最中に
-        // 処理されると、最後のウィンドウクローズ → 自動シャットダウンが explorer 起動と競合し、
+        // 「展開先/圧縮先を開く」のファイルマネージャー起動 (await 中に別スレッドで Process.Start) の最中に
+        // 処理されると、最後のウィンドウクローズ → 自動シャットダウンがファイルマネージャー起動と競合し、
         // 起動し切る前にプロセスが落ちてフォルダが開かない回帰があった (#61 の await 化だけでは
         // 明示 ShutdownIfNeeded 経路しか守れず、暗黙の自動シャットダウンが残っていた)。
         // 操作完了後は finally で元の ShutdownMode に戻し、明示 ShutdownIfNeeded、または
@@ -497,7 +497,7 @@ public partial class App : Application
                 }
             }
 
-            // explorer 起動 (operation 内で await 済み) が完了してから ProgressWindow を閉じる。
+            // ファイルマネージャー起動 (operation 内で await 済み) が完了してから ProgressWindow を閉じる。
             // OnExplicitShutdown 中なのでこのクローズでは自動シャットダウンしない (ArchiveProcessor が
             // 既に閉じていれば CloseSafe は no-op)。
             progressWindow.CloseSafe();
@@ -542,7 +542,7 @@ public partial class App : Application
                 Logger.Log($"複数ファイル展開が完了しました: {extractionResults.Count}/{filePaths.Length}個成功");
                 if (settings.OpenExtractionOutputFolder)
                 {
-                    // explorer 起動を並行で投げて Task.WhenAll でまとめて待つ。await することで
+                    // ファイルマネージャー起動を並行で投げて Task.WhenAll でまとめて待つ。await することで
                     // 直後の ShutdownIfNeeded より前に全フォルダの起動が完了する (自己終了する
                     // CLI 経路でのシャットダウン競合を解消、v1.0.171 回帰の修正)。順次 await だと
                     // アーカイブ数ぶん起動が直列化してシャットダウンが遅れるため並行化する (gemini)。
@@ -579,7 +579,7 @@ public partial class App : Application
                     var baseDir = settings.CompressionOutputToSameDirectory
                         ? Path.GetDirectoryName(sourcePaths[0]) ?? ""
                         : settings.CompressionOutputDirectory;
-                    // await して ShutdownIfNeeded より前に explorer 起動を完了させる (v1.0.171 回帰の修正)。
+                    // await して ShutdownIfNeeded より前にファイルマネージャー起動を完了させる (v1.0.171 回帰の修正)。
                     await FolderOpener.OpenFolderAsync(baseDir);
                 }
             }
@@ -707,7 +707,7 @@ public partial class App : Application
             {
                 Logger.Log("ファイル展開処理が完了しました");
                 if (settings.OpenExtractionOutputFolder)
-                    // await して ShutdownIfNeeded より前に explorer 起動を完了させる (v1.0.171 回帰の修正)。
+                    // await して ShutdownIfNeeded より前にファイルマネージャー起動を完了させる (v1.0.171 回帰の修正)。
                     await FolderOpener.OpenExtractionResultAsync(finalOutputPath, structureInfo, settings.CreateArchiveNameFolder);
             }
             else
@@ -738,7 +738,7 @@ public partial class App : Application
                         sourcePath, format, settings.CompressionOutputDirectory, settings.CompressionOutputToSameDirectory);
                     var directoryToOpen = Path.GetDirectoryName(finalOutputPath);
                     if (directoryToOpen != null)
-                        // await して ShutdownIfNeeded より前に explorer 起動を完了させる (v1.0.171 回帰の修正)。
+                        // await して ShutdownIfNeeded より前にファイルマネージャー起動を完了させる (v1.0.171 回帰の修正)。
                         await FolderOpener.OpenFolderAsync(directoryToOpen);
                 }
             }

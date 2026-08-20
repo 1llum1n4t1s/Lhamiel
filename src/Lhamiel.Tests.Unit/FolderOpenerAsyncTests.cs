@@ -5,7 +5,7 @@ namespace Lhamiel.Tests.Unit;
 
 /// <summary>
 /// FolderOpener の待機可能版 (OpenFolderAsync / OpenExtractionResultAsync) のテスト。
-/// これらは CLI / ファイル関連付け経路で「explorer 起動完了を await してから
+/// これらは CLI / ファイル関連付け経路で「ファイルマネージャー起動完了を await してから
 /// アプリをシャットダウンする」ために追加されたメソッドで、v1.0.171 で混入した
 /// 「展開先を開く設定が効かない (fire-and-forget × 即時 Shutdown 競合)」回帰の修正。
 /// </summary>
@@ -48,7 +48,7 @@ public class FolderOpenerAsyncTests : IDisposable
 
     /// <summary>
     /// FolderOpener.DryRun=false + ShellOpener.DryRun=true で、実在フォルダに対して
-    /// OpenFolderAsync が TryPrepareOpen を通過し ShellOpener.OpenInExplorerAsync を
+    /// OpenFolderAsync が TryPrepareOpen を通過し ShellOpener.OpenFolderWithDefaultHandlerAsync を
     /// 実際に await して完了することを検証する。これが await されないと CLI 経路の
     /// シャットダウン競合 (回帰) が再発するため、awaitable に到達する契約を固定する。
     /// </summary>
@@ -60,7 +60,7 @@ public class FolderOpenerAsyncTests : IDisposable
         var originalFolderDryRun = FolderOpener.DryRun;
         try
         {
-            // FolderOpener 側のガードは通過させ、実 explorer 起動だけ ShellOpener.DryRun で抑止する。
+            // FolderOpener 側のガードは通過させ、実ファイルマネージャー起動だけ ShellOpener.DryRun で抑止する。
             FolderOpener.DryRun = false;
             var launch = FolderOpener.OpenFolderAsync(tempDir);
             await launch;
