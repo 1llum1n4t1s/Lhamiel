@@ -1604,33 +1604,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// フィードバック用のGitHub Issuesページをブラウザで開くコマンド
+    /// Kagayoi Supportのお問い合わせフォームを開くコマンド
     /// </summary>
     [RelayCommand]
-    private async Task OpenFeedbackLinkAsync()
+    private async Task OpenSupportAsync()
     {
-        const string url = "https://github.com/1llum1n4t1s/Lhamiel/issues";
         var window = await MessageService.GetActiveWindowAsync();
-        var dialog = new View.ConfirmDialog(
-            App.Text("Version.Feedback.Confirm"),
-            App.Text("Version.Feedback.ConfirmTitle"));
-        var confirmed = window != null
-            ? await dialog.ShowDialog<bool>(window)
-            : false;
-        if (!confirmed) return;
+        if (window == null)
+        {
+            Logger.Log("お問い合わせ: 所有ウィンドウを特定できませんでした", LogLevel.Warning);
+            return;
+        }
 
         try
         {
-            // Issue #54 対策: Process.Start(UseShellExecute=true) を UI スレッドから直接呼ぶと、
-            // 環境次第で ShellExecuteEx の内部処理 (SmartScreen URL reputation, AV URL scanning,
-            // シェル拡張初期化等) が UI スレッドを blocking し、メッセージポンプが停止して
-            // 「アプリ全体が操作不能」に見える経路がある。ShellOpener が Task.Run で別スレッドへ
-            // 逃がすため、UI スレッドはすぐ next frame に戻れる。
-            await ShellOpener.OpenWithDefaultHandlerAsync(url);
+            var dialog = new View.SupportDialog(SelectedLocale);
+            await dialog.ShowDialog(window);
         }
         catch (Exception ex)
         {
-            Logger.LogException("フィードバックリンクを開けませんでした", ex);
+            Logger.LogException("お問い合わせフォームを開けませんでした", ex);
         }
     }
 }

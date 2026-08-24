@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Verificar Atualizações</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Direitos Autorais</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Licença</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Envie-nos seus comentarios e sugestoes</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Enviar feedback (GitHub)</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">Abrir a pagina do GitHub Issues no navegador?</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">Confirmar</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Entre em contato com o suporte Kagayoi sobre o Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Abrir formulário de contato</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">Contatar o suporte</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">Conte suas dúvidas ou problemas com o Lhamiel. Verificaremos seu e-mail antes do envio.</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">Nome (opcional)</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">Endereço de e-mail (obrigatório)</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">Tipo de solicitação (obrigatório)</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">Erro</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">Como usar / dúvida</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">Sugestão de recurso</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">Compra / cobrança</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">Outro</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">Detalhes (obrigatório)</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">Enviar solicitação</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">Verificar e enviar</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">Verificar status</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">Código de verificação</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">Reenviar código</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">Alterar e-mail</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">Sua solicitação foi recebida como {0}.</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">Preencha os campos obrigatórios e confira os dados.</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">Digite um endereço de e-mail válido.</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">Aguarde antes de solicitar outro código.</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">Digite o código de verificação válido de seis dígitos.</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">Enviando…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">Um código de verificação foi enviado ao seu e-mail.</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Não foi possível acessar o serviço de suporte. Tente novamente mais tarde.</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">Salvar</x:String>

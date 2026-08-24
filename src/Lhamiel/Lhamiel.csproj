@@ -33,6 +33,7 @@
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</OutputPath>
     <IntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</IntermediateOutputPath>
+    <KagayoiSupportClientVersion>0.1.0</KagayoiSupportClientVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -51,6 +52,8 @@
   <!-- .axaml は Avalonia SDK が自動インクルードするため明示不要 -->
 
   <ItemGroup>
+    <ProjectReference Include="$(KagayoiSupportClientProject)" Condition="'$(KagayoiSupportClientProject)' != ''" />
+    <PackageReference Include="Kagayoi.Support.Client" Version="$(KagayoiSupportClientVersion)" Condition="'$(KagayoiSupportClientProject)' == ''" />
     <PackageReference Include="Avalonia" Version="12.1.1" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.1" />
     <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.1" />

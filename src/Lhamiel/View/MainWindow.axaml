@@ -818,7 +818,7 @@
                                 </Grid>
                             </Border>
 
-                            <!--  ご意見・ご要望  -->
+                            <!--  お問い合わせ  -->
                             <Border
                                 Margin="0,0,0,12"
                                 Padding="16"
@@ -833,7 +833,7 @@
                                         Foreground="{DynamicResource Brush.FG2}"
                                         Text="{DynamicResource Text.Version.Feedback.Description}" />
                                     <Button
-                                        Command="{Binding OpenFeedbackLinkCommand}"
+                                        Command="{Binding OpenSupportCommand}"
                                         Content="{DynamicResource Text.Version.Feedback.Button}"
                                         FontSize="12" />
                                 </StackPanel>

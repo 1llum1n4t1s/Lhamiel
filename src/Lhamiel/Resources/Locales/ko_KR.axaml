@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">업데이트 확인</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">저작권</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">라이선스</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">의견과 요청사항을 보내주세요</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">피드백 보내기 (GitHub)</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">GitHub Issues 페이지를 브라우저에서 열까요?</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">확인</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Lhamiel에 대해 Kagayoi 지원팀에 문의하세요</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">문의 양식 열기</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">지원 문의</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">Lhamiel에 대한 질문이나 문제를 알려주세요. 보내기 전에 이메일을 확인합니다.</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">이름(선택)</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">이메일 주소(필수)</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">문의 유형(필수)</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">버그</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">사용법 / 질문</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">기능 요청</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">구매 / 결제</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">기타</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">내용(필수)</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">문의 보내기</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">인증 후 보내기</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">문의 상태 확인</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">인증 코드</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">코드 다시 보내기</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">이메일 변경</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">문의가 {0}(으)로 접수되었습니다.</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">필수 항목을 입력하고 내용을 확인하세요.</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">올바른 이메일 주소를 입력하세요.</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">다른 코드를 요청하기 전에 잠시 기다리세요.</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">올바른 6자리 인증 코드를 입력하세요.</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">보내는 중…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">이메일로 인증 코드를 보냈습니다.</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">지원 서비스에 연결할 수 없습니다. 나중에 다시 시도하세요.</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">저장</x:String>

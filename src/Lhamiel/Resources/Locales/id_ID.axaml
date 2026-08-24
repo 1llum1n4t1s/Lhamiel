@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Periksa Pembaruan</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Hak Cipta</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Lisensi</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Kirimkan masukan dan saran Anda</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Kirim Masukan (GitHub)</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">Buka halaman GitHub Issues di browser?</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">Konfirmasi</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Hubungi Dukungan Kagayoi mengenai Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Buka Formulir Kontak</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">Hubungi Dukungan</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">Ceritakan pertanyaan atau masalah Anda dengan Lhamiel. Email akan diverifikasi sebelum dikirim.</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">Nama (opsional)</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">Alamat email (wajib)</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">Jenis permintaan (wajib)</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">Bug</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">Cara pakai / pertanyaan</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">Permintaan fitur</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">Pembelian / tagihan</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">Lainnya</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">Detail (wajib)</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">Kirim Permintaan</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">Verifikasi dan Kirim</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">Periksa Status</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">Kode verifikasi</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">Kirim Ulang Kode</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">Ubah Email</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">Permintaan Anda diterima sebagai {0}.</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">Lengkapi bidang wajib dan periksa detailnya.</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">Masukkan alamat email yang valid.</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">Tunggu sebelum meminta kode lain.</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">Masukkan kode verifikasi enam digit yang valid.</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">Mengirim…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">Kode verifikasi telah dikirim ke email Anda.</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Layanan dukungan tidak dapat dihubungi. Coba lagi nanti.</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">Simpan</x:String>

@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">புதுப்பிப்புகளைச் சரிபார்</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">பதிப்புரிமை</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">உரிமம்</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">உங்கள் கருத்துகளையும் ஆலோசனைகளையும் எங்களுக்கு அனுப்புங்கள்</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">கருத்து அனுப்பு (GitHub)</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">GitHub Issues பக்கத்தை உலாவியில் திறக்கவா?</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">உறுதிப்படுத்தல்</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Lhamiel குறித்து Kagayoi ஆதரவைத் தொடர்புகொள்ளுங்கள்</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">தொடர்பு படிவத்தைத் திற</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">ஆதரவைத் தொடர்புகொள்</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">Lhamiel பற்றிய கேள்விகள் அல்லது சிக்கல்களைத் தெரிவிக்கவும். அனுப்பும் முன் மின்னஞ்சல் சரிபார்க்கப்படும்.</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">பெயர் (விருப்பம்)</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">மின்னஞ்சல் முகவரி (தேவை)</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">கோரிக்கை வகை (தேவை)</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">பிழை</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">பயன்பாடு / கேள்வி</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">அம்சக் கோரிக்கை</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">வாங்குதல் / கட்டணம்</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">மற்றவை</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">விவரங்கள் (தேவை)</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">கோரிக்கையை அனுப்பு</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">சரிபார்த்து அனுப்பு</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">கோரிக்கை நிலையைப் பார்</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">சரிபார்ப்புக் குறியீடு</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">குறியீட்டை மீண்டும் அனுப்பு</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">மின்னஞ்சலை மாற்று</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">உங்கள் கோரிக்கை {0} ஆகப் பெறப்பட்டது.</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">தேவையான புலங்களை நிரப்பி விவரங்களைச் சரிபார்க்கவும்.</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">சரியான மின்னஞ்சல் முகவரியை உள்ளிடவும்.</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">மற்றொரு குறியீட்டைக் கோருவதற்கு முன் காத்திருக்கவும்.</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">சரியான ஆறு இலக்க சரிபார்ப்புக் குறியீட்டை உள்ளிடவும்.</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">அனுப்புகிறது…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">சரிபார்ப்புக் குறியீடு உங்கள் மின்னஞ்சலுக்கு அனுப்பப்பட்டது.</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">ஆதரவு சேவையை அணுக முடியவில்லை. பின்னர் மீண்டும் முயற்சிக்கவும்.</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">சேமி</x:String>

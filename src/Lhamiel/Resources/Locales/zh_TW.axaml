@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">檢查更新</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">版權</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">授權條款</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">歡迎向我們提交意見和建議</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">提交回饋（GitHub）</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">是否在瀏覽器中開啟 GitHub Issues 頁面？</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">確認</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">就 Lhamiel 聯絡 Kagayoi 支援</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">開啟聯絡表單</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">聯絡支援</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">請告訴我們有關 Lhamiel 的問題或故障。送出前會驗證您的電子郵件。</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">姓名（選填）</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">電子郵件地址（必填）</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">諮詢類型（必填）</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">故障</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">使用方式 / 問題</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">功能建議</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">購買 / 計費</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">其他</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">詳細內容（必填）</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">送出諮詢</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">驗證並送出</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">查看諮詢狀態</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">驗證碼</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">重新傳送驗證碼</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">變更電子郵件</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">您的諮詢已受理，編號為 {0}。</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">請填寫必填欄位並檢查內容。</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">請輸入有效的電子郵件地址。</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">請稍候再要求新的驗證碼。</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">請輸入有效的六位驗證碼。</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">正在傳送…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">驗證碼已傳送到您的電子郵件。</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">無法連線支援服務。請稍後再試。</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">儲存</x:String>

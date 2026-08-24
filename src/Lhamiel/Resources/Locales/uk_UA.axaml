@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Перевірити оновлення</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Авторське право</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Ліцензія</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Надішліть нам свої відгуки та пропозиції</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Надіслати відгук (GitHub)</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">Відкрити сторінку GitHub Issues у браузері?</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">Підтвердження</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Зверніться до підтримки Kagayoi щодо Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Відкрити форму звернення</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">Звернення до підтримки</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">Опишіть запитання або проблеми з Lhamiel. Перед надсиланням ми підтвердимо вашу електронну адресу.</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">Ім’я (необов’язково)</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">Електронна адреса (обов’язково)</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">Тип звернення (обов’язково)</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">Помилка</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">Використання / запитання</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">Пропозиція функції</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">Придбання / оплата</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">Інше</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">Опис (обов’язково)</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">Надіслати звернення</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">Підтвердити й надіслати</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">Перевірити стан</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">Код підтвердження</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">Надіслати код ще раз</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">Змінити адресу</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">Ваше звернення прийнято під номером {0}.</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">Заповніть обов’язкові поля та перевірте дані.</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">Введіть дійсну електронну адресу.</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">Зачекайте перед повторним запитом коду.</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">Введіть дійсний шестизначний код підтвердження.</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">Надсилання…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">Код підтвердження надіслано на вашу електронну адресу.</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Не вдалося зв’язатися зі службою підтримки. Спробуйте пізніше.</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">Зберегти</x:String>

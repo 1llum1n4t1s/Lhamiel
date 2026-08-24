@@ -222,7 +222,8 @@ Project\custom\.lhamielignore : !keep.log
 ## 連絡先
 
 - **メール:** 1llum1n4t1@duck.com
-- **バグ報告・要望:** https://github.com/1llum1n4t1s/Lhamiel/issues
+- **利用上のお問い合わせ・不具合:** アプリの「設定」→「バージョン」→「お問い合わせフォームを開く」から送信できます。メール認証後に受付状況を確認でき、ほかの利用者の問い合わせは表示されません
+- **開発者向けの技術課題・コントリビューション:** https://github.com/1llum1n4t1s/Lhamiel/issues
 
 ## ライセンス
 

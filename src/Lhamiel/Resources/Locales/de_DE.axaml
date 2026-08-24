@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Nach Updates suchen</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Urheberrecht</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Lizenz</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Senden Sie uns Ihr Feedback und Ihre Vorschlaege</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Feedback senden (GitHub)</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">GitHub Issues-Seite im Browser oeffnen?</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">Bestaetigung</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Kontaktieren Sie den Kagayoi-Support zu Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Kontaktformular öffnen</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">Support kontaktieren</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">Teilen Sie uns Fragen oder Probleme mit Lhamiel mit. Vor dem Senden bestätigen wir Ihre E-Mail-Adresse.</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">Name (optional)</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">E-Mail-Adresse (erforderlich)</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">Anfragetyp (erforderlich)</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">Fehler</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">Bedienung / Frage</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">Funktionswunsch</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">Kauf / Abrechnung</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">Sonstiges</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">Details (erforderlich)</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">Anfrage senden</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">Bestätigen und senden</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">Anfragestatus prüfen</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">Bestätigungscode</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">Code erneut senden</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">E-Mail ändern</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">Ihre Anfrage wurde als {0} angenommen.</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">Füllen Sie die Pflichtfelder aus und prüfen Sie die Angaben.</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">Geben Sie eine gültige E-Mail-Adresse ein.</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">Warten Sie, bevor Sie einen weiteren Code anfordern.</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">Geben Sie den gültigen sechsstelligen Bestätigungscode ein.</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">Wird gesendet…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">Ein Bestätigungscode wurde an Ihre E-Mail-Adresse gesendet.</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Der Supportdienst ist nicht erreichbar. Versuchen Sie es später erneut.</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">Speichern</x:String>

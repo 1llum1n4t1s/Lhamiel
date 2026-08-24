@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Quaerere Renovationes</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Ius Auctoris</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Licentia</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Mitte nobis sententias et suggestiones</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Responsum mittere (GitHub)</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">Paginam GitHub Issues in navigatro aperire?</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">Confirmatio</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Auxilium Kagayoi de Lhamiel consule</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Formam contactus aperi</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">Auxilium consule</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">Quaestiones aut difficultates de Lhamiel narra. Epistula electronica ante missionem comprobabitur.</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">Nomen (facultativum)</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">Epistula electronica (necessaria)</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">Genus petitionis (necessarium)</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">Vitium</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">Usus / quaestio</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">Petitio facultatis</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">Emptio / solutio</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">Aliud</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">Singula (necessaria)</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">Petitionem mitte</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">Comproba et mitte</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">Statum petitionis inspice</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">Codex confirmationis</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">Codicem iterum mitte</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">Epistulam muta</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">Petitio tua numero {0} accepta est.</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">Campos necessarios exple et singula recognosce.</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">Inscriptionem electronicam validam insere.</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">Exspecta antequam alium codicem petas.</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">Codicem confirmationis sex numerorum validum insere.</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">Mittitur…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">Codex confirmationis ad epistulam tuam missus est.</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Ministerium auxilii attingi non potest. Postea iterum tenta.</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">Servare</x:String>

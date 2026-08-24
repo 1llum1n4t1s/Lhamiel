@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">アップデート確認</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">コピーライト</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">ライセンス</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">ご意見・ご要望はこちらからお寄せください</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">フィードバックを送る（GitHub）</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">GitHub Issues ページをブラウザで開きますか？</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">確認</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">LhamielについてKagayoi Supportへお問い合わせいただけます</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">お問い合わせフォームを開く</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">お問い合わせ</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">Lhamielについてのご質問や不具合をご連絡ください。送信前にメールで本人確認します。</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">お名前（任意）</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">メールアドレス（必須）</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">お問い合わせ種別（必須）</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">不具合</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">使い方・質問</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">機能の要望</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">購入・課金</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">その他</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">内容（必須）</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">お問い合わせを送信</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">認証して送信</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">お問い合わせ状況を確認</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">確認コード</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">コードを再送</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">メールアドレスを変更</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">お問い合わせを {0} として受け付けました。</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">必須項目を入力し、内容を確認してください。</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">正しいメールアドレスを入力してください。</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">しばらく待ってからコードを再送してください。</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">正しい6桁の確認コードを入力してください。</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">送信しています…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">確認コードをメールで送信しました。</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">サポートサービスに接続できませんでした。時間をおいてもう一度お試しください。</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">保存</x:String>

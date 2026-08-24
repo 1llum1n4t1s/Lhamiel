@@ -10,12 +10,15 @@ on:
 
 permissions:
   contents: read
+  packages: read
   security-events: write
 
 jobs:
   analyze:
     name: C# CodeQL 解析
     runs-on: windows-latest
+    env:
+      KAGAYOI_GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: リポジトリをチェックアウト
         # actions/checkout@v7.0.1

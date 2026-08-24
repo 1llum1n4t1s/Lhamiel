@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Проверить обновления</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Авторские права</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Лицензия</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Отправьте нам свои отзывы и предложения</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Отправить отзыв (GitHub)</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">Открыть страницу GitHub Issues в браузере?</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">Подтверждение</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Свяжитесь со службой поддержки Kagayoi по вопросам Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Открыть форму обращения</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">Обращение в поддержку</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">Расскажите о вопросах или проблемах с Lhamiel. Перед отправкой мы подтвердим вашу почту.</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">Имя (необязательно)</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">Электронная почта (обязательно)</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">Тип обращения (обязательно)</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">Ошибка</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">Использование / вопрос</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">Предложение функции</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">Покупка / оплата</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">Другое</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">Описание (обязательно)</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">Отправить обращение</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">Подтвердить и отправить</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">Проверить статус</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">Код подтверждения</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">Отправить код снова</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">Изменить почту</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">Ваше обращение принято под номером {0}.</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">Заполните обязательные поля и проверьте данные.</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">Введите действительный адрес электронной почты.</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">Подождите перед повторным запросом кода.</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">Введите действительный шестизначный код подтверждения.</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">Отправка…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">Код подтверждения отправлен на вашу электронную почту.</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Не удалось связаться со службой поддержки. Повторите попытку позже.</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">Сохранить</x:String>

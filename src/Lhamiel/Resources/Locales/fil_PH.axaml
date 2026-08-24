@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">Tingnan ang mga Update</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">Copyright</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">Lisensya</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Ipadala ang iyong feedback at mungkahi</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Magpadala ng Feedback (GitHub)</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">Buksan ang GitHub Issues page sa browser?</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">Kumpirmahin</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Makipag-ugnayan sa Kagayoi Support tungkol sa Lhamiel</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">Buksan ang Contact Form</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">Makipag-ugnayan sa Support</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">Ipaalam ang tanong o problema sa Lhamiel. Ive-verify muna ang email bago ipadala.</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">Pangalan (opsyonal)</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">Email address (kailangan)</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">Uri ng request (kailangan)</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">Bug</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">Paggamit / tanong</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">Hiling na feature</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">Pagbili / bayarin</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">Iba pa</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">Detalye (kailangan)</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">Ipadala ang Request</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">I-verify at Ipadala</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">Tingnan ang Status</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">Verification code</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">Ipadala Muli ang Code</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">Palitan ang Email</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">Natanggap ang iyong request bilang {0}.</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">Kumpletuhin ang mga kailangang field at suriin ang detalye.</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">Maglagay ng wastong email address.</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">Maghintay bago humiling ng panibagong code.</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">Ilagay ang wastong anim na digit na verification code.</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">Ipinapadala…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">Ipinadala ang verification code sa iyong email.</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Hindi maabot ang support service. Subukan muli mamaya.</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">I-save</x:String>

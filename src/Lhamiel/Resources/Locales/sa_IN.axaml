@@ -118,10 +118,33 @@
   <x:String x:Key="Text.Version.CheckUpdate" xml:space="preserve">नवीकरणं पृच्छतु</x:String>
   <x:String x:Key="Text.Version.Copyright" xml:space="preserve">प्रतिलिप्यधिकारः</x:String>
   <x:String x:Key="Text.Version.License" xml:space="preserve">अनुज्ञापत्रम्</x:String>
-  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">कृपया अस्मभ्यं प्रतिक्रियां सूचनाश्च प्रेषयन्तु</x:String>
-  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">प्रतिक्रियां प्रेषयतु (GitHub)</x:String>
-  <x:String x:Key="Text.Version.Feedback.Confirm" xml:space="preserve">GitHub Issues पृष्ठं ब्राउज़रे उद्घाटयतु?</x:String>
-  <x:String x:Key="Text.Version.Feedback.ConfirmTitle" xml:space="preserve">पुष्टिः</x:String>
+  <x:String x:Key="Text.Version.Feedback.Description" xml:space="preserve">Lhamiel विषये Kagayoi साहाय्यं सम्पर्कयतु</x:String>
+  <x:String x:Key="Text.Version.Feedback.Button" xml:space="preserve">सम्पर्कप्रपत्रम् उद्घाटयतु</x:String>
+  <x:String x:Key="Text.Support.Title" xml:space="preserve">साहाय्यं सम्पर्कयतु</x:String>
+  <x:String x:Key="Text.Support.Subtitle" xml:space="preserve">Lhamiel विषये प्रश्नान् समस्याश्च निवेदयतु। प्रेषणात् पूर्वं ई-पत्रं सत्याप्यते।</x:String>
+  <x:String x:Key="Text.Support.Name" xml:space="preserve">नाम (वैकल्पिकम्)</x:String>
+  <x:String x:Key="Text.Support.Email" xml:space="preserve">ई-पत्रसङ्केतः (आवश्यकः)</x:String>
+  <x:String x:Key="Text.Support.Category" xml:space="preserve">निवेदनप्रकारः (आवश्यकः)</x:String>
+  <x:String x:Key="Text.Support.Category.Bug" xml:space="preserve">दोषः</x:String>
+  <x:String x:Key="Text.Support.Category.Question" xml:space="preserve">प्रयोगः / प्रश्नः</x:String>
+  <x:String x:Key="Text.Support.Category.Feature" xml:space="preserve">विशेषतानिवेदनम्</x:String>
+  <x:String x:Key="Text.Support.Category.Billing" xml:space="preserve">क्रयः / शुल्कम्</x:String>
+  <x:String x:Key="Text.Support.Category.Other" xml:space="preserve">अन्यत्</x:String>
+  <x:String x:Key="Text.Support.Message" xml:space="preserve">विवरणम् (आवश्यकम्)</x:String>
+  <x:String x:Key="Text.Support.Send" xml:space="preserve">निवेदनं प्रेषयतु</x:String>
+  <x:String x:Key="Text.Support.VerifyAndSend" xml:space="preserve">सत्याप्य प्रेषयतु</x:String>
+  <x:String x:Key="Text.Support.Status" xml:space="preserve">निवेदनस्थितिं पश्यतु</x:String>
+  <x:String x:Key="Text.Support.Code" xml:space="preserve">सत्यापनसङ्केतः</x:String>
+  <x:String x:Key="Text.Support.Resend" xml:space="preserve">सङ्केतं पुनः प्रेषयतु</x:String>
+  <x:String x:Key="Text.Support.ChangeEmail" xml:space="preserve">ई-पत्रं परिवर्तयतु</x:String>
+  <x:String x:Key="Text.Support.Success" xml:space="preserve">भवतः निवेदनं {0} इति स्वीकृतम्।</x:String>
+  <x:String x:Key="Text.Support.InvalidFields" xml:space="preserve">आवश्यकक्षेत्राणि पूरयित्वा विवरणं परीक्षताम्।</x:String>
+  <x:String x:Key="Text.Support.InvalidEmail" xml:space="preserve">मान्यं ई-पत्रसङ्केतं लिखतु।</x:String>
+  <x:String x:Key="Text.Support.TooSoon" xml:space="preserve">अन्यं सङ्केतं याचितुं पूर्वं प्रतीक्षताम्।</x:String>
+  <x:String x:Key="Text.Support.InvalidCode" xml:space="preserve">मान्यं षडङ्कीयं सत्यापनसङ्केतं लिखतु।</x:String>
+  <x:String x:Key="Text.Support.Sending" xml:space="preserve">प्रेष्यते…</x:String>
+  <x:String x:Key="Text.Support.CodeSent" xml:space="preserve">सत्यापनसङ्केतः भवतः ई-पत्रे प्रेषितः।</x:String>
+  <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">साहाय्यसेवा सम्प्राप्तुं न शक्यते। पश्चात् पुनः प्रयतताम्।</x:String>
 
   <!-- Buttons -->
   <x:String x:Key="Text.Button.Save" xml:space="preserve">रक्षतु</x:String>
