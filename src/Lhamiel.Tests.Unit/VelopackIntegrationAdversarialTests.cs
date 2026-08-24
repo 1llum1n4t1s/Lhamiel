@@ -371,6 +371,7 @@ public class VelopackIntegrationAdversarialSequentialTests
     {
         // Arrange
         const int Threads = 100;
+        var cancellationToken = TestContext.Current.CancellationToken;
         var mgr = SettingsManager.Instance;
         var originalTag = mgr.Current.IgnoreUpdateTag;
         try
@@ -381,7 +382,7 @@ public class VelopackIntegrationAdversarialSequentialTests
 
             var tasks = Enumerable.Range(0, Threads).Select(i => Task.Run(async () =>
             {
-                await barrier.Task;
+                await barrier.Task.WaitAsync(cancellationToken);
                 try
                 {
                     var v = $"v1.0.{i:D4}";
@@ -392,11 +393,11 @@ public class VelopackIntegrationAdversarialSequentialTests
                 {
                     exceptions.Add(ex);
                 }
-            })).ToArray();
+            }, cancellationToken)).ToArray();
 
             // Act
             barrier.SetResult();
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks).WaitAsync(cancellationToken);
 
             // Assert
             Assert.Empty(exceptions);
@@ -426,7 +427,9 @@ public class VelopackIntegrationAdversarialSequentialTests
                 mgr.MutateAndSave(_ => throw new InvalidOperationException("mutator boom")));
 
             // Assert: lock が解放されていれば後続操作が即座に成功
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(
+                TestContext.Current.CancellationToken);
+            cts.CancelAfter(TimeSpan.FromSeconds(3));
             var followUp = Task.Run(() =>
             {
                 mgr.Mutate(s => s.IgnoreUpdateTag = "after_throw");
@@ -449,11 +452,12 @@ public class VelopackIntegrationAdversarialSequentialTests
     public async Task SettingsManager_ConcurrentSnapshotAndMutate_NoEnumerationException()
     {
         // Arrange
+        var testCancellation = TestContext.Current.CancellationToken;
         var mgr = SettingsManager.Instance;
         var originalTag = mgr.Current.IgnoreUpdateTag;
         try
         {
-            using var stop = new CancellationTokenSource();
+            using var stop = CancellationTokenSource.CreateLinkedTokenSource(testCancellation);
             var exceptions = new ConcurrentBag<Exception>();
 
             var mutator = Task.Run(() =>
@@ -467,12 +471,13 @@ public class VelopackIntegrationAdversarialSequentialTests
                     }
                     catch (Exception ex) { exceptions.Add(ex); }
                 }
-            });
+            }, testCancellation);
 
             var snapshotters = Enumerable.Range(0, 50).Select(_ => Task.Run(() =>
             {
                 for (var i = 0; i < 100; i++)
                 {
+                    testCancellation.ThrowIfCancellationRequested();
                     try
                     {
                         var snap = mgr.CreateSnapshot();
@@ -480,12 +485,12 @@ public class VelopackIntegrationAdversarialSequentialTests
                     }
                     catch (Exception ex) { exceptions.Add(ex); }
                 }
-            })).ToArray();
+            }, testCancellation)).ToArray();
 
             // Act
-            await Task.WhenAll(snapshotters);
+            await Task.WhenAll(snapshotters).WaitAsync(testCancellation);
             stop.Cancel();
-            await mutator;
+            await mutator.WaitAsync(testCancellation);
 
             // Assert
             Assert.Empty(exceptions);
@@ -551,6 +556,7 @@ public class VelopackIntegrationAdversarialSequentialTests
     public void SettingsManager_MutateAndSave_Repeated500Times_CompletesAllWrites()
     {
         // Arrange
+        var cancellationToken = TestContext.Current.CancellationToken;
         var mgr = SettingsManager.Instance;
         var originalIgnoreTag = mgr.Current.IgnoreUpdateTag;
 
@@ -560,6 +566,7 @@ public class VelopackIntegrationAdversarialSequentialTests
             var sw = Stopwatch.StartNew();
             for (int i = 0; i < 500; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 int captured = i;
                 mgr.MutateAndSave(s => s.IgnoreUpdateTag = $"v0.0.{captured % 256}");
             }
