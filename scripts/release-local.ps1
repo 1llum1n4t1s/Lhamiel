@@ -123,7 +123,7 @@ foreach ($runtime in $Runtimes) {
     Write-Host "== publish: $runtime ==" -ForegroundColor Cyan
     Invoke-Native "dotnet publish ($runtime)" {
         dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r $runtime `
-            -p:PlatformTarget=$($config.PlatformTarget) -o $publishDir
+            -p:PlatformTarget=$($config.PlatformTarget) -p:OS=Windows_NT -o $publishDir
     }
 
     foreach ($required in 'Lhamiel.exe', '7z.dll') {
