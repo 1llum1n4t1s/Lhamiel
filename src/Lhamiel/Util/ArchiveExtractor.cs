@@ -517,6 +517,12 @@ public static class ArchiveExtractor
         if (normalizeUnicode && !normalized.IsNormalized(System.Text.NormalizationForm.FormC))
             normalized = normalized.Normalize(System.Text.NormalizationForm.FormC);
 
+        // Windows は予約デバイス名をどのディレクトリ階層でも解釈し、末尾の空白・ピリオドを
+        // Win32 パス正規化で除去する。境界内の字面パスでも NUL 等のデバイスへ書き込んだり、
+        // `file` と `file.` が同じ出力へ衝突したりするため、GetFullPath で情報が失われる前に拒否する。
+        if (ContainsUnsafeWindowsPathSegment(normalized))
+            return false;
+
         try
         {
             // basePath が相対パスでも CWD に依存しないよう、Path.GetFullPath(path, basePath)
@@ -538,6 +544,59 @@ public static class ArchiveExtractor
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// ネイティブ展開を開始する前に、全エントリが指定ディレクトリ内の安全な Windows パスへ
+    /// 解決されることを検証する。ArchiveReader.Save を呼ぶ全経路で共有する安全境界。
+    /// </summary>
+    internal static void ValidateArchiveEntryPaths(
+        IEnumerable<string?> entryNames,
+        string destinationBase,
+        bool normalizeUnicode = true,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entryNames);
+
+        var normalizedBase = NormalizeBaseDirectory(destinationBase);
+        foreach (var entryName in entryNames)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (string.IsNullOrEmpty(entryName))
+                continue;
+
+            if (TryResolveSafeEntryPathFromNormalized(
+                    normalizedBase, entryName, out _, normalizeUnicode))
+            {
+                continue;
+            }
+
+            Logger.Log($"危険なエントリ名を検出しアーカイブ展開を中止: {entryName}", LogLevel.Warning);
+            var normalizedEntryName = entryName
+                .Replace('\\', Path.DirectorySeparatorChar)
+                .Replace('/', Path.DirectorySeparatorChar);
+            var messageKey = ContainsUnsafeWindowsPathSegment(normalizedEntryName)
+                ? "Validation.PathCheckFailed"
+                : "Error.ZipSlipDetected";
+            throw new InvalidOperationException(App.Text(messageKey, entryName));
+        }
+    }
+
+    private static bool ContainsUnsafeWindowsPathSegment(string normalizedPath)
+    {
+        foreach (var segment in normalizedPath.Split(
+                     Path.DirectorySeparatorChar,
+                     StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (segment.EndsWith(' ') ||
+                segment.EndsWith('.') ||
+                PathValidator.IsReservedDeviceName(segment))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -1367,36 +1426,13 @@ public static class ArchiveExtractor
             {
                 Logger.Log($"一時ディレクトリへの展開処理開始: {archivePath} -> {tempOutputPath}");
 
-                // Zip Slip プリチェック: reader.Save() が全エントリを展開する前に、
-                // アーカイブ内の全エントリ名が tempOutputPath 境界内に収まるかを検証する。
-                // （DetectExtractionConflicts は衝突検出専用で、境界外エントリをスキップするだけなので
-                //   ここで改めて全エントリを検証して安全性を担保する）
-                // tempOutputPath の絶対化はループ外で 1 回だけ行う。
-                var normalizedTempBase = NormalizeBaseDirectory(tempOutputPath);
-                foreach (var item in reader.Items)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var entryName = item.FullName ?? string.Empty;
-                    if (string.IsNullOrEmpty(entryName)) continue;
-
-                    // Zip Slip ガードを最優先で実行。攻撃者が `__MACOSX/../../evil.txt` のような
-                    // エントリ名を仕込んだ場合、`ContainsIgnoredDirectory` が先頭の `__MACOSX` を
-                    // 検出して無視判定を下すと、本来境界外へ書き込まれるエントリの検証が
-                    // スキップされてしまう。フィルタリングより前にセキュリティ境界を確定させる。
-                    if (!TryResolveSafeEntryPathFromNormalized(normalizedTempBase, entryName, out _, normalizeUnicode))
-                    {
-                        Logger.Log($"危険なエントリ名を検出しアーカイブ展開を中止: {entryName}", LogLevel.Warning);
-                        throw new InvalidOperationException(
-                            App.Text("Error.ZipSlipDetected", entryName));
-                    }
-
-                    // Zip Slip チェック通過後にライブラリ側フィルタ（__MACOSX / .DS_Store 等）と
-                    // 歩調を合わせた無視判定。ここで continue しても上記セキュリティ境界は既に
-                    // 通過済みなので、攻撃者が親ディレクトリ名を偽装してもバイパスにはならない。
-                    var fileName = Path.GetFileName(entryName);
-                    if (IgnoredSystemFiles.Contains(fileName)) continue;
-                    if (ContainsIgnoredDirectory(entryName.Replace('\\', '/'))) continue;
-                }
+                // Zip Slip / Windows パス別名プリチェック。ライブラリ側フィルタより先に全件を
+                // 検査し、無視対象を装った危険なエントリでも安全境界を迂回させない。
+                ValidateArchiveEntryPaths(
+                    reader.Items.Select(static item => item.FullName),
+                    tempOutputPath,
+                    normalizeUnicode,
+                    cancellationToken);
 
                 // 進捗コールバックの有無に関わらず CancellableProgress<Report> を介して
                 // reader.Save() に cancellationToken を接続する。旧実装は progressCallback が
@@ -1807,12 +1843,17 @@ public static class ArchiveExtractor
             if (File.Exists(path))
             {
                 var fileInfo = new FileInfo(path);
+                if (fileInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                    return;
                 if (fileInfo.Attributes.HasFlag(FileAttributes.ReadOnly))
                     fileInfo.Attributes &= ~FileAttributes.ReadOnly;
             }
             else if (Directory.Exists(path))
             {
-                RemoveReadOnlyAttributesIterative(new DirectoryInfo(path));
+                var dirInfo = new DirectoryInfo(path);
+                if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                    return;
+                RemoveReadOnlyAttributesIterative(dirInfo);
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
@@ -1839,6 +1880,10 @@ public static class ArchiveExtractor
 
             try
             {
+                // ジャンクション／シンボリックリンクの属性変更や列挙はリンク先へ作用しうる。
+                // リンク自体の削除は Directory.Delete が非再帰で扱うため、ここでは触れずに飛ばす。
+                if (currentDir.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                    continue;
                 if (currentDir.Attributes.HasFlag(FileAttributes.ReadOnly))
                     currentDir.Attributes &= ~FileAttributes.ReadOnly;
             }
@@ -1853,6 +1898,8 @@ public static class ArchiveExtractor
                 {
                     try
                     {
+                        if (file.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                            continue;
                         if (file.Attributes.HasFlag(FileAttributes.ReadOnly))
                             file.Attributes &= ~FileAttributes.ReadOnly;
                     }
@@ -1870,7 +1917,10 @@ public static class ArchiveExtractor
             try
             {
                 foreach (var subDir in currentDir.GetDirectories())
-                    stack.Push(subDir);
+                {
+                    if (!subDir.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                        stack.Push(subDir);
+                }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {

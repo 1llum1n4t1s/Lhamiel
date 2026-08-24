@@ -285,6 +285,11 @@ public class PartialExtractionHandler
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            ArchiveExtractor.ValidateArchiveEntryPaths(
+                reader.Items.Select(static item => item.FullName),
+                tempPath,
+                cancellationToken: cancellationToken);
+
             // 進行状況の監視は不要だが、キャンセルは監視したい
             using var progress = new CancellableProgress<Report>(_ => { }, cancellationToken);
             reader.Save(tempPath, progress);

@@ -93,7 +93,9 @@ public class PathValidatorTests
     [InlineData(@"C:\temp\AUX")]
     [InlineData(@"C:\temp\NUL")]
     [InlineData(@"C:\temp\COM1")]
+    [InlineData(@"C:\temp\COM¹")]
     [InlineData(@"C:\temp\LPT1")]
+    [InlineData(@"C:\temp\LPT³")]
     public void IsValidFilePath_WithReservedDeviceName_ReturnsFalse(string path)
     {
         var result = PathValidator.IsValidFilePath(path, out var error);
@@ -106,6 +108,7 @@ public class PathValidatorTests
     [InlineData(@"C:\temp\CON.txt")]
     [InlineData(@"C:\temp\NUL.log")]
     [InlineData(@"C:\temp\CON.rules.txt")]
+    [InlineData(@"C:\temp\COM².log")]
     public void IsValidFilePath_WithReservedNameAndExtension_ReturnsFalse(string path)
     {
         // CON.txt のようにファイル名部分が予約名の場合も拒否すべき

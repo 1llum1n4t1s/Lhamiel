@@ -323,6 +323,9 @@ public static class ArchiveErrorHandler
 
             try
             {
+                ArchiveExtractor.ValidateArchiveEntryPaths(
+                    items.Select(static item => item.FullName),
+                    tempPath);
                 reader.Save(tempPath);
             }
             catch (Exception ex)
