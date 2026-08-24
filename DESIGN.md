@@ -1,0 +1,113 @@
+# Lhamiel Design
+
+This document is the source of truth for the current system structure, responsibility boundaries, data flows, invariants, and adopted design decisions. Operational commands and agent-specific implementation rules belong in [AGENTS.md](AGENTS.md).
+
+## Purpose and platform boundary
+
+Lhamiel is a Japanese-language desktop application for compressing and extracting archives on Windows. It targets .NET 10 and Avalonia 12, publishes Native AOT binaries for x64 and ARM64, and intentionally depends on Windows facilities such as named pipes, Explorer shell integration, COM, registry associations, DPAPI, Authenticode, and `LoadLibraryW`. Portability to Linux or macOS is not an active system boundary.
+
+## Major components and responsibilities
+
+| Component | Responsibility and boundary |
+| --- | --- |
+| `Program` / `App` | Process startup, Velopack bootstrap, single-instance handoff, CLI/IPC dispatch, window lifetime, localization, theme, and update entry points. They choose a workflow but do not implement archive formats. |
+| `View/` | Avalonia windows and dialogs. Code-behind is limited to UI interaction and service calls; archive and persistence rules remain under `Util/`. |
+| `MainWindowViewModel` | UI state, settings projection, drag-and-drop command entry, and debounced persistence. It delegates archive work to `ArchiveProcessor`. |
+| `ArchiveProcessor` | Application-level orchestration for extraction, compression, password acquisition, disk-space checks, conflict UI, batching, and completion behavior. |
+| `ArchiveExtractor` / `ArchiveCompressor` | Filesystem-facing archive operations around `1llum1n4t1s.Sevenzip`. They own safe path resolution, temporary outputs, scanning, format options, progress adaptation, and cleanup. |
+| `NativeArchiveGate` | The single process-wide slot around each native reader/writer lifecycle. It isolates the non-concurrent shared SevenZip library state. |
+| `ArchiveOperationGate` | Serializes top-level operations started by drag-and-drop, CLI, or IPC while preserving safe parallelism inside a batch. |
+| `ExtractionDestinationGate` | Serializes operations that converge on the same final extraction path while allowing unrelated destinations to proceed independently. |
+| `Settings` / `SettingsManager` | JSON persistence under `%LocalAppData%\Lhamiel`, recovery from damaged settings, synchronized mutation, and immutable snapshots for long-running operations. |
+| `IpcService` | Current-user-only named-pipe transport used to forward later launches to the resident instance. |
+| `ShellContextMenu` / `Lhamiel.ShellExtension` | Windows file associations and Explorer integration. Windows 11 uses a signed native `IExplorerCommand` plus sparse MSIX; older or development environments fall back to classic registry verbs. |
+| `UpdateChecker` / `App.Check4Update` | Silent login-time and interactive UI update paths. Both consume Velopack manifests from the fixed R2 custom domain through `SimpleWebSource`. |
+| `SupportDialog` | Email-code-verified support submission through `Kagayoi.Support.Client` using product ID `lhamiel`; it does not expose other users' tickets. |
+| `Logger`, `CrashHandler`, `DiagnosticsCollector` | Masked diagnostics, bounded crash dumps, and support bundles. Passwords and sensitive settings must not cross this boundary in plaintext. |
+
+## Runtime data flows
+
+### Launch and operation dispatch
+
+1. `Program` performs Velopack startup handling and starts Avalonia.
+2. `App` acquires the single-instance mutex. Later processes forward arguments through `IpcService` and exit.
+3. UI drag-and-drop enters through `MainWindowViewModel.ProcessDroppedPathsAsync`; CLI and file-association launches enter through `App.ProcessCommandLineFiles`.
+4. `ArchiveOperationGate` queues the top-level request, then `ArchiveProcessor` selects extraction or compression and creates immutable settings snapshots.
+
+### Extraction
+
+1. `ArchiveProcessor` inspects archive structure, resolves the final destination, obtains passwords when required, and acquires the destination gate.
+2. `ArchiveExtractor` creates a temporary directory on the destination volume when possible.
+3. Every native `ArchiveReader.Save` path validates all `item.FullName` values through `ValidateArchiveEntryPaths` before writing. Boundary traversal, Windows device aliases, and ambiguous trailing characters are rejected.
+4. Native reader creation, use, and disposal run inside `NativeArchiveGate`.
+5. Extracted content is moved from the temporary directory to the final destination with backup/restore semantics for existing targets. Reparse points are not followed by tree validation, attribute cleanup, MotW propagation, or temporary cleanup.
+6. MotW is propagated after the final output is stable. Folder opening and process shutdown occur only after the configured shell action completes on self-terminating launch paths.
+
+### Compression
+
+1. `ArchiveCompressor.ScanSourceFiles` builds the complete input list before capacity checks and archive creation.
+2. Global `.lhaignore`, optional source-local ignore files, Hidden/System settings, and reparse-point pruning are applied during the explicit DFS scan.
+3. Individual files and synthetic empty-directory markers are passed to the writer; real directories are not passed for recursive library traversal because that would bypass the filter contract.
+4. Native writer work is serialized by `NativeArchiveGate`. Progress adapts scanning, preparation, byte processing, and finalization into distinct user-visible phases.
+5. Inaccessible files may be skipped according to the documented resilience contract; password-protected partial skips are surfaced because skipped plaintext sources remain outside the archive.
+
+### Settings and secrets
+
+1. The view model projects settings to the UI and saves through a short debounce.
+2. Operation entry points flush pending UI changes and create a snapshot so an operation does not observe mid-flight setting changes.
+3. Remembered compression passwords are DPAPI-protected for the current Windows user. Plaintext passwords exist only in short-lived scopes, are registered with log redaction, and have best-effort memory clearing.
+4. The update base URL is a getter-only, non-serialized constant so settings files cannot redirect update traffic to another host.
+
+### Support intake
+
+1. The version tab opens `SupportDialog` with the active locale.
+2. The dialog validates the ticket and requests an email verification code through `SupportSubmissionSession`.
+3. A verified code and ticket payload are submitted to `support.kagayoi.com`; the returned reference is shown to the user.
+4. The SDK resolves as a sibling `ProjectReference` during local multi-repository development and as the fixed `Kagayoi.Support.Client` package for standalone clones and CI.
+
+### Update and release
+
+1. Installed clients obtain `releases.win.json` or `releases.win-arm64.json` from `https://lhamiel.kagayoi.com`.
+2. `scripts/release-local.ps1` builds both Native AOT RIDs, builds the native shell integration, packages with Velopack, and Authenticode-signs all distributed executables through SimplySign/Certum.
+3. The same script uploads immutable versioned packages and fixed-name manifests/installers to R2, purges only changed fixed URLs, verifies public manifests, and removes obsolete versioned packages while retaining the latest generations.
+4. The landing-page Worker under `web/` has an independent main-branch deployment workflow and is not part of the desktop binary release path.
+
+## Critical invariants
+
+- A native archive reader or writer is never used outside `NativeArchiveGate`, and the gate is never acquired recursively.
+- Every filesystem-writing `ArchiveReader.Save` call is preceded by complete `FullName` validation. Archive `RawName` is diagnostic input, not an output path.
+- Reparse points are treated as boundaries: archive scanning does not descend into them, conflict-aware extraction tree enumeration rejects them, and cleanup removes links without enumerating their targets.
+- Top-level operations are serialized, but batch-level pure I/O may run concurrently when destinations differ and no native archive object is active.
+- Existing outputs use backup/restore semantics so preparation or move failure does not silently discard the original.
+- Compression filters are enforced by Lhamiel's resolved file list; the SevenZip writer is not trusted to reapply `.lhaignore` or attribute filters.
+- Long-running operations use settings snapshots. UI debounce state is flushed before creating snapshots for CLI/IPC and remembered-password paths.
+- Logs, support bundles, and user-visible error details must not contain plaintext passwords, encrypted password blobs, tokens, or user-identifying path segments.
+- Update manifests and packages come from the fixed Kagayoi R2 domain. Runtime settings cannot select another update host.
+- Released executables, installers, portable packages, shell-extension DLLs, and MSIX packages are Authenticode signed and timestamped.
+- Localization uses dynamic Avalonia resources so changing locale updates existing views without restarting.
+
+## Adopted design decisions and trade-offs
+
+### MVVM without a DI container
+
+Dependencies are wired manually to keep Native AOT behavior explicit and avoid reflection-heavy startup. Static interface-backed seams on `ArchiveProcessor` provide test substitution. The trade-off is centralized composition and careful reset discipline in tests.
+
+### Temporary extraction plus final move
+
+Archive data is written to a temporary directory before replacing final outputs. This enables complete pre-move validation and recoverable overwrite behavior, at the cost of extra temporary storage and move/cleanup logic.
+
+### Layered concurrency gates
+
+The application does not disable batch concurrency globally. A top-level operation gate, a native-library gate, and destination-specific gates protect different resources. This preserves throughput for independent pure-I/O work but requires a fixed non-reentrant acquisition order.
+
+### Caller-owned compression filtering
+
+Lhamiel enumerates and filters all archive inputs itself because the SevenZip wrapper recursively rescans real directories without the application's exclusion rules. Synthetic empty-directory markers preserve empty folders without reopening that recursive path.
+
+### Local signed releases to R2
+
+SimplySign requires a logged-in local session and device approval, so binary releases are produced locally rather than in CI. R2 is the continuing update source; old GitHub Releases are retained only as a migration bridge for legacy clients. This provides signed dual-architecture releases but makes the release workstation and signing session part of the operational boundary.
+
+### Shared support SDK with two resolution modes
+
+Sibling project references give fast coordinated local development, while a fixed GitHub Packages version makes standalone clones reproducible. The trade-off is that CI repositories must be explicitly granted package read access.
