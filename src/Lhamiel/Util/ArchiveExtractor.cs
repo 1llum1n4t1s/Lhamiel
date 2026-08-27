@@ -1019,103 +1019,151 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
-    /// 一時フォルダから展開先にファイルを移動する。
-    /// 同一ドライブならFile.Moveで瞬時、異なるドライブならコピー＋削除。
+    /// 一時フォルダの内容を最終展開先へ配置する（既存出力は退避 → 全件成功で破棄 / 失敗で復元）。
+    /// 退避・復元の回帰テストから直接呼べるよう internal で公開する。
     /// </summary>
-    private static Task MoveExtractedFilesAsync(string sourceDir, string destDir, HashSet<string>? skipPaths, CancellationToken cancellationToken)
+    internal static Task MoveExtractedFilesAsync(string sourceDir, string destDir, HashSet<string>? skipPaths, CancellationToken cancellationToken)
     {
         return Task.Run(() =>
         {
-            // 宛先がファイルの場合（パス型衝突）
-            if (File.Exists(destDir))
+            // DESIGN.md の不変条件「既存出力は退避してから置き換える」をこの経路でも守る。
+            // 一時フォルダ方式（既存衝突がある GUI 展開）の最終配置はここが担当なので、破壊的な
+            // 削除・上書きの前に原本を .Lhamiel_backup_<guid> へ退避し、全件配置が終わるまで
+            // 退避を消さない。ここに退避が無いと、途中でディスク満杯や AV ロックに当たったとき
+            // 上書き済みの原本と未処理の原本が混在したまま復元できない（実質データ損失）。
+            var backupPaths = new List<(string Original, string Backup)>();
+            try
             {
-                // ユーザーが既存ファイルの保持を選択した場合はスキップ（移動しない）
-                var destFileName = Path.GetFileName(destDir);
-                if (skipPaths != null && skipPaths.Contains(destFileName))
-                {
-                    Logger.Log($"宛先ファイルを保持（ユーザー選択）: {destDir}");
-                    return;
-                }
-
-                File.Delete(destDir);
+                MoveExtractedFilesCore(sourceDir, destDir, skipPaths, backupPaths, cancellationToken);
             }
-            Directory.CreateDirectory(destDir);
-
-            var (sourceDirectories, sourceFiles) = EnumerateExtractionTreeSafely(sourceDir, cancellationToken);
-            var normalizedDest = NormalizeBaseDirectory(destDir);
-
-            // 空ディレクトリも保持するため、先にディレクトリ構造を作成する。
-            // （ファイル側ループ内の CreateDirectory は親ディレクトリにしか届かないため、
-            //   子孫空ディレクトリを確実に保持するにはこの 1 回の走査が必要）
-            foreach (var sourceSubDir in sourceDirectories)
+            catch
             {
-                var relDir = Path.GetRelativePath(sourceDir, sourceSubDir);
-                if (!TryResolveSafeEntryPathFromNormalized(
-                        normalizedDest,
-                        relDir,
-                        out var destSubDir,
-                        normalizeUnicode: false))
-                    throw new SecurityException($"Extracted directory escaped its destination: {relDir}");
-                if (!Directory.Exists(destSubDir))
-                    Directory.CreateDirectory(destSubDir);
+                // 例外種別で絞らない。SecurityException（境界外エントリ検出）や
+                // OperationCanceledException（ループ内のキャンセル確認）で抜けた場合も、
+                // 既に上書きした原本を戻さないとユーザーは「失敗＝元のまま」と誤認して原本を失う。
+                RestoreFromBackup(backupPaths);
+                throw;
             }
 
-            foreach (var sourceFile in sourceFiles)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var relativePath = Path.GetRelativePath(sourceDir, sourceFile).Replace('\\', '/');
-
-                // スキップ対象チェック
-                if (skipPaths != null && skipPaths.Contains(relativePath))
-                    continue;
-
-                if (!TryResolveSafeEntryPathFromNormalized(
-                        normalizedDest,
-                        relativePath,
-                        out var destFile,
-                        normalizeUnicode: false))
-                    throw new SecurityException($"Extracted file escaped its destination: {relativePath}");
-                // 親ディレクトリは上のディレクトリ構造作成ループで既に作られているため
-                // CreateDirectory の重複呼び出しは基本的に不要。ただし空ディレクトリ列挙で
-                // 親が拾えないエッジケース（権限等）に備えて、未存在時のみ作成する。
-                var destFileDir = Path.GetDirectoryName(destFile);
-                if (!string.IsNullOrEmpty(destFileDir) && !Directory.Exists(destFileDir))
-                    Directory.CreateDirectory(destFileDir);
-
-                // パス型衝突: 宛先にディレクトリがあるがソースはファイルの場合は削除
-                if (Directory.Exists(destFile))
-                {
-                    if (PathValidator.IsProtectedDirectory(destFile))
-                        throw new SecurityException($"Protected directory cannot be replaced by an extracted file: {destFile}");
-                    Directory.Delete(destFile, recursive: true);
-                }
-
-                // 上書き移動（ReadOnly属性がある場合は解除してから実行、失敗時はロールバック）
-                FileAttributes originalAttrs = 0;
-                var clearedReadOnly = false;
-                if (File.Exists(destFile))
-                {
-                    originalAttrs = File.GetAttributes(destFile);
-                    if ((originalAttrs & FileAttributes.ReadOnly) != 0)
-                    {
-                        File.SetAttributes(destFile, originalAttrs & ~FileAttributes.ReadOnly);
-                        clearedReadOnly = true;
-                    }
-                }
-                try
-                {
-                    MoveWithRetry(() => File.Move(sourceFile, destFile, overwrite: true), sourceFile);
-                }
-                catch
-                {
-                    // 移動失敗時: ReadOnly属性を元に戻す
-                    if (clearedReadOnly && File.Exists(destFile))
-                        try { File.SetAttributes(destFile, originalAttrs); } catch { /* ベストエフォート */ }
-                    throw;
-                }
-            }
+            // 全件の配置が成功したときだけ退避を破棄する（原子性の完了）
+            DiscardBackups(backupPaths);
         }, cancellationToken);
+    }
+
+    /// <summary>
+    /// 一時フォルダの内容を最終展開先へ配置する本体。既存の宛先は削除・上書きせず
+    /// <paramref name="backupPaths"/> へ退避し、成功時の破棄と失敗時の復元は呼び出し側が担う。
+    /// </summary>
+    private static void MoveExtractedFilesCore(
+        string sourceDir,
+        string destDir,
+        HashSet<string>? skipPaths,
+        List<(string Original, string Backup)> backupPaths,
+        CancellationToken cancellationToken)
+    {
+        // 宛先がファイルの場合（パス型衝突）
+        if (File.Exists(destDir))
+        {
+            // ユーザーが既存ファイルの保持を選択した場合はスキップ（移動しない）
+            var destFileName = Path.GetFileName(destDir);
+            if (skipPaths != null && skipPaths.Contains(destFileName))
+            {
+                Logger.Log($"宛先ファイルを保持（ユーザー選択）: {destDir}");
+                return;
+            }
+
+            MoveExistingToBackup(destDir, backupPaths);
+        }
+        Directory.CreateDirectory(destDir);
+
+        var (sourceDirectories, sourceFiles) = EnumerateExtractionTreeSafely(sourceDir, cancellationToken);
+        var normalizedDest = NormalizeBaseDirectory(destDir);
+
+        // 空ディレクトリも保持するため、先にディレクトリ構造を作成する。
+        // （ファイル側ループ内の CreateDirectory は親ディレクトリにしか届かないため、
+        //   子孫空ディレクトリを確実に保持するにはこの 1 回の走査が必要）
+        foreach (var sourceSubDir in sourceDirectories)
+        {
+            var relDir = Path.GetRelativePath(sourceDir, sourceSubDir);
+            if (!TryResolveSafeEntryPathFromNormalized(
+                    normalizedDest,
+                    relDir,
+                    out var destSubDir,
+                    normalizeUnicode: false))
+                throw new SecurityException($"Extracted directory escaped its destination: {relDir}");
+            if (!Directory.Exists(destSubDir))
+                Directory.CreateDirectory(destSubDir);
+        }
+
+        foreach (var sourceFile in sourceFiles)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var relativePath = Path.GetRelativePath(sourceDir, sourceFile).Replace('\\', '/');
+
+            // スキップ対象チェック
+            if (skipPaths != null && skipPaths.Contains(relativePath))
+                continue;
+
+            if (!TryResolveSafeEntryPathFromNormalized(
+                    normalizedDest,
+                    relativePath,
+                    out var destFile,
+                    normalizeUnicode: false))
+                throw new SecurityException($"Extracted file escaped its destination: {relativePath}");
+            // 親ディレクトリは上のディレクトリ構造作成ループで既に作られているため
+            // CreateDirectory の重複呼び出しは基本的に不要。ただし空ディレクトリ列挙で
+            // 親が拾えないエッジケース（権限等）に備えて、未存在時のみ作成する。
+            var destFileDir = Path.GetDirectoryName(destFile);
+            if (!string.IsNullOrEmpty(destFileDir) && !Directory.Exists(destFileDir))
+                Directory.CreateDirectory(destFileDir);
+
+            // パス型衝突: 宛先にディレクトリがあるがソースはファイルの場合は退避して宛先を空ける
+            if (Directory.Exists(destFile))
+            {
+                if (PathValidator.IsProtectedDirectory(destFile))
+                    throw new SecurityException($"Protected directory cannot be replaced by an extracted file: {destFile}");
+                MoveExistingToBackup(destFile, backupPaths);
+            }
+
+            // 既存ファイルも上書きせず退避してから移動する。退避で宛先が空くため overwrite 指定は
+            // 不要で、ReadOnly 属性の一時解除と巻き戻しも要らなくなる（ReadOnly ファイルも
+            // File.Move で退避できることを .NET 10 で確認済み）。
+            if (File.Exists(destFile))
+                MoveExistingToBackup(destFile, backupPaths);
+
+            MoveWithRetry(() => File.Move(sourceFile, destFile), sourceFile);
+        }
+    }
+
+    /// <summary>
+    /// 退避済みバックアップを破棄する（移動が全件成功したときだけ呼ぶ）。
+    /// 削除に失敗したものは残して手動復旧の余地を残し、警告ログに留める。
+    /// </summary>
+    private static void DiscardBackups(List<(string Original, string Backup)> backups)
+    {
+        foreach (var (_, backupPath) in backups)
+        {
+            try
+            {
+                // ReadOnly の原本を退避したケースでは属性が残っているため、削除前に解除する
+                // （解除しないと File.Delete が UnauthorizedAccessException になり
+                //   .Lhamiel_backup_<guid> が宛先の隣に残り続ける）。
+                RemoveReadOnlyAttributes(backupPath);
+                if (Directory.Exists(backupPath))
+                {
+                    Directory.Delete(backupPath, true);
+                }
+                else if (File.Exists(backupPath))
+                {
+                    File.Delete(backupPath);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                Logger.Log($"バックアップの削除に失敗しました（手動削除可能）: {backupPath}, {ex.Message}", LogLevel.Warning);
+            }
+        }
     }
 
     internal static (IReadOnlyList<string> Directories, IReadOnlyList<string> Files)
@@ -1568,25 +1616,7 @@ public static class ArchiveExtractor
             }
 
             // 移動成功後のみバックアップを削除（原子性の完了）
-            foreach (var (_, backupPath) in backupPaths)
-            {
-                try
-                {
-                    if (Directory.Exists(backupPath))
-                    {
-                        RemoveReadOnlyAttributes(backupPath);
-                        Directory.Delete(backupPath, true);
-                    }
-                    else if (File.Exists(backupPath))
-                    {
-                        File.Delete(backupPath);
-                    }
-                }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-                {
-                    Logger.Log($"バックアップの削除に失敗しました（手動削除可能）: {backupPath}, {ex.Message}", LogLevel.Warning);
-                }
-            }
+            DiscardBackups(backupPaths);
 
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
 
