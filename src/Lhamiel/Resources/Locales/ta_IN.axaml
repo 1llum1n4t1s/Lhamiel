@@ -15,18 +15,18 @@
   <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">சுருக்க அல்லது பிரித்தெடுக்க கோப்புகளை இந்த சாளரத்தில் இழுத்து விடவும்</x:String>
 
   <!-- Settings Tabs -->
-  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ பொது</x:String>
-  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 பிரித்தெடுத்தல்</x:String>
-  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 சுருக்கம்</x:String>
-  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 சுருக்க விலக்கு அமைப்புகள்</x:String>
-  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 கோப்பு தொடர்புகள்</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ பதிப்பு</x:String>
-  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ பொது</x:String>
-  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 பிரித்தல்</x:String>
-  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 சுருக்கம்</x:String>
-  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 சுருக்க விலக்குகள்</x:String>
-  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 இணைப்பு</x:String>
-  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ பதிப்பு</x:String>
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">பொது</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">பிரித்தெடுத்தல்</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">சுருக்கம்</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">சுருக்க விலக்கு அமைப்புகள்</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">கோப்பு தொடர்புகள்</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">பதிப்பு</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">பொது</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">பிரித்தல்</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">சுருக்கம்</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">சுருக்க விலக்குகள்</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">இணைப்பு</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">பதிப்பு</x:String>
 
   <!-- General Settings -->
   <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">தீம்</x:String>

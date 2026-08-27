@@ -15,18 +15,18 @@
   <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">将文件拖放到此窗口进行压缩或解压</x:String>
 
   <!-- Settings Tabs -->
-  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ 常规</x:String>
-  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 解压</x:String>
-  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 压缩</x:String>
-  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 压缩排除设置</x:String>
-  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 文件关联</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ 版本</x:String>
-  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ 通用</x:String>
-  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 解压</x:String>
-  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 压缩</x:String>
-  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 压缩排除</x:String>
-  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 关联</x:String>
-  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ 版本</x:String>
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">常规</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">解压</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">压缩</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">压缩排除设置</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">文件关联</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">版本</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">通用</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">解压</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">压缩</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">压缩排除</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">关联</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">版本</x:String>
 
   <!-- General Settings -->
   <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">主题</x:String>

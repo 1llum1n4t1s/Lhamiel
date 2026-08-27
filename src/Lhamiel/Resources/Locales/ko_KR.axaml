@@ -15,18 +15,18 @@
   <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">이 창에 파일을 드래그 &amp; 드롭하여 압축 또는 해제</x:String>
 
   <!-- Settings Tabs -->
-  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ 일반</x:String>
-  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 해제</x:String>
-  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 압축</x:String>
-  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 압축 제외 설정</x:String>
-  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 파일 연결</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ 버전</x:String>
-  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ 일반</x:String>
-  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 압축 해제</x:String>
-  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 압축</x:String>
-  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 압축 제외</x:String>
-  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 연결</x:String>
-  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ 버전</x:String>
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">일반</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">해제</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">압축</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">압축 제외 설정</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">파일 연결</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">버전</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">일반</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">압축 해제</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">압축</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">압축 제외</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">연결</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">버전</x:String>
 
   <!-- General Settings -->
   <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">테마</x:String>

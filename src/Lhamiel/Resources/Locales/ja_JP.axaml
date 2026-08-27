@@ -15,18 +15,18 @@
   <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">ウィンドウにファイルをドラッグ＆ドロップして圧縮・展開できます</x:String>
 
   <!-- Settings Tabs -->
-  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ 全般設定</x:String>
-  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 展開用設定</x:String>
-  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 圧縮用設定</x:String>
-  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 圧縮除外設定</x:String>
-  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 関連付け設定</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ バージョン</x:String>
-  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ 全般</x:String>
-  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 展開</x:String>
-  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 圧縮</x:String>
-  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 圧縮除外</x:String>
-  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 関連付け</x:String>
-  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ バージョン</x:String>
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">全般設定</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">展開用設定</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">圧縮用設定</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">圧縮除外設定</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">関連付け設定</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">バージョン</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">全般</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">展開</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">圧縮</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">圧縮除外</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">関連付け</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">バージョン</x:String>
 
   <!-- General Settings -->
   <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">テーマ</x:String>

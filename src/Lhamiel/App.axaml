@@ -94,6 +94,8 @@
             <Setter Property="Margin" Value="0,1" />
             <Setter Property="MinHeight" Value="28" />
             <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <!--  ヘッダーの Grid（アイコン + ラベル）に全幅を渡し、ラベル列の省略記号を効かせる  -->
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="Foreground" Value="{DynamicResource Brush.FG1}" />
             <Setter Property="Background" Value="Transparent" />
         </Style>

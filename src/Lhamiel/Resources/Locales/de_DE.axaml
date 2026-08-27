@@ -15,18 +15,18 @@
   <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">Dateien per Drag &amp; Drop auf dieses Fenster ziehen zum Komprimieren oder Entpacken</x:String>
 
   <!-- Settings Tabs -->
-  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Allgemein</x:String>
-  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Entpacken</x:String>
-  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Komprimieren</x:String>
-  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 Komprimierungsausschlüsse</x:String>
-  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Dateizuordnungen</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Version</x:String>
-  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Allgemein</x:String>
-  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Entpacken</x:String>
-  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Komprimieren</x:String>
-  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 Ausschlüsse</x:String>
-  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Zuordnung</x:String>
-  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Version</x:String>
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">Allgemein</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">Entpacken</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">Komprimieren</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">Komprimierungsausschlüsse</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">Dateizuordnungen</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">Version</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">Allgemein</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">Entpacken</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">Komprimieren</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">Ausschlüsse</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">Zuordnung</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">Version</x:String>
 
   <!-- General Settings -->
   <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">Design</x:String>

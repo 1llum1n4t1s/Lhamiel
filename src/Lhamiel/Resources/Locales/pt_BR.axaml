@@ -15,18 +15,18 @@
   <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">Arraste &amp; solte arquivos nesta janela para compactar ou extrair</x:String>
 
   <!-- Settings Tabs -->
-  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Geral</x:String>
-  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Extração</x:String>
-  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Compressão</x:String>
-  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 Exclusões de compactação</x:String>
-  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Associações de Arquivo</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Versão</x:String>
-  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Geral</x:String>
-  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Extração</x:String>
-  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Compressão</x:String>
-  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 Exclusões</x:String>
-  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Associações</x:String>
-  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Versão</x:String>
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">Geral</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">Extração</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">Compressão</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">Exclusões de compactação</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">Associações de Arquivo</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">Versão</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">Geral</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">Extração</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">Compressão</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">Exclusões</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">Associações</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">Versão</x:String>
 
   <!-- General Settings -->
   <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">Tema</x:String>

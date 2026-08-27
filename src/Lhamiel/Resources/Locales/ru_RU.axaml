@@ -15,18 +15,18 @@
   <x:String x:Key="Text.DropZone.Footer" xml:space="preserve">Перетащите файлы в это окно для сжатия или распаковки</x:String>
 
   <!-- Settings Tabs -->
-  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">⚙️ Общие</x:String>
-  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">📂 Распаковка</x:String>
-  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">📦 Сжатие</x:String>
-  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">🚫 Исключения при сжатии</x:String>
-  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">🔗 Ассоциации файлов</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">ℹ️ Версия</x:String>
-  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">⚙️ Общие</x:String>
-  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">📂 Распаковка</x:String>
-  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">📦 Сжатие</x:String>
-  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">🚫 Исключения</x:String>
-  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">🔗 Ассоциации</x:String>
-  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">ℹ️ Версия</x:String>
+  <x:String x:Key="Text.Settings.Tab.General" xml:space="preserve">Общие</x:String>
+  <x:String x:Key="Text.Settings.Tab.Extraction" xml:space="preserve">Распаковка</x:String>
+  <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">Сжатие</x:String>
+  <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">Исключения при сжатии</x:String>
+  <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">Ассоциации файлов</x:String>
+  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">Версия</x:String>
+  <x:String x:Key="Text.Sidebar.General" xml:space="preserve">Общие</x:String>
+  <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">Распаковка</x:String>
+  <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">Сжатие</x:String>
+  <x:String x:Key="Text.Sidebar.CompressionExclusions" xml:space="preserve">Исключения</x:String>
+  <x:String x:Key="Text.Sidebar.Association" xml:space="preserve">Ассоциации</x:String>
+  <x:String x:Key="Text.Sidebar.Version" xml:space="preserve">Версия</x:String>
 
   <!-- General Settings -->
   <x:String x:Key="Text.Settings.Theme.Header" xml:space="preserve">Тема</x:String>
