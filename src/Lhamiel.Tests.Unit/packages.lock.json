@@ -250,8 +250,8 @@
       },
       "Kagayoi.Support.Client": {
         "type": "Transitive",
-        "resolved": "1.0.2",
-        "contentHash": "R1T1wH5qfXYoQWFMwokR8JsxR+Cb6tqowYTKlsUnvNzJu/IM+MDwL8Ls54sndKEepUNMuVk6QKa8v9mdNQsGpw=="
+        "resolved": "1.0.3",
+        "contentHash": "4pJdLJwfeJQ0oqg9DGduSGLIcQwqb7GGHHSXGrtmDZJd6SBXLwdljWdDgcqbhnT0AiCCXwh6fv2XeT6fR5lM7w=="
       },
       "MessageBox.Avalonia": {
         "type": "Transitive",
@@ -371,8 +371,8 @@
       },
       "SuperLightLogger": {
         "type": "Transitive",
-        "resolved": "1.0.13",
-        "contentHash": "trt8PBTSrr7lirxgd30R7bYw2xMyqQVIpdn6KFl5cnAOp/PYV1Qr09P2hgQ/dteaWaA3p6s51eZZyTkvVkfA8Q==",
+        "resolved": "1.0.14",
+        "contentHash": "MK0aBr68KcFCdsz/UgcqkqW3BwcarFdq2kLQjR0ytaeTnFAi76gV6JU43rZV/EiFaQUUmpJzjHvzfAOsYFjDZg==",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.11",
           "Microsoft.Extensions.Logging": "10.0.11",
@@ -475,9 +475,9 @@
           "Avalonia.Themes.Fluent": "[12.1.1, )",
           "CRDebugger.Avalonia": "[1.0.28, )",
           "CommunityToolkit.Mvvm": "[8.4.2, )",
-          "Kagayoi.Support.Client": "[1.0.2, )",
+          "Kagayoi.Support.Client": "[1.0.3, )",
           "MessageBox.Avalonia": "[12.0.0, )",
-          "SuperLightLogger": "[1.0.13, )",
+          "SuperLightLogger": "[1.0.14, )",
           "System.Security.Cryptography.ProtectedData": "[10.0.11, )",
           "Tmds.DBus.Protocol": "[0.95.0, )",
           "VelopackUpdateDialog.Avalonia": "[1.0.15, )"
