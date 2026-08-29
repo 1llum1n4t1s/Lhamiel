@@ -224,11 +224,13 @@ public class Settings
 
     public const string AppIconVariantClassic = "Classic";
     public const string AppIconVariantCrystal = "Crystal";
+    public const string AppIconVariantLegacy = "Legacy";
 
     public static readonly string[] SupportedAppIconVariants =
     [
         AppIconVariantClassic,
-        AppIconVariantCrystal
+        AppIconVariantCrystal,
+        AppIconVariantLegacy
     ];
 
     internal static string NormalizeAppIconVariant(string? variant) =>

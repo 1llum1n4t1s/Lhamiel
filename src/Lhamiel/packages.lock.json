@@ -4,9 +4,9 @@
     "net10.0-windows8.0": {
       "1llum1n4t1s.Sevenzip": {
         "type": "Direct",
-        "requested": "[1.0.86, )",
-        "resolved": "1.0.86",
-        "contentHash": "0NEcCyWWuDrrWMDrC6KNJintU6gpUxzqg/TQmDNRetdy+xnVJtLM9MXaZ2U1FpWSQcDT7xoYRqIdHOvI9sJ5yg=="
+        "requested": "[1.0.87, )",
+        "resolved": "1.0.87",
+        "contentHash": "UNQv9dNg4WI1X/+Rc1HEwYANhPeTzSolcitnKzeJdFIPKyCpv1A2VL2MOizhfyWfK1cZe3RdW9f2p8jUi34IkA=="
       },
       "Avalonia": {
         "type": "Direct",
@@ -108,9 +108,9 @@
       },
       "SuperLightLogger": {
         "type": "Direct",
-        "requested": "[1.0.14, )",
-        "resolved": "1.0.14",
-        "contentHash": "MK0aBr68KcFCdsz/UgcqkqW3BwcarFdq2kLQjR0ytaeTnFAi76gV6JU43rZV/EiFaQUUmpJzjHvzfAOsYFjDZg==",
+        "requested": "[1.0.15, )",
+        "resolved": "1.0.15",
+        "contentHash": "HYx8mu+Iq4PY3+ODjk2bEmsrZziNYAxLB9ggssMY92YN6MDWlS00VSyAqMS4Dijop9OOG18xw7916Xg9raZU9g==",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.11",
           "Microsoft.Extensions.Logging": "10.0.11",
@@ -131,13 +131,13 @@
       },
       "VelopackUpdateDialog.Avalonia": {
         "type": "Direct",
-        "requested": "[1.0.15, )",
-        "resolved": "1.0.15",
-        "contentHash": "H7G92PeP+ijntOsSMXy6IZnuItm+8dJwGC7aEO46GqcOAozFk7sW5lkfh2KCWcyFGuEXo14QF7E3YryvyCMmvw==",
+        "requested": "[1.0.16, )",
+        "resolved": "1.0.16",
+        "contentHash": "moiiqfSYfbJH6dJd3rTva6X2je2RDybRVkRcH5WeDZ49M1R8rvrSQDsryGLQqmDfvC49+gVjshOY/PPrqW+S8A==",
         "dependencies": {
           "Avalonia": "12.1.1",
           "CommunityToolkit.Mvvm": "8.4.2",
-          "SuperLightLogger": "1.0.13",
+          "SuperLightLogger": "1.0.15",
           "Velopack": "1.2.0"
         }
       },
@@ -351,9 +351,9 @@
     "net10.0-windows8.0/win-x64": {
       "1llum1n4t1s.Sevenzip": {
         "type": "Direct",
-        "requested": "[1.0.86, )",
-        "resolved": "1.0.86",
-        "contentHash": "0NEcCyWWuDrrWMDrC6KNJintU6gpUxzqg/TQmDNRetdy+xnVJtLM9MXaZ2U1FpWSQcDT7xoYRqIdHOvI9sJ5yg=="
+        "requested": "[1.0.87, )",
+        "resolved": "1.0.87",
+        "contentHash": "UNQv9dNg4WI1X/+Rc1HEwYANhPeTzSolcitnKzeJdFIPKyCpv1A2VL2MOizhfyWfK1cZe3RdW9f2p8jUi34IkA=="
       },
       "Microsoft.DotNet.ILCompiler": {
         "type": "Direct",

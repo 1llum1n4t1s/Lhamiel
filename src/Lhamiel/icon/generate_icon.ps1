@@ -150,6 +150,9 @@ $allSuccess = $true
 
 $iconDefinitions = @(
     @{ Png = "app_icon.png"; Ico = "app.ico" },
+    @{ Png = "app_icon_classic.png"; Ico = "app_classic.ico" },
+    @{ Png = "app_icon_crystal.png"; Ico = "app_crystal.ico" },
+    @{ Png = "app_icon_legacy.png"; Ico = "app_legacy.ico" },
     @{ Png = "file_cute_icon.png"; Ico = "file_cute.ico" },
     @{ Png = "file_ice_icon.png"; Ico = "file_ice.ico" }
 )

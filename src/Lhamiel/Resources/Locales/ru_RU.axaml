@@ -38,6 +38,7 @@
   <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">Выберите значок для окон и ярлыков.</x:String>
   <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">Классический</x:String>
   <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">Пастельный кристалл</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">Наследие</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Формат сжатия по умолчанию</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Ярлык</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Создать ярлык на рабочем столе</x:String>

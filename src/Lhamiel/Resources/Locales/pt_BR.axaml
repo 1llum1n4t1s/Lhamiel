@@ -38,6 +38,7 @@
   <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">Escolha o ícone exibido nas janelas e nos atalhos.</x:String>
   <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">Clássico</x:String>
   <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">Cristal pastel</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">Legado</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Formato de Compressão Padrão</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Atalho</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Criar Atalho na Área de Trabalho</x:String>

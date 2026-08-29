@@ -38,6 +38,7 @@
   <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">选择窗口和快捷方式中显示的图标。</x:String>
   <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">经典</x:String>
   <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">粉彩水晶</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">旧版</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">默认压缩格式</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">快捷方式</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 创建桌面快捷方式</x:String>

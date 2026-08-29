@@ -38,6 +38,7 @@
   <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">ウィンドウとショートカットに表示するアイコンを選択します</x:String>
   <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">従来</x:String>
   <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">パステルクリスタル</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">レガシー</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">デフォルトの圧縮形式</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">ショートカット</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 デスクトップにショートカット作成</x:String>

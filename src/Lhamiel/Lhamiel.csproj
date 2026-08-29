@@ -65,14 +65,14 @@
     <PackageReference Include="CRDebugger.Avalonia" Version="1.0.28" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="MessageBox.Avalonia" Version="12.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.86" />
-    <PackageReference Include="SuperLightLogger" Version="1.0.14" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.87" />
+    <PackageReference Include="SuperLightLogger" Version="1.0.15" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.0" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。
          Windows 専用 (Lhamiel 自体 Windows 専用なので問題なし)。Native AOT 対応 (10.x)。 -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
-    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.15" />
+    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.16" />
   </ItemGroup>
 
   <ItemGroup>
@@ -86,6 +86,7 @@
     <AvaloniaResource Include="icon\app_icon.png" />
     <AvaloniaResource Include="icon\app_icon_classic.png" />
     <AvaloniaResource Include="icon\app_icon_crystal.png" />
+    <AvaloniaResource Include="icon\app_icon_legacy.png" />
   </ItemGroup>
 
   <!-- アイコンを Publish 出力にコピー -->
@@ -93,6 +94,7 @@
     <Copy SourceFiles="icon\app.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\app_classic.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\app_crystal.ico" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="icon\app_legacy.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\file.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\file_folder.ico" DestinationFolder="$(PublishDir)" />
     <Copy SourceFiles="icon\file_cute.ico" DestinationFolder="$(PublishDir)" />
@@ -104,6 +106,7 @@
     <Copy SourceFiles="icon\app.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="icon\app_classic.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="icon\app_crystal.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="icon\app_legacy.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="icon\file.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="icon\file_folder.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="icon\file_cute.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
