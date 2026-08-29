@@ -12,7 +12,8 @@
             <Color x:Key="Color.Container">#CCFFFFFF</Color>
             <Color x:Key="Color.ContainerAlt">#B3F0F0F5</Color>
             <Color x:Key="Color.FG1">#FF1D1D1F</Color>
-            <Color x:Key="Color.FG2">#FF86868B</Color>
+            <!-- 白い背景が透けても小さな補助テキストを読める濃さにする -->
+            <Color x:Key="Color.FG2">#FF5F6368</Color>
             <Color x:Key="Color.Border">#26000000</Color>
             <Color x:Key="Color.Accent">#FF007AFF</Color>
             <Color x:Key="Color.DropZone">#33007AFF</Color>
@@ -39,7 +40,8 @@
             <Color x:Key="Color.Container">#992C2C2E</Color>
             <Color x:Key="Color.ContainerAlt">#993A3A3C</Color>
             <Color x:Key="Color.FG1">#FFF5F5F7</Color>
-            <Color x:Key="Color.FG2">#FF98989D</Color>
+            <!-- アクリル越しの明るい背景でもコントラストを確保する -->
+            <Color x:Key="Color.FG2">#FFD8D8DD</Color>
             <Color x:Key="Color.Border">#26FFFFFF</Color>
             <Color x:Key="Color.Accent">#FF0A84FF</Color>
             <Color x:Key="Color.DropZone">#330A84FF</Color>

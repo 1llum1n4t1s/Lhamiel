@@ -20,10 +20,14 @@
             <ExperimentalAcrylicBorder.Material>
                 <ExperimentalAcrylicMaterial
                     BackgroundSource="Digger"
-                    TintOpacity="0.4"
                     TintColor="{DynamicResource Color.Window}" />
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
+        <!-- 白いデスクトップが透けても文字とのコントラストを保つテーマ色のスクリム -->
+        <Border
+            Background="{DynamicResource Brush.Window}"
+            IsHitTestVisible="False"
+            Opacity="0.5" />
     <Grid Margin="20,40,20,20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

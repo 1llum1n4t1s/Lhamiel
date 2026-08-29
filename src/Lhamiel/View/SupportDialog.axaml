@@ -20,6 +20,11 @@
                     TintColor="{DynamicResource Color.Window}" />
             </ExperimentalAcrylicBorder.Material>
         </ExperimentalAcrylicBorder>
+        <!-- 白いデスクトップが透けても文字とのコントラストを保つテーマ色のスクリム -->
+        <Border
+            Background="{DynamicResource Brush.Window}"
+            IsHitTestVisible="False"
+            Opacity="0.5" />
 
         <Grid Margin="22,42,22,18" RowDefinitions="*,Auto,Auto" RowSpacing="8">
             <Grid Grid.Row="0" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" RowSpacing="7">
