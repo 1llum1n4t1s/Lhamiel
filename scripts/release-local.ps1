@@ -30,7 +30,7 @@ $VpkVersion = (Invoke-RestMethod 'https://api.nuget.org/v3-flatcontainer/vpk/ind
     Where-Object { $_ -notmatch '-' } | Select-Object -Last 1
 if (-not $VpkVersion) { throw 'vpk の最新安定版バージョンの取得に失敗しました (NuGet API)' }
 Write-Host "vpk 最新安定版: $VpkVersion"
-$WranglerVersion = '4.114.0'        # サプライチェーン対策でバージョン固定 (要 Node.js >=22)
+$WranglerVersion = '4.127.1'        # サプライチェーン対策でバージョン固定 (要 Node.js >=22)
 $Bucket = 'lhamiel-updates'
 $BaseUrl = 'https://lhamiel.kagayoi.com'
 $ZoneName = 'kagayoi.com'           # Cloudflare zone (apex)。$BaseUrl の Host から正規表現で推測すると
