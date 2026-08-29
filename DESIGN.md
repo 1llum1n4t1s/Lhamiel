@@ -115,4 +115,4 @@ SimplySign requires a logged-in local session and device approval, so binary rel
 
 ### Shared support SDK with two resolution modes
 
-Sibling project references give fast coordinated local development, while a fixed GitHub Packages version makes standalone clones reproducible. The trade-off is that CI repositories must be explicitly granted package read access.
+Sibling project references give fast coordinated local development, while a fixed public NuGet.org version keeps standalone clones and CI reproducible without repository-specific package credentials.

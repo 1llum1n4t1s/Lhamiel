@@ -78,6 +78,12 @@
           "SuperLightLogger": "1.0.10"
         }
       },
+      "Kagayoi.Support.Client": {
+        "type": "Direct",
+        "requested": "[1.0.3, )",
+        "resolved": "1.0.3",
+        "contentHash": "4pJdLJwfeJQ0oqg9DGduSGLIcQwqb7GGHHSXGrtmDZJd6SBXLwdljWdDgcqbhnT0AiCCXwh6fv2XeT6fR5lM7w=="
+      },
       "MessageBox.Avalonia": {
         "type": "Direct",
         "requested": "[12.0.0, )",
@@ -340,9 +346,6 @@
         "type": "Transitive",
         "resolved": "1.2.0",
         "contentHash": "Rz67gJL619fSBS6omaSINUxyDuwhIxkm5mmubf7uLd5Qgi6LLKaKCha+QFP6n+Bw/UjA0vutnH4JQfYzn6ANtw=="
-      },
-      "kagayoi.support.client": {
-        "type": "Project"
       }
     },
     "net10.0-windows8.0/win-x64": {
