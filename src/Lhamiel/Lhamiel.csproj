@@ -18,8 +18,8 @@
     <PublishAot>true</PublishAot>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <!--
-      IL3053 = "Assembly produced AOT analysis warnings"。Velopack 0.0.1369-g1d5c984 内部の
-      Velopack.Windows.ShellLink+CShellLink (COM interop) で ILC 10.0.8 が「Invalid IL or CLR
+      IL3053 = "Assembly produced AOT analysis warnings"。Velopack 1.2.0 内部の
+      Velopack.Windows.ShellLink+CShellLink (COM interop) で ILC 10.0.11 が「Invalid IL or CLR
       metadata」と判定し、Directory.Build.props の TreatWarningsAsErrors=true でビルドエラー化される。
       該当 COM ctor は本アプリのコードパスでは呼ばれないため (TrimmerRootAssembly で Velopack を
       root 化しているがランタイム到達経路は無い)、警告を抑制して publish を継続する。
@@ -65,14 +65,14 @@
     <PackageReference Include="CRDebugger.Avalonia" Version="1.0.28" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="MessageBox.Avalonia" Version="12.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.85" />
-    <PackageReference Include="SuperLightLogger" Version="1.0.12" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.86" />
+    <PackageReference Include="SuperLightLogger" Version="1.0.13" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.0" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。
          Windows 専用 (Lhamiel 自体 Windows 専用なので問題なし)。Native AOT 対応 (10.x)。 -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
-    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.14" />
+    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.15" />
   </ItemGroup>
 
   <ItemGroup>
