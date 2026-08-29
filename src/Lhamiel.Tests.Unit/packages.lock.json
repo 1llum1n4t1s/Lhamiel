@@ -251,7 +251,7 @@
       "Kagayoi.Support.Client": {
         "type": "Transitive",
         "resolved": "1.0.2",
-        "contentHash": "yNOyKw3XMapQLJrDY5DW2j9yfA7Whgt3+1AZtynFhu9Yt52Z/zn/E/556gR3g5dxfvGFSrrKqOjLLMjqNaw7MQ=="
+        "contentHash": "R1T1wH5qfXYoQWFMwokR8JsxR+Cb6tqowYTKlsUnvNzJu/IM+MDwL8Ls54sndKEepUNMuVk6QKa8v9mdNQsGpw=="
       },
       "MessageBox.Avalonia": {
         "type": "Transitive",
