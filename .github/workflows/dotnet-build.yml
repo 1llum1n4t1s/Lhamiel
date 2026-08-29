@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: read
-  packages: read
 
 jobs:
   build:
@@ -17,8 +16,6 @@ jobs:
     name: テスト実行
     needs: [build]
     runs-on: windows-latest
-    env:
-      KAGAYOI_GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: リポジトリをチェックアウト
         # actions/checkout@v7.0.1

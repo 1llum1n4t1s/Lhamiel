@@ -107,7 +107,7 @@ Drag-and-drop drives the app:
 | `MotwPropagator` | Zone.Identifier ADS propagation from source archive to extracted files |
 | `CrashHandler` | MiniDump P/Invoke for unhandled exceptions, dump rotation |
 | `DiagnosticsCollector` | Export support ZIP (logs, masked settings, environment info, dumps) |
-| `SupportDialog` | `Kagayoi.Support.Client` を使うメール認証付き問い合わせフォーム。製品IDは `lhamiel`、送信先は `support.kagayoi.com`。SDKは兄弟 `Kagayoi.Support` があればProjectReference、単独cloneでは固定版GitHub Packagesを参照する。CIはリポジトリへ付与したpackage read権限と`GITHUB_TOKEN`で認証し、ローカルでパッケージ経路を使う開発者はclassic PATの`read:packages`を環境変数`KAGAYOI_GITHUB_PACKAGES_TOKEN`へ設定する |
+| `SupportDialog` | `Kagayoi.Support.Client` を使うメール認証付き問い合わせフォーム。製品IDは `lhamiel`、送信先は `support.kagayoi.com`。SDKは兄弟 `Kagayoi.Support` があればProjectReference、単独cloneとCIでは固定版を公開NuGet.orgから取得する |
 | `PartialExtractionHandler` | **[Obsolete]** — delegates to `ArchiveExtractor.TryExtractEntryAsync`. Types still used by ErrorRecoveryDialog |
 | `Settings` / `SettingsManager` | JSON config at `%LocalAppData%\Lhamiel\settings.json` with JsonDocument fallback recovery, compression scan settings, and exclusion patterns。`UpdateBaseUrl` は `[JsonIgnore]` + getter-only でハードコード固定（`CanonicalUpdateBaseUrl`）、悪意ある第三者ホストへの誘導防御 |
 | `PathValidator` | Path safety checks + `EnsureLongPathPrefix` for paths > 260 chars |

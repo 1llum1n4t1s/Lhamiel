@@ -248,6 +248,11 @@
         "resolved": "8.3.1.3",
         "contentHash": "bx8CE8Js+XGX8PUxAHCBDEORt5aaBYtMN4Hr9QFs57Xithh6yjUyYqksizH6eRDhJkwsGI+SXWmPmMm8lZC9Pw=="
       },
+      "Kagayoi.Support.Client": {
+        "type": "Transitive",
+        "resolved": "1.0.2",
+        "contentHash": "yNOyKw3XMapQLJrDY5DW2j9yfA7Whgt3+1AZtynFhu9Yt52Z/zn/E/556gR3g5dxfvGFSrrKqOjLLMjqNaw7MQ=="
+      },
       "MessageBox.Avalonia": {
         "type": "Transitive",
         "resolved": "12.0.0",
@@ -459,9 +464,6 @@
           "xunit.v3.runner.common": "[4.0.0]"
         }
       },
-      "kagayoi.support.client": {
-        "type": "Project"
-      },
       "lhamiel": {
         "type": "Project",
         "dependencies": {
@@ -473,7 +475,7 @@
           "Avalonia.Themes.Fluent": "[12.1.1, )",
           "CRDebugger.Avalonia": "[1.0.28, )",
           "CommunityToolkit.Mvvm": "[8.4.2, )",
-          "Kagayoi.Support.Client": "[1.0.1, )",
+          "Kagayoi.Support.Client": "[1.0.2, )",
           "MessageBox.Avalonia": "[12.0.0, )",
           "SuperLightLogger": "[1.0.13, )",
           "System.Security.Cryptography.ProtectedData": "[10.0.11, )",
