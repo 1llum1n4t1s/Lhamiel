@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Cube.FileSystem.SevenZip;
+using System.Runtime.InteropServices;
 
 namespace Lhamiel.Util;
 
@@ -8,7 +9,7 @@ namespace Lhamiel.Util;
 /// ディスク容量チェックユーティリティ。
 /// 展開前/圧縮前の事前チェックと、処理中の定期チェックを提供する。
 /// </summary>
-public static class DiskSpaceChecker
+public static partial class DiskSpaceChecker
 {
     /// <summary>
     /// 定期チェックの間隔（秒）
@@ -27,17 +28,37 @@ public static class DiskSpaceChecker
     {
         try
         {
-            var root = Path.GetPathRoot(path);
-            if (string.IsNullOrEmpty(root)) return long.MaxValue;
-            var drive = new DriveInfo(root);
-            return drive.IsReady ? drive.AvailableFreeSpace : 0;
+            if (string.IsNullOrWhiteSpace(path))
+                return 0;
+
+            var root = Path.GetPathRoot(Path.GetFullPath(path));
+            if (string.IsNullOrEmpty(root))
+                return 0;
+            if (!Path.EndsInDirectorySeparator(root))
+                root += Path.DirectorySeparatorChar;
+
+            if (!GetDiskFreeSpaceExW(root, out var availableBytes, out _, out _))
+            {
+                Logger.Log($"空き容量取得失敗: {path}, Win32Error={Marshal.GetLastPInvokeError()}", LogLevel.Warning);
+                return 0;
+            }
+
+            return availableBytes > long.MaxValue ? long.MaxValue : (long)availableBytes;
         }
         catch (Exception ex)
         {
             Logger.Log($"空き容量取得失敗: {path}, {ex.Message}");
-            return long.MaxValue; // 取得失敗時はチェックをスキップ
+            return 0;
         }
     }
+
+    [LibraryImport("kernel32.dll", EntryPoint = "GetDiskFreeSpaceExW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool GetDiskFreeSpaceExW(
+        string directoryName,
+        out ulong freeBytesAvailableToCaller,
+        out ulong totalNumberOfBytes,
+        out ulong totalNumberOfFreeBytes);
 
     /// <summary>
     /// アーカイブ内の非圧縮サイズ合計を取得する。

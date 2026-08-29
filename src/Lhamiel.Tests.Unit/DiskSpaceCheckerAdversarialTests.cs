@@ -12,16 +12,16 @@ public class DiskSpaceCheckerAdversarialTests
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     [Fact]
-    public void GetAvailableSpace_空文字パス_MaxValueを返す()
+    public void GetAvailableSpace_空文字パス_安全側のゼロを返す()
     {
-        Assert.Equal(long.MaxValue, DiskSpaceChecker.GetAvailableSpace(""));
+        Assert.Equal(0, DiskSpaceChecker.GetAvailableSpace(""));
     }
 
     [Fact]
-    public void GetAvailableSpace_存在しないドライブ_MaxValueか0()
+    public void GetAvailableSpace_存在しないドライブ_安全側のゼロを返す()
     {
         var result = DiskSpaceChecker.GetAvailableSpace("Z:\\NonExistent\\Path");
-        Assert.True(result == long.MaxValue || result == 0);
+        Assert.Equal(0, result);
     }
 
     [Fact]
