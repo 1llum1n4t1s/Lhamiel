@@ -22,10 +22,10 @@ public sealed class AppIconVariantTests
     }
 
     [Fact]
-    public void SupportedAppIconVariants_ContainsBothSelectableVariants()
+    public void SupportedAppIconVariants_ContainsAllSelectableVariants()
     {
         Assert.Equal(
-            [Settings.AppIconVariantClassic, Settings.AppIconVariantCrystal],
+            [Settings.AppIconVariantClassic, Settings.AppIconVariantCrystal, Settings.AppIconVariantLegacy],
             Settings.SupportedAppIconVariants);
     }
 
@@ -34,6 +34,8 @@ public sealed class AppIconVariantTests
     [InlineData("classic", "app_classic.ico")]
     [InlineData("Crystal", "app_crystal.ico")]
     [InlineData("crystal", "app_crystal.ico")]
+    [InlineData("Legacy", "app_legacy.ico")]
+    [InlineData("legacy", "app_legacy.ico")]
     [InlineData("unknown", "app_classic.ico")]
     [InlineData(null, "app_classic.ico")]
     public void GetIconFileName_MapsVariantToExpectedAsset(string? variant, string expected)
@@ -44,6 +46,7 @@ public sealed class AppIconVariantTests
     [Theory]
     [InlineData("Classic", "avares://Lhamiel/icon/app_icon_classic.png")]
     [InlineData("Crystal", "avares://Lhamiel/icon/app_icon_crystal.png")]
+    [InlineData("Legacy", "avares://Lhamiel/icon/app_icon_legacy.png")]
     [InlineData("unknown", "avares://Lhamiel/icon/app_icon_classic.png")]
     public void GetPreviewResourceUri_MapsVariantToExpectedAsset(string? variant, string expected)
     {
@@ -63,6 +66,7 @@ public sealed class AppIconVariantTests
     [Theory]
     [InlineData("classic", "Classic")]
     [InlineData("CRYSTAL", "Crystal")]
+    [InlineData("legacy", "Legacy")]
     public void SanitizeAfterLoad_AppIconVariant_NormalizedToCanonicalCase(string input, string expected)
     {
         var settings = new Settings { AppIconVariant = input };

@@ -758,7 +758,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private static readonly AppIconOption[] _appIconOptions =
     [
         new(Settings.AppIconVariantClassic, "Settings.AppIcon.Classic"),
-        new(Settings.AppIconVariantCrystal, "Settings.AppIcon.Crystal")
+        new(Settings.AppIconVariantCrystal, "Settings.AppIcon.Crystal"),
+        new(Settings.AppIconVariantLegacy, "Settings.AppIcon.Legacy")
     ];
     public AppIconOption[] AppIconOptions => _appIconOptions;
 

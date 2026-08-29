@@ -38,6 +38,7 @@
   <x:String x:Key="Text.Settings.AppIcon.Description" xml:space="preserve">Scegli l’icona mostrata nelle finestre e nei collegamenti.</x:String>
   <x:String x:Key="Text.Settings.AppIcon.Classic" xml:space="preserve">Classica</x:String>
   <x:String x:Key="Text.Settings.AppIcon.Crystal" xml:space="preserve">Cristallo pastello</x:String>
+  <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">Eredità</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Formato di compressione predefinito</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Collegamento</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Crea collegamento sul desktop</x:String>

@@ -14,18 +14,26 @@ internal static class AppIconManager
 {
     internal const string ClassicIconFileName = "app_classic.ico";
     internal const string CrystalIconFileName = "app_crystal.ico";
+    internal const string LegacyIconFileName = "app_legacy.ico";
     internal const string ClassicPreviewResourceUri = "avares://Lhamiel/icon/app_icon_classic.png";
     internal const string CrystalPreviewResourceUri = "avares://Lhamiel/icon/app_icon_crystal.png";
+    internal const string LegacyPreviewResourceUri = "avares://Lhamiel/icon/app_icon_legacy.png";
 
     internal static string GetIconFileName(string? variant) =>
-        Settings.NormalizeAppIconVariant(variant) == Settings.AppIconVariantClassic
-            ? ClassicIconFileName
-            : CrystalIconFileName;
+        Settings.NormalizeAppIconVariant(variant) switch
+        {
+            Settings.AppIconVariantCrystal => CrystalIconFileName,
+            Settings.AppIconVariantLegacy => LegacyIconFileName,
+            _ => ClassicIconFileName
+        };
 
     internal static string GetPreviewResourceUri(string? variant) =>
-        Settings.NormalizeAppIconVariant(variant) == Settings.AppIconVariantClassic
-            ? ClassicPreviewResourceUri
-            : CrystalPreviewResourceUri;
+        Settings.NormalizeAppIconVariant(variant) switch
+        {
+            Settings.AppIconVariantCrystal => CrystalPreviewResourceUri,
+            Settings.AppIconVariantLegacy => LegacyPreviewResourceUri,
+            _ => ClassicPreviewResourceUri
+        };
 
     internal static string ResolveIconPath(string? variant = null)
     {
