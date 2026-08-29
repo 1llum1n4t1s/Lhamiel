@@ -97,11 +97,12 @@ Drag-and-drop drives the app:
 | Class | Responsibility |
 |-------|---------------|
 | `ArchiveProcessor` | Orchestrator — decides extract vs compress, manages workflow |
-| `ArchiveExtractor` | Extraction with `ShouldSkipFolderCreation`, `TryExtractEntryAsync` (retry with exponential backoff) |
+| `ArchiveExtractor` | Extraction with `ShouldSkipFolderCreation`, `TryExtractEntryAsync` (retry with exponential backoff)。構造解析の共有違反は再試行し、`.7z` / `.rar` 以外で構造を取得できない場合は空のルート情報で展開へ進まず fail closed。展開後処理の生 Unicode パス fallback も同じ出力境界を再検証する |
 | `ArchiveCompressor` | Compression with Unicode NFC normalization, Hidden/System enumeration control, and `.gitignore` 互換除外マッチ (`GitignoreMatcher` + ディレクトリ枝刈り DFS) |
 | `GitignoreMatcher` | `.gitignore` 互換のパターンコンパイラ／マッチャ（`*` / `?` / `**` / `[abc]` / 否定 `!` / アンカー `/` / ディレクトリ限定 `/` 末尾）。`IsExcluded(..., traversalMode)` の 2 経路: **traversal**（DFS 枝刈り併用・各エントリを自身レベルだけで照合し、除外の推移性は DFS が担保）と **flat**（単発ファイル判定用・推移マッチ）。traversal では非 globstar ルールに末尾 `$` の `ExactPathRegex` を使い、git 同様に**ディレクトリ否定再包含**（`*.xcodeproj/*` + `!*.xcodeproj/xcshareddata/` 等で配下を救う）を正しく扱う。globstar（`foo/**`）は `/` を跨ぐので通常 `Regex` を使う |
 | `LhaignoreFile` | `%LocalAppData%\Lhamiel\.lhaignore` の I/O（読込・追記・削除・既定値リセット・移行）。`LoadMatcher()` で `GitignoreMatcher` を返す |
 | `ArchiveErrorHandler` | HResult-based error classification (二段判定: HResult → メッセージ走査フォールバック) |
+| `DiskSpaceChecker` | 展開・圧縮前と処理中の空き容量監視。Windows の `GetDiskFreeSpaceExW` を直接使い、空パス・ルート解決不能・API 失敗は容量不明として `0` を返す fail-closed 契約（取得失敗を十分な空き容量として扱わない） |
 | `LockedFileRetryPolicy` | Generic exponential backoff retry for SHARING_VIOLATION / LOCK_VIOLATION |
 | `MotwPropagator` | Zone.Identifier ADS propagation from source archive to extracted files |
 | `CrashHandler` | MiniDump P/Invoke for unhandled exceptions, dump rotation |
@@ -185,10 +186,10 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - **Velopack** 自動更新 — 配信元は **Cloudflare R2 単独** (`https://lhamiel.kagayoi.com`、`SimpleWebSource` 経由)。通常リリース (`/vava`) は R2 のみに配信する。配信ドメインは中立ドメイン `lhamiel.kagayoi.com` に移行済み (旧 `lhamiel.1llum1n4t1.com` はクラウド/企業 egress の SNI フィルタで false positive を起こすため)。**旧 `lhamiel.1llum1n4t1.com` は配信期間が短かったためクリーンに廃止** (R2 踏み台として残さない)。旧 `GithubSource` クライアント (v1.0.167 以下) 救済のため、**GitHub Releases には `kagayoi.com` 版を「踏み台」として publish する** (`GithubSource` は最新版を選ぶので、それ経由で更新 → 再起動後に `kagayoi.com` を見るようになる。踏み台は削除せず永続保持)。継続的な GitHub Releases 併用配信はしない。2 系統: (1) `Program.cs --update-check` サイレント CLI 経路 (Windows ログイン時 `StartupRegistration` から発火、UI 無し)、(2) `App.Check4Update` UI 経路 (`VelopackUpdateDialog.Avalonia` 1.0.3 経由のダイアログ表示、`Settings.Check4UpdatesOnStartup=true` で起動時自動 + メニューから手動)
 - **Code signing (Authenticode)** — `v1.0.183+` 全リリースバイナリ (Lhamiel.exe / Setup.exe / Portable 内含む) を Certum **Open Source Code Signing in the cloud** 証明書で署名する。CN=`Open Source Developer Yuichiro Shinozaki` (個人 OSS 開発者向け、年次更新で thumbprint が変わるため signtool は `/n` の Subject 名選択を使う)。鍵は SimplySign クラウド (DPAPI 不可・エクスポート不可)、署名には **SimplySign Desktop のトークンログイン中セッションが必須** → リリースは `scripts/release-local.ps1` でローカル実行 (CI 署名不可、§CI/CD 参照)。タイムスタンプは `http://time.certum.pl` (RFC3161) — 証明書期限 (1 年) 切れ後も署名済みバイナリは有効。単発署名: `signtool sign /n "Open Source Developer Yuichiro Shinozaki" /fd SHA256 /td SHA256 /tr http://time.certum.pl <file>` (bash から叩く場合は `MSYS2_ARG_CONV_EXCL='*'` 必須)
 - **AllowUnsafeBlocks** for P/Invoke (COM interop in `ShortcutCreator`, `FileIconHelper`, `CrashHandler`)
-- **Acrylic blur** — 全ダイアログで `ExperimentalAcrylicBorder` + `ExtendClientAreaToDecorationsHint`
+- **Acrylic blur / 可読性レイヤー** — 全ダイアログで `ExperimentalAcrylicBorder` + `ExtendClientAreaToDecorationsHint`。白いデスクトップ背景が透けても文字コントラストを保つため、root `Panel` の子は「アクリル境界 → `Brush.Window` / `Opacity=0.5` / `IsHitTestVisible=false` のスクリム → コンテンツ」の順を維持する（`AcrylicFallbackHelper` が直接のアクリル子を探索する契約も守る）。補助文字はテーマ別 `FG2` を使い、個別ウィンドウで薄い `TintOpacity` を再導入しない
 - Async/await + CancellationToken throughout all I/O operations
 - Version: `Directory.Build.props` の `<Version>` タグで全プロジェクト共有
-- **Unicode NFC normalization**: macOS HFS+ の NFD ファイル名を展開・圧縮時に NFC 正規化（`Settings.NormalizeUnicodeFileNames`）
+- **Unicode NFC normalization**: macOS HFS+ の NFD ファイル名を展開・圧縮時に NFC 正規化（`Settings.NormalizeUnicodeFileNames`）。展開後処理（MotW・スキップ削除）は正規化パスを優先し、実体が無い場合だけ `TryResolveExistingEntryPathFromNormalized` で生 Unicode 表現を同じ安全境界へ再検証して解決する（検証なしの raw path 結合は禁止）
 - **Long path support**: `app.manifest` で `longPathAware` + `PathValidator.EnsureLongPathPrefix`
 - **Mark of the Web**: 元アーカイブの Zone.Identifier ADS を展開ファイルに伝播（`Settings.PropagateMarkOfTheWeb`）
 - **Support intake**: バージョンタブの問い合わせ導線は `SupportDialog` を開き、メール確認コードの検証後に `Kagayoi.Support` へ送信する。公開GitHub Issuesは開発者向け技術課題に限定し、利用者の問い合わせとメールアドレスは載せない
@@ -203,6 +204,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 
 - **PR builds**: `.github/workflows/dotnet-build.yml` — restore, build, test + code coverage on every PR
 - **Release (ローカル実行)**: `pwsh scripts/release-local.ps1` — **v1.0.183 から CI リリースを廃止しローカル実行に移行** (コード署名に SimplySign Desktop 接続 + スマホ OTP が必要で GitHub Actions からは署名できないため。velopack-release.yml は削除済み)。スクリプトが publish (Native AOT) → `vpk pack` + **Authenticode 署名** (`--signParams`) → 署名検証 → `wrangler@4.114.0` (pnpm dlx) で Cloudflare R2 バケット `lhamiel-updates` にアップロード → **Cloudflare エッジキャッシュのパージ** (固定名ファイル Setup.exe / Portable.zip / RELEASES / `releases.*.json` / `assets.*.json` は毎リリースで中身が変わるのに URL が不変なため、アップロード直後に Cloudflare API V4 `purge_cache` で該当 URL をパージし旧キャッシュの伝播を断つ。バージョン付き nupkg は URL が一意でパージ不要。1 リクエスト最大 30 URL のため 30 件単位で分割送信。**R2 アップロードは既に成功済みのためパージ失敗で全体は止めず Step 5 と同じ warning-and-continue 方針**（CDN は max-age 経過で自然に新版へ追従するため致命的ではない）) → 配信確認 (`releases.{channel}.json` HTTP 200) → **manifest 外の旧 `*.nupkg` を Cloudflare API V4 で自動削除** (Aggressive 保持戦略: `releases.{channel}.json` に書かれない nupkg は削除、Setup.exe / Portable.zip / RELEASES* / assets.*.json / releases.*.json は固定ファイル名で上書きされる Velopack 内部ファイル & ランディング DL 用なので保護) まで一括実行。**R2 単独配信** (GitHub Releases への継続 publish はしない。旧クライアント救済の踏み台は `/transfer-cf` 移行作業で publish 済み)。Cloudflare トークンは `C:\Users\IMT\dev\Secret\secrets.json` の `cloudflare.api_token` を実行時に読み、**取得直後のプリフライトで zone ID 解決まで行って権限不足を fail fast 検知する**（R2 アップロード後に zone 取得が失敗すると、新ファイルだけ R2 に乗ってパージ・クリーンアップが走らない半端なリリース状態になるため、何もアップロードしていない時点で落とす）。動作確認は `-SkipUpload` (ビルド + 署名のみ)、RID 絞り込みは `-Runtimes win-x64`。**実行前提: SimplySign Desktop がトークンログイン済み** (証明書が CurrentUser\My に見えること。スクリプトがプリフライトで検査して落とす)。**`/vava` は `vava.config.json` の `localRelease` キーを読んでこのスクリプトを自動実行する** (Step 0-8 で署名証明書の前提チェック → Step 10.5 でリリース実行。CI 監視ステップはスキップされる)
+- **RID 別リリース出力**: `release-local.ps1` の x64 / ARM64 `dotnet publish` は RID ごとの `--artifacts-path` を必須とし、ProjectReference 先を含む共通 `bin/obj` の再利用による異アーキテクチャ参照（CS8012）を防ぐ。
 - **CodeQL**: `.github/workflows/codeql.yml` — C# security analysis on PR + weekly
 - **Dependabot**: `.github/dependabot.yml` — NuGet weekly + github-actions monthly
 

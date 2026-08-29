@@ -36,11 +36,11 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 
 ### Extraction
 
-1. `ArchiveProcessor` inspects archive structure, resolves the final destination, obtains passwords when required, and acquires the destination gate.
+1. `ArchiveProcessor` inspects archive structure, resolves the final destination, obtains passwords when required, and acquires the destination gate. Reader-open sharing violations are retried; if structure remains unknown, only `.7z`/`.rar` enter password recovery and other formats fail closed before extraction.
 2. `ArchiveExtractor` creates a temporary directory on the destination volume when possible.
 3. Every native `ArchiveReader.Save` path validates all `item.FullName` values through `ValidateArchiveEntryPaths` before writing. Boundary traversal, Windows device aliases, and ambiguous trailing characters are rejected.
 4. Native reader creation, use, and disposal run inside `NativeArchiveGate`.
-5. Extracted content is moved from the temporary directory to the final destination with backup/restore semantics for existing targets. Reparse points are not followed by tree validation, attribute cleanup, MotW propagation, or temporary cleanup.
+5. Extracted content is moved from the temporary directory to the final destination with backup/restore semantics for existing targets. Reparse points are not followed by tree validation, attribute cleanup, MotW propagation, or temporary cleanup. Post-processing resolves normalized Unicode paths first and may use the raw archive representation only after repeating the same destination-boundary validation.
 6. MotW is propagated after the final output is stable. Folder opening and process shutdown occur only after the configured shell action completes on self-terminating launch paths.
 
 ### Compression
@@ -68,7 +68,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 ### Update and release
 
 1. Installed clients obtain `releases.win.json` or `releases.win-arm64.json` from `https://lhamiel.kagayoi.com`.
-2. `scripts/release-local.ps1` builds both Native AOT RIDs, builds the native shell integration, packages with Velopack, and Authenticode-signs all distributed executables through SimplySign/Certum.
+2. `scripts/release-local.ps1` builds both Native AOT RIDs in isolated artifact trees, builds the native shell integration, packages with Velopack, and Authenticode-signs all distributed executables through SimplySign/Certum. Per-RID isolation also applies to project references so x64 intermediates cannot be reused by ARM64 publishing.
 3. The same script uploads immutable versioned packages and fixed-name manifests/installers to R2, purges only changed fixed URLs, verifies public manifests, and removes obsolete versioned packages while retaining the latest generations.
 4. The landing-page Worker under `web/` has an independent main-branch deployment workflow and is not part of the desktop binary release path.
 
@@ -79,6 +79,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 - Reparse points are treated as boundaries: archive scanning does not descend into them, conflict-aware extraction tree enumeration rejects them, and cleanup removes links without enumerating their targets.
 - Top-level operations are serialized, but batch-level pure I/O may run concurrently when destinations differ and no native archive object is active.
 - Existing outputs use backup/restore semantics so preparation or move failure does not silently discard the original.
+- Capacity checks use the Windows volume API and fail closed when the target volume or available space cannot be resolved; an inspection failure is never treated as unlimited free space.
 - Compression filters are enforced by Lhamiel's resolved file list; the SevenZip writer is not trusted to reapply `.lhaignore` or attribute filters.
 - Long-running operations use settings snapshots. UI debounce state is flushed before creating snapshots for CLI/IPC and remembered-password paths.
 - Logs, support bundles, and user-visible error details must not contain plaintext passwords, encrypted password blobs, tokens, or user-identifying path segments.
@@ -103,6 +104,10 @@ The application does not disable batch concurrency globally. A top-level operati
 ### Caller-owned compression filtering
 
 Lhamiel enumerates and filters all archive inputs itself because the SevenZip wrapper recursively rescans real directories without the application's exclusion rules. Synthetic empty-directory markers preserve empty folders without reopening that recursive path.
+
+### Acrylic contrast layering
+
+Each window layers theme color between the acrylic material and interactive content. This preserves acrylic appearance while bounding contrast variation from bright desktop backgrounds; fallback detection still owns replacement of the acrylic layer when blur is unavailable. The trade-off is that window roots must preserve the shared acrylic, scrim, and content ordering.
 
 ### Local signed releases to R2
 
