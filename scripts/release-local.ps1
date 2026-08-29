@@ -119,11 +119,15 @@ foreach ($runtime in $Runtimes) {
     $config = $RuntimeMatrix[$runtime]
     if (-not $config) { throw "未知の runtime: $runtime" }
     $publishDir = Join-Path $WorkDir "publish-$runtime"
+    # ProjectReference 先も RID ごとに出力を分離する。共通の bin/obj を使うと、先に
+    # ビルドした x64 の参照アセンブリが ARM64 publish で再利用され CS8012 になる。
+    $buildArtifactsDir = Join-Path $WorkDir "build-$runtime"
 
     Write-Host "== publish: $runtime ==" -ForegroundColor Cyan
     Invoke-Native "dotnet publish ($runtime)" {
         dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r $runtime `
-            -p:PlatformTarget=$($config.PlatformTarget) -p:OS=Windows_NT -o $publishDir
+            -p:PlatformTarget=$($config.PlatformTarget) -p:OS=Windows_NT `
+            --artifacts-path $buildArtifactsDir -o $publishDir
     }
 
     foreach ($required in 'Lhamiel.exe', '7z.dll') {
