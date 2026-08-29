@@ -1,6 +1,8 @@
 using Avalonia.Controls;
 using Lhamiel.Models;
 using Lhamiel.Util;
+using System.IO.Compression;
+using System.Text;
 using Xunit;
 namespace Lhamiel.Tests.Unit;
 
@@ -86,6 +88,119 @@ public class ArchiveProcessorTests : IDisposable
         Assert.Null(path);
         Assert.Null(info);
         Assert.Single(stub.Errors);
+    }
+
+    [Fact]
+    public async Task ExtractArchiveAsync_NfdRootName_PropagatesMarkOfTheWebToRawExtractedPath()
+    {
+        var testDir = Path.Combine(Path.GetTempPath(), "ArchiveProcessorMotwTests_" + Guid.NewGuid());
+        Directory.CreateDirectory(testDir);
+        try
+        {
+            ArchiveProcessor.UiDispatcherImpl = new StubUiDispatcher();
+            ArchiveProcessor.MessageServiceImpl = new StubMessageService();
+
+            var archivePath = Path.Combine(testDir, "nfd.zip");
+            var nfdRootName = "é".Normalize(NormalizationForm.FormD);
+            using (var zip = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+            {
+                var entry = zip.CreateEntry($"{nfdRootName}/app.exe");
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write("test executable");
+            }
+
+            const string zoneContent = "[ZoneTransfer]\r\nZoneId=3\r\n";
+            File.WriteAllText(archivePath + ":Zone.Identifier", zoneContent);
+
+            var outputDirectory = Path.Combine(testDir, "output");
+            var settings = new Settings
+            {
+                CreateArchiveNameFolder = false,
+                NormalizeUnicodeFileNames = true,
+                PropagateMarkOfTheWeb = true,
+            };
+
+            var (outputPath, _) = await ArchiveProcessor.ExtractArchiveAsync(
+                archivePath,
+                outputDirectory,
+                outputToSameDirectory: false,
+                progressWindow: null,
+                cancellationToken: TestContext.Current.CancellationToken,
+                settingsSnapshot: settings);
+
+            Assert.Equal(outputDirectory, outputPath);
+            var extractedFile = Path.Combine(outputDirectory, nfdRootName, "app.exe");
+            Assert.True(File.Exists(extractedFile));
+            Assert.Equal(zoneContent, File.ReadAllText(extractedFile + ":Zone.Identifier"));
+        }
+        finally
+        {
+            if (Directory.Exists(testDir))
+                Directory.Delete(testDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task ExtractArchiveAsync_StructureOpenStillFailsAfterRetries_DoesNotExtractWithEmptyStructure()
+    {
+        var testDir = Path.Combine(Path.GetTempPath(), "ArchiveProcessorStructureTests_" + Guid.NewGuid());
+        Directory.CreateDirectory(testDir);
+        try
+        {
+            var stub = new StubMessageService();
+            ArchiveProcessor.MessageServiceImpl = stub;
+            ArchiveProcessor.UiDispatcherImpl = new StubUiDispatcher();
+
+            var archivePath = Path.Combine(testDir, "locked.zip");
+            using (var zip = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+            {
+                var entry = zip.CreateEntry("locked/hello.txt");
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write("hello");
+            }
+
+            var holder = new FileStream(archivePath, FileMode.Open, FileAccess.Read, FileShare.None);
+            var unlocker = Task.Run(async () =>
+            {
+                try
+                {
+                    // 構造解析の 3 試行（0ms / 200ms / 600ms）は全て失敗するが、従来は直後の
+                    // 展開側リトライ中に解除されて空の構造情報のまま展開だけ成功していた。
+                    await Task.Delay(700, CancellationToken.None);
+                }
+                finally
+                {
+                    holder.Dispose();
+                }
+            });
+
+            try
+            {
+                var outputDirectory = Path.Combine(testDir, "output");
+                var (outputPath, structureInfo) = await ArchiveProcessor.ExtractArchiveAsync(
+                    archivePath,
+                    outputDirectory,
+                    outputToSameDirectory: false,
+                    progressWindow: null,
+                    cancellationToken: TestContext.Current.CancellationToken,
+                    settingsSnapshot: new Settings { CreateArchiveNameFolder = false });
+
+                Assert.Null(outputPath);
+                Assert.Null(structureInfo);
+                Assert.Single(stub.Errors);
+                Assert.False(Directory.Exists(outputDirectory));
+            }
+            finally
+            {
+                holder.Dispose();
+                await unlocker;
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(testDir))
+                Directory.Delete(testDir, true);
+        }
     }
 
     [Fact]

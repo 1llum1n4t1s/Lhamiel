@@ -656,4 +656,90 @@ public class ArchiveExtractorTests
                 Directory.Delete(testDir, true);
         }
     }
+
+    /// <summary>
+    /// 展開本体だけでなく事前の構造解析も瞬間的な共有違反をリトライし、
+    /// 二重ネスト防止や MotW 対象のルート情報を失わないことを検証する。
+    /// </summary>
+    [Fact]
+    public async Task GetArchiveStructureInfo_WhenArchiveBrieflyLockedAtOpen_RetriesAndSucceeds()
+    {
+        var testDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var zipPath = Path.Combine(testDir, "locked-structure.zip");
+            using (var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+            {
+                var entry = zip.CreateEntry("locked-structure/hello.txt");
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write("hello");
+            }
+
+            var holder = new FileStream(zipPath, FileMode.Open, FileAccess.Read, FileShare.None);
+            var unlocker = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(300, CancellationToken.None);
+                }
+                finally
+                {
+                    holder.Dispose();
+                }
+            });
+
+            try
+            {
+                var info = ArchiveExtractor.GetArchiveStructureInfo(zipPath);
+                await unlocker;
+
+                Assert.False(info.OpenFailed);
+                Assert.True(info.ShouldSkipFolderCreation);
+                Assert.Contains("locked-structure", info.RootItemNames, StringComparer.OrdinalIgnoreCase);
+            }
+            finally
+            {
+                holder.Dispose();
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(testDir))
+                Directory.Delete(testDir, true);
+        }
+    }
+
+    [Fact]
+    public async Task ExtractArchive_NfdSkipPath_RemovesRawExtractedFile()
+    {
+        var testDir = CreateTemporaryTestDirectory();
+        try
+        {
+            var zipPath = Path.Combine(testDir, "nfd-skip.zip");
+            var nfdRootName = "é".Normalize(System.Text.NormalizationForm.FormD);
+            var relativePath = $"{nfdRootName}/skip.txt";
+            using (var zip = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+            {
+                var entry = zip.CreateEntry(relativePath);
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write("skip me");
+            }
+
+            var outputDirectory = Path.Combine(testDir, "output");
+            await ArchiveExtractor.ExtractArchive(
+                zipPath,
+                outputDirectory,
+                overwriteConfirmed: true,
+                cancellationToken: TestContext.Current.CancellationToken,
+                skipRelativePaths: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { relativePath },
+                normalizeUnicode: true);
+
+            Assert.False(File.Exists(Path.Combine(outputDirectory, nfdRootName, "skip.txt")));
+        }
+        finally
+        {
+            if (Directory.Exists(testDir))
+                Directory.Delete(testDir, true);
+        }
+    }
 }

@@ -216,9 +216,7 @@ public static class ArchiveExtractor
         {
             // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→使用→Dispose を覆う）
             using var nativeGate = NativeArchiveGate.Enter();
-            using var reader = password is null
-                ? new ArchiveReader(archivePath)
-                : new ArchiveReader(archivePath, password, new ArchiveOption());
+            using var reader = OpenArchiveReaderWithRetry(archivePath, password);
             var structure = ParseArchiveRootLevel(reader);
 
             var rootFolders = structure.RootFolders;
@@ -544,6 +542,47 @@ public static class ArchiveExtractor
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// 正規化後のパスを優先し、実体が無い場合だけアーカイブ内の生 Unicode 表現でも
+    /// 安全境界を再検証して既存の展開結果を解決する。
+    /// </summary>
+    internal static bool TryResolveExistingEntryPathFromNormalized(
+        string normalizedBase,
+        string entryName,
+        out string existingPath,
+        bool normalizeUnicode = true)
+    {
+        existingPath = string.Empty;
+        if (!TryResolveSafeEntryPathFromNormalized(
+                normalizedBase, entryName, out var normalizedPath, normalizeUnicode))
+        {
+            return false;
+        }
+
+        normalizedPath = TrimTrailingSeparators(normalizedPath);
+        if (Path.Exists(normalizedPath))
+        {
+            existingPath = normalizedPath;
+            return true;
+        }
+
+        if (!normalizeUnicode ||
+            !TryResolveSafeEntryPathFromNormalized(
+                normalizedBase, entryName, out var rawPath, normalizeUnicode: false))
+        {
+            return false;
+        }
+
+        rawPath = TrimTrailingSeparators(rawPath);
+        if (string.Equals(rawPath, normalizedPath, StringComparison.Ordinal) || !Path.Exists(rawPath))
+        {
+            return false;
+        }
+
+        existingPath = rawPath;
+        return true;
     }
 
     /// <summary>
@@ -1208,6 +1247,24 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
+    /// 構造解析用の ArchiveReader を共有違反時にリトライして開く。
+    /// </summary>
+    /// <param name="archivePath">アーカイブファイルのパス</param>
+    /// <param name="password">ヘッダ暗号化アーカイブを開くパスワード。通常は null</param>
+    /// <returns>生成された <see cref="ArchiveReader"/></returns>
+    private static ArchiveReader OpenArchiveReaderWithRetry(
+        string archivePath,
+        string? password) =>
+        LockedFileRetryPolicy.Execute(
+            () => password is null
+                ? new ArchiveReader(archivePath)
+                : new ArchiveReader(archivePath, password, new ArchiveOption()),
+            archivePath,
+            maxAttempts: 3,
+            initialDelayMs: 200,
+            cancellationToken: CancellationToken.None);
+
+    /// <summary>
     /// <see cref="ArchiveReader"/> の生成（内部で <c>FormatFactory.From(string)</c> がアーカイブを
     /// 排他オープンする）が「使用中（SHARING_VIOLATION）」例外で失敗するケースを救済する。
     ///
@@ -1537,9 +1594,10 @@ public static class ArchiveExtractor
                 var normalizedSkipBase = NormalizeBaseDirectory(tempOutputPath);
                 foreach (var relativePath in skipRelativePaths)
                 {
-                    if (!TryResolveSafeEntryPathFromNormalized(normalizedSkipBase, relativePath, out var tempFilePath, normalizeUnicode))
+                    if (!TryResolveExistingEntryPathFromNormalized(
+                            normalizedSkipBase, relativePath, out var tempFilePath, normalizeUnicode))
                     {
-                        Logger.Log($"スキップ対象の境界外パスを拒否: {relativePath}", LogLevel.Warning);
+                        Logger.Log($"スキップ対象の展開実体を解決できませんでした: {relativePath}", LogLevel.Warning);
                         continue;
                     }
                     if (File.Exists(tempFilePath))

@@ -444,6 +444,14 @@ public static class ArchiveProcessor
                         Logger.Log($"パスワードでアーカイブ構造を解析できませんでした (展開中の再プロンプトは抑止): {archiveDisplayName}", LogLevel.Warning);
                     }
                 }
+                else if (rawStructureInfo.OpenFailed)
+                {
+                    // ZIP 等で構造解析がリトライ後も失敗したまま展開へ進むと、直後の展開側リトライだけが
+                    // 成功した場合に RootItemNames が空のままになり、MotW と二重ネスト防止が欠落する。
+                    // ヘッダ暗号化を別処理する 7z/RAR 以外は、安全に必要な構造を取得できない時点で中止する。
+                    Logger.Log($"アーカイブ構造を解析できないため展開を中止します: {Path.GetFileName(filePath)}", LogLevel.Warning);
+                    throw new IOException(App.Text("ErrorHandler.IOError"));
+                }
                 // 平文パスワードのログ混入防止 (defense-in-depth)。catch の LogException でも
                 // 有効である必要があるため、try 内の using ではなく外側の変数に登録して
                 // finally で解放する (codex P2 #3386575721: using は unwind 時に catch より
@@ -571,10 +579,10 @@ public static class ArchiveProcessor
                                 foreach (var rootName in capturedRootNames)
                                 {
                                     cancellationToken.ThrowIfCancellationRequested();
-                                    if (!ArchiveExtractor.TryResolveSafeEntryPathFromNormalized(
+                                    if (!ArchiveExtractor.TryResolveExistingEntryPathFromNormalized(
                                             normalizedMotwBase, rootName, out var rootItemPath, capturedNormalize))
                                     {
-                                        Logger.Log($"MotW 伝播で境界外パスを検出しスキップ: {rootName}", LogLevel.Warning);
+                                        Logger.Log($"MotW 伝播対象の展開実体を解決できませんでした: {rootName}", LogLevel.Warning);
                                         continue;
                                     }
                                     if (Directory.Exists(rootItemPath))
