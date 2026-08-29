@@ -33,7 +33,7 @@
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</OutputPath>
     <IntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</IntermediateOutputPath>
-    <KagayoiSupportClientVersion>1.0.1</KagayoiSupportClientVersion>
+    <KagayoiSupportClientVersion>1.0.3</KagayoiSupportClientVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -65,14 +65,14 @@
     <PackageReference Include="CRDebugger.Avalonia" Version="1.0.28" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="MessageBox.Avalonia" Version="12.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.86" />
-    <PackageReference Include="SuperLightLogger" Version="1.0.13" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.87" />
+    <PackageReference Include="SuperLightLogger" Version="1.0.15" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.0" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。
          Windows 専用 (Lhamiel 自体 Windows 専用なので問題なし)。Native AOT 対応 (10.x)。 -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
-    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.15" />
+    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.16" />
   </ItemGroup>
 
   <ItemGroup>

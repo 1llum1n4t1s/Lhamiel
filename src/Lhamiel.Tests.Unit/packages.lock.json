@@ -52,8 +52,8 @@
       },
       "1llum1n4t1s.Sevenzip": {
         "type": "Transitive",
-        "resolved": "1.0.86",
-        "contentHash": "0NEcCyWWuDrrWMDrC6KNJintU6gpUxzqg/TQmDNRetdy+xnVJtLM9MXaZ2U1FpWSQcDT7xoYRqIdHOvI9sJ5yg=="
+        "resolved": "1.0.87",
+        "contentHash": "UNQv9dNg4WI1X/+Rc1HEwYANhPeTzSolcitnKzeJdFIPKyCpv1A2VL2MOizhfyWfK1cZe3RdW9f2p8jUi34IkA=="
       },
       "Avalonia": {
         "type": "Transitive",
@@ -366,8 +366,8 @@
       },
       "SuperLightLogger": {
         "type": "Transitive",
-        "resolved": "1.0.13",
-        "contentHash": "trt8PBTSrr7lirxgd30R7bYw2xMyqQVIpdn6KFl5cnAOp/PYV1Qr09P2hgQ/dteaWaA3p6s51eZZyTkvVkfA8Q==",
+        "resolved": "1.0.15",
+        "contentHash": "HYx8mu+Iq4PY3+ODjk2bEmsrZziNYAxLB9ggssMY92YN6MDWlS00VSyAqMS4Dijop9OOG18xw7916Xg9raZU9g==",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.11",
           "Microsoft.Extensions.Logging": "10.0.11",
@@ -396,12 +396,12 @@
       },
       "VelopackUpdateDialog.Avalonia": {
         "type": "Transitive",
-        "resolved": "1.0.15",
-        "contentHash": "H7G92PeP+ijntOsSMXy6IZnuItm+8dJwGC7aEO46GqcOAozFk7sW5lkfh2KCWcyFGuEXo14QF7E3YryvyCMmvw==",
+        "resolved": "1.0.16",
+        "contentHash": "moiiqfSYfbJH6dJd3rTva6X2je2RDybRVkRcH5WeDZ49M1R8rvrSQDsryGLQqmDfvC49+gVjshOY/PPrqW+S8A==",
         "dependencies": {
           "Avalonia": "12.1.1",
           "CommunityToolkit.Mvvm": "8.4.2",
-          "SuperLightLogger": "1.0.13",
+          "SuperLightLogger": "1.0.15",
           "Velopack": "1.2.0"
         }
       },
@@ -465,7 +465,7 @@
       "lhamiel": {
         "type": "Project",
         "dependencies": {
-          "1llum1n4t1s.Sevenzip": "[1.0.86, )",
+          "1llum1n4t1s.Sevenzip": "[1.0.87, )",
           "Avalonia": "[12.1.1, )",
           "Avalonia.Desktop": "[12.1.1, )",
           "Avalonia.Fonts.Inter": "[12.1.1, )",
@@ -473,12 +473,12 @@
           "Avalonia.Themes.Fluent": "[12.1.1, )",
           "CRDebugger.Avalonia": "[1.0.28, )",
           "CommunityToolkit.Mvvm": "[8.4.2, )",
-          "Kagayoi.Support.Client": "[1.0.1, )",
+          "Kagayoi.Support.Client": "[1.0.3, )",
           "MessageBox.Avalonia": "[12.0.0, )",
-          "SuperLightLogger": "[1.0.13, )",
+          "SuperLightLogger": "[1.0.15, )",
           "System.Security.Cryptography.ProtectedData": "[10.0.11, )",
           "Tmds.DBus.Protocol": "[0.95.0, )",
-          "VelopackUpdateDialog.Avalonia": "[1.0.15, )"
+          "VelopackUpdateDialog.Avalonia": "[1.0.16, )"
         }
       }
     }
