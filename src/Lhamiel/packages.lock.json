@@ -4,9 +4,9 @@
     "net10.0-windows8.0": {
       "1llum1n4t1s.Sevenzip": {
         "type": "Direct",
-        "requested": "[1.0.87, )",
-        "resolved": "1.0.87",
-        "contentHash": "UNQv9dNg4WI1X/+Rc1HEwYANhPeTzSolcitnKzeJdFIPKyCpv1A2VL2MOizhfyWfK1cZe3RdW9f2p8jUi34IkA=="
+        "requested": "[1.0.88, )",
+        "resolved": "1.0.88",
+        "contentHash": "kYOEi+J2a/N3dT4fxFw3pRjeBCFkRLZGNqQ6hjboNPX1fLJn0M1T8HaKtj4/tkS/etzmERKuSk86NlbNJMbWNQ=="
       },
       "Avalonia": {
         "type": "Direct",
@@ -68,14 +68,14 @@
       },
       "CRDebugger.Avalonia": {
         "type": "Direct",
-        "requested": "[1.0.28, )",
-        "resolved": "1.0.28",
-        "contentHash": "sA+blTBvgk7r0dG0M1PyRjrleXY9gYU87QTzIyzH6jmfZNK2ZNG+Wn0r9eBeRC2HzhkAgcfVVbtqxj672OnMDQ==",
+        "requested": "[1.0.30, )",
+        "resolved": "1.0.30",
+        "contentHash": "x7IuBgW7ca16RiJVbQ2LsfSH2Rc/4vH80I+qAOSECHeOsh49R7DpOoYtHO74N38V7OHMi+wfkSDzDsZLmQk51g==",
         "dependencies": {
-          "Avalonia": "12.1.0",
-          "Avalonia.Themes.Fluent": "12.1.0",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.10",
-          "SuperLightLogger": "1.0.10"
+          "Avalonia": "12.1.1",
+          "Avalonia.Themes.Fluent": "12.1.1",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.11",
+          "SuperLightLogger": "1.0.15"
         }
       },
       "Kagayoi.Support.Client": {
@@ -108,9 +108,9 @@
       },
       "SuperLightLogger": {
         "type": "Direct",
-        "requested": "[1.0.15, )",
-        "resolved": "1.0.15",
-        "contentHash": "HYx8mu+Iq4PY3+ODjk2bEmsrZziNYAxLB9ggssMY92YN6MDWlS00VSyAqMS4Dijop9OOG18xw7916Xg9raZU9g==",
+        "requested": "[1.0.16, )",
+        "resolved": "1.0.16",
+        "contentHash": "/Hg0kWpObP40mZ9AH81VjmGY1aZlvozCHKaQFBJPdBA1rR/jom0NDq4SiOpUwjr4q4wYNa1pbOjQnIzL0Sr7dg==",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.11",
           "Microsoft.Extensions.Logging": "10.0.11",
@@ -351,9 +351,9 @@
     "net10.0-windows8.0/win-x64": {
       "1llum1n4t1s.Sevenzip": {
         "type": "Direct",
-        "requested": "[1.0.87, )",
-        "resolved": "1.0.87",
-        "contentHash": "UNQv9dNg4WI1X/+Rc1HEwYANhPeTzSolcitnKzeJdFIPKyCpv1A2VL2MOizhfyWfK1cZe3RdW9f2p8jUi34IkA=="
+        "requested": "[1.0.88, )",
+        "resolved": "1.0.88",
+        "contentHash": "kYOEi+J2a/N3dT4fxFw3pRjeBCFkRLZGNqQ6hjboNPX1fLJn0M1T8HaKtj4/tkS/etzmERKuSk86NlbNJMbWNQ=="
       },
       "Microsoft.DotNet.ILCompiler": {
         "type": "Direct",

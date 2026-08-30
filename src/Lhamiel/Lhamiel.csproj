@@ -62,11 +62,11 @@
     <!-- CRDebugger.Avalonia はデバッグツール。リリースバイナリには同梱しないため Debug 限定参照。
          App.axaml.cs:181-183 の DebugHelper.InitializeCRDebugger は #if DEBUG ガード済みで、
          この PackageReference 自体も Configuration=Debug でのみ復元される。 -->
-    <PackageReference Include="CRDebugger.Avalonia" Version="1.0.28" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="CRDebugger.Avalonia" Version="1.0.30" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="MessageBox.Avalonia" Version="12.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.87" />
-    <PackageReference Include="SuperLightLogger" Version="1.0.15" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.88" />
+    <PackageReference Include="SuperLightLogger" Version="1.0.16" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.0" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。
          Windows 専用 (Lhamiel 自体 Windows 専用なので問題なし)。Native AOT 対応 (10.x)。 -->
