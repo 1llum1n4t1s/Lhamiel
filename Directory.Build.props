@@ -20,6 +20,9 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <!-- 共通サポートSDKは開発時に兄弟リポジトリを直接参照し、単独cloneでは固定版パッケージを使う。 -->
     <KagayoiSupportClientProject Condition="'$(KagayoiSupportClientUsePackage)' != 'true' and '$(KagayoiSupportClientProject)' == '' and Exists('$(MSBuildThisFileDirectory)..\Kagayoi.Support\clients\dotnet\src\Kagayoi.Support.Client\Kagayoi.Support.Client.csproj')">$(MSBuildThisFileDirectory)..\Kagayoi.Support\clients\dotnet\src\Kagayoi.Support.Client\Kagayoi.Support.Client.csproj</KagayoiSupportClientProject>
+    <!-- 兄弟 ProjectReference と単独 clone 用 PackageReference は復元グラフが異なるため、
+         ローカル開発時のロックを obj に分離し、追跡対象 packages.lock.json はパッケージ構成の正本に保つ。 -->
+    <NuGetLockFilePath Condition="'$(KagayoiSupportClientProject)' != ''">$(MSBuildProjectDirectory)\obj\packages.local.lock.json</NuGetLockFilePath>
     <!-- IDE0005 (不要な using 検出) にはドキュメント生成が必須。XML コメント未記載の CS1591 は抑制する。 -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
