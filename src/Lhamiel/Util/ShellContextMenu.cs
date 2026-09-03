@@ -4,27 +4,40 @@ using System.Runtime.Versioning;
 
 namespace Lhamiel.Util;
 
+internal enum ContextMenuOperation
+{
+    Extract,
+    Compress,
+}
+
 /// <summary>
-/// エクスプローラーのファイル／フォルダ右クリックメニューに Lhamiel を登録する。
+/// エクスプローラーのファイル／フォルダ右クリックメニューへ用途別の Lhamiel コマンドを登録する。
 /// Windows 11 では sparse MSIX + IExplorerCommand、それ以前では静的 verb を使う。
 /// </summary>
 [SupportedOSPlatform("windows")]
 internal static class ShellContextMenu
 {
-    internal const string MenuText = "Lhamielへ";
-    internal const string VerbName = "Lhamiel.SendTo";
+    internal const string ExtractMenuText = "Lhamielで展開";
+    internal const string CompressMenuText = "Lhamielで圧縮";
+    internal const string ExtractVerbName = "Lhamiel.Extract";
+    internal const string CompressVerbName = "Lhamiel.Compress";
+    internal const string LegacyVerbName = "Lhamiel.SendTo";
     internal const string ModernPackageName = "Nephilim.Lhamiel.ContextMenu";
     internal const string ModernPackageFileName = "Lhamiel.ContextMenu.msix";
     internal const string ShellExtensionFileName = "Lhamiel.ShellExtension.dll";
+    internal const string StateKeyName = "Lhamiel.ContextMenu";
+    internal const string ExtractEnabledValueName = "ExtractEnabled";
+    internal const string CompressEnabledValueName = "CompressEnabled";
     private const string ClassesRootPath = @"Software\Classes";
 
-    private static readonly string[] TargetClasses = ["*", "Directory"];
+    private static readonly string[] FileTargetClasses = ["*"];
+    private static readonly string[] CompressTargetClasses = ["*", "Directory"];
+    private static readonly string[] LegacyTargetClasses = ["*", "Directory"];
 
-    /// <summary>
-    /// 右クリックメニューの登録状態を切り替える。
-    /// </summary>
-    internal static bool SetEnabled(bool enabled)
+    /// <summary>右クリックメニューの展開／圧縮コマンドを独立して切り替える。</summary>
+    internal static bool SetEnabled(bool extractEnabled, bool compressEnabled)
     {
+        var enabled = extractEnabled || compressEnabled;
         try
         {
             var appPath = AppPathResolver.ExecutablePath;
@@ -38,15 +51,15 @@ internal static class ShellContextMenu
                 Registry.CurrentUser,
                 ClassesRootPath,
                 appPath,
-                enabled,
+                extractEnabled,
+                compressEnabled,
                 OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000),
                 RegisterModernPackageNative,
                 UnregisterModernPackageNative);
 
             FileAssociation.NotifyExplorer();
-            Logger.Log(enabled
-                ? "ファイルとフォルダの右クリックメニューに「Lhamielへ」を登録しました。Windows 11 では新しいメニューを使用します。"
-                : "ファイルとフォルダの右クリックメニューから「Lhamielへ」を解除しました。",
+            Logger.Log(
+                $"右クリックメニュー設定を更新しました: 展開={extractEnabled}, 圧縮={compressEnabled}",
                 LogLevel.Debug);
             return true;
         }
@@ -59,15 +72,13 @@ internal static class ShellContextMenu
         }
     }
 
-    /// <summary>
-    /// OS と配布物に応じてモダン／従来方式を切り替える。
-    /// モダン登録が使える場合は従来 verb を消し、クラシックメニューでの重複を避ける。
-    /// </summary>
+    /// <summary>OS と配布物に応じてモダン／従来方式を切り替える。</summary>
     internal static void ApplyRegistration(
         RegistryKey root,
         string classesRootPath,
         string appPath,
-        bool enabled,
+        bool extractEnabled,
+        bool compressEnabled,
         bool preferModernMenu,
         Func<string, string, string, int> registerModernPackage,
         Func<string, string, int> unregisterModernPackage)
@@ -76,22 +87,26 @@ internal static class ShellContextMenu
         ArgumentNullException.ThrowIfNull(registerModernPackage);
         ArgumentNullException.ThrowIfNull(unregisterModernPackage);
 
-        if (!enabled)
+        if (!extractEnabled && !compressEnabled)
         {
-            // パッケージが残っている間はモダンメニューが有効なので、先に解除してから静的 verb を消す。
             _ = TryUnregisterModernPackage(appPath, unregisterModernPackage);
             Unregister(root, classesRootPath);
+            DeleteState(root, classesRootPath);
             return;
         }
 
         if (preferModernMenu && TryRegisterModernPackage(appPath, registerModernPackage))
         {
             Unregister(root, classesRootPath);
+            // パッケージ登録と旧 verb の削除が完了してから、ネイティブ拡張へ新状態を公開する。
+            // 先に書くと登録失敗時に UI / settings.json だけが旧値へ戻り、Explorer と不一致になる。
+            WriteState(root, classesRootPath, extractEnabled, compressEnabled);
             return;
         }
 
         // Windows 10、開発ビルド、portable の不完全コピーでは従来方式を維持する。
-        Register(root, classesRootPath, appPath);
+        Register(root, classesRootPath, appPath, extractEnabled, compressEnabled);
+        WriteState(root, classesRootPath, extractEnabled, compressEnabled);
     }
 
     internal static bool TryRegisterModernPackage(
@@ -118,7 +133,6 @@ internal static class ShellContextMenu
         string appPath,
         Func<string, string, int> unregisterModernPackage)
     {
-        // PackageManager の外部配置 API は Windows 10 2004 以降。
         if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041) || string.IsNullOrWhiteSpace(appPath))
             return false;
 
@@ -184,26 +198,42 @@ internal static class ShellContextMenu
         }
     }
 
-    /// <summary>
-    /// 指定したレジストリ配下へファイル／フォルダ共通の verb を登録する。
-    /// テストでは分離したキーを渡して実レジストリ設定を汚さない。
-    /// </summary>
-    internal static void Register(RegistryKey root, string classesRootPath, string appPath)
+    /// <summary>指定したレジストリ配下へ有効な静的 verb だけを登録する。</summary>
+    internal static void Register(
+        RegistryKey root,
+        string classesRootPath,
+        string appPath,
+        bool extractEnabled,
+        bool compressEnabled)
     {
         if (string.IsNullOrWhiteSpace(appPath))
             throw new ArgumentException("実行ファイルパスが空です。", nameof(appPath));
 
-        var command = BuildCommand(appPath);
-        var icon = $"\"{appPath}\",0";
+        Unregister(root, classesRootPath);
+        if (extractEnabled)
+            RegisterOperation(root, classesRootPath, appPath, ContextMenuOperation.Extract, FileTargetClasses);
+        if (compressEnabled)
+            RegisterOperation(root, classesRootPath, appPath, ContextMenuOperation.Compress, CompressTargetClasses);
+    }
 
-        foreach (var targetClass in TargetClasses)
+    private static void RegisterOperation(
+        RegistryKey root,
+        string classesRootPath,
+        string appPath,
+        ContextMenuOperation operation,
+        IEnumerable<string> targetClasses)
+    {
+        var command = BuildCommand(appPath, operation);
+        var icon = $"\"{appPath}\",0";
+        var menuText = operation == ContextMenuOperation.Extract ? ExtractMenuText : CompressMenuText;
+
+        foreach (var targetClass in targetClasses)
         {
-            var verbPath = BuildVerbPath(classesRootPath, targetClass);
+            var verbPath = BuildVerbPath(classesRootPath, targetClass, operation);
             using var verbKey = root.CreateSubKey(verbPath)
                 ?? throw new InvalidOperationException($"レジストリキーを作成できませんでした: {verbPath}");
-            verbKey.SetValue("", MenuText, RegistryValueKind.String);
+            verbKey.SetValue("", menuText, RegistryValueKind.String);
             verbKey.SetValue("Icon", icon, RegistryValueKind.String);
-            // 複数選択時も選択項目を同じ Lhamiel プロセスへ渡せるようにする。
             verbKey.SetValue("MultiSelectModel", "Player", RegistryValueKind.String);
 
             using var commandKey = verbKey.CreateSubKey("command")
@@ -212,17 +242,49 @@ internal static class ShellContextMenu
         }
     }
 
-    /// <summary>
-    /// 指定したレジストリ配下から Lhamiel が所有する verb だけを削除する。
-    /// </summary>
+    /// <summary>新旧すべての Lhamiel 静的 verb を削除する。</summary>
     internal static void Unregister(RegistryKey root, string classesRootPath)
     {
-        foreach (var targetClass in TargetClasses)
-            root.DeleteSubKeyTree(BuildVerbPath(classesRootPath, targetClass), throwOnMissingSubKey: false);
+        foreach (var targetClass in LegacyTargetClasses)
+        {
+            root.DeleteSubKeyTree(BuildLegacyVerbPath(classesRootPath, targetClass), throwOnMissingSubKey: false);
+            root.DeleteSubKeyTree(BuildVerbPath(classesRootPath, targetClass, ContextMenuOperation.Extract), throwOnMissingSubKey: false);
+            root.DeleteSubKeyTree(BuildVerbPath(classesRootPath, targetClass, ContextMenuOperation.Compress), throwOnMissingSubKey: false);
+        }
     }
 
-    internal static string BuildCommand(string appPath) => $"\"{appPath}\" \"%1\"";
+    internal static void WriteState(
+        RegistryKey root,
+        string classesRootPath,
+        bool extractEnabled,
+        bool compressEnabled)
+    {
+        using var stateKey = root.CreateSubKey(BuildStatePath(classesRootPath))
+            ?? throw new InvalidOperationException("右クリックメニュー状態キーを作成できませんでした。");
+        stateKey.SetValue(ExtractEnabledValueName, extractEnabled ? 1 : 0, RegistryValueKind.DWord);
+        stateKey.SetValue(CompressEnabledValueName, compressEnabled ? 1 : 0, RegistryValueKind.DWord);
+    }
 
-    internal static string BuildVerbPath(string classesRootPath, string targetClass) =>
-        $@"{classesRootPath}\{targetClass}\shell\{VerbName}";
+    internal static void DeleteState(RegistryKey root, string classesRootPath) =>
+        root.DeleteSubKeyTree(BuildStatePath(classesRootPath), throwOnMissingSubKey: false);
+
+    internal static string BuildCommand(string appPath, ContextMenuOperation operation)
+    {
+        var operationArgument = operation == ContextMenuOperation.Extract ? "--extract" : "--compress";
+        return $"\"{appPath}\" {operationArgument} \"%1\"";
+    }
+
+    internal static string BuildVerbPath(
+        string classesRootPath,
+        string targetClass,
+        ContextMenuOperation operation)
+    {
+        var verbName = operation == ContextMenuOperation.Extract ? ExtractVerbName : CompressVerbName;
+        return $@"{classesRootPath}\{targetClass}\shell\{verbName}";
+    }
+
+    internal static string BuildLegacyVerbPath(string classesRootPath, string targetClass) =>
+        $@"{classesRootPath}\{targetClass}\shell\{LegacyVerbName}";
+
+    internal static string BuildStatePath(string classesRootPath) => $@"{classesRootPath}\{StateKeyName}";
 }

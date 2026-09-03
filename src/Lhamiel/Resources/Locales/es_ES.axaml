@@ -41,9 +41,13 @@
   <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">Legado</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Formato de compresión predeterminado</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Acceso directo</x:String>
-  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Crear acceso directo en el escritorio</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Description" xml:space="preserve">Crear accesos directos en el escritorio.</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateIntegrated" xml:space="preserve">Crear acceso directo combinado</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateExtraction" xml:space="preserve">Crear acceso directo de extracción</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateCompression" xml:space="preserve">Crear acceso directo de compresión</x:String>
   <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">Menú contextual</x:String>
-  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">Mostrar «Lhamielへ» en el menú contextual de archivos y carpetas</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableExtraction" xml:space="preserve">Mostrar «Extraer con Lhamiel»</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableCompression" xml:space="preserve">Mostrar «Comprimir con Lhamiel»</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Idioma</x:String>
 
   <!-- Output Settings (shared) -->

@@ -16,15 +16,28 @@
 #include <winrt/Windows.Management.Deployment.h>
 
 #pragma comment(lib, "shlwapi.lib")
+#pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "windowsapp.lib")
 
 namespace
 {
-    constexpr wchar_t MenuText[] = L"Lhamielへ";
+    constexpr wchar_t ExtractMenuText[] = L"Lhamielで展開";
+    constexpr wchar_t CompressMenuText[] = L"Lhamielで圧縮";
     constexpr wchar_t ApplicationFileName[] = L"Lhamiel.exe";
     constexpr wchar_t SparsePackageName[] = L"Nephilim.Lhamiel.ContextMenu";
-    constexpr CLSID ExplorerCommandClsid =
+    constexpr wchar_t ContextMenuStateKey[] = L"Software\\Classes\\Lhamiel.ContextMenu";
+    constexpr wchar_t ExtractEnabledValueName[] = L"ExtractEnabled";
+    constexpr wchar_t CompressEnabledValueName[] = L"CompressEnabled";
+    constexpr CLSID ExtractCommandClsid =
     { 0xabb8423c, 0xa40b, 0x4259, { 0x9f, 0x8a, 0x6c, 0x62, 0x43, 0x5c, 0x29, 0xca } };
+    constexpr CLSID CompressCommandClsid =
+    { 0xe1856df5, 0x177c, 0x4a12, { 0xa9, 0xb5, 0xf3, 0xd1, 0xc6, 0x3c, 0x9d, 0x1b } };
+
+    enum class OperationMode
+    {
+        Extract,
+        Compress,
+    };
 
     HMODULE moduleHandle = nullptr;
     long moduleReferenceCount = 0;
@@ -91,7 +104,25 @@ namespace
         return quoted;
     }
 
-    HRESULT LaunchLhamiel(IShellItemArray* selectedItems)
+    bool IsOperationEnabled(OperationMode mode) noexcept
+    {
+        DWORD enabled = 0;
+        DWORD size = sizeof(enabled);
+        const wchar_t* valueName = mode == OperationMode::Extract
+            ? ExtractEnabledValueName
+            : CompressEnabledValueName;
+        return RegGetValueW(
+            HKEY_CURRENT_USER,
+            ContextMenuStateKey,
+            valueName,
+            RRF_RT_REG_DWORD,
+            nullptr,
+            &enabled,
+            &size) == ERROR_SUCCESS
+            && enabled != 0;
+    }
+
+    HRESULT LaunchLhamiel(IShellItemArray* selectedItems, OperationMode mode)
     {
         if (selectedItems == nullptr)
             return E_INVALIDARG;
@@ -107,6 +138,7 @@ namespace
             return result;
 
         std::wstring commandLine = QuoteCommandLineArgument(applicationPath);
+        commandLine.append(mode == OperationMode::Extract ? L" --extract" : L" --compress");
         for (DWORD index = 0; index < itemCount; ++index)
         {
             IShellItem* item = nullptr;
@@ -166,7 +198,7 @@ namespace
     class ExplorerCommand final : public IExplorerCommand
     {
     public:
-        ExplorerCommand() noexcept
+        explicit ExplorerCommand(OperationMode mode) noexcept : mode_(mode)
         {
             AddModuleReference();
         }
@@ -201,7 +233,9 @@ namespace
 
         IFACEMETHODIMP GetTitle(IShellItemArray*, LPWSTR* title) override
         {
-            return title == nullptr ? E_POINTER : SHStrDupW(MenuText, title);
+            if (title == nullptr)
+                return E_POINTER;
+            return SHStrDupW(mode_ == OperationMode::Extract ? ExtractMenuText : CompressMenuText, title);
         }
 
         IFACEMETHODIMP GetIcon(IShellItemArray*, LPWSTR* icon) override
@@ -241,7 +275,7 @@ namespace
         {
             if (commandName == nullptr)
                 return E_POINTER;
-            *commandName = ExplorerCommandClsid;
+            *commandName = mode_ == OperationMode::Extract ? ExtractCommandClsid : CompressCommandClsid;
             return S_OK;
         }
 
@@ -251,7 +285,10 @@ namespace
                 return E_POINTER;
 
             DWORD itemCount = 0;
-            *state = selectedItems != nullptr && SUCCEEDED(selectedItems->GetCount(&itemCount)) && itemCount > 0
+            *state = IsOperationEnabled(mode_)
+                && selectedItems != nullptr
+                && SUCCEEDED(selectedItems->GetCount(&itemCount))
+                && itemCount > 0
                 ? ECS_ENABLED
                 : ECS_HIDDEN;
             return S_OK;
@@ -261,7 +298,7 @@ namespace
         {
             try
             {
-                return LaunchLhamiel(selectedItems);
+                return LaunchLhamiel(selectedItems, mode_);
             }
             catch (const std::bad_alloc&)
             {
@@ -295,12 +332,13 @@ namespace
         }
 
         long referenceCount_ = 1;
+        OperationMode mode_;
     };
 
     class ClassFactory final : public IClassFactory
     {
     public:
-        ClassFactory() noexcept
+        explicit ClassFactory(OperationMode mode) noexcept : mode_(mode)
         {
             AddModuleReference();
         }
@@ -341,7 +379,7 @@ namespace
                 return E_POINTER;
 
             *object = nullptr;
-            auto* command = new (std::nothrow) ExplorerCommand();
+            auto* command = new (std::nothrow) ExplorerCommand(mode_);
             if (command == nullptr)
                 return E_OUTOFMEMORY;
 
@@ -363,6 +401,7 @@ namespace
         }
 
         long referenceCount_ = 1;
+        OperationMode mode_;
     };
 
     template<typename Operation>
@@ -437,10 +476,15 @@ STDAPI DllGetClassObject(
     if (object == nullptr)
         return E_POINTER;
     *object = nullptr;
-    if (!IsEqualCLSID(classId, ExplorerCommandClsid))
+    OperationMode mode;
+    if (IsEqualCLSID(classId, ExtractCommandClsid))
+        mode = OperationMode::Extract;
+    else if (IsEqualCLSID(classId, CompressCommandClsid))
+        mode = OperationMode::Compress;
+    else
         return CLASS_E_CLASSNOTAVAILABLE;
 
-    auto* factory = new (std::nothrow) ClassFactory();
+    auto* factory = new (std::nothrow) ClassFactory(mode);
     if (factory == nullptr)
         return E_OUTOFMEMORY;
 

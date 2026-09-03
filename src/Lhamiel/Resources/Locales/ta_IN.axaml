@@ -41,9 +41,13 @@
   <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">மரபு</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">இயல்புநிலை சுருக்க வடிவம்</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">குறுக்குவழி</x:String>
-  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 டெஸ்க்டாப் குறுக்குவழியை உருவாக்கு</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Description" xml:space="preserve">டெஸ்க்டாப்பில் குறுக்குவழிகளை உருவாக்கவும்.</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateIntegrated" xml:space="preserve">ஒருங்கிணைந்த குறுக்குவழியை உருவாக்கு</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateExtraction" xml:space="preserve">பிரித்தெடுக்கும் குறுக்குவழியை உருவாக்கு</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateCompression" xml:space="preserve">சுருக்கும் குறுக்குவழியை உருவாக்கு</x:String>
   <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">வலது கிளிக் பட்டி</x:String>
-  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">கோப்புகள் மற்றும் கோப்புறைகளின் வலது கிளிக் பட்டியில் “Lhamielへ” என்பதைக் காட்டு</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableExtraction" xml:space="preserve">“Lhamiel மூலம் பிரித்தெடு” என்பதைக் காட்டு</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableCompression" xml:space="preserve">“Lhamiel மூலம் சுருக்கு” என்பதைக் காட்டு</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">மொழி</x:String>
 
   <!-- Output Settings (shared) -->

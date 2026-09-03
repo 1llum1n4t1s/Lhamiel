@@ -150,41 +150,11 @@
                                 </StackPanel>
                             </primitives:HeaderedContentControl>
 
-                            <!--  圧縮形式  -->
-                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.CompressionFormat.Header}">
-                                <ComboBox
-                                    x:Name="CompressionFormatComboBox"
-                                    Width="120"
-                                    ItemsSource="{Binding CompressionFormats}"
-                                    SelectedItem="{Binding SelectedCompressionFormat}">
-                                    <ComboBox.SelectionBoxItemTemplate>
-                                        <DataTemplate x:DataType="sys:String">
-                                            <TextBlock Text="{Binding}" />
-                                        </DataTemplate>
-                                    </ComboBox.SelectionBoxItemTemplate>
-                                </ComboBox>
-                            </primitives:HeaderedContentControl>
-
                             <!--  アップデート確認  -->
                             <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Update.Header}">
                                 <CheckBox
                                     Content="{DynamicResource Text.Settings.Update.Check4UpdatesOnStartup}"
                                     IsChecked="{Binding Check4UpdatesOnStartup}" />
-                            </primitives:HeaderedContentControl>
-
-                            <!--  ショートカット作成  -->
-                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Shortcut.Header}">
-                                <Button
-                                    x:Name="CreateShortcutButton"
-                                    Command="{Binding CreateShortcutCommand}"
-                                    Content="{DynamicResource Text.Settings.Shortcut.Create}" />
-                            </primitives:HeaderedContentControl>
-
-                            <!--  エクスプローラーの右クリックメニュー  -->
-                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.ContextMenu.Header}">
-                                <CheckBox
-                                    Content="{DynamicResource Text.Settings.ContextMenu.Enable}"
-                                    IsChecked="{Binding AddToContextMenu}" />
                             </primitives:HeaderedContentControl>
 
                             <!--  説明テキスト  -->
@@ -229,6 +199,7 @@
                                     FontWeight="SemiBold"
                                     Text="{DynamicResource Text.Settings.Tab.Extraction}" />
                             </StackPanel>
+
                             <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Output.Header}">
                                 <StackPanel>
                                     <RadioButton
@@ -311,6 +282,22 @@
                                     FontWeight="SemiBold"
                                     Text="{DynamicResource Text.Settings.Tab.Compression}" />
                             </StackPanel>
+
+                            <!--  デフォルトの圧縮形式  -->
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.CompressionFormat.Header}">
+                                <ComboBox
+                                    x:Name="CompressionFormatComboBox"
+                                    Width="120"
+                                    ItemsSource="{Binding CompressionFormats}"
+                                    SelectedItem="{Binding SelectedCompressionFormat}">
+                                    <ComboBox.SelectionBoxItemTemplate>
+                                        <DataTemplate x:DataType="sys:String">
+                                            <TextBlock Text="{Binding}" />
+                                        </DataTemplate>
+                                    </ComboBox.SelectionBoxItemTemplate>
+                                </ComboBox>
+                            </primitives:HeaderedContentControl>
+
                             <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Output.Header}">
                                 <StackPanel>
                                     <RadioButton
@@ -827,6 +814,77 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+
+                <!--  ━━━ ショートカット設定タブ ━━━  -->
+                <TabItem>
+                    <TabItem.Header>
+                        <Grid ColumnDefinitions="Auto,*">
+                            <PathIcon
+                                Width="16"
+                                Height="16"
+                                Margin="0,0,10,0"
+                                VerticalAlignment="Center"
+                                Data="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16C1,17.11 1.89,18 3,18H10V20H8V22H16V20H14V18H21C22.11,18 23,17.11 23,16V4C23,2.89 22.11,2 21,2Z" />
+                            <TextBlock
+                                Grid.Column="1"
+                                VerticalAlignment="Center"
+                                Text="{DynamicResource Text.Settings.Shortcut.Header}"
+                                TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                    </TabItem.Header>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="8,0">
+                            <StackPanel Margin="4,0,0,12" Orientation="Horizontal">
+                                <PathIcon
+                                    Width="22"
+                                    Height="22"
+                                    Margin="0,0,10,0"
+                                    VerticalAlignment="Center"
+                                    Data="M21,16H3V4H21M21,2H3C1.89,2 1,2.89 1,4V16C1,17.11 1.89,18 3,18H10V20H8V22H16V20H14V18H21C22.11,18 23,17.11 23,16V4C23,2.89 22.11,2 21,2Z" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="20"
+                                    FontWeight="SemiBold"
+                                    Text="{DynamicResource Text.Settings.Shortcut.Header}" />
+                            </StackPanel>
+
+                            <!--  ショートカット作成  -->
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Shortcut.Header}">
+                                <StackPanel Spacing="8">
+                                    <TextBlock
+                                        FontSize="12"
+                                        Foreground="{DynamicResource Brush.FG2}"
+                                        Text="{DynamicResource Text.Settings.Shortcut.Description}"
+                                        TextWrapping="Wrap" />
+                                    <Button
+                                        x:Name="CreateIntegratedShortcutButton"
+                                        Command="{Binding CreateIntegratedShortcutCommand}"
+                                        Content="{DynamicResource Text.Settings.Shortcut.CreateIntegrated}" />
+                                    <Button
+                                        x:Name="CreateExtractionShortcutButton"
+                                        Command="{Binding CreateExtractionShortcutCommand}"
+                                        Content="{DynamicResource Text.Settings.Shortcut.CreateExtraction}" />
+                                    <Button
+                                        x:Name="CreateCompressionShortcutButton"
+                                        Command="{Binding CreateCompressionShortcutCommand}"
+                                        Content="{DynamicResource Text.Settings.Shortcut.CreateCompression}" />
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
+
+                            <!--  エクスプローラーの右クリックメニュー  -->
+                            <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.ContextMenu.Header}">
+                                <StackPanel Spacing="6">
+                                    <CheckBox
+                                        Content="{DynamicResource Text.Settings.ContextMenu.EnableExtraction}"
+                                        IsChecked="{Binding AddExtractToContextMenu}" />
+                                    <CheckBox
+                                        Content="{DynamicResource Text.Settings.ContextMenu.EnableCompression}"
+                                        IsChecked="{Binding AddCompressToContextMenu}" />
+                                </StackPanel>
+                            </primitives:HeaderedContentControl>
                         </StackPanel>
                     </ScrollViewer>
                 </TabItem>

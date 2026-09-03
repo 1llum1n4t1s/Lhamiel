@@ -46,10 +46,11 @@
         <desktop4:Extension Category="windows.fileExplorerContextMenus">
           <desktop4:FileExplorerContextMenus>
             <desktop5:ItemType Type="*">
-              <desktop5:Verb Id="LhamielSendToCommand" Clsid="ABB8423C-A40B-4259-9F8A-6C62435C29CA" />
+              <desktop5:Verb Id="LhamielExtractCommand" Clsid="ABB8423C-A40B-4259-9F8A-6C62435C29CA" />
+              <desktop5:Verb Id="LhamielCompressCommand" Clsid="E1856DF5-177C-4A12-A9B5-F3D1C63C9D1B" />
             </desktop5:ItemType>
             <desktop5:ItemType Type="Directory">
-              <desktop5:Verb Id="LhamielSendToCommand" Clsid="ABB8423C-A40B-4259-9F8A-6C62435C29CA" />
+              <desktop5:Verb Id="LhamielCompressCommand" Clsid="E1856DF5-177C-4A12-A9B5-F3D1C63C9D1B" />
             </desktop5:ItemType>
           </desktop4:FileExplorerContextMenus>
         </desktop4:Extension>
@@ -58,6 +59,10 @@
             <com:SurrogateServer DisplayName="Lhamiel context menu handler">
               <com:Class
                 Id="ABB8423C-A40B-4259-9F8A-6C62435C29CA"
+                Path="Lhamiel.ShellExtension.dll"
+                ThreadingModel="STA" />
+              <com:Class
+                Id="E1856DF5-177C-4A12-A9B5-F3D1C63C9D1B"
                 Path="Lhamiel.ShellExtension.dll"
                 ThreadingModel="STA" />
             </com:SurrogateServer>

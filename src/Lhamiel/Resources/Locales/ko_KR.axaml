@@ -41,9 +41,13 @@
   <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">레거시</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">기본 압축 형식</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">바로 가기</x:String>
-  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 바탕화면 바로 가기 만들기</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Description" xml:space="preserve">바탕화면에 바로 가기를 만듭니다.</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateIntegrated" xml:space="preserve">통합 바로 가기 만들기</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateExtraction" xml:space="preserve">압축 풀기 바로 가기 만들기</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateCompression" xml:space="preserve">압축 바로 가기 만들기</x:String>
   <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">오른쪽 클릭 메뉴</x:String>
-  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">파일 및 폴더 오른쪽 클릭 메뉴에 “Lhamielへ” 표시</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableExtraction" xml:space="preserve">“Lhamiel로 압축 풀기” 표시</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableCompression" xml:space="preserve">“Lhamiel로 압축” 표시</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">언어</x:String>
 
   <!-- Output Settings (shared) -->

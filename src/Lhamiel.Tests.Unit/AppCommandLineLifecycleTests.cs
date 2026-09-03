@@ -4,6 +4,47 @@ namespace Lhamiel.Tests.Unit;
 
 public sealed class AppCommandLineLifecycleTests
 {
+    [Theory]
+    [InlineData("--extract", "Extract")]
+    [InlineData("--compress", "Compress")]
+    public void ParseCommandLineArgs_ParsesDirectOperation(string argument, string expected)
+    {
+        var request = App.ParseCommandLineArgs([argument, @"C:\sample.exe"]);
+
+        Assert.Equal(expected, request.Operation.ToString());
+        Assert.Equal([@"C:\sample.exe"], request.FilePaths);
+    }
+
+    [Theory]
+    [InlineData("--extract")]
+    [InlineData("--compress")]
+    public void ParseCommandLineArgs_OperationOnlyHasNoWorkAndCanOpenMainWindow(string argument)
+    {
+        var request = App.ParseCommandLineArgs([argument]);
+
+        Assert.Empty(request.FilePaths);
+    }
+
+    [Fact]
+    public void ParseCommandLineArgs_CombinesFormatAndCompressionRoute()
+    {
+        var request = App.ParseCommandLineArgs(["--compress", "--format", "7z", @"C:\sample.zip"]);
+
+        Assert.Equal(CommandLineOperation.Compress, request.Operation);
+        Assert.Equal("7z", request.CompressionFormat);
+        Assert.Equal([@"C:\sample.zip"], request.FilePaths);
+    }
+
+    [Fact]
+    public void ParseCommandLineArgs_PreservesEveryPlayerSelectionArgument()
+    {
+        var request = App.ParseCommandLineArgs(
+            ["--compress", @"C:\first.txt", @"C:\second.txt", @"C:\folder"]);
+
+        Assert.Equal(CommandLineOperation.Compress, request.Operation);
+        Assert.Equal([@"C:\first.txt", @"C:\second.txt", @"C:\folder"], request.FilePaths);
+    }
+
     [Fact]
     public void HandleIpcForwardResult_FailureNotifiesUser()
     {

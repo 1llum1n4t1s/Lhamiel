@@ -41,9 +41,13 @@
   <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">Legado</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Formato de Compressão Padrão</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Atalho</x:String>
-  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Criar Atalho na Área de Trabalho</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Description" xml:space="preserve">Criar atalhos na área de trabalho.</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateIntegrated" xml:space="preserve">Criar atalho combinado</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateExtraction" xml:space="preserve">Criar atalho de extração</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateCompression" xml:space="preserve">Criar atalho de compactação</x:String>
   <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">Menu de Contexto</x:String>
-  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">Mostrar “Lhamielへ” no menu de contexto de arquivos e pastas</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableExtraction" xml:space="preserve">Mostrar “Extrair com Lhamiel”</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableCompression" xml:space="preserve">Mostrar “Compactar com Lhamiel”</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Idioma</x:String>
 
   <!-- Output Settings (shared) -->

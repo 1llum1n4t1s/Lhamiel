@@ -41,9 +41,13 @@
   <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">Warisan</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Format Kompresi Bawaan</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Pintasan</x:String>
-  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Buat Pintasan Desktop</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Description" xml:space="preserve">Buat pintasan di desktop.</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateIntegrated" xml:space="preserve">Buat Pintasan Terpadu</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateExtraction" xml:space="preserve">Buat Pintasan Ekstraksi</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateCompression" xml:space="preserve">Buat Pintasan Kompresi</x:String>
   <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">Menu Konteks</x:String>
-  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">Tampilkan “Lhamielへ” di menu klik kanan file dan folder</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableExtraction" xml:space="preserve">Tampilkan “Ekstrak dengan Lhamiel”</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableCompression" xml:space="preserve">Tampilkan “Kompres dengan Lhamiel”</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Bahasa</x:String>
 
   <!-- Output Settings (shared) -->

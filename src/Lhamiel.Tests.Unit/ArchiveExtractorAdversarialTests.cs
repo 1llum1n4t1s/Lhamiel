@@ -424,6 +424,14 @@ public class ArchiveExtractorAdversarialTests
         Assert.Equal("noext", ArchiveExtractor.GetArchiveBaseName("noext"));
     }
 
+    [Fact]
+    public void DirectExtraction_SelfExtractingExecutableIsAcceptedAndExtensionIsRemoved()
+    {
+        Assert.True(ArchiveExtractor.IsSupportedDirectExtractionType("setup.exe"));
+        Assert.Equal("setup", ArchiveExtractor.GetArchiveBaseName("setup.exe"));
+        Assert.False(ArchiveExtractor.IsSupportedArchiveType("setup.exe"));
+    }
+
     /// <summary>
     /// @adversarial @category boundary @severity medium
     /// 未知の拡張子 → そのまま返す

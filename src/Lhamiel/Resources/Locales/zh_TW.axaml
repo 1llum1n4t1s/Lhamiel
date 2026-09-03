@@ -41,9 +41,13 @@
   <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">舊版</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">預設壓縮格式</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">捷徑</x:String>
-  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 建立桌面捷徑</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Description" xml:space="preserve">在桌面建立捷徑。</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateIntegrated" xml:space="preserve">建立整合捷徑</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateExtraction" xml:space="preserve">建立解壓縮捷徑</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateCompression" xml:space="preserve">建立壓縮捷徑</x:String>
   <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">右鍵選單</x:String>
-  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">在檔案和資料夾的右鍵選單中顯示「Lhamielへ」</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableExtraction" xml:space="preserve">顯示「使用 Lhamiel 解壓縮」</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableCompression" xml:space="preserve">顯示「使用 Lhamiel 壓縮」</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">語言</x:String>
 
   <!-- Output Settings (shared) -->

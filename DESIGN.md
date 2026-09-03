@@ -20,7 +20,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 | `ExtractionDestinationGate` | Serializes operations that converge on the same final extraction path while allowing unrelated destinations to proceed independently. |
 | `Settings` / `SettingsManager` | JSON persistence under `%LocalAppData%\Lhamiel`, recovery from damaged settings, synchronized mutation, and immutable snapshots for long-running operations. |
 | `IpcService` | Current-user-only named-pipe transport used to forward later launches to the resident instance. |
-| `ShellContextMenu` / `Lhamiel.ShellExtension` | Windows file associations and Explorer integration. Windows 11 uses a signed native `IExplorerCommand` plus sparse MSIX; older or development environments fall back to classic registry verbs. |
+| `ShellContextMenu` / `Lhamiel.ShellExtension` | Windows file associations and Explorer integration. Extraction and compression are independent commands; the native extension reads their enabled state from `HKCU\Software\Classes\Lhamiel.ContextMenu`. Windows 11 uses signed `IExplorerCommand` handlers plus sparse MSIX; older or development environments fall back to classic registry verbs. |
 | `UpdateChecker` / `App.Check4Update` | Silent login-time and interactive UI update paths. Both consume Velopack manifests from the fixed R2 custom domain through `SimpleWebSource`. |
 | `SupportDialog` | Email-code-verified support submission through `Kagayoi.Support.Client` using product ID `lhamiel`; it does not expose other users' tickets. |
 | `Logger`, `CrashHandler`, `DiagnosticsCollector` | Masked diagnostics, bounded crash dumps, and support bundles. Passwords and sensitive settings must not cross this boundary in plaintext. |
@@ -31,7 +31,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 
 1. `Program` performs Velopack startup handling and starts Avalonia.
 2. `App` acquires the single-instance mutex. Later processes forward arguments through `IpcService` and exit.
-3. UI drag-and-drop enters through `MainWindowViewModel.ProcessDroppedPathsAsync`; CLI and file-association launches enter through `App.ProcessCommandLineFiles`.
+3. UI drag-and-drop enters through `MainWindowViewModel.ProcessDroppedPathsAsync`; CLI, shortcut, and file-association launches enter through `App.ProcessCommandLineFiles`. `--extract` forces extraction (including self-extracting `.exe` archives), `--compress` forces compression, and a route flag without paths opens the normal main window.
 4. `ArchiveOperationGate` queues the top-level request, then `ArchiveProcessor` selects extraction or compression and creates immutable settings snapshots.
 
 ### Extraction

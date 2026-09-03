@@ -41,9 +41,13 @@
   <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">Наследие</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Формат сжатия по умолчанию</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Ярлык</x:String>
-  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Создать ярлык на рабочем столе</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Description" xml:space="preserve">Создать ярлыки на рабочем столе.</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateIntegrated" xml:space="preserve">Создать объединённый ярлык</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateExtraction" xml:space="preserve">Создать ярлык распаковки</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateCompression" xml:space="preserve">Создать ярлык сжатия</x:String>
   <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">Контекстное меню</x:String>
-  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">Показывать «Lhamielへ» в контекстном меню файлов и папок</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableExtraction" xml:space="preserve">Показывать «Распаковать с Lhamiel»</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableCompression" xml:space="preserve">Показывать «Сжать с Lhamiel»</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Язык</x:String>
 
   <!-- Output Settings (shared) -->

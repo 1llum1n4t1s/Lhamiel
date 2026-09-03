@@ -219,10 +219,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private bool _check4UpdatesOnStartup = true;
 
     /// <summary>
-    /// ファイルとフォルダの右クリックメニューに「Lhamielへ」を表示するかどうか。
+    /// ファイルの右クリックメニューに「Lhamielで展開」を表示するかどうか。
     /// </summary>
     [ObservableProperty]
-    private bool _addToContextMenu;
+    private bool _addExtractToContextMenu;
+
+    /// <summary>
+    /// ファイルとフォルダの右クリックメニューに「Lhamielで圧縮」を表示するかどうか。
+    /// </summary>
+    [ObservableProperty]
+    private bool _addCompressToContextMenu;
 
     [ObservableProperty]
     private int _selectedDirectoryStructureMode;
@@ -314,7 +320,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (hasValidSourceIgnoreFileNames)
                 s.SourceIgnoreFileNames = sourceIgnoreFileNames;
             s.Check4UpdatesOnStartup = Check4UpdatesOnStartup;
-            s.AddToContextMenu = AddToContextMenu;
+            s.AddExtractToContextMenu = AddExtractToContextMenu;
+            s.AddCompressToContextMenu = AddCompressToContextMenu;
             s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
             s.ZipCompressionLevel = ZipCompressionLevel;
             s.SevenZipCompressionLevel = SevenZipCompressionLevel;
@@ -607,12 +614,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnCheck4UpdatesOnStartupChanged(bool value) => AutoSave();
 
-    partial void OnAddToContextMenuChanged(bool value)
+    partial void OnAddExtractToContextMenuChanged(bool value)
     {
         if (_isLoading)
             return;
 
-        if (ShellContextMenu.SetEnabled(value))
+        if (ShellContextMenu.SetEnabled(AddExtractToContextMenu, AddCompressToContextMenu))
         {
             AutoSave();
             return;
@@ -622,7 +629,32 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _isLoading = true;
         try
         {
-            AddToContextMenu = !value;
+            AddExtractToContextMenu = !value;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+
+        _ = MessageService.ShowError(App.Text("Error.ApplyAssociation"));
+    }
+
+    partial void OnAddCompressToContextMenuChanged(bool value)
+    {
+        if (_isLoading)
+            return;
+
+        if (ShellContextMenu.SetEnabled(AddExtractToContextMenu, AddCompressToContextMenu))
+        {
+            AutoSave();
+            return;
+        }
+
+        // 適用に失敗した場合は、UI と永続設定を実際の変更前の状態へ戻す。
+        _isLoading = true;
+        try
+        {
+            AddCompressToContextMenu = !value;
         }
         finally
         {
@@ -1010,7 +1042,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         RespectNestedGitignore = s.RespectNestedGitignore;
         SourceIgnoreFileNamesText = string.Join(Environment.NewLine, s.SourceIgnoreFileNames);
         Check4UpdatesOnStartup = s.Check4UpdatesOnStartup;
-        AddToContextMenu = s.AddToContextMenu;
+        AddExtractToContextMenu = s.AddExtractToContextMenu;
+        AddCompressToContextMenu = s.AddCompressToContextMenu;
         IgnoredUpdateTag = s.IgnoreUpdateTag ?? string.Empty;
         SelectedDirectoryStructureMode = (int)s.DirectoryStructureMode;
         SelectedLocale = string.IsNullOrEmpty(s.Locale) ? App.DetectDefaultLocale() : s.Locale;
@@ -1178,11 +1211,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
 
     [RelayCommand]
-    private void CreateShortcut()
+    private void CreateIntegratedShortcut() => CreateShortcut(DesktopShortcutKind.Integrated);
+
+    [RelayCommand]
+    private void CreateExtractionShortcut() => CreateShortcut(DesktopShortcutKind.Extract);
+
+    [RelayCommand]
+    private void CreateCompressionShortcut() => CreateShortcut(DesktopShortcutKind.Compress);
+
+    private void CreateShortcut(DesktopShortcutKind kind)
     {
         try
         {
-            if (ShortcutCreator.CreateDesktopShortcut(SelectedAppIconVariant))
+            if (ShortcutCreator.CreateDesktopShortcut(kind, SelectedAppIconVariant))
                 _ = MessageService.ShowSuccess(App.Text("Shortcut.Created"));
             else
                 _ = MessageService.ShowError(App.Text("Shortcut.Failed"));
@@ -1361,8 +1402,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
         catch (Exception ex)
         {
             Logger.LogException("ファイルの処理に失敗しました", ex);
-            _ = MessageService.ShowException(App.Text("Error.ProcessFiles"), ex);
-            progressWindow?.CloseSafe();
+            await MessageService.ShowAfterClosingAsync(
+                progressWindow is null ? null : () => progressWindow.CloseSafeAsync(),
+                () => MessageService.ShowException(App.Text("Error.ProcessFiles"), ex));
         }
     }
 

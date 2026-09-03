@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Text;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -19,6 +20,8 @@ internal static partial class ShellLinkNative
     private const int VTable_SetPath = 20;
     private const int VTable_SetDescription = 7;
     private const int VTable_SetWorkingDirectory = 9;
+    private const int VTable_GetArguments = 10;
+    private const int VTable_SetArguments = 11;
     private const int VTable_SetIconLocation = 17;
     // IUnknown vtable offsets (COM spec)
     private const int VTable_QueryInterface = 0;
@@ -85,6 +88,12 @@ internal static partial class ShellLinkNative
     private delegate int SetWorkingDirectoryDelegate(nint thisPtr, [MarshalAs(UnmanagedType.LPWStr)] string pszDir);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate int GetArgumentsDelegate(nint thisPtr, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszArgs, int cchMaxPath);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate int SetArgumentsDelegate(nint thisPtr, [MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate int SetIconLocationDelegate(nint thisPtr, [MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iconIndex);
 
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
@@ -113,13 +122,15 @@ internal static partial class ShellLinkNative
     /// <param name="description">説明文字列</param>
     /// <param name="iconPath">ショートカットに表示するアイコンファイル。null の場合はリンク先のアイコンを使用する。</param>
     /// <param name="appUserModelId">タスクバーのグループ化に使う AppUserModelID。null の場合は設定しない。</param>
+    /// <param name="arguments">リンク先へ固定で渡すコマンドライン引数。null または空の場合は設定しない。</param>
     /// <returns>成功した場合 true</returns>
     public static bool CreateShortcut(
         string targetPath,
         string shortcutPath,
         string description,
         string? iconPath = null,
-        string? appUserModelId = null)
+        string? appUserModelId = null,
+        string? arguments = null)
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
@@ -141,12 +152,14 @@ internal static partial class ShellLinkNative
                 var setPathPtr = Marshal.ReadIntPtr(vtable, VTable_SetPath * IntPtr.Size);
                 var setDescriptionPtr = Marshal.ReadIntPtr(vtable, VTable_SetDescription * IntPtr.Size);
                 var setWorkingDirPtr = Marshal.ReadIntPtr(vtable, VTable_SetWorkingDirectory * IntPtr.Size);
+                var setArgumentsPtr = Marshal.ReadIntPtr(vtable, VTable_SetArguments * IntPtr.Size);
                 var setIconLocationPtr = Marshal.ReadIntPtr(vtable, VTable_SetIconLocation * IntPtr.Size);
                 var releasePtr = Marshal.ReadIntPtr(vtable, VTable_Release * IntPtr.Size);
 
                 var setPath = Marshal.GetDelegateForFunctionPointer<SetPathDelegate>(setPathPtr);
                 var setDescription = Marshal.GetDelegateForFunctionPointer<SetDescriptionDelegate>(setDescriptionPtr);
                 var setWorkingDir = Marshal.GetDelegateForFunctionPointer<SetWorkingDirectoryDelegate>(setWorkingDirPtr);
+                var setArguments = Marshal.GetDelegateForFunctionPointer<SetArgumentsDelegate>(setArgumentsPtr);
                 var setIconLocation = Marshal.GetDelegateForFunctionPointer<SetIconLocationDelegate>(setIconLocationPtr);
                 var release = Marshal.GetDelegateForFunctionPointer<ReleaseDelegate>(releasePtr);
 
@@ -160,6 +173,10 @@ internal static partial class ShellLinkNative
                 }
                 var workDir = Path.GetDirectoryName(targetPath) ?? "";
                 if (!string.IsNullOrEmpty(workDir) && setWorkingDir(pShellLink, workDir) != S_OK)
+                {
+                    return false;
+                }
+                if (!string.IsNullOrEmpty(arguments) && setArguments(pShellLink, arguments) != S_OK)
                 {
                     return false;
                 }
@@ -217,6 +234,57 @@ internal static partial class ShellLinkNative
             {
                 CoUninitialize();
             }
+        }
+    }
+
+    /// <summary>テストと診断用に、ショートカットへ保存された固定引数を取得する。</summary>
+    internal static string? GetArguments(string shortcutPath)
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || !File.Exists(shortcutPath))
+            return null;
+
+        var hr = CoInitializeEx(0, COINIT_APARTMENTTHREADED);
+        try
+        {
+            if (CoCreateInstance(CLSID_ShellLink, 0, CLSCTX_INPROC_SERVER, IID_IShellLinkW, out var pShellLink) != S_OK
+                || pShellLink == 0)
+                return null;
+
+            try
+            {
+                var shellVtable = Marshal.ReadIntPtr(pShellLink);
+                var queryInterface = Marshal.GetDelegateForFunctionPointer<QueryInterfaceDelegate>(
+                    Marshal.ReadIntPtr(shellVtable, VTable_QueryInterface * IntPtr.Size));
+                if (queryInterface(pShellLink, IID_IPersistFile, out var pPersistFile) != S_OK || pPersistFile == 0)
+                    return null;
+
+                try
+                {
+                    var persistVtable = Marshal.ReadIntPtr(pPersistFile);
+                    var load = Marshal.GetDelegateForFunctionPointer<LoadDelegate>(
+                        Marshal.ReadIntPtr(persistVtable, VTable_IPersistFile_Load * IntPtr.Size));
+                    if (load(pPersistFile, shortcutPath, 0) != S_OK)
+                        return null;
+
+                    var getArguments = Marshal.GetDelegateForFunctionPointer<GetArgumentsDelegate>(
+                        Marshal.ReadIntPtr(shellVtable, VTable_GetArguments * IntPtr.Size));
+                    var buffer = new StringBuilder(32768);
+                    return getArguments(pShellLink, buffer, buffer.Capacity) == S_OK ? buffer.ToString() : null;
+                }
+                finally
+                {
+                    Release(pPersistFile);
+                }
+            }
+            finally
+            {
+                Release(pShellLink);
+            }
+        }
+        finally
+        {
+            if (hr == S_OK || hr == S_FALSE)
+                CoUninitialize();
         }
     }
 

@@ -41,9 +41,13 @@
   <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">परम्परा</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">पूर्वनिर्धारितसङ्कोचनप्रारूपम्</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">सङ्क्षिप्तमार्गः</x:String>
-  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 कार्यपृष्ठे सङ्क्षिप्तमार्गं रचयतु</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Description" xml:space="preserve">कार्यपृष्ठे सङ्क्षिप्तमार्गान् रचयतु।</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateIntegrated" xml:space="preserve">संयुक्तसङ्क्षिप्तमार्गं रचयतु</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateExtraction" xml:space="preserve">निष्कासनसङ्क्षिप्तमार्गं रचयतु</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateCompression" xml:space="preserve">संपीडनसङ्क्षिप्तमार्गं रचयतु</x:String>
   <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">सन्दर्भसूची</x:String>
-  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">सञ्चिकापुटयोः सन्दर्भसूच्यां “Lhamielへ” दर्शयतु</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableExtraction" xml:space="preserve">“Lhamiel द्वारा निष्कासयतु” दर्शयतु</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableCompression" xml:space="preserve">“Lhamiel द्वारा संपीडयतु” दर्शयतु</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">भाषा</x:String>
 
   <!-- Output Settings -->

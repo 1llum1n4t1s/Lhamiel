@@ -119,9 +119,14 @@ public class Settings
     public bool Check4UpdatesOnStartup { get; set; } = true;
 
     /// <summary>
-    /// ファイルとフォルダの右クリックメニューに「Lhamielへ」を表示するかどうか。
+    /// ファイルの右クリックメニューに「Lhamielで展開」を表示するかどうか。
     /// </summary>
-    public bool AddToContextMenu { get; set; }
+    public bool AddExtractToContextMenu { get; set; }
+
+    /// <summary>
+    /// ファイルとフォルダの右クリックメニューに「Lhamielで圧縮」を表示するかどうか。
+    /// </summary>
+    public bool AddCompressToContextMenu { get; set; }
 
     /// <summary>
     /// ユーザーが「このバージョンをスキップ」を選択した Velopack リリースタグ名（例: "v1.0.166"）。
@@ -504,7 +509,21 @@ public class Settings
 
                 if (settings != null)
                 {
+                    var migratedLegacyContextMenu = MigrateLegacyContextMenuSettings(settings, json);
                     settings.SanitizeAfterLoad();
+                    if (migratedLegacyContextMenu)
+                    {
+                        try
+                        {
+                            // 旧キーを新しい2キーへ置き換え、ヘッドレス起動だけでも移行を完了させる。
+                            settings.Save();
+                        }
+                        catch (Exception migrationSaveException)
+                        {
+                            // 値はメモリ上で移行済みなので起動は継続し、次回の通常保存で再試行する。
+                            Debug.WriteLine($"右クリックメニュー設定の移行保存に失敗しました: {migrationSaveException.Message}");
+                        }
+                    }
                 }
             }
             else
@@ -534,6 +553,45 @@ public class Settings
         }
 
         return settings;
+    }
+
+    /// <summary>
+    /// 単一だった旧 AddToContextMenu を展開／圧縮の独立設定へ移行する。
+    /// 新キーが一部だけ存在する場合は、その明示値を維持して欠けている側だけ旧値で補う。
+    /// </summary>
+    internal static bool MigrateLegacyContextMenuSettings(Settings settings, string json)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object
+                || !TryGetBool(root, "AddToContextMenu", out var legacyValue))
+            {
+                return false;
+            }
+
+            var migrated = false;
+            if (!TryGetBool(root, nameof(AddExtractToContextMenu), out _))
+            {
+                settings.AddExtractToContextMenu = legacyValue;
+                migrated = true;
+            }
+
+            if (!TryGetBool(root, nameof(AddCompressToContextMenu), out _))
+            {
+                settings.AddCompressToContextMenu = legacyValue;
+                migrated = true;
+            }
+
+            return migrated;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -875,7 +933,8 @@ public class Settings
         IncludeHiddenAndSystemEntries = true;
         UpdateChannel = "release";
         Check4UpdatesOnStartup = true;
-        AddToContextMenu = false;
+        AddExtractToContextMenu = false;
+        AddCompressToContextMenu = false;
         IgnoreUpdateTag = "";
         LogMaxSizeMB = 10;
         LogRetentionDays = 7;
@@ -934,7 +993,11 @@ public class Settings
             if (TryGetString(root, nameof(UpdateChannel), out var uc)) { s.UpdateChannel = uc!; recoveredCount++; }
             if (TryGetString(root, nameof(IgnoreUpdateTag), out var iut)) { s.IgnoreUpdateTag = iut!; recoveredCount++; }
             if (TryGetBool(root, nameof(Check4UpdatesOnStartup), out var c4uos)) { s.Check4UpdatesOnStartup = c4uos; recoveredCount++; }
-            if (TryGetBool(root, nameof(AddToContextMenu), out var atcm)) { s.AddToContextMenu = atcm; recoveredCount++; }
+            if (TryGetBool(root, nameof(AddExtractToContextMenu), out var aetcm)) { s.AddExtractToContextMenu = aetcm; recoveredCount++; }
+            if (TryGetBool(root, nameof(AddCompressToContextMenu), out var actcm)) { s.AddCompressToContextMenu = actcm; recoveredCount++; }
+            // 旧キーは MigrateLegacyContextMenuSettings が新2設定へ移す。回収件数には含め、
+            // 他プロパティの型不整合があっても旧ユーザーの ON/OFF を失わないようにする。
+            if (TryGetBool(root, "AddToContextMenu", out _)) { recoveredCount++; }
 
             if (TryGetBool(root, nameof(ExtractionOutputToSameDirectory), out var eotsd)) { s.ExtractionOutputToSameDirectory = eotsd; recoveredCount++; }
             if (TryGetBool(root, nameof(CompressionOutputToSameDirectory), out var cotsd)) { s.CompressionOutputToSameDirectory = cotsd; recoveredCount++; }

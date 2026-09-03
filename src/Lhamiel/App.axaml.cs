@@ -10,6 +10,18 @@ using System.Diagnostics;
 using System.Globalization;
 namespace Lhamiel;
 
+internal enum CommandLineOperation
+{
+    Automatic,
+    Extract,
+    Compress,
+}
+
+internal readonly record struct CommandLineRequest(
+    string CompressionFormat,
+    CommandLineOperation Operation,
+    string[] FilePaths);
+
 /// <summary>
 /// App.xaml の相互作用ロジック
 /// </summary>
@@ -207,11 +219,14 @@ public partial class App : Application
 
             Logger.LogStartup(startupArgs);
 
-            if (startupArgs.Length > 0)
+            var commandLineRequest = ParseCommandLineArgs(startupArgs);
+            if (commandLineRequest.FilePaths.Length > 0)
             {
                 // 関連付けから起動：更新チェックは行わず、プログレスバー画面のみ表示
-                var (compressionFormat, filePaths) = ParseCommandLineArgs(startupArgs);
-                await ProcessCommandLineFiles(filePaths, compressionFormat);
+                await ProcessCommandLineFiles(
+                    commandLineRequest.FilePaths,
+                    commandLineRequest.CompressionFormat,
+                    commandLineRequest.Operation);
             }
             else
             {
@@ -345,23 +360,46 @@ public partial class App : Application
     /// 検証する。未知の文字列を渡されても下流の Logger.Log にそのまま到達してログインジェクション
     /// （改行混入による SIEM 誤検知等）に繋がる経路を塞ぐ。allow-list 外は "default" にフォールバック。
     /// </remarks>
-    private static (string compressionFormat, string[] filePaths) ParseCommandLineArgs(string[] args)
+    internal static CommandLineRequest ParseCommandLineArgs(string[] args)
     {
-        if (args.Length >= 2 && args[0] == "--format")
+        var compressionFormat = "default";
+        var operation = CommandLineOperation.Automatic;
+        var filePaths = new List<string>();
+
+        for (var index = 0; index < args.Length; index++)
         {
-            var requestedFormat = args[1];
-            // case-insensitive で allow-list と照合し、canonical なケースに正規化
-            var canonical = Array.Find(Settings.SupportedCompressionFormats,
-                f => string.Equals(f, requestedFormat, StringComparison.OrdinalIgnoreCase));
-            return (canonical ?? "default", args[2..]);
+            switch (args[index])
+            {
+                case "--extract":
+                    operation = CommandLineOperation.Extract;
+                    break;
+                case "--compress":
+                    operation = CommandLineOperation.Compress;
+                    break;
+                case "--format" when index + 1 < args.Length:
+                    var requestedFormat = args[++index];
+                    compressionFormat = Array.Find(Settings.SupportedCompressionFormats,
+                        format => string.Equals(format, requestedFormat, StringComparison.OrdinalIgnoreCase))
+                        ?? "default";
+                    break;
+                default:
+                    if (!args[index].StartsWith("--", StringComparison.Ordinal))
+                        filePaths.Add(args[index]);
+                    break;
+            }
         }
-        return ("default", args.Where(a => !a.StartsWith("--")).ToArray());
+
+        return new CommandLineRequest(compressionFormat, operation, [.. filePaths]);
     }
 
     /// <summary>
     /// コマンドライン経由の複数ファイル処理。まとめ圧縮設定に応じて分岐する。
     /// </summary>
-    private async Task ProcessCommandLineFiles(string[] filePaths, string compressionFormat = "default", bool shouldShutdown = true)
+    private async Task ProcessCommandLineFiles(
+        string[] filePaths,
+        string compressionFormat = "default",
+        CommandLineOperation operation = CommandLineOperation.Automatic,
+        bool shouldShutdown = true)
     {
         if (TryFinishEmptyCommandLineRequest(filePaths.Length, shouldShutdown, ScheduleShutdownIfNeeded))
             return;
@@ -382,7 +420,7 @@ public partial class App : Application
         // 単一ファイルの場合は従来の処理
         if (filePaths.Length == 1)
         {
-            await ProcessCommandLineFile(filePaths[0], compressionFormat, shouldShutdown);
+            await ProcessCommandLineFile(filePaths[0], compressionFormat, operation, shouldShutdown);
             return;
         }
 
@@ -390,8 +428,10 @@ public partial class App : Application
         var validPaths = new List<string>();
         foreach (var path in filePaths)
         {
-            if (Directory.Exists(path) || File.Exists(path))
+            if (File.Exists(path) || (operation != CommandLineOperation.Extract && Directory.Exists(path)))
                 validPaths.Add(path);
+            else if (operation == CommandLineOperation.Extract && Directory.Exists(path))
+                Logger.Log($"展開直通ルートではフォルダを処理できません: {path}");
             else
                 Logger.Log($"指定されたパスが存在しません: {path}");
         }
@@ -402,7 +442,14 @@ public partial class App : Application
         var settings = SettingsManager.Instance.CreateSnapshot();
 
         // すべてアーカイブで圧縮形式未指定なら個別展開
-        if (compressionFormat == "default" && ArchiveExtractor.AreAllSupportedArchives(validPaths))
+        if (operation == CommandLineOperation.Extract)
+        {
+            await ProcessMultipleExtractions(
+                validPaths.ToArray(), settings, shouldShutdown, allowSelfExtractingExecutable: true);
+        }
+        else if (operation == CommandLineOperation.Automatic
+                 && compressionFormat == "default"
+                 && ArchiveExtractor.AreAllSupportedArchives(validPaths))
         {
             await ProcessMultipleExtractions(validPaths.ToArray(), settings, shouldShutdown);
         }
@@ -420,7 +467,7 @@ public partial class App : Application
                 for (var i = 0; i < validPaths.Count; i++)
                 {
                     var isLast = i == validPaths.Count - 1;
-                    await ProcessCommandLineFile(validPaths[i], compressionFormat, isLast && shouldShutdown);
+                    await ProcessCommandLineFile(validPaths[i], compressionFormat, operation, isLast && shouldShutdown);
                 }
             }
         }
@@ -512,8 +559,16 @@ public partial class App : Application
         catch (Exception ex)
         {
             Logger.LogException($"{operationName}でエラーが発生", ex);
-            _ = MessageService.ShowError(App.Text(errorResourceKey, ex.Message));
-            ShutdownIfNeeded(shouldShutdown);
+            try
+            {
+                await MessageService.ShowAfterClosingAsync(
+                    progressWindow is null ? null : () => progressWindow.CloseSafeAsync(),
+                    () => MessageService.ShowError(App.Text(errorResourceKey, ex.Message)));
+            }
+            finally
+            {
+                ShutdownIfNeeded(shouldShutdown);
+            }
         }
         finally
         {
@@ -528,14 +583,18 @@ public partial class App : Application
     /// <summary>
     /// 複数のアーカイブファイルを個別に展開する
     /// </summary>
-    private Task ProcessMultipleExtractions(string[] filePaths, Settings settings, bool shouldShutdown = true)
+    private Task ProcessMultipleExtractions(
+        string[] filePaths,
+        Settings settings,
+        bool shouldShutdown = true,
+        bool allowSelfExtractingExecutable = false)
     {
         Logger.Log($"コマンドラインから複数ファイル展開を開始: {filePaths.Length}個のファイル");
         return RunWithProgressWindowAsync(async (progressWindow, ct) =>
         {
             var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
                 filePaths, settings.ExtractionOutputDirectory, settings.ExtractionOutputToSameDirectory,
-                progressWindow, ct);
+                progressWindow, ct, allowSelfExtractingExecutable: allowSelfExtractingExecutable);
 
             if (extractionResults.Count > 0)
             {
@@ -595,8 +654,13 @@ public partial class App : Application
     /// </summary>
     /// <param name="path">処理するファイルまたはフォルダのパス</param>
     /// <param name="compressionFormat">圧縮形式（"default"の場合は展開、具体的な形式の場合は圧縮）</param>
+    /// <param name="operation">自動判定、展開直通、圧縮直通の処理ルート。</param>
     /// <param name="shouldShutdown">処理終了後にアプリケーションを終了するかどうか</param>
-    private async Task ProcessCommandLineFile(string path, string compressionFormat = "default", bool shouldShutdown = true)
+    private async Task ProcessCommandLineFile(
+        string path,
+        string compressionFormat = "default",
+        CommandLineOperation operation = CommandLineOperation.Automatic,
+        bool shouldShutdown = true)
     {
         try
         {
@@ -606,13 +670,32 @@ public partial class App : Application
             if (!File.Exists(path) && !Directory.Exists(path))
             {
                 Logger.Log($"指定されたパスが存在しません: {path}");
-                _ = MessageService.ShowError(App.Text("Error.FolderNotFound", path));
+                await MessageService.ShowAfterClosingAsync(
+                    closeTransientWindow: null,
+                    () => MessageService.ShowError(App.Text("Error.FolderNotFound", path)));
                 ShutdownIfNeeded(shouldShutdown);
                 return;
             }
 
             // 設定を読み込み
             var settings = SettingsManager.Instance.CreateSnapshot();
+
+            if (operation == CommandLineOperation.Extract)
+            {
+                if (!File.Exists(path))
+                {
+                    Logger.Log($"展開直通ルートではファイルだけを処理できます: {path}");
+                    await MessageService.ShowAfterClosingAsync(
+                        closeTransientWindow: null,
+                        () => MessageService.ShowError(App.Text("Error.UnsupportedFormat", Path.GetExtension(path))));
+                    ShutdownIfNeeded(shouldShutdown);
+                    return;
+                }
+
+                Logger.Log($"展開直通ルートでファイルを展開します: {path}");
+                await ProcessFileExtraction(path, settings, shouldShutdown, allowSelfExtractingExecutable: true);
+                return;
+            }
 
             // ファイルかフォルダかを判定して適切な処理を実行
             if (File.Exists(path))
@@ -621,7 +704,7 @@ public partial class App : Application
                 if (ArchiveExtractor.IsSupportedArchiveType(path))
                 {
                     // アーカイブファイルの場合
-                    if (compressionFormat == "default")
+                    if (operation != CommandLineOperation.Compress && compressionFormat == "default")
                     {
                         // 圧縮形式が指定されていない場合は展開処理を実行
                         Logger.Log($"アーカイブファイルを展開処理します: {path}");
@@ -651,8 +734,16 @@ public partial class App : Application
         catch (Exception ex)
         {
             Logger.LogException("コマンドライン処理でエラーが発生", ex);
-            _ = MessageService.ShowError(App.Text("Error.DuringProcessing", ex.Message));
-            ShutdownIfNeeded(shouldShutdown);
+            try
+            {
+                await MessageService.ShowAfterClosingAsync(
+                    closeTransientWindow: null,
+                    () => MessageService.ShowError(App.Text("Error.DuringProcessing", ex.Message)));
+            }
+            finally
+            {
+                ShutdownIfNeeded(shouldShutdown);
+            }
         }
     }
 
@@ -695,13 +786,17 @@ public partial class App : Application
     /// <summary>
     /// ファイルの展開処理を実行
     /// </summary>
-    private Task ProcessFileExtraction(string filePath, Settings settings, bool shouldShutdown = true)
+    private Task ProcessFileExtraction(
+        string filePath,
+        Settings settings,
+        bool shouldShutdown = true,
+        bool allowSelfExtractingExecutable = false)
     {
         return RunWithProgressWindowAsync(async (progressWindow, ct) =>
         {
             var (finalOutputPath, structureInfo) = await ArchiveProcessor.ExtractArchiveAsync(
                 filePath, settings.ExtractionOutputDirectory, settings.ExtractionOutputToSameDirectory,
-                progressWindow, ct);
+                progressWindow, ct, allowSelfExtractingExecutable: allowSelfExtractingExecutable);
 
             if (finalOutputPath != null)
             {
@@ -796,11 +891,15 @@ public partial class App : Application
 
                 if (args.Length > 0)
                 {
-                    var (compressionFormat, filePaths) = ParseCommandLineArgs(args);
+                    var request = ParseCommandLineArgs(args);
 
                     // 受信した引数で処理を実行。
                     // IPC 経由の場合は処理終了後にアプリを終了させないようにする（shouldShutdown:false）。
-                    _ = ProcessCommandLineFiles(filePaths, compressionFormat, false).ContinueWith(t =>
+                    _ = ProcessCommandLineFiles(
+                        request.FilePaths,
+                        request.CompressionFormat,
+                        request.Operation,
+                        false).ContinueWith(t =>
                     {
                         if (t.IsFaulted)
                             Logger.LogException("IPC経由の処理でエラーが発生", t.Exception!);

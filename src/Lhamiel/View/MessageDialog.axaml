@@ -1,0 +1,75 @@
+<Window
+    x:Class="Lhamiel.View.MessageDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:view="using:Lhamiel.View"
+    Width="420"
+    MaxHeight="600"
+    SizeToContent="Height"
+    x:DataType="view:MessageDialog"
+    Background="Transparent"
+    CanResize="False"
+    ExtendClientAreaTitleBarHeightHint="32"
+    ExtendClientAreaToDecorationsHint="True"
+    TransparencyLevelHint="AcrylicBlur"
+    WindowStartupLocation="CenterOwner">
+    <Panel>
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial
+                    BackgroundSource="Digger"
+                    TintColor="{DynamicResource Color.Window}" />
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+        <!-- 白いデスクトップが透けても文字とのコントラストを保つテーマ色のスクリム -->
+        <Border
+            Background="{DynamicResource Brush.Window}"
+            IsHitTestVisible="False"
+            Opacity="0.5" />
+        <Grid Margin="28,44,28,20" RowDefinitions="Auto,Auto">
+            <ScrollViewer
+                Grid.Row="0"
+                MaxHeight="420"
+                Margin="0,0,0,20"
+                HorizontalScrollBarVisibility="Disabled"
+                VerticalScrollBarVisibility="Auto">
+                <TextBlock
+                    x:Name="MessageText"
+                    FontSize="14"
+                    Foreground="{DynamicResource Brush.FG1}"
+                    TextWrapping="Wrap" />
+            </ScrollViewer>
+
+            <StackPanel
+                Grid.Row="1"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal"
+                Spacing="10">
+                <Button
+                    x:Name="OkButton"
+                    MinWidth="100"
+                    Padding="16,8"
+                    Click="OkButton_Click"
+                    Content="{DynamicResource Text.Button.OK}"
+                    IsCancel="True"
+                    IsDefault="True" />
+                <Button
+                    x:Name="YesButton"
+                    MinWidth="100"
+                    Padding="16,8"
+                    Click="YesButton_Click"
+                    Content="{DynamicResource Text.Button.Yes}"
+                    IsDefault="True"
+                    IsVisible="False" />
+                <Button
+                    x:Name="NoButton"
+                    MinWidth="100"
+                    Padding="16,8"
+                    Click="NoButton_Click"
+                    Content="{DynamicResource Text.Button.No}"
+                    IsCancel="True"
+                    IsVisible="False" />
+            </StackPanel>
+        </Grid>
+    </Panel>
+</Window>

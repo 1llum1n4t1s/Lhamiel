@@ -41,9 +41,13 @@
   <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">レガシー</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">デフォルトの圧縮形式</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">ショートカット</x:String>
-  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 デスクトップにショートカット作成</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Description" xml:space="preserve">デスクトップにショートカットを作成します。</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateIntegrated" xml:space="preserve">統合ショートカット作成</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateExtraction" xml:space="preserve">展開ショートカット作成</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateCompression" xml:space="preserve">圧縮ショートカット作成</x:String>
   <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">右クリックメニュー</x:String>
-  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">ファイルとフォルダの右クリックメニューに「Lhamielへ」を表示</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableExtraction" xml:space="preserve">Lhamielで展開</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableCompression" xml:space="preserve">Lhamielで圧縮</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">言語</x:String>
 
   <!-- Output Settings (shared) -->

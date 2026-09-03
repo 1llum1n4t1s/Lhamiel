@@ -183,19 +183,33 @@ public partial class ProgressWindow : Window
     /// ウィンドウを安全に閉じます。
     /// すでに閉じている場合や、閉じようとしている場合は何もしません。
     /// </summary>
-    public void CloseSafe()
+    public void CloseSafe() => Dispatcher.UIThread.Post(CloseSafelyOnUiThread);
+
+    /// <summary>
+    /// ウィンドウが閉じるまで待機できる形で安全に閉じます。
+    /// 後続のダイアログがこのウィンドウを所有者として選ばないようにする場合に使用します。
+    /// </summary>
+    public async Task CloseSafeAsync()
     {
-        Dispatcher.UIThread.Post(() =>
+        if (Dispatcher.UIThread.CheckAccess())
         {
-            try
-            {
-                if (IsInitialized) Close();
-            }
-            catch (InvalidOperationException ex)
-            {
-                Logger.Log($"ウィンドウクローズ時のエラー: {ex.Message}");
-            }
-        });
+            CloseSafelyOnUiThread();
+            return;
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(CloseSafelyOnUiThread);
+    }
+
+    private void CloseSafelyOnUiThread()
+    {
+        try
+        {
+            if (IsInitialized) Close();
+        }
+        catch (InvalidOperationException ex)
+        {
+            Logger.Log($"ウィンドウクローズ時のエラー: {ex.Message}");
+        }
     }
 
     /// <summary>

@@ -19,7 +19,50 @@ public class SettingsTests
         Assert.False(settings.CompressionOutputToSameDirectory);
         Assert.Equal("https://lhamiel.kagayoi.com", settings.UpdateBaseUrl);
         Assert.Equal("release", settings.UpdateChannel);
-        Assert.False(settings.AddToContextMenu);
+        Assert.False(settings.AddExtractToContextMenu);
+        Assert.False(settings.AddCompressToContextMenu);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void MigrateLegacyContextMenuSettings_CopiesOldValueToBothSettings(bool legacyValue)
+    {
+        var settings = new Settings();
+        var json = $$"""{ "AddToContextMenu": {{legacyValue.ToString().ToLowerInvariant()}} }""";
+
+        Assert.True(Settings.MigrateLegacyContextMenuSettings(settings, json));
+
+        Assert.Equal(legacyValue, settings.AddExtractToContextMenu);
+        Assert.Equal(legacyValue, settings.AddCompressToContextMenu);
+    }
+
+    [Fact]
+    public void MigrateLegacyContextMenuSettings_PreservesExplicitNewValue()
+    {
+        var settings = new Settings { AddExtractToContextMenu = false };
+        const string json = """{ "AddToContextMenu": true, "AddExtractToContextMenu": false }""";
+
+        Assert.True(Settings.MigrateLegacyContextMenuSettings(settings, json));
+
+        Assert.False(settings.AddExtractToContextMenu);
+        Assert.True(settings.AddCompressToContextMenu);
+    }
+
+    [Fact]
+    public void ContextMenuSettings_SerializationUsesOnlyNewKeys()
+    {
+        var settings = new Settings
+        {
+            AddExtractToContextMenu = true,
+            AddCompressToContextMenu = false,
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(settings, AppJsonContext.Default.Settings);
+
+        Assert.Contains("\"AddExtractToContextMenu\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"AddCompressToContextMenu\"", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"AddToContextMenu\"", json, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -111,7 +154,8 @@ public class SettingsTests
             ExtractionOutputToSameDirectory = true,
             CompressionOutputToSameDirectory = true,
             UpdateChannel = "beta",
-            AddToContextMenu = true
+            AddExtractToContextMenu = true,
+            AddCompressToContextMenu = true
         };
 
         // Act
@@ -123,7 +167,8 @@ public class SettingsTests
         Assert.False(settings.CompressionOutputToSameDirectory);
         Assert.Equal("https://lhamiel.kagayoi.com", settings.UpdateBaseUrl);
         Assert.Equal("release", settings.UpdateChannel);
-        Assert.False(settings.AddToContextMenu);
+        Assert.False(settings.AddExtractToContextMenu);
+        Assert.False(settings.AddCompressToContextMenu);
         Assert.Equal([".gitignore"], settings.SourceIgnoreFileNames);
     }
 

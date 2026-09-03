@@ -71,9 +71,9 @@ public class ProgramLifecycleTests
 
         Program.CleanupBeforeUninstall(
             () => startupUnregisterCount++,
-            enabled =>
+            (extractEnabled, compressEnabled) =>
             {
-                contextMenuEnabled = enabled;
+                contextMenuEnabled = extractEnabled || compressEnabled;
                 return true;
             },
             () =>

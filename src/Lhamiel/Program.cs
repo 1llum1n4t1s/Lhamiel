@@ -83,7 +83,10 @@ internal class Program
     /// </summary>
     private static void RefreshShellContextMenuRegistration()
     {
-        _ = ShellContextMenu.SetEnabled(SettingsManager.Instance.Current.AddToContextMenu);
+        var settings = SettingsManager.Instance.Current;
+        _ = ShellContextMenu.SetEnabled(
+            settings.AddExtractToContextMenu,
+            settings.AddCompressToContextMenu);
     }
 
     /// <summary>
@@ -92,11 +95,11 @@ internal class Program
     /// </summary>
     internal static void CleanupBeforeUninstall(
         Action? unregisterStartup = null,
-        Func<bool, bool>? setContextMenuEnabled = null,
+        Func<bool, bool, bool>? setContextMenuEnabled = null,
         Func<bool>? disassociateAllFileTypes = null)
     {
         (unregisterStartup ?? StartupRegistration.Unregister)();
-        _ = (setContextMenuEnabled ?? ShellContextMenu.SetEnabled)(false);
+        _ = (setContextMenuEnabled ?? ShellContextMenu.SetEnabled)(false, false);
         _ = (disassociateAllFileTypes ?? FileAssociation.DisassociateAllFileTypes)();
     }
 

@@ -41,9 +41,13 @@
   <x:String x:Key="Text.Settings.AppIcon.Legacy" xml:space="preserve">Legacy</x:String>
   <x:String x:Key="Text.Settings.CompressionFormat.Header" xml:space="preserve">Standard-Komprimierungsformat</x:String>
   <x:String x:Key="Text.Settings.Shortcut.Header" xml:space="preserve">Verknüpfung</x:String>
-  <x:String x:Key="Text.Settings.Shortcut.Create" xml:space="preserve">📌 Desktopverknüpfung erstellen</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.Description" xml:space="preserve">Verknüpfungen auf dem Desktop erstellen.</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateIntegrated" xml:space="preserve">Kombinierte Verknüpfung erstellen</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateExtraction" xml:space="preserve">Entpack-Verknüpfung erstellen</x:String>
+  <x:String x:Key="Text.Settings.Shortcut.CreateCompression" xml:space="preserve">Pack-Verknüpfung erstellen</x:String>
   <x:String x:Key="Text.Settings.ContextMenu.Header" xml:space="preserve">Kontextmenü</x:String>
-  <x:String x:Key="Text.Settings.ContextMenu.Enable" xml:space="preserve">„Lhamielへ“ im Kontextmenü von Dateien und Ordnern anzeigen</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableExtraction" xml:space="preserve">„Mit Lhamiel entpacken“ anzeigen</x:String>
+  <x:String x:Key="Text.Settings.ContextMenu.EnableCompression" xml:space="preserve">„Mit Lhamiel komprimieren“ anzeigen</x:String>
   <x:String x:Key="Text.Settings.Language.Header" xml:space="preserve">Sprache</x:String>
 
   <!-- Output Settings (shared) -->

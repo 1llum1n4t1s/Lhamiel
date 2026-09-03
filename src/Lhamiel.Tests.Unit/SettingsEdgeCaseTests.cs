@@ -17,7 +17,8 @@ public class SettingsEdgeCaseTests
             Theme = "Dark",
             CreateArchiveNameFolder = false,
             DirectoryStructureMode = DirectoryStructureMode.Flat,
-            AddToContextMenu = true,
+            AddExtractToContextMenu = true,
+            AddCompressToContextMenu = true,
             SourceIgnoreFileNames = [".lhamielignore", ".gitignore"],
         };
         reset.ResetToDefaults();
@@ -38,7 +39,8 @@ public class SettingsEdgeCaseTests
         // v1.0.160 で導入 → 同 ver 取り下げ → 再リリースで再導入: ResetToDefaults の漏れ修正を検証
         Assert.Equal(fresh.CreateArchiveNameFolder, reset.CreateArchiveNameFolder);
         Assert.Equal(fresh.DirectoryStructureMode, reset.DirectoryStructureMode);
-        Assert.Equal(fresh.AddToContextMenu, reset.AddToContextMenu);
+        Assert.Equal(fresh.AddExtractToContextMenu, reset.AddExtractToContextMenu);
+        Assert.Equal(fresh.AddCompressToContextMenu, reset.AddCompressToContextMenu);
         Assert.Equal(fresh.SourceIgnoreFileNames, reset.SourceIgnoreFileNames);
         Assert.Equal(fresh.AppIconVariant, reset.AppIconVariant);
     }

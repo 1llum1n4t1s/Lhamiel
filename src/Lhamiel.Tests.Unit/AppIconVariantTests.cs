@@ -5,6 +5,21 @@ namespace Lhamiel.Tests.Unit;
 
 public sealed class AppIconVariantTests
 {
+    [Theory]
+    [InlineData(0, "Lhamiel.lnk", null)]
+    [InlineData(1, "Lhamiel展開.lnk", "--extract")]
+    [InlineData(2, "Lhamiel圧縮.lnk", "--compress")]
+    public void DesktopShortcutDefinition_UsesExpectedNameAndArguments(
+        int kind,
+        string expectedFileName,
+        string? expectedArguments)
+    {
+        var definition = ShortcutCreator.GetDesktopShortcutDefinition((DesktopShortcutKind)kind);
+
+        Assert.Equal(expectedFileName, definition.FileName);
+        Assert.Equal(expectedArguments, definition.Arguments);
+    }
+
     [Fact]
     public void Settings_DefaultAppIconVariant_IsClassic()
     {
@@ -104,8 +119,10 @@ public sealed class AppIconVariantTests
                     shortcutPath,
                     "Lhamiel icon test",
                     initialIconPath,
-                    Program.AppUserModelId));
+                    Program.AppUserModelId,
+                    "--extract"));
             Assert.Equal(Program.AppUserModelId, ShellLinkNative.GetAppUserModelId(shortcutPath));
+            Assert.Equal("--extract", ShellLinkNative.GetArguments(shortcutPath));
             Assert.True(ShellLinkNative.UpdateIconLocation(shortcutPath, updatedIconPath, Program.AppUserModelId));
             Assert.Equal(Program.AppUserModelId, ShellLinkNative.GetAppUserModelId(shortcutPath));
 

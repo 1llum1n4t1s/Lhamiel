@@ -9,6 +9,7 @@ namespace Lhamiel.Util;
 public static class ArchiveExtractor
 {
     private const string FallbackArchiveBaseName = "archive";
+    internal const string SelfExtractingExecutableExtension = ".exe";
 
     /// <summary>
     /// 定数: サポートされている展開形式の一覧
@@ -47,7 +48,9 @@ public static class ArchiveExtractor
     {
         var name = Path.GetFileName(filePath);
         var ext = Path.GetExtension(name);
-        if (!string.IsNullOrEmpty(ext) && SupportedExtensions.Contains(ext))
+        if (!string.IsNullOrEmpty(ext)
+            && (SupportedExtensions.Contains(ext)
+                || string.Equals(ext, SelfExtractingExecutableExtension, StringComparison.OrdinalIgnoreCase)))
         {
             // 最外の拡張子を除去
             name = Path.GetFileNameWithoutExtension(name);
@@ -109,6 +112,17 @@ public static class ArchiveExtractor
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
         return SupportedExtensions.Contains(extension);
     }
+
+    /// <summary>
+    /// 展開直通ルートで受け付ける入力かを判定する。
+    /// 通常の対応形式に加え、7z.dll が内部形式を判定できる自己展開形式 EXE を許可する。
+    /// </summary>
+    internal static bool IsSupportedDirectExtractionType(string filePath) =>
+        IsSupportedArchiveType(filePath)
+        || string.Equals(
+            Path.GetExtension(filePath),
+            SelfExtractingExecutableExtension,
+            StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// 指定されたパス一覧がすべてサポート対象のアーカイブファイルかどうかを判定する。
