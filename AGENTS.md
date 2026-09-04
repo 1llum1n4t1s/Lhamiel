@@ -23,6 +23,10 @@ dotnet build src/Lhamiel/Lhamiel.csproj -c Debug -p:RuntimeIdentifier=win-arm64 
 # Run tests (xUnit 4)
 dotnet test Lhamiel.slnx -c Release
 
+# 追跡対象 packages.lock.json を単独 clone / CI と同じ NuGet パッケージ構成で更新・検証
+dotnet restore Lhamiel.slnx -p:KagayoiSupportClientUsePackage=true --force-evaluate
+dotnet restore Lhamiel.slnx -p:KagayoiSupportClientUsePackage=true --locked-mode
+
 # Run a single test
 dotnet test Lhamiel.slnx --filter "FullyQualifiedName~TestMethodName"
 
@@ -51,7 +55,7 @@ Solution file: `Lhamiel.slnx` (VS 2026 format). **x64 / ARM64** 両対応。`Tre
 
 ### Layers
 
-- **View/** — Avalonia AXAML + code-behind (MainWindow, ProgressWindow, FileConflictDialog, ErrorRecoveryDialog, DiskSpaceDialog, ConfirmDialog)
+- **View/** — Avalonia AXAML + code-behind (MainWindow, ProgressWindow, FileConflictDialog, ErrorRecoveryDialog, DiskSpaceDialog, ConfirmDialog, MessageDialog)
 - **ViewModels/** — MainWindowViewModel with `[ObservableProperty]` source generators
 - **Util/** — All business logic (archive operations, settings, logging, file association, updates, crash handling, diagnostics)
 - **Models/** — Data models
@@ -106,7 +110,8 @@ Drag-and-drop drives the app:
 | `LockedFileRetryPolicy` | Generic exponential backoff retry for SHARING_VIOLATION / LOCK_VIOLATION |
 | `MotwPropagator` | Zone.Identifier ADS propagation from source archive to extracted files |
 | `CrashHandler` | MiniDump P/Invoke for unhandled exceptions, dump rotation |
-| `DiagnosticsCollector` | Export support ZIP (logs, masked settings, environment info, dumps) |
+| `DiagnosticsCollector` | Export support ZIP (logs, masked settings, environment info)。圧縮パスワード等の平文を含み得る MiniDump は ZIP へ含めない |
+| `MessageService` / `MessageDialog` | 共通メッセージを UI スレッド上の Lhamiel デザインへ集約する。進捗処理のエラーは `ProgressWindow.CloseSafeAsync` の完了後にダイアログを表示し、自己終了する CLI / シェル経路はダイアログが閉じるまで await してから終了する |
 | `SupportDialog` | `Kagayoi.Support.Client` を使うメール認証付き問い合わせフォーム。製品IDは `lhamiel`、送信先は `support.kagayoi.com`。SDKは兄弟 `Kagayoi.Support` があればProjectReference、単独cloneとCIでは固定版を公開NuGet.orgから取得する |
 | `PartialExtractionHandler` | **[Obsolete]** — delegates to `ArchiveExtractor.TryExtractEntryAsync`. Types still used by ErrorRecoveryDialog |
 | `Settings` / `SettingsManager` | JSON config at `%LocalAppData%\Lhamiel\settings.json` with JsonDocument fallback recovery, compression scan settings, and exclusion patterns。`UpdateBaseUrl` は `[JsonIgnore]` + getter-only でハードコード固定（`CanonicalUpdateBaseUrl`）、悪意ある第三者ホストへの誘導防御 |
@@ -178,7 +183,9 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 
 - **Avalonia 12, not WPF** — compiled bindings (`x:CompileBindings="True"`), FluentTheme. `ExtendClientAreaChromeHints` は削除済み → `WindowDecorations` を使う
 - **Native AOT** (`PublishAot=true`) — avoid reflection-heavy patterns
-- **Windows 11 右クリックメニュー** — 新メニューは `src/Lhamiel.ShellExtension` のネイティブ `IExplorerCommand` DLL と `Nephilim.Lhamiel.ContextMenu` sparse MSIX（外部配置パッケージ）で登録する。「Lhamielで展開」(CLSID `ABB8423C-A40B-4259-9F8A-6C62435C29CA`) と「Lhamielで圧縮」(CLSID `E1856DF5-177C-4A12-A9B5-F3D1C63C9D1B`) は独立設定で、ネイティブ側は `HKCU\Software\Classes\Lhamiel.ContextMenu` の DWORD を読んで無効な項目を隠す。展開はファイルだけ、圧縮はファイルとフォルダーへ表示し、それぞれ `--extract` / `--compress` の直通ルートへ渡す。`ShellContextMenu.SetEnabled` は Windows 11 で package を登録／解除し、成功時は新旧の静的 verb を削除してクラシックメニューの重複を防ぐ。Windows 10・Shell 配布物の無い開発ビルドでは静的 verb を使う。`scripts/build-shell-integration.ps1` が x64/ARM64 DLL と sparse MSIX を生成し、`release-local.ps1` が Authenticode 署名後に Velopack 出力へ含める。パッケージの Publisher は Certum 証明書 Subject と完全一致させ、両 CLSID は manifest と C++ 実装で共通に保つ
+- **Windows 11 右クリックメニュー** — 新メニューは `src/Lhamiel.ShellExtension` のネイティブ `IExplorerCommand` DLL と `Nephilim.Lhamiel.ContextMenu` sparse MSIX（外部配置パッケージ）で登録する。「Lhamielで展開」(CLSID `ABB8423C-A40B-4259-9F8A-6C62435C29CA`) と「Lhamielで圧縮」(CLSID `E1856DF5-177C-4A12-A9B5-F3D1C63C9D1B`) は独立設定で、ネイティブ側は `HKCU\Software\Classes\Lhamiel.ContextMenu` の DWORD を読んで無効な項目を隠す。展開はファイルだけ、圧縮はファイルとフォルダーへ表示し、それぞれ `--extract` / `--compress` の直通ルートへ渡す。旧 `Settings.AddToContextMenu` は、新2キーのうち欠けている値だけを補って保存する（新キーの明示値を優先）。`ShellContextMenu.SetEnabled` は Windows 11 でいずれかを ON にすると package を登録／更新し、両方 OFF では package を維持したまま DWORD を 0 にして即時非表示化する（Explorer 使用中の削除保留を避けるため）。実アンインストール時だけ `RemoveAll` が Package Family Name `Nephilim.Lhamiel.ContextMenu_n9k69gpd3y5t4` と `PackageTypes.Main` を指定して解除する。モダン登録成功時は新旧の静的 verb を削除してクラシックメニューの重複を防ぐ。Windows 10・Shell 配布物の無い開発ビルドでは静的 verb を使う。`scripts/build-shell-integration.ps1` が x64/ARM64 DLL と sparse MSIX を生成し、`release-local.ps1` が Authenticode 署名後に Velopack 出力へ含める。パッケージの Publisher は Certum 証明書 Subject と完全一致させ、両 CLSID は manifest と C++ 実装で共通に保つ
+- **Kagayoi.Support の復元グラフ** — 兄弟リポジトリがあるローカル開発は `ProjectReference` と `obj/packages.local.lock.json`、単独 clone / CI は固定版 `PackageReference` と追跡対象 `packages.lock.json` を使う。`.slnx` はソリューション外の条件付き／推移参照から親構成を除去して Release 出力へ Debug DLL を混入させるため、`Directory.Build.props` の `ShouldUnsetParentConfigurationAndPlatform=false` と、直接参照の `SetConfiguration="Configuration=$(Configuration)"` / `SetPlatform="Platform=AnyCPU"` を維持する。依存更新時は上記 `KagayoiSupportClientUsePackage=true` の restore 2 コマンドで追跡対象 lockfile を更新・検証する
+- **CRDebugger の Debug 限定参照** — `PackageReference` は構成非依存のまま `ExcludeAssets="compile;runtime"` + `GeneratePathProperty="true"` を維持し、Debug 用の `<Reference>` だけを構成条件付きにする。`PackageReference` 自体を Debug 条件付きにすると、Release restore 後の Debug Rebuild が共有 `project.assets.json` から参照を解決できず CS0246 になる
 - **7z.dll** — `1llum1n4t1s.Sevenzip` NuGet が同梱。`NativeLibraryManager` が起動時に `LoadLibrary` で固定
 - **ネイティブ操作の直列化** — `1llum1n4t1s.Sevenzip` の共有シングルトン `SevenZipLibrary` は `ArchiveReader`/`ArchiveWriter` の並行動作をサポートしない (refcount + COM 追跡が直列前提)。Lhamiel はバッチ展開・圧縮で `ArchiveProgressHelper.IoBoundParallelism` (2〜4) の並列度を使うため、**全ネイティブ接触点 (reader/writer の生成→使用→Dispose) を `NativeArchiveGate` (`SemaphoreSlim(1,1)`) で 1 スロットに直列化**する。純 I/O 後処理 (最終移動・MotW 伝播) はゲート外で並行するが、同じ最終展開先に対する後処理だけは `ExtractionDestinationGate` で直列化する。新たなネイティブ接触点を追加するときは既存ゲートスコープの内側で取得しない (非リエントラントなので入れ子はデッドロック)
 - **展開パスの安全境界** — `ArchiveReader.Save` を追加・移動するときは、書き込み開始前に必ず全 `item.FullName` を `ArchiveExtractor.ValidateArchiveEntryPaths` へ通す。出力パスには `RawName` を使わず、予約デバイス名・末尾空白/ピリオド・境界外パスを拒否する。展開先や一時/退避フォルダーの属性走査では `ReparsePoint` を辿らない（詳細は `DESIGN.md` の不変条件を参照）
@@ -219,7 +226,7 @@ Tests in `Lhamiel.Tests.Unit/` using **xUnit 4** + Moq. The test project referen
 
 ## Documentation
 
-- `docs/ARCHITECTURE.md` — detailed system design and data flows
+- `DESIGN.md` — current system design and data-flow source of truth
 - `docs/SETTINGS_SCHEMA.md` — complete settings.json reference
 - `docs/PARALLEL_IMPLEMENTATION_REPORT.md` — parallel processing research
 

@@ -20,7 +20,9 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 | `ExtractionDestinationGate` | Serializes operations that converge on the same final extraction path while allowing unrelated destinations to proceed independently. |
 | `Settings` / `SettingsManager` | JSON persistence under `%LocalAppData%\Lhamiel`, recovery from damaged settings, synchronized mutation, and immutable snapshots for long-running operations. |
 | `IpcService` | Current-user-only named-pipe transport used to forward later launches to the resident instance. |
+| `ShortcutCreator` / `ShellLinkNative` | Native-AOT-compatible `.lnk` creation for automatic, extraction, and compression routes. Links carry the process AppUserModelID; icon refresh updates known links in place without creating missing shortcuts. |
 | `ShellContextMenu` / `Lhamiel.ShellExtension` | Windows file associations and Explorer integration. Extraction and compression are independent commands; the native extension reads their enabled state from `HKCU\Software\Classes\Lhamiel.ContextMenu`. Windows 11 uses signed `IExplorerCommand` handlers plus sparse MSIX; older or development environments fall back to classic registry verbs. |
+| `MessageService` / `MessageDialog` | UI-thread dispatch, active-owner resolution, and the shared Lhamiel modal message surface. It also orders transient-window closure and dialog completion for self-terminating workflows. |
 | `UpdateChecker` / `App.Check4Update` | Silent login-time and interactive UI update paths. Both consume Velopack manifests from the fixed R2 custom domain through `SimpleWebSource`. |
 | `SupportDialog` | Email-code-verified support submission through `Kagayoi.Support.Client` using product ID `lhamiel`; it does not expose other users' tickets. |
 | `Logger`, `CrashHandler`, `DiagnosticsCollector` | Masked diagnostics, bounded crash dumps, and support bundles. Passwords and sensitive settings must not cross this boundary in plaintext. |
@@ -57,6 +59,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 2. Operation entry points flush pending UI changes and create a snapshot so an operation does not observe mid-flight setting changes.
 3. Remembered compression passwords are DPAPI-protected for the current Windows user. Plaintext passwords exist only in short-lived scopes, are registered with log redaction, and have best-effort memory clearing.
 4. The update base URL is a getter-only, non-serialized constant so settings files cannot redirect update traffic to another host.
+5. The legacy `AddToContextMenu` value fills only missing `AddExtractToContextMenu` and `AddCompressToContextMenu` keys, preserving explicit new values, and the migrated shape is persisted after load.
 
 ### Support intake
 
@@ -82,6 +85,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 - Capacity checks use the Windows volume API and fail closed when the target volume or available space cannot be resolved; an inspection failure is never treated as unlimited free space.
 - Compression filters are enforced by Lhamiel's resolved file list; the SevenZip writer is not trusted to reapply `.lhaignore` or attribute filters.
 - Long-running operations use settings snapshots. UI debounce state is flushed before creating snapshots for CLI/IPC and remembered-password paths.
+- Error workflows close any transient progress window before opening a message dialog, await that dialog, and only then permit self-terminating CLI or shell launches to shut down.
 - Logs, support bundles, and user-visible error details must not contain plaintext passwords, encrypted password blobs, tokens, or user-identifying path segments.
 - Update manifests and packages come from the fixed Kagayoi R2 domain. Runtime settings cannot select another update host.
 - Released executables, installers, portable packages, shell-extension DLLs, and MSIX packages are Authenticode signed and timestamped.
@@ -115,4 +119,4 @@ SimplySign requires a logged-in local session and device approval, so binary rel
 
 ### Shared support SDK with two resolution modes
 
-Sibling project references give fast coordinated local development, while a fixed public NuGet.org version keeps standalone clones and CI reproducible without repository-specific package credentials.
+Sibling project references give fast coordinated local development, while a fixed public NuGet.org version keeps standalone clones and CI reproducible without repository-specific package credentials. Local sibling builds write `obj/packages.local.lock.json`; tracked `packages.lock.json` files therefore remain the package-mode source of truth used by standalone clones and CI.
