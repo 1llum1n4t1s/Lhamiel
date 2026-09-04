@@ -1,6 +1,9 @@
 using Microsoft.Win32;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.IO.Compression;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace Lhamiel.Util;
 
@@ -55,7 +58,8 @@ internal static class ShellContextMenu
                 extractEnabled,
                 compressEnabled,
                 OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000),
-                RegisterModernPackageNative);
+                RegisterModernPackageNative,
+                IsModernPackageCurrentNative);
 
             FileAssociation.NotifyExplorer();
             Logger.Log(
@@ -102,7 +106,8 @@ internal static class ShellContextMenu
         bool extractEnabled,
         bool compressEnabled,
         bool preferModernMenu,
-        Func<string, string, string, int> registerModernPackage)
+        Func<string, string, string, int> registerModernPackage,
+        Func<string, string, ulong, bool>? isModernPackageCurrent = null)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(registerModernPackage);
@@ -117,7 +122,7 @@ internal static class ShellContextMenu
             return;
         }
 
-        if (preferModernMenu && TryRegisterModernPackage(appPath, registerModernPackage))
+        if (preferModernMenu && TryRegisterModernPackage(appPath, registerModernPackage, isModernPackageCurrent))
         {
             Unregister(root, classesRootPath);
             // パッケージ登録と旧 verb の削除が完了してから、ネイティブ拡張へ新状態を公開する。
@@ -149,11 +154,16 @@ internal static class ShellContextMenu
 
     internal static bool TryRegisterModernPackage(
         string appPath,
-        Func<string, string, string, int> registerModernPackage)
+        Func<string, string, string, int> registerModernPackage,
+        Func<string, string, ulong, bool>? isModernPackageCurrent = null)
     {
         var artifacts = GetModernArtifacts(appPath);
         if (!File.Exists(artifacts.ExtensionPath) || !File.Exists(artifacts.PackagePath))
             return false;
+
+        if (isModernPackageCurrent?.Invoke(artifacts.ExtensionPath, artifacts.ApplicationDirectory,
+                ReadPackageVersion(artifacts.PackagePath)) == true)
+            return true;
 
         var packageUri = new Uri(artifacts.PackagePath).AbsoluteUri;
         var externalLocationUri = new Uri(
@@ -176,6 +186,51 @@ internal static class ShellContextMenu
 
         Marshal.ThrowExceptionForHR(hResult);
         return true;
+    }
+
+    internal static ulong ReadPackageVersion(string packagePath)
+    {
+        using var archive = ZipFile.OpenRead(packagePath);
+        var manifest = archive.GetEntry("AppxManifest.xml")
+            ?? throw new InvalidDataException("MSIX manifest is missing.");
+        using var stream = manifest.Open();
+        using var reader = XmlReader.Create(stream, new XmlReaderSettings
+        {
+            DtdProcessing = DtdProcessing.Prohibit,
+            XmlResolver = null,
+            MaxCharactersInDocument = 1024 * 1024,
+        });
+        XNamespace ns = "http://schemas.microsoft.com/appx/manifest/foundation/windows10";
+        var value = XDocument.Load(reader).Root?.Element(ns + "Identity")?.Attribute("Version")?.Value;
+        if (!Version.TryParse(value, out var version) || version.Build < 0 || version.Revision < 0
+            || version.Major > ushort.MaxValue || version.Minor > ushort.MaxValue
+            || version.Build > ushort.MaxValue || version.Revision > ushort.MaxValue)
+            throw new InvalidDataException("Invalid MSIX version.");
+        return ((ulong)version.Major << 48) | ((ulong)version.Minor << 32)
+            | ((ulong)version.Build << 16) | (uint)version.Revision;
+    }
+
+    private static unsafe bool IsModernPackageCurrentNative(string extensionPath, string directory, ulong version)
+    {
+        var module = NativeLibrary.Load(extensionPath);
+        try
+        {
+            // 古い配布 DLL には照合 API が無いため、従来の登録経路で更新する。
+            if (!NativeLibrary.TryGetExport(module, "LhamielIsSparsePackageCurrent", out var address))
+                return false;
+            var query = (delegate* unmanaged[Stdcall]<char*, char*, ulong, int>)address;
+            fixed (char* familyPointer = ModernPackageFamilyName)
+            fixed (char* directoryPointer = directory)
+            {
+                var result = query(familyPointer, directoryPointer, version);
+                Marshal.ThrowExceptionForHR(result);
+                return result == 0;
+            }
+        }
+        finally
+        {
+            NativeLibrary.Free(module);
+        }
     }
 
     internal static bool TryUnregisterModernPackage(

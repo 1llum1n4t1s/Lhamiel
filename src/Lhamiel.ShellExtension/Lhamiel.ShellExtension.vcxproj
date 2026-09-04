@@ -29,13 +29,15 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType Condition="'$(ShellIntegrationTests)' != 'true'">DynamicLibrary</ConfigurationType>
+    <ConfigurationType Condition="'$(ShellIntegrationTests)' == 'true'">Application</ConfigurationType>
     <PlatformToolset>v145</PlatformToolset>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType Condition="'$(ShellIntegrationTests)' != 'true'">DynamicLibrary</ConfigurationType>
+    <ConfigurationType Condition="'$(ShellIntegrationTests)' == 'true'">Application</ConfigurationType>
     <PlatformToolset>v145</PlatformToolset>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -48,6 +50,8 @@
     <OutDir>$(MSBuildProjectDirectory)\bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(MSBuildProjectDirectory)\obj\$(Platform)\$(Configuration)\</IntDir>
     <TargetName>Lhamiel.ShellExtension</TargetName>
+    <IntDir Condition="'$(ShellIntegrationTests)' == 'true'">$(MSBuildProjectDirectory)\obj\$(Platform)\$(Configuration)\Tests\</IntDir>
+    <TargetName Condition="'$(ShellIntegrationTests)' == 'true'">Lhamiel.ShellExtension.Tests</TargetName>
   </PropertyGroup>
 
   <ItemDefinitionGroup>
@@ -64,8 +68,9 @@
       <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
-      <ModuleDefinitionFile>dll.def</ModuleDefinitionFile>
-      <SubSystem>Windows</SubSystem>
+      <ModuleDefinitionFile Condition="'$(ShellIntegrationTests)' != 'true'">dll.def</ModuleDefinitionFile>
+      <SubSystem Condition="'$(ShellIntegrationTests)' != 'true'">Windows</SubSystem>
+      <SubSystem Condition="'$(ShellIntegrationTests)' == 'true'">Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <OptimizeReferences Condition="'$(Configuration)'=='Release'">true</OptimizeReferences>
       <EnableCOMDATFolding Condition="'$(Configuration)'=='Release'">true</EnableCOMDATFolding>
@@ -73,7 +78,8 @@
   </ItemDefinitionGroup>
 
   <ItemGroup>
-    <ClCompile Include="ShellExtension.cpp" />
+    <ClCompile Include="ShellExtension.cpp" Condition="'$(ShellIntegrationTests)' != 'true'" />
+    <ClCompile Include="ShellExtension.Tests.cpp" Condition="'$(ShellIntegrationTests)' == 'true'" />
   </ItemGroup>
   <ItemGroup>
     <None Include="dll.def" />

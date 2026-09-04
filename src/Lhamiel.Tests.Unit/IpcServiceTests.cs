@@ -17,6 +17,32 @@ public class IpcServiceTests
     private const int TestTimeoutMs = 10_000;
 
     [Fact]
+    public async Task SendAndReceive_SelectionToken_ConsumesWholeBatchInReceiver()
+    {
+        var token = Guid.NewGuid().ToString("N");
+        var path = ShellSelectionFile.GetPath(token);
+        var paths = Enumerable.Range(0, 2000).Select(i => $@"C:\日本語の選択\file {i}.txt").ToArray();
+        using var cts = new CancellationTokenSource(TestTimeoutMs);
+        var received = new TaskCompletionSource<string[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var server = Task.Run(() => IpcService.StartServerAsync(args =>
+            received.TrySetResult(App.ParseCommandLineArgs(args).FilePaths), cts.Token));
+        try
+        {
+            File.WriteAllBytes(path, System.Text.Encoding.Unicode.GetBytes(string.Join('\0', paths) + '\0'));
+            Assert.True(await IpcService.SendArgsToExistingInstanceAsync(
+                ["--compress", ShellSelectionFile.Argument, token], cts.Token));
+            Assert.Equal(paths, await received.Task.WaitAsync(cts.Token));
+            Assert.False(File.Exists(path));
+        }
+        finally
+        {
+            await cts.CancelAsync();
+            try { await server; } catch (OperationCanceledException) { }
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task SendAndReceive_RoundTrip_DeliversArgs()
     {
         using var cts = new CancellationTokenSource(TestTimeoutMs);

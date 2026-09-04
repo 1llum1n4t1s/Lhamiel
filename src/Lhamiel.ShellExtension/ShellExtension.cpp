@@ -121,6 +121,81 @@ namespace
             && enabled != 0;
     }
 
+    // 起動失敗時は送信側が削除し、成功時は受信側が DeleteOnClose で回収する。
+    struct SelectionFile
+    {
+        std::wstring path;
+        bool transferred = false;
+        ~SelectionFile()
+        {
+            if (!transferred && !path.empty())
+                DeleteFileW(path.c_str());
+        }
+    };
+
+    HRESULT BuildLaunchCommand(
+        const std::wstring& applicationPath, OperationMode mode,
+        const std::vector<std::wstring>& paths, std::wstring& commandLine, SelectionFile& selection)
+    {
+        const std::wstring prefix = QuoteCommandLineArgument(applicationPath)
+            + (mode == OperationMode::Extract ? L" --extract" : L" --compress");
+        commandLine = prefix;
+        bool needsList = false;
+        for (const auto& path : paths)
+        {
+            const auto quoted = QuoteCommandLineArgument(path);
+            if (commandLine.size() + quoted.size() + 2 > 32767)
+            {
+                needsList = true;
+                break;
+            }
+            commandLine.append(L" ").append(quoted);
+        }
+        if (!needsList)
+            return S_OK;
+
+        size_t bytes = 0;
+        for (const auto& path : paths)
+        {
+            bytes += (path.size() + 1) * sizeof(wchar_t);
+            if (bytes > 32 * 1024 * 1024)
+                return HRESULT_FROM_WIN32(ERROR_BUFFER_OVERFLOW);
+        }
+        GUID id;
+        HRESULT result = CoCreateGuid(&id);
+        if (FAILED(result))
+            return result;
+        wchar_t guidText[39]{};
+        StringFromGUID2(id, guidText, ARRAYSIZE(guidText));
+        std::wstring token;
+        for (const wchar_t ch : guidText)
+            if (ch != L'{' && ch != L'}' && ch != L'-' && ch != L'\0')
+                token.push_back(ch);
+
+        std::wstring tempPath(32768, L'\0');
+        const DWORD length = GetTempPathW(static_cast<DWORD>(tempPath.size()), tempPath.data());
+        if (length == 0 || length >= tempPath.size())
+            return HRESULT_FROM_WIN32(ERROR_BAD_PATHNAME);
+        tempPath.resize(length);
+        tempPath.append(L"Lhamiel-selection-").append(token).append(L".bin");
+        winrt::file_handle file(CreateFileW(tempPath.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
+            FILE_ATTRIBUTE_TEMPORARY, nullptr));
+        if (!file)
+            return HRESULT_FROM_WIN32(GetLastError());
+        selection.path = std::move(tempPath);
+        for (const auto& path : paths)
+        {
+            const auto count = static_cast<DWORD>((path.size() + 1) * sizeof(wchar_t));
+            DWORD written = 0;
+            if (!WriteFile(file.get(), path.c_str(), count, &written, nullptr))
+                return HRESULT_FROM_WIN32(GetLastError());
+            if (written != count)
+                return HRESULT_FROM_WIN32(ERROR_WRITE_FAULT);
+        }
+        commandLine = prefix + L" --shell-selection " + token;
+        return commandLine.size() + 1 <= 32767 ? S_OK : HRESULT_FROM_WIN32(ERROR_BUFFER_OVERFLOW);
+    }
+
     HRESULT LaunchLhamiel(IShellItemArray* selectedItems, OperationMode mode)
     {
         if (selectedItems == nullptr)
@@ -136,8 +211,7 @@ namespace
         if (FAILED(result))
             return result;
 
-        std::wstring commandLine = QuoteCommandLineArgument(applicationPath);
-        commandLine.append(mode == OperationMode::Extract ? L" --extract" : L" --compress");
+        std::vector<std::wstring> paths;
         for (DWORD index = 0; index < itemCount; ++index)
         {
             IShellItem* item = nullptr;
@@ -154,17 +228,16 @@ namespace
                 return FAILED(result) ? result : E_UNEXPECTED;
             }
 
-            const std::wstring quotedPath = QuoteCommandLineArgument(itemPath);
+            const std::wstring path(itemPath);
             CoTaskMemFree(itemPath);
-
-            // CreateProcessW のコマンドライン上限（終端 NUL を含め 32,767 文字）を守る。
-            if (commandLine.size() + quotedPath.size() + 2 >= 32767)
-                return HRESULT_FROM_WIN32(ERROR_BUFFER_OVERFLOW);
-
-            commandLine.push_back(L' ');
-            commandLine.append(quotedPath);
+            paths.push_back(path);
         }
 
+        SelectionFile selection;
+        std::wstring commandLine;
+        result = BuildLaunchCommand(applicationPath, mode, paths, commandLine, selection);
+        if (FAILED(result))
+            return result;
         std::vector<wchar_t> mutableCommandLine(commandLine.begin(), commandLine.end());
         mutableCommandLine.push_back(L'\0');
 
@@ -191,6 +264,7 @@ namespace
 
         CloseHandle(processInformation.hThread);
         CloseHandle(processInformation.hProcess);
+        selection.transferred = true;
         return S_OK;
     }
 
@@ -490,6 +564,38 @@ STDAPI DllGetClassObject(
     const HRESULT result = factory->QueryInterface(interfaceId, object);
     factory->Release();
     return result;
+}
+
+extern "C" __declspec(dllexport) HRESULT WINAPI LhamielIsSparsePackageCurrent(
+    PCWSTR familyName, PCWSTR externalDirectory, UINT64 expectedVersion)
+{
+    if (familyName == nullptr || externalDirectory == nullptr)
+        return E_INVALIDARG;
+    try
+    {
+        const std::wstring family(familyName);
+        const std::wstring directory(externalDirectory);
+        return RunPackageOperationOnMta([family, directory, expectedVersion]() -> HRESULT
+        {
+            using namespace winrt::Windows::Management::Deployment;
+            PackageManager manager;
+            for (const auto& package : manager.FindPackagesForUserWithPackageTypes(L"", family, PackageTypes::Main))
+            {
+                const auto version = package.Id().Version();
+                const UINT64 packed = (UINT64(version.Major) << 48) | (UINT64(version.Minor) << 32)
+                    | (UINT64(version.Build) << 16) | version.Revision;
+                if (packed == expectedVersion && package.Status().VerifyIsOK()
+                    && CompareStringOrdinal(package.EffectiveExternalPath().c_str(), -1,
+                        directory.c_str(), -1, TRUE) == CSTR_EQUAL)
+                    return S_OK;
+            }
+            return S_FALSE;
+        });
+    }
+    catch (...)
+    {
+        return E_FAIL;
+    }
 }
 
 extern "C" __declspec(dllexport) HRESULT WINAPI LhamielRegisterSparsePackage(

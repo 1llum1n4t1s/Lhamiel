@@ -219,7 +219,19 @@ public partial class App : Application
 
             Logger.LogStartup(startupArgs);
 
-            var commandLineRequest = ParseCommandLineArgs(startupArgs);
+            CommandLineRequest commandLineRequest;
+            try
+            {
+                commandLineRequest = ParseCommandLineArgs(startupArgs);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                Logger.LogException("シェルの選択リストを読み込めませんでした", ex);
+                await MessageService.ShowError(App.Text("Error.DuringProcessing", ex.Message));
+                if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime failedLifetime)
+                    TryShutdownSafely(failedLifetime);
+                return;
+            }
             if (commandLineRequest.FilePaths.Length > 0)
             {
                 // 関連付けから起動：更新チェックは行わず、プログレスバー画面のみ表示
@@ -370,6 +382,11 @@ public partial class App : Application
         {
             switch (args[index])
             {
+                case ShellSelectionFile.Argument:
+                    if (index + 1 >= args.Length)
+                        throw new InvalidDataException("Missing shell selection token.");
+                    filePaths.AddRange(ShellSelectionFile.Read(args[++index]));
+                    break;
                 case "--extract":
                     operation = CommandLineOperation.Extract;
                     break;
@@ -891,7 +908,17 @@ public partial class App : Application
 
                 if (args.Length > 0)
                 {
-                    var request = ParseCommandLineArgs(args);
+                    CommandLineRequest request;
+                    try
+                    {
+                        request = ParseCommandLineArgs(args);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+                    {
+                        Logger.LogException("シェルの選択リストを読み込めませんでした", ex);
+                        _ = MessageService.ShowError(App.Text("Error.DuringProcessing", ex.Message));
+                        return;
+                    }
 
                     // 受信した引数で処理を実行。
                     // IPC 経由の場合は処理終了後にアプリを終了させないようにする（shouldShutdown:false）。

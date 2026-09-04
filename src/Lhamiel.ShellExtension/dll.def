@@ -2,4 +2,5 @@ EXPORTS
     DllCanUnloadNow PRIVATE
     DllGetClassObject PRIVATE
     LhamielRegisterSparsePackage
+    LhamielIsSparsePackageCurrent
     LhamielUnregisterSparsePackage

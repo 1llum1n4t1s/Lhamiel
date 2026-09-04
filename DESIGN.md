@@ -72,7 +72,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 
 1. Installed clients obtain `releases.win.json` or `releases.win-arm64.json` from `https://lhamiel.kagayoi.com`.
 2. `scripts/release-local.ps1` builds both Native AOT RIDs in isolated artifact trees, builds the native shell integration, packages with Velopack, and Authenticode-signs all distributed executables through SimplySign/Certum. Per-RID isolation also applies to project references so x64 intermediates cannot be reused by ARM64 publishing.
-3. The same script uploads immutable versioned packages and fixed-name manifests/installers to R2, purges only changed fixed URLs, verifies public manifests, and removes obsolete versioned packages while retaining the latest generations.
+3. The same script uploads immutable versioned packages and fixed-name manifests/installers to R2. It downloads non-`.nupkg` artifacts with a cache-busting query and compares their size and SHA256 with local outputs, purges only mismatching URLs, and rechecks them. Download, purge, or recheck failure stops release completion even after upload. After public-manifest checks, cleanup preserves manifest-referenced files, fixed names, and the latest two versions of versioned artifacts.
 4. The landing-page Worker under `web/` has an independent main-branch deployment workflow and is not part of the desktop binary release path.
 
 ## Critical invariants
@@ -99,7 +99,15 @@ Dependencies are wired manually to keep Native AOT behavior explicit and avoid r
 
 ### Temporary extraction plus final move
 
-Archive data is written to a temporary directory before replacing final outputs. This enables complete pre-move validation and recoverable overwrite behavior, at the cost of extra temporary storage and move/cleanup logic.
+Archive data is written to a temporary directory before replacing final outputs. This enables complete pre-move validation and recoverable overwrite behavior, at the cost of extra temporary storage and move/cleanup logic. `PrepareExistingTargetsForOverwrite` restores already-moved originals on preparation failure or cancellation before propagating the error. Restoration is best effort in reverse order; backups that cannot be restored remain available for manual recovery.
+
+### Shell command visibility separate from package lifetime
+
+Before deploying an existing sparse package, `ShellContextMenu` reads the distributed MSIX version and queries the current user's exact package family. Matching version, effective external path, and a healthy package status allow a visibility-only update without deployment. Missing, stale, or relocated registrations still use the existing deployment path; this does not make first-time registration asynchronous or time-bounded.
+
+Native selections exceeding the Windows command-line limit are passed as a GUID token (`--shell-selection`) referencing a UTF-16LE, NUL-separated file in the current user's temporary directory, bounded to 32 MiB. CLI and IPC carry the same short token; only the receiving instance expands the complete selection, preserving batch compression. The receiver accepts GUID tokens and fully qualified paths only, rejects reparse files and malformed payloads, and consumes the file with `DeleteOnClose`. The native sender removes the file if process creation fails. A receiver that never starts or never consumes a forwarded request can leave the temporary file behind; requests are not silently split or partially accepted.
+
+Disabling both context-menu commands removes classic verbs and writes zero to the native visibility flags while retaining the sparse MSIX registration. This avoids pending removal while Explorer holds the DLL. Enabling a command registers or updates the package; `0x80073D3C` is treated as a deferred update with the existing registration still usable, so visibility flags can still change. Only product uninstall uses `RemoveAll` to remove classic verbs and state, then unregister main packages selected by the exact package family `Nephilim.Lhamiel.ContextMenu_n9k69gpd3y5t4`.
 
 ### Layered concurrency gates
 

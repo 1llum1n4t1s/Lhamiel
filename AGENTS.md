@@ -30,6 +30,10 @@ dotnet restore Lhamiel.slnx -p:KagayoiSupportClientUsePackage=true --locked-mode
 # Run a single test
 dotnet test Lhamiel.slnx --filter "FullyQualifiedName~TestMethodName"
 
+# ネイティブシェルの選択リスト・登録照合テスト（VS Developer PowerShell）
+msbuild src/Lhamiel.ShellExtension/ShellExtension.Tests.vcxproj /p:Configuration=Release /p:Platform=x64
+./src/Lhamiel.ShellExtension/bin/x64/Release/Lhamiel.ShellExtension.Tests.exe
+
 # Publish native AOT executable (x64)
 dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r win-x64 -p:OS=Windows_NT
 
@@ -183,6 +187,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 
 - **Avalonia 12, not WPF** — compiled bindings (`x:CompileBindings="True"`), FluentTheme. `ExtendClientAreaChromeHints` は削除済み → `WindowDecorations` を使う
 - **Native AOT** (`PublishAot=true`) — avoid reflection-heavy patterns
+- **対応形式の追加・変更** — `ArchiveFormatConstants.SupportedArchiveFormats` を更新し、展開判定・関連付け・設定 UI が共通カタログから導出される構造を維持する。
 - **Windows 11 右クリックメニュー** — 新メニューは `src/Lhamiel.ShellExtension` のネイティブ `IExplorerCommand` DLL と `Nephilim.Lhamiel.ContextMenu` sparse MSIX（外部配置パッケージ）で登録する。「Lhamielで展開」(CLSID `ABB8423C-A40B-4259-9F8A-6C62435C29CA`) と「Lhamielで圧縮」(CLSID `E1856DF5-177C-4A12-A9B5-F3D1C63C9D1B`) は独立設定で、ネイティブ側は `HKCU\Software\Classes\Lhamiel.ContextMenu` の DWORD を読んで無効な項目を隠す。展開はファイルだけ、圧縮はファイルとフォルダーへ表示し、それぞれ `--extract` / `--compress` の直通ルートへ渡す。旧 `Settings.AddToContextMenu` は、新2キーのうち欠けている値だけを補って保存する（新キーの明示値を優先）。`ShellContextMenu.SetEnabled` は Windows 11 でいずれかを ON にすると package を登録／更新し、両方 OFF では package を維持したまま DWORD を 0 にして即時非表示化する（Explorer 使用中の削除保留を避けるため）。実アンインストール時だけ `RemoveAll` が Package Family Name `Nephilim.Lhamiel.ContextMenu_n9k69gpd3y5t4` と `PackageTypes.Main` を指定して解除する。モダン登録成功時は新旧の静的 verb を削除してクラシックメニューの重複を防ぐ。Windows 10・Shell 配布物の無い開発ビルドでは静的 verb を使う。`scripts/build-shell-integration.ps1` が x64/ARM64 DLL と sparse MSIX を生成し、`release-local.ps1` が Authenticode 署名後に Velopack 出力へ含める。パッケージの Publisher は Certum 証明書 Subject と完全一致させ、両 CLSID は manifest と C++ 実装で共通に保つ
 - **Kagayoi.Support の復元グラフ** — 兄弟リポジトリがあるローカル開発は `ProjectReference` と `obj/packages.local.lock.json`、単独 clone / CI は固定版 `PackageReference` と追跡対象 `packages.lock.json` を使う。`.slnx` はソリューション外の条件付き／推移参照から親構成を除去して Release 出力へ Debug DLL を混入させるため、`Directory.Build.props` の `ShouldUnsetParentConfigurationAndPlatform=false` と、直接参照の `SetConfiguration="Configuration=$(Configuration)"` / `SetPlatform="Platform=AnyCPU"` を維持する。依存更新時は上記 `KagayoiSupportClientUsePackage=true` の restore 2 コマンドで追跡対象 lockfile を更新・検証する
 - **CRDebugger の Debug 限定参照** — `PackageReference` は構成非依存のまま `ExcludeAssets="compile;runtime"` + `GeneratePathProperty="true"` を維持し、Debug 用の `<Reference>` だけを構成条件付きにする。`PackageReference` 自体を Debug 条件付きにすると、Release restore 後の Debug Rebuild が共有 `project.assets.json` から参照を解決できず CS0246 になる
@@ -210,7 +215,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 ## CI/CD
 
 - **PR builds**: `.github/workflows/dotnet-build.yml` — restore, build, test + code coverage on every PR
-- **Release (ローカル実行)**: `pwsh scripts/release-local.ps1` — **v1.0.183 から CI リリースを廃止しローカル実行に移行** (コード署名に SimplySign Desktop 接続 + スマホ OTP が必要で GitHub Actions からは署名できないため。velopack-release.yml は削除済み)。スクリプトが publish (Native AOT) → `vpk pack` + **Authenticode 署名** (`--signParams`) → 署名検証 → `wrangler@4.127.1` (pnpm dlx) で Cloudflare R2 バケット `lhamiel-updates` にアップロード → **Cloudflare エッジキャッシュのパージ** (固定名ファイル Setup.exe / Portable.zip / RELEASES / `releases.*.json` / `assets.*.json` は毎リリースで中身が変わるのに URL が不変なため、アップロード直後に Cloudflare API V4 `purge_cache` で該当 URL をパージし旧キャッシュの伝播を断つ。バージョン付き nupkg は URL が一意でパージ不要。1 リクエスト最大 30 URL のため 30 件単位で分割送信。**R2 アップロードは既に成功済みのためパージ失敗で全体は止めず Step 5 と同じ warning-and-continue 方針**（CDN は max-age 経過で自然に新版へ追従するため致命的ではない）) → 配信確認 (`releases.{channel}.json` HTTP 200) → **manifest 外の旧 `*.nupkg` を Cloudflare API V4 で自動削除** (Aggressive 保持戦略: `releases.{channel}.json` に書かれない nupkg は削除、Setup.exe / Portable.zip / RELEASES* / assets.*.json / releases.*.json は固定ファイル名で上書きされる Velopack 内部ファイル & ランディング DL 用なので保護) まで一括実行。**R2 単独配信** (GitHub Releases への継続 publish はしない。旧クライアント救済の踏み台は `/transfer-cf` 移行作業で publish 済み)。Cloudflare トークンは `C:\Users\IMT\dev\Secret\secrets.json` の `cloudflare.api_token` を実行時に読み、**取得直後のプリフライトで zone ID 解決まで行って権限不足を fail fast 検知する**（R2 アップロード後に zone 取得が失敗すると、新ファイルだけ R2 に乗ってパージ・クリーンアップが走らない半端なリリース状態になるため、何もアップロードしていない時点で落とす）。動作確認は `-SkipUpload` (ビルド + 署名のみ)、RID 絞り込みは `-Runtimes win-x64`。**実行前提: SimplySign Desktop がトークンログイン済み** (証明書が CurrentUser\My に見えること。スクリプトがプリフライトで検査して落とす)。**`/vava` は `vava.config.json` の `localRelease` キーを読んでこのスクリプトを自動実行する** (Step 0-8 で署名証明書の前提チェック → Step 10.5 でリリース実行。CI 監視ステップはスキップされる)
+- **Release (ローカル実行)**: `pwsh scripts/release-local.ps1` — **v1.0.183 から CI リリースを廃止しローカル実行に移行** (コード署名に SimplySign Desktop 接続 + スマホ OTP が必要で GitHub Actions からは署名できないため。velopack-release.yml は削除済み)。スクリプトが publish (Native AOT) → `vpk pack` + **Authenticode 署名** (`--signParams`) → 署名検証 → `wrangler@4.127.1` (pnpm dlx) で Cloudflare R2 バケット `lhamiel-updates` にアップロード → **配信実体のサイズ・SHA256 照合 → 不一致 URL のみパージ・再照合 → manifest 配信確認 → 旧配布物整理**（保持条件と失敗時の境界は [DESIGN.md](DESIGN.md#update-and-release) を参照。配信確認が失敗した場合は公開完了とせず、原因解消後に再確認する） まで一括実行。**R2 単独配信** (GitHub Releases への継続 publish はしない。旧クライアント救済の踏み台は `/transfer-cf` 移行作業で publish 済み)。Cloudflare トークンは `C:\Users\IMT\dev\Secret\secrets.json` の `cloudflare.api_token` を実行時に読み、**取得直後のプリフライトで zone ID 解決まで行って権限不足を fail fast 検知する**（R2 アップロード後に zone 取得が失敗すると、新ファイルだけ R2 に乗ってパージ・クリーンアップが走らない半端なリリース状態になるため、何もアップロードしていない時点で落とす）。動作確認は `-SkipUpload` (ビルド + 署名のみ)、RID 絞り込みは `-Runtimes win-x64`。**実行前提: SimplySign Desktop がトークンログイン済み** (証明書が CurrentUser\My に見えること。スクリプトがプリフライトで検査して落とす)。**`/vava` は `vava.config.json` の `localRelease` キーを読んでこのスクリプトを自動実行する** (Step 0-8 で署名証明書の前提チェック → Step 10.5 でリリース実行。CI 監視ステップはスキップされる)
 - **RID 別リリース出力**: `release-local.ps1` の x64 / ARM64 `dotnet publish` は RID ごとの `--artifacts-path` を必須とし、ProjectReference 先を含む共通 `bin/obj` の再利用による異アーキテクチャ参照（CS8012）を防ぐ。
 - **CodeQL**: `.github/workflows/codeql.yml` — C# security analysis on PR + weekly
 - **Dependabot**: `.github/dependabot.yml` — NuGet weekly + github-actions weekly
@@ -223,6 +228,7 @@ Tests in `Lhamiel.Tests.Unit/` using **xUnit 4** + Moq. The test project referen
 - 嫌がらせテスト (adversarial): `*AdversarialTests.cs` — 境界値、異常入力、状態遷移の矛盾
 - `[Collection("ArchiveProcessor")]` — `ArchiveProcessor` の static プロパティを差し替えるテストは排他実行が必要
 - ADS テスト (`MotwPropagatorTests`): Windows 限定、`Assert.SkipWhen(!OperatingSystem.IsWindows())` でスキップ
+- 上書き準備を変更するときは `ExtractionOverwriteAtomicityTests`、右クリックメニューの登録・解除を変更するときは `ShellContextMenuTests` と `ProgramLifecycleTests` を実行し、[DESIGN.md](DESIGN.md#adopted-design-decisions-and-trade-offs) の復元・パッケージ寿命の契約を確認する。
 
 ## Documentation
 

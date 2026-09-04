@@ -242,6 +242,36 @@ public sealed class ShellContextMenuTests : IDisposable
     public void Dispose() =>
         Registry.CurrentUser.DeleteSubKeyTree(_testRootPath, throwOnMissingSubKey: false);
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ApplyRegistration_OnlyDeploysWhenPackageIsNotCurrent(bool current)
+    {
+        var directory = CreateModernArtifacts();
+        try
+        {
+            var packagePath = Path.Combine(directory, ShellContextMenu.ModernPackageFileName);
+            using (var file = File.Create(packagePath))
+            using (var zip = new System.IO.Compression.ZipArchive(file, System.IO.Compression.ZipArchiveMode.Create))
+            using (var writer = new StreamWriter(zip.CreateEntry("AppxManifest.xml").Open()))
+                writer.Write("<Package xmlns=\"http://schemas.microsoft.com/appx/manifest/foundation/windows10\"><Identity Version=\"1.2.3.4\" /></Package>");
+            var deployed = 0;
+            ShellContextMenu.ApplyRegistration(Registry.CurrentUser, _testRootPath,
+                Path.Combine(directory, "Lhamiel.exe"), true, false, true,
+                (_, _, _) => { deployed++; return 0; },
+                (dll, externalDirectory, version) =>
+                {
+                    Assert.Equal(directory, externalDirectory);
+                    Assert.Equal(Path.Combine(directory, ShellContextMenu.ShellExtensionFileName), dll);
+                    Assert.Equal(0x0001000200030004UL, version);
+                    return current;
+                });
+            Assert.Equal(current ? 0 : 1, deployed);
+            AssertState(true, false);
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
     private bool VerbExists(string targetClass, ContextMenuOperation operation)
     {
         using var key = Registry.CurrentUser.OpenSubKey(
