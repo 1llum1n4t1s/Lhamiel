@@ -22,12 +22,13 @@ internal static class ShellContextMenu
     internal const string ExtractVerbName = "Lhamiel.Extract";
     internal const string CompressVerbName = "Lhamiel.Compress";
     internal const string LegacyVerbName = "Lhamiel.SendTo";
-    internal const string ModernPackageName = "Nephilim.Lhamiel.ContextMenu";
+    internal const string ModernPackageFamilyName = "Nephilim.Lhamiel.ContextMenu_n9k69gpd3y5t4";
     internal const string ModernPackageFileName = "Lhamiel.ContextMenu.msix";
     internal const string ShellExtensionFileName = "Lhamiel.ShellExtension.dll";
     internal const string StateKeyName = "Lhamiel.ContextMenu";
     internal const string ExtractEnabledValueName = "ExtractEnabled";
     internal const string CompressEnabledValueName = "CompressEnabled";
+    internal const int PackagePendingRemovalHResult = unchecked((int)0x80073D3C);
     private const string ClassesRootPath = @"Software\Classes";
 
     private static readonly string[] FileTargetClasses = ["*"];
@@ -54,8 +55,7 @@ internal static class ShellContextMenu
                 extractEnabled,
                 compressEnabled,
                 OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000),
-                RegisterModernPackageNative,
-                UnregisterModernPackageNative);
+                RegisterModernPackageNative);
 
             FileAssociation.NotifyExplorer();
             Logger.Log(
@@ -72,6 +72,28 @@ internal static class ShellContextMenu
         }
     }
 
+    /// <summary>製品アンインストール時に、モダン／従来方式の登録と表示状態をすべて削除する。</summary>
+    internal static bool RemoveAll()
+    {
+        try
+        {
+            RemoveRegistration(
+                Registry.CurrentUser,
+                ClassesRootPath,
+                AppPathResolver.ExecutablePath,
+                UnregisterModernPackageNative);
+
+            FileAssociation.NotifyExplorer();
+            Logger.Log("右クリックメニューの登録を解除しました。", LogLevel.Debug);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("右クリックメニューの解除に失敗しました", ex);
+            return false;
+        }
+    }
+
     /// <summary>OS と配布物に応じてモダン／従来方式を切り替える。</summary>
     internal static void ApplyRegistration(
         RegistryKey root,
@@ -80,18 +102,18 @@ internal static class ShellContextMenu
         bool extractEnabled,
         bool compressEnabled,
         bool preferModernMenu,
-        Func<string, string, string, int> registerModernPackage,
-        Func<string, string, int> unregisterModernPackage)
+        Func<string, string, string, int> registerModernPackage)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(registerModernPackage);
-        ArgumentNullException.ThrowIfNull(unregisterModernPackage);
 
         if (!extractEnabled && !compressEnabled)
         {
-            _ = TryUnregisterModernPackage(appPath, unregisterModernPackage);
+            // sparse パッケージを削除すると、Explorer が DLL を使用中の間は削除保留になり、
+            // 直後の再有効化やアプリ更新による再登録が ERROR_PACKAGE_PENDING_REMOVAL で失敗する。
+            // 通常の設定変更ではパッケージを維持し、ネイティブ拡張の表示フラグだけを無効にする。
             Unregister(root, classesRootPath);
-            DeleteState(root, classesRootPath);
+            WriteState(root, classesRootPath, extractEnabled: false, compressEnabled: false);
             return;
         }
 
@@ -109,6 +131,22 @@ internal static class ShellContextMenu
         WriteState(root, classesRootPath, extractEnabled, compressEnabled);
     }
 
+    /// <summary>製品アンインストール専用。通常の設定OFFでは呼び出さない。</summary>
+    internal static void RemoveRegistration(
+        RegistryKey root,
+        string classesRootPath,
+        string appPath,
+        Func<string, string, int> unregisterModernPackage)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        ArgumentNullException.ThrowIfNull(unregisterModernPackage);
+
+        // DLL が Explorer に残っていても即座に項目を隠せるよう、状態を先に削除する。
+        Unregister(root, classesRootPath);
+        DeleteState(root, classesRootPath);
+        _ = TryUnregisterModernPackage(appPath, unregisterModernPackage);
+    }
+
     internal static bool TryRegisterModernPackage(
         string appPath,
         Func<string, string, string, int> registerModernPackage)
@@ -122,10 +160,21 @@ internal static class ShellContextMenu
             Path.EndsInDirectorySeparator(artifacts.ApplicationDirectory)
                 ? artifacts.ApplicationDirectory
                 : artifacts.ApplicationDirectory + Path.DirectorySeparatorChar).AbsoluteUri;
-        Marshal.ThrowExceptionForHR(registerModernPackage(
+        var hResult = registerModernPackage(
             artifacts.ExtensionPath,
             packageUri,
-            externalLocationUri));
+            externalLocationUri);
+        if (hResult == PackagePendingRemovalHResult)
+        {
+            // DeferRegistrationWhenPackagesAreInUse による更新保留中は、現在登録済みの
+            // パッケージが引き続き有効。再登録せず状態だけ公開すれば設定変更は反映できる。
+            Logger.Log(
+                "右クリックメニューのパッケージ更新は Explorer の使用終了まで保留中です。現在の登録へ設定を反映します。",
+                LogLevel.Warning);
+            return true;
+        }
+
+        Marshal.ThrowExceptionForHR(hResult);
         return true;
     }
 
@@ -142,7 +191,7 @@ internal static class ShellContextMenu
 
         Marshal.ThrowExceptionForHR(unregisterModernPackage(
             artifacts.ExtensionPath,
-            ModernPackageName));
+            ModernPackageFamilyName));
         return true;
     }
 
@@ -181,7 +230,7 @@ internal static class ShellContextMenu
         }
     }
 
-    private static unsafe int UnregisterModernPackageNative(string extensionPath, string packageName)
+    private static unsafe int UnregisterModernPackageNative(string extensionPath, string packageFamilyName)
     {
         var module = NativeLibrary.Load(extensionPath);
         try
@@ -189,8 +238,8 @@ internal static class ShellContextMenu
             var unregister = (delegate* unmanaged[Stdcall]<char*, int>)NativeLibrary.GetExport(
                 module,
                 "LhamielUnregisterSparsePackage");
-            fixed (char* packageNamePointer = packageName)
-                return unregister(packageNamePointer);
+            fixed (char* packageFamilyNamePointer = packageFamilyName)
+                return unregister(packageFamilyNamePointer);
         }
         finally
         {

@@ -24,7 +24,6 @@ namespace
     constexpr wchar_t ExtractMenuText[] = L"Lhamielで展開";
     constexpr wchar_t CompressMenuText[] = L"Lhamielで圧縮";
     constexpr wchar_t ApplicationFileName[] = L"Lhamiel.exe";
-    constexpr wchar_t SparsePackageName[] = L"Nephilim.Lhamiel.ContextMenu";
     constexpr wchar_t ContextMenuStateKey[] = L"Software\\Classes\\Lhamiel.ContextMenu";
     constexpr wchar_t ExtractEnabledValueName[] = L"ExtractEnabled";
     constexpr wchar_t CompressEnabledValueName[] = L"CompressEnabled";
@@ -527,24 +526,22 @@ extern "C" __declspec(dllexport) HRESULT WINAPI LhamielRegisterSparsePackage(
     }
 }
 
-extern "C" __declspec(dllexport) HRESULT WINAPI LhamielUnregisterSparsePackage(PCWSTR packageName)
+extern "C" __declspec(dllexport) HRESULT WINAPI LhamielUnregisterSparsePackage(PCWSTR packageFamilyName)
 {
-    if (packageName == nullptr)
+    if (packageFamilyName == nullptr || *packageFamilyName == L'\0')
         return E_INVALIDARG;
 
     try
     {
-        const std::wstring packageNameCopy(packageName);
-        return RunPackageOperationOnMta([packageNameCopy]
+        const std::wstring packageFamilyNameCopy(packageFamilyName);
+        return RunPackageOperationOnMta([packageFamilyNameCopy]
         {
             using namespace winrt::Windows::Management::Deployment;
 
             PackageManager packageManager;
-            for (const auto& package : packageManager.FindPackagesForUser(L""))
+            for (const auto& package : packageManager.FindPackagesForUserWithPackageTypes(
+                L"", packageFamilyNameCopy, PackageTypes::Main))
             {
-                if (package.Id().Name() != packageNameCopy)
-                    continue;
-
                 const HRESULT result = GetDeploymentResult(packageManager.RemovePackageAsync(
                     package.Id().FullName(),
                     RemovalOptions::DeferRemovalWhenPackagesAreInUse).get());

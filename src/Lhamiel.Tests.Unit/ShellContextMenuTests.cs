@@ -77,8 +77,7 @@ public sealed class ShellContextMenuTests : IDisposable
                 {
                     invocation = (extensionPath, packageUri, externalLocationUri);
                     return 0;
-                },
-                (_, _) => throw new InvalidOperationException("解除処理は呼ばれません。"));
+                });
 
             Assert.NotNull(invocation);
             Assert.Equal(Path.Combine(applicationDirectory, ShellContextMenu.ShellExtensionFileName), invocation!.Value.ExtensionPath);
@@ -106,8 +105,7 @@ public sealed class ShellContextMenuTests : IDisposable
             extractEnabled: false,
             compressEnabled: true,
             preferModernMenu: true,
-            (_, _, _) => throw new InvalidOperationException("配布物が無い場合は呼ばれません。"),
-            (_, _) => throw new InvalidOperationException("解除処理は呼ばれません。"));
+            (_, _, _) => throw new InvalidOperationException("配布物が無い場合は呼ばれません。"));
 
         Assert.False(VerbExists("*", ContextMenuOperation.Extract));
         AssertVerb("*", appPath, ContextMenuOperation.Compress);
@@ -142,8 +140,7 @@ public sealed class ShellContextMenuTests : IDisposable
                     extractEnabled: true,
                     compressEnabled: false,
                     preferModernMenu: true,
-                    (_, _, _) => unchecked((int)0x80004005),
-                    (_, _) => throw new InvalidOperationException("解除処理は呼ばれません。")));
+                    (_, _, _) => unchecked((int)0x80004005)));
 
             AssertState(extractEnabled: false, compressEnabled: true);
             Assert.False(VerbExists("*", ContextMenuOperation.Extract));
@@ -157,7 +154,7 @@ public sealed class ShellContextMenuTests : IDisposable
     }
 
     [Fact]
-    public void ApplyRegistration_WhenBothDisabled_UnregistersEverythingAndDeletesState()
+    public void ApplyRegistration_WhenModernPackageUpdateIsPending_PublishesStateWithoutLegacyFallback()
     {
         var applicationDirectory = CreateModernArtifacts();
         try
@@ -166,24 +163,72 @@ public sealed class ShellContextMenuTests : IDisposable
             ShellContextMenu.Register(
                 Registry.CurrentUser, _testRootPath, appPath, extractEnabled: true, compressEnabled: true);
             ShellContextMenu.WriteState(Registry.CurrentUser, _testRootPath, true, true);
-            (string ExtensionPath, string PackageName)? invocation = null;
 
             ShellContextMenu.ApplyRegistration(
                 Registry.CurrentUser,
                 _testRootPath,
                 appPath,
-                extractEnabled: false,
+                extractEnabled: true,
                 compressEnabled: false,
                 preferModernMenu: true,
-                (_, _, _) => throw new InvalidOperationException("登録処理は呼ばれません。"),
-                (extensionPath, packageName) =>
+                (_, _, _) => ShellContextMenu.PackagePendingRemovalHResult);
+
+            Assert.False(VerbExists("*", ContextMenuOperation.Extract));
+            Assert.False(VerbExists("*", ContextMenuOperation.Compress));
+            AssertState(extractEnabled: true, compressEnabled: false);
+        }
+        finally
+        {
+            Directory.Delete(applicationDirectory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ApplyRegistration_WhenBothDisabled_KeepsSparsePackageAndWritesDisabledState()
+    {
+        const string appPath = @"C:\Program Files\Lhamiel\Lhamiel.exe";
+        ShellContextMenu.Register(
+            Registry.CurrentUser, _testRootPath, appPath, extractEnabled: true, compressEnabled: true);
+        ShellContextMenu.WriteState(Registry.CurrentUser, _testRootPath, true, true);
+
+        ShellContextMenu.ApplyRegistration(
+            Registry.CurrentUser,
+            _testRootPath,
+            appPath,
+            extractEnabled: false,
+            compressEnabled: false,
+            preferModernMenu: true,
+            (_, _, _) => throw new InvalidOperationException("登録処理は呼ばれません。"));
+
+        Assert.False(VerbExists("*", ContextMenuOperation.Extract));
+        Assert.False(VerbExists("*", ContextMenuOperation.Compress));
+        AssertState(extractEnabled: false, compressEnabled: false);
+    }
+
+    [Fact]
+    public void RemoveRegistration_UnregistersEverythingAndDeletesState()
+    {
+        var applicationDirectory = CreateModernArtifacts();
+        try
+        {
+            var appPath = Path.Combine(applicationDirectory, "Lhamiel.exe");
+            ShellContextMenu.Register(
+                Registry.CurrentUser, _testRootPath, appPath, extractEnabled: true, compressEnabled: true);
+            ShellContextMenu.WriteState(Registry.CurrentUser, _testRootPath, true, true);
+            (string ExtensionPath, string PackageFamilyName)? invocation = null;
+
+            ShellContextMenu.RemoveRegistration(
+                Registry.CurrentUser,
+                _testRootPath,
+                appPath,
+                (extensionPath, packageFamilyName) =>
                 {
-                    invocation = (extensionPath, packageName);
+                    invocation = (extensionPath, packageFamilyName);
                     return 0;
                 });
 
             Assert.NotNull(invocation);
-            Assert.Equal(ShellContextMenu.ModernPackageName, invocation!.Value.PackageName);
+            Assert.Equal(ShellContextMenu.ModernPackageFamilyName, invocation!.Value.PackageFamilyName);
             Assert.False(VerbExists("*", ContextMenuOperation.Extract));
             Assert.False(VerbExists("*", ContextMenuOperation.Compress));
             Assert.Null(Registry.CurrentUser.OpenSubKey(ShellContextMenu.BuildStatePath(_testRootPath)));

@@ -66,14 +66,14 @@ public class ProgramLifecycleTests
     public void CleanupBeforeUninstall_RemovesStartupContextMenuAndFileAssociations()
     {
         var startupUnregisterCount = 0;
-        bool? contextMenuEnabled = null;
+        var contextMenuRemoved = false;
         var fileAssociationsRemoved = false;
 
         Program.CleanupBeforeUninstall(
             () => startupUnregisterCount++,
-            (extractEnabled, compressEnabled) =>
+            () =>
             {
-                contextMenuEnabled = extractEnabled || compressEnabled;
+                contextMenuRemoved = true;
                 return true;
             },
             () =>
@@ -83,7 +83,7 @@ public class ProgramLifecycleTests
             });
 
         Assert.Equal(1, startupUnregisterCount);
-        Assert.False(contextMenuEnabled);
+        Assert.True(contextMenuRemoved);
         Assert.True(fileAssociationsRemoved);
     }
 }

@@ -95,11 +95,11 @@ internal class Program
     /// </summary>
     internal static void CleanupBeforeUninstall(
         Action? unregisterStartup = null,
-        Func<bool, bool, bool>? setContextMenuEnabled = null,
+        Func<bool>? removeContextMenu = null,
         Func<bool>? disassociateAllFileTypes = null)
     {
         (unregisterStartup ?? StartupRegistration.Unregister)();
-        _ = (setContextMenuEnabled ?? ShellContextMenu.SetEnabled)(false, false);
+        _ = (removeContextMenu ?? ShellContextMenu.RemoveAll)();
         _ = (disassociateAllFileTypes ?? FileAssociation.DisassociateAllFileTypes)();
     }
 
