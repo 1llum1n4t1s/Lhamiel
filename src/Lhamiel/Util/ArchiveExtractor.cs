@@ -14,11 +14,9 @@ public static class ArchiveExtractor
     /// <summary>
     /// 定数: サポートされている展開形式の一覧
     /// </summary>
-    internal static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz",
-        ".lzma", ".tlz", ".xz", ".txz", ".rar", ".lzh", ".cab", ".arj", ".z", ".tz"
-    };
+    internal static readonly HashSet<string> SupportedExtensions = new(
+        ArchiveFormatConstants.SupportedArchiveFormats.Select(static format => "." + format.Extension),
+        StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// 無視するシステムディレクトリ名（展開時の構造解析・圧縮時の除外で共用）
@@ -1633,38 +1631,8 @@ public static class ArchiveExtractor
 
             // 最終的な展開先への移動処理（原子性のため既存は削除せず退避し、移動成功後にバックアップを削除）
             Logger.Log($"一時ディレクトリから最終展開先へ移動します: {tempOutputPath} -> {outputPath}");
-            var backupPaths = new List<(string Original, string Backup)>();
-
-            // 上書きが許可された（または確認済み）の場合は既存の対象を退避（削除せず移動で原子性を確保）
-            try
-            {
-                if (overwriteCheckPaths is { Count: > 0 })
-                {
-                    // 親フォルダ直下展開時: 実際に上書きされるパスのみ退避（outputPathは退避しない）
-                    foreach (var path in overwriteCheckPaths)
-                    {
-                        var moved = MoveExistingToBackup(path, backupPaths);
-                        if (moved)
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-                        }
-                    }
-                }
-                else
-                {
-                    // 複数ルート等でoutputPathを新規作成する場合: outputPathを退避してから作成
-                    MoveExistingToBackup(outputPath, backupPaths);
-                    cancellationToken.ThrowIfCancellationRequested();
-                }
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
-            {
-                Logger.Log($"既存対象の退避に失敗しました: {ex.Message}");
-                // 退避を途中まで行った分を元へ戻してから中止する（一部だけ退避された
-                // 状態で放置すると、その原本が .Lhamiel_backup_<guid> に残ったまま消える）。
-                RestoreFromBackup(backupPaths);
-                throw new InvalidOperationException(App.Text("Error.PreparationFailed"), ex);
-            }
+            var backupPaths = PrepareExistingTargetsForOverwrite(
+                overwriteCheckPaths, outputPath, cancellationToken);
 
             if (!Directory.Exists(outputPath))
             {
@@ -1819,6 +1787,54 @@ public static class ArchiveExtractor
                     scope.Dispose();
                 promptedPasswordRedactions.Clear();
             }
+        }
+    }
+
+
+    /// <summary>
+    /// 上書き対象をバックアップへ退避し、途中で失敗またはキャンセルされた場合は
+    /// このフェーズで作成したバックアップをすべて元へ戻す。
+    /// </summary>
+    internal static List<(string Original, string Backup)> PrepareExistingTargetsForOverwrite(
+        IReadOnlyList<string>? overwriteCheckPaths,
+        string outputPath,
+        CancellationToken cancellationToken)
+    {
+        var backupPaths = new List<(string Original, string Backup)>();
+        try
+        {
+            if (overwriteCheckPaths is { Count: > 0 })
+            {
+                // 親フォルダ直下展開時: 実際に上書きされるパスのみ退避（outputPathは退避しない）
+                foreach (var path in overwriteCheckPaths)
+                {
+                    var moved = MoveExistingToBackup(path, backupPaths);
+                    if (moved)
+                        cancellationToken.ThrowIfCancellationRequested();
+                }
+            }
+            else
+            {
+                // 複数ルート等でoutputPathを新規作成する場合: outputPathを退避してから作成
+                MoveExistingToBackup(outputPath, backupPaths);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            return backupPaths;
+        }
+        catch (OperationCanceledException)
+        {
+            // 退避直後にキャンセルされた場合も原本を通常パスへ戻す。
+            RestoreFromBackup(backupPaths);
+            throw;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+        {
+            Logger.Log($"既存対象の退避に失敗しました: {ex.Message}");
+            // 退避を途中まで行った分を元へ戻してから中止する（一部だけ退避された
+            // 状態で放置すると、その原本が .Lhamiel_backup_<guid> に残ったまま消える）。
+            RestoreFromBackup(backupPaths);
+            throw new InvalidOperationException(App.Text("Error.PreparationFailed"), ex);
         }
     }
 

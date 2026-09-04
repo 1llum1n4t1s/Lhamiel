@@ -11,10 +11,7 @@ public class FileAssociation
 {
     private const string ClassesRootPath = @"Software\Classes";
     private static readonly string[] SupportedTypes =
-    [
-        "zip", "7z", "tar", "gz", "bz2", "lzma", "xz", "rar", "lzh",
-        "cab", "arj", "z", "tgz", "tbz2", "tbz", "tlz", "txz", "tz"
-    ];
+        [.. ArchiveFormatConstants.SupportedArchiveFormats.Select(static format => format.Extension)];
 
     private static string AppPath => AppPathResolver.ExecutablePath;
 
@@ -22,16 +19,16 @@ public class FileAssociation
     /// アプリケーションのアイコンファイルパス
     /// アプリケーションと同じディレクトリに配置されたICOファイル
     /// </summary>
-    private static readonly string IconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "app.ico");
+    private static readonly string IconPath = Path.Combine(AppContext.BaseDirectory, "app.ico");
 
     /// <summary>
     /// ファイル関連付けのアイコンファイルパス
     /// ファイルマネージャーで表示されるアイコン
     /// </summary>
-    private static readonly string FileIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "file.ico");
-    private static readonly string FileFolderIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "file_folder.ico");
-    private static readonly string FileCuteIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "file_cute.ico");
-    private static readonly string FileIceIconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "file_ice.ico");
+    private static readonly string FileIconPath = Path.Combine(AppContext.BaseDirectory, "file.ico");
+    private static readonly string FileFolderIconPath = Path.Combine(AppContext.BaseDirectory, "file_folder.ico");
+    private static readonly string FileCuteIconPath = Path.Combine(AppContext.BaseDirectory, "file_cute.ico");
+    private static readonly string FileIceIconPath = Path.Combine(AppContext.BaseDirectory, "file_ice.ico");
 
     /// <summary>
     /// アプリケーション名
@@ -52,7 +49,7 @@ public class FileAssociation
     {
         variant ??= SettingsManager.Instance.Current.FileIconVariant;
         var selectedPath = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory,
+            AppContext.BaseDirectory,
             GetPreferredFileIconFileName(variant));
 
         if (File.Exists(selectedPath))

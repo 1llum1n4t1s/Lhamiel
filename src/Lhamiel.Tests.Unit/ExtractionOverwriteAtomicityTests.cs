@@ -131,4 +131,21 @@ public class ExtractionOverwriteAtomicityTests
         Assert.Equal("orig-locked", File.ReadAllText(Path.Combine(dst, "99_locked.txt")));
         Assert.Empty(Backups(dst));
     }
+
+    [Fact]
+    public void 既存対象の退避直後にキャンセル_原本が復元される()
+    {
+        using var temp = TestDirectory.Create("MoveAtomicCancel");
+        var dst = Path.Combine(temp.Path, "dst");
+        var target = Path.Combine(dst, "existing.txt");
+        Write(target, "original");
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        Assert.Throws<OperationCanceledException>(() =>
+            ArchiveExtractor.PrepareExistingTargetsForOverwrite([target], dst, cts.Token));
+
+        Assert.Equal("original", File.ReadAllText(target));
+        Assert.Empty(Backups(dst));
+    }
 }

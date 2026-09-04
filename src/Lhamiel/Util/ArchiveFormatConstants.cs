@@ -2,11 +2,37 @@ namespace Lhamiel.Util;
 
 /// <summary>
 /// アーカイブ関連の共通定数。
-/// <see cref="ArchiveExtractor"/> と <see cref="ArchiveCompressor"/> に分散していた
-/// 拡張子リストをここに集約し、新フォーマット追加時の片側漏れを防ぐ。
+/// 展開判定・関連付け・設定 UI・圧縮に分散していた拡張子リストをここに集約し、
+/// 新フォーマット追加時の片側漏れを防ぐ。
 /// </summary>
 internal static class ArchiveFormatConstants
 {
+    /// <summary>
+    /// 展開・ファイル関連付けの対象形式。拡張子はレジストリと UI で使うドットなし表記とし、
+    /// 展開判定側だけドット付きへ投影する。
+    /// </summary>
+    internal static readonly (string Extension, string Description)[] SupportedArchiveFormats =
+    [
+        ("zip", "ZIP (.zip)"),
+        ("7z", "7-Zip (.7z)"),
+        ("tar", "TAR (.tar)"),
+        ("gz", "GZIP (.gz)"),
+        ("bz2", "BZIP2 (.bz2)"),
+        ("lzma", "LZMA (.lzma)"),
+        ("xz", "XZ (.xz)"),
+        ("rar", "RAR (.rar)"),
+        ("lzh", "LZH (.lzh)"),
+        ("cab", "CAB (.cab)"),
+        ("arj", "ARJ (.arj)"),
+        ("z", "Z (.z)"),
+        ("tgz", "TAR.GZ (.tgz)"),
+        ("tbz2", "TAR.BZ2 (.tbz2)"),
+        ("tbz", "TAR.BZ (.tbz)"),
+        ("tlz", "TAR.LZMA (.tlz)"),
+        ("txz", "TAR.XZ (.txz)"),
+        ("tz", "TAR.Z (.tz)")
+    ];
+
     /// <summary>
     /// 圧縮のみの拡張子（単体ではアーカイブでない、TAR と組み合わせて使う形式）。
     /// <see cref="ArchiveExtractor.GetArchiveBaseName"/> が「最外の拡張子を除去したあと .tar かどうか」で
@@ -29,16 +55,4 @@ internal static class ArchiveFormatConstants
         ".tar.gz", ".tar.bz2", ".tar.xz", ".tar.lz", ".tar.lzma", ".tar.zst", ".tar.z"
     ];
 
-    /// <summary>
-    /// パス区切り文字の配列（<c>\</c> と <c>/</c>）。
-    /// <see cref="string.Split(char[], StringSplitOptions)"/> 等に渡すとき
-    /// 毎回配列生成するとホットパスでアロケが発生するため、読取専用定数として共有する。
-    /// </summary>
-    internal static readonly char[] PathSeparators = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar];
-
-    /// <summary>
-    /// パス区切り文字を `/` に正規化する共通ヘルパ（アーカイブ内パスの比較・表示用）。
-    /// </summary>
-    internal static string NormalizeToForwardSlash(string path) =>
-        string.IsNullOrEmpty(path) ? path : path.Replace('\\', '/');
 }

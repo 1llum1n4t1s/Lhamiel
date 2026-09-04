@@ -164,9 +164,11 @@ public class ArchiveProcessorTests : IDisposable
             {
                 try
                 {
-                    // 構造解析の 3 試行（0ms / 200ms / 600ms）は全て失敗するが、従来は直後の
-                    // 展開側リトライ中に解除されて空の構造情報のまま展開だけ成功していた。
-                    await Task.Delay(700, CancellationToken.None);
+                    // 構造解析の 3 試行は ±25% ジッタ込みでも最大 750ms
+                    //（初回直後 + 150～250ms + 300～500ms）で開始されるため、全試行が
+                    // 確実に失敗した後で解除する。従来実装なら、その直後の展開側リトライ中に
+                    // ロックが解除され、空の構造情報のまま展開だけ成功する回帰を検出できる。
+                    await Task.Delay(1000, CancellationToken.None);
                 }
                 finally
                 {

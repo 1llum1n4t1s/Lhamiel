@@ -59,10 +59,10 @@ public sealed class AppIconVariantTests
     }
 
     [Theory]
-    [InlineData("Classic", "avares://Lhamiel/icon/app_icon_classic.png")]
+    [InlineData("Classic", "avares://Lhamiel/icon/app_icon.png")]
     [InlineData("Crystal", "avares://Lhamiel/icon/app_icon_crystal.png")]
     [InlineData("Legacy", "avares://Lhamiel/icon/app_icon_legacy.png")]
-    [InlineData("unknown", "avares://Lhamiel/icon/app_icon_classic.png")]
+    [InlineData("unknown", "avares://Lhamiel/icon/app_icon.png")]
     public void GetPreviewResourceUri_MapsVariantToExpectedAsset(string? variant, string expected)
     {
         Assert.Equal(expected, AppIconManager.GetPreviewResourceUri(variant));

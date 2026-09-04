@@ -18,6 +18,9 @@
     <Authors>Kagayoi</Authors>
     <!-- IDE コードスタイル分析をビルド時にも強制する（.editorconfig で IDE0005/IDE0055 等を warning 指定済み）。 -->
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- .slnx がソリューション外の条件付き／推移 ProjectReference から親構成を除去すると
+         Release ビルドへ Debug 成果物が混入するため、全プロジェクトで構成伝播を維持する。 -->
+    <ShouldUnsetParentConfigurationAndPlatform>false</ShouldUnsetParentConfigurationAndPlatform>
     <!-- 共通サポートSDKは開発時に兄弟リポジトリを直接参照し、単独cloneでは固定版パッケージを使う。 -->
     <KagayoiSupportClientProject Condition="'$(KagayoiSupportClientUsePackage)' != 'true' and '$(KagayoiSupportClientProject)' == '' and Exists('$(MSBuildThisFileDirectory)..\Kagayoi.Support\clients\dotnet\src\Kagayoi.Support.Client\Kagayoi.Support.Client.csproj')">$(MSBuildThisFileDirectory)..\Kagayoi.Support\clients\dotnet\src\Kagayoi.Support.Client\Kagayoi.Support.Client.csproj</KagayoiSupportClientProject>
     <!-- 兄弟 ProjectReference と単独 clone 用 PackageReference は復元グラフが異なるため、

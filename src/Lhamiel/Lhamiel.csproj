@@ -52,7 +52,13 @@
   <!-- .axaml は Avalonia SDK が自動インクルードするため明示不要 -->
 
   <ItemGroup>
-    <ProjectReference Include="$(KagayoiSupportClientProject)" Condition="'$(KagayoiSupportClientProject)' != ''" />
+    <!-- .slnx はソリューション外の条件付き参照から Configuration/Platform を除去するため、
+         親の Debug/Release を明示的に継承し、CPU 非依存 SDK は AnyCPU でビルドする。 -->
+    <ProjectReference
+      Include="$(KagayoiSupportClientProject)"
+      Condition="'$(KagayoiSupportClientProject)' != ''"
+      SetConfiguration="Configuration=$(Configuration)"
+      SetPlatform="Platform=AnyCPU" />
     <PackageReference Include="Kagayoi.Support.Client" Version="$(KagayoiSupportClientVersion)" Condition="'$(KagayoiSupportClientProject)' == ''" />
     <PackageReference Include="Avalonia" Version="12.1.2" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
@@ -95,7 +101,6 @@
   <!-- 設定画面とバージョン画面に表示するアプリアイコンを Avalonia リソースとして埋め込む -->
   <ItemGroup>
     <AvaloniaResource Include="icon\app_icon.png" />
-    <AvaloniaResource Include="icon\app_icon_classic.png" />
     <AvaloniaResource Include="icon\app_icon_crystal.png" />
     <AvaloniaResource Include="icon\app_icon_legacy.png" />
   </ItemGroup>

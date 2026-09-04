@@ -39,7 +39,7 @@ public static partial class NativeLibraryManager
 
             // 7z.dll のパスを取得（実行ファイルと同じディレクトリを想定）
             // 単一ファイル公開時、ネイティブDLLは展開されず実行ファイルと同じ場所に配置される
-            var dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "7z.dll");
+            var dllPath = Path.Combine(AppContext.BaseDirectory, "7z.dll");
 
             if (!File.Exists(dllPath))
             {

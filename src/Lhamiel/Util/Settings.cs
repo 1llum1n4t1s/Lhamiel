@@ -408,7 +408,7 @@ public class Settings
         try
         {
             // 旧パス（アプリケーション実行ディレクトリ）
-            var oldSettingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+            var oldSettingsFilePath = Path.Combine(AppContext.BaseDirectory, "settings.json");
 
             // ディレクトリ作成
             if (!Directory.Exists(AppDataDirectory))

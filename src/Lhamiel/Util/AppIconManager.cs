@@ -15,7 +15,8 @@ internal static class AppIconManager
     internal const string ClassicIconFileName = "app_classic.ico";
     internal const string CrystalIconFileName = "app_crystal.ico";
     internal const string LegacyIconFileName = "app_legacy.ico";
-    internal const string ClassicPreviewResourceUri = "avares://Lhamiel/icon/app_icon_classic.png";
+    // app_icon.png と app_icon_classic.png は同一画像。共通リソースを使い二重埋め込みを避ける。
+    internal const string ClassicPreviewResourceUri = "avares://Lhamiel/icon/app_icon.png";
     internal const string CrystalPreviewResourceUri = "avares://Lhamiel/icon/app_icon_crystal.png";
     internal const string LegacyPreviewResourceUri = "avares://Lhamiel/icon/app_icon_legacy.png";
 

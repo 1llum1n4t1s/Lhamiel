@@ -30,7 +30,7 @@ public static class AppPathResolver
                 return processPath;
 
             // ベースディレクトリからexeファイルを探す
-            var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            var baseDirectory = AppContext.BaseDirectory;
             var exeFiles = Directory.GetFiles(baseDirectory, "*.exe");
             if (exeFiles.Length > 0)
             {

@@ -1409,33 +1409,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// ファイル関連付けの初期一覧を作成する（拡張子・表示名の定義はここで一元管理）
+    /// ファイル関連付けの初期一覧を共通アーカイブ形式カタログから作成する。
     /// </summary>
     private static ObservableCollection<FileAssociationItem> CreateAssociationItems()
     {
-        var pairs = new[]
-        {
-            ("zip", "ZIP (.zip)"),
-            ("7z", "7-Zip (.7z)"),
-            ("tar", "TAR (.tar)"),
-            ("gz", "GZIP (.gz)"),
-            ("bz2", "BZIP2 (.bz2)"),
-            ("lzma", "LZMA (.lzma)"),
-            ("xz", "XZ (.xz)"),
-            ("rar", "RAR (.rar)"),
-            ("lzh", "LZH (.lzh)"),
-            ("cab", "CAB (.cab)"),
-            ("arj", "ARJ (.arj)"),
-            ("z", "Z (.z)"),
-            ("tgz", "TAR.GZ (.tgz)"),
-            ("tbz2", "TAR.BZ2 (.tbz2)"),
-            ("tbz", "TAR.BZ (.tbz)"),
-            ("tlz", "TAR.LZMA (.tlz)"),
-            ("txz", "TAR.XZ (.txz)"),
-            ("tz", "TAR.Z (.tz)")
-        };
         var list = new ObservableCollection<FileAssociationItem>();
-        foreach (var (ext, desc) in pairs)
+        foreach (var (ext, desc) in ArchiveFormatConstants.SupportedArchiveFormats)
             list.Add(new FileAssociationItem { Extension = ext, Description = desc });
         return list;
     }
@@ -1526,7 +1505,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             CopyrightText = assembly.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright ?? "Copyright © 2025-2026 ゆろち";
 
             // 7z.dll（7-Zip本家）のバージョンを取得
-            var dllPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "7z.dll");
+            var dllPath = Path.Combine(AppContext.BaseDirectory, "7z.dll");
             if (File.Exists(dllPath))
             {
                 var fileVersion = FileVersionInfo.GetVersionInfo(dllPath);
