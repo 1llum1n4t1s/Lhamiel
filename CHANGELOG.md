@@ -106,6 +106,12 @@ Lhamiel の利用者に関係する変更をバージョンごとにまとめて
 - **アンインストール時の後片付けを強化** — スタートアップ登録と右クリックメニューに加え、Lhamielが設定した全対応形式のファイル関連付けも自動で解除します。別アプリへ変更済みの関連付けや共有の「プログラムから開く」情報は維持されます
 - **内部コンポーネントを更新** — Avaloniaを12.1.0、Microsoft.NET.Test.Sdkを18.8.1、Windowsデータ保護ライブラリを10.0.10へ更新しました
 
+## [1.0.189] — Git 記録日: 2026-07-15
+
+- 右クリックメニューとアンインストール時の解除を追加
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/84f7c5fc46f26a37a8b83a8cb827da5c714846da) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/bb9550b810bb01f4393e7e4671fbae2762aba6c1...84f7c5fc46f26a37a8b83a8cb827da5c714846da)。
+
 ## v1.0.188 — 2026-07-01
 
 - **展開失敗時にファイルが失われる可能性がある不具合を修正** — 展開中にエラーが起きて元のファイルを退避していた場合に、退避前の状態へ正しく復元されないことがある問題を修正しました
@@ -241,6 +247,12 @@ Lhamiel の利用者に関係する変更をバージョンごとにまとめて
 - **圧縮除外リスト管理UIを追加** — 圧縮設定から除外パターンの追加・削除・既定値リセットが可能に。`.DS_Store`、`Thumbs.db`、`node_modules`、`__MACOSX` などを既定除外として管理
 - **設定とドキュメント整備** — 17言語ローカライズ、設定スキーマ、AGENTS.md を実装に合わせて更新
 
+## [1.0.165] — Git 記録日: 2026-05-03
+
+- 展開後の移動が一時的なファイルロックで失敗する場合に再試行し、エラーダイアログの表示と全体の安定性を改善。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/0812bad3f63b2a5f6dca866a7cf931be74f8b819) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/5c30ca22ffcdd1acc50f96b8e642afc541a7352e...0812bad3f63b2a5f6dca866a7cf931be74f8b819)。
+
 ## v1.0.164 — 2026-04-29
 
 - **依存パッケージ更新** — Avalonia 12.0.1 → 12.0.2（バグ修正パッチ：OneWay バインディング修正、TabControl 高速切替クラッシュ修正等）、MessageBox.Avalonia 3.3.1.1 → 12.0.0（Avalonia 12 対応版、API 互換）、Microsoft.NET.Test.Sdk 18.4.0 → 18.5.1
@@ -268,6 +280,12 @@ Lhamiel の利用者に関係する変更をバージョンごとにまとめて
 
 - **v1.0.160 を取り下げ、v1.0.159 の状態で再リリース** — v1.0.160 で取り込んだ修正に不具合が確認されたため、当該変更を revert し、v1.0.159 と同等のコード状態に戻したうえで再リリース。v1.0.160 の GitHub Releases / タグは削除済み
 
+## [1.0.160] — Git 記録日: 2026-04-25
+
+- 利用案内と開発用文書を更新。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/d668b171e0d895ea552b5914c489b36ac6b7f7d4) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/95ea96e292320c8f9bd3c6167eb848dea19d1cb2...d668b171e0d895ea552b5914c489b36ac6b7f7d4)。
+
 ## v1.0.159 — 2026-04-22
 
 - **パスワード保護アーカイブ対応** — 暗号化 ZIP / 7z / RAR をドロップすると専用の入力ダイアログが開くように。誤入力時は再試行メッセージ付きで自動的にダイアログが再表示される
@@ -292,6 +310,19 @@ Lhamiel の利用者に関係する変更をバージョンごとにまとめて
 - **コンパイル済みバインディング有効化** — メイン画面に `x:CompileBindings` を適用しバインディングパフォーマンスを向上
 - **UI調整** — タイトルバーにバージョン表示を追加、アクリル背景の透明度を調整
 
+## [1.0.156] — Git 記録日: 2026-04-16
+
+- NLog→SuperLightLogger移行、7z.dll同梱方式をNuGet自動配置に刷新、テスト時のexplorer起動を抑止
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/6b96a860becf0d356cc00912f5579157956f4f63) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/cfc628b6a8bfd8dd677adae1333a6a3f0e2a0cac...6b96a860becf0d356cc00912f5579157956f4f63)。
+
+## [1.0.154] — Git 記録日: 2026-04-12
+
+- 不要コード削除・パフォーマンス改善・UI修正・adversarialテスト追加
+- README に v1.0.152 の変更履歴を追加
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/cfc628b6a8bfd8dd677adae1333a6a3f0e2a0cac) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/2a83c588f23a453714b2943efd4d87a1f3523982...cfc628b6a8bfd8dd677adae1333a6a3f0e2a0cac)。
+
 ## v1.0.152 — 2026-04-11
 
 - **Avalonia 12 対応** — Avalonia UI を 11.3 から 12.0 にアップグレード。削除された `ExtendClientAreaChromeHints` プロパティを除去
@@ -306,6 +337,21 @@ Lhamiel の利用者に関係する変更をバージョンごとにまとめて
 - **TOCTOU レース修正** — 圧縮時のゼロバイトファイル判定における競合状態を修正
 - **CI ビルド安定性向上** — 7z.dll ダウンロードにリトライ処理を追加し、タイムアウトによるビルド失敗を防止
 
+## [1.0.148] — Git 記録日: 2026-04-07
+
+- 展開後に開くフォルダが親ディレクトリになるバグを修正し、バージョンを 1.0.148 に更新
+- 展開後にアーカイブ名フォルダを開く挙動を追加
+- PRレビュー指摘対応（4件）
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/cbc95c851106864cf058163517ecc46303f35f93) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/bcd5c1a947506175d2d3487e8d92c643d305342f...cbc95c851106864cf058163517ecc46303f35f93)。
+
+## [1.0.146] — Git 記録日: 2026-04-05
+
+- 圧縮・展開処理のパフォーマンス最適化
+- 7z.dll ダウンロードにリトライ処理を追加（タイムアウト対策）
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/bcd5c1a947506175d2d3487e8d92c643d305342f) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/2e92e11641db1038cd840272d527e72d6709300a...bcd5c1a947506175d2d3487e8d92c643d305342f)。
+
 ## v1.0.144 — 2026-04-02
 
 - **展開ロジックの簡略化** — スマート展開の複雑なヒューリスティック判定を除去。「アーカイブ名でフォルダを作成する」設定に基づくシンプルな ON/OFF 方式に変更。二重ネスト防止はアーカイブのルートフォルダ名とアーカイブ名の一致判定のみで実現
@@ -316,6 +362,36 @@ Lhamiel の利用者に関係する変更をバージョンごとにまとめて
 - **空ディレクトリの圧縮修正** — 空ディレクトリが圧縮時にアーカイブに含まれないバグを修正
 - **展開時のバグ修正** — 一時フォルダ方式の展開における衝突検出・上書き確認の不具合を複数修正
 
+## [1.0.142] — Git 記録日: 2026-03-28
+
+- 進捗ダイアログの改善 + 全ハードコード文字列のローカライズ + コード最適化
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/b85afc06f91129a4e8f42996bbdc10bbe220d020) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/dbf4954a6406c98a8b76be5cccce0bd53b546bec...b85afc06f91129a4e8f42996bbdc10bbe220d020)。
+
+## [1.0.140] — Git 記録日: 2026-03-28
+
+- CRDebugger によるデバッグモード・ダイアログプレビュー + FileConflictDialog 改善 + バージョン 1.0.140
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/dbf4954a6406c98a8b76be5cccce0bd53b546bec) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/72dcf3e28cccca62aa652309b91dbff8d89165fa...dbf4954a6406c98a8b76be5cccce0bd53b546bec)。
+
+## [1.0.136] — Git 記録日: 2026-03-27
+
+- 圧縮時に全ファイルを一時コピーしてロック中ファイルも圧縮可能に
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/72dcf3e28cccca62aa652309b91dbff8d89165fa) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/bd424db4b11a8063e6b8878d3b4addc3ad3c076a...72dcf3e28cccca62aa652309b91dbff8d89165fa)。
+
+## [1.0.134] — Git 記録日: 2026-03-27
+
+- 空ディレクトリが圧縮時にアーカイブに含まれないバグを修正
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/bd424db4b11a8063e6b8878d3b4addc3ad3c076a) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/a06c13fcaf3c9aae54cf321f807e102384e1ea79...bd424db4b11a8063e6b8878d3b4addc3ad3c076a)。
+
+## [1.0.132] — Git 記録日: 2026-03-25
+
+- 同名ファイルやファイル・フォルダーの衝突を検出し、上書き確認で選んだ保持・置換の動作を尊重。空ディレクトリと置換失敗時の原本を保護。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/a06c13fcaf3c9aae54cf321f807e102384e1ea79) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/9c82ac91c01ce72cb7cacac0175bc94c3f213c70...a06c13fcaf3c9aae54cf321f807e102384e1ea79)。
+
 ## v1.0.130 — 2026-03-25
 
 - **ファイル衝突ダイアログ** — 展開・圧縮時に同名ファイルが競合した場合、Windows風のファイル比較ダイアログで選択的に処理。サムネイル表示・一括チェック・同一ファイルスキップ機能を搭載
@@ -325,6 +401,26 @@ Lhamiel の利用者に関係する変更をバージョンごとにまとめて
 - **アクリルブラー効果** — 全ダイアログにアクリルブラー背景を適用
 - **ARM64対応** — Windows ARM64ビルドを追加
 
+## [1.0.123] — Git 記録日: 2026-03-21
+
+- パフォーマンス最適化・コード簡潔化・実装正規化
+- ARM64ビルドのリストアエラーを修正
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/79c744492836614dbf00f38dafd31a64274a6d53) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/88a314417361599ed20c3c3e027c7e50e3ca003e...79c744492836614dbf00f38dafd31a64274a6d53)。
+
+## [1.0.122] — Git 記録日: 2026-03-19
+
+- ワークフローをKomorebiパターンに再構成
+- リリースワークフローのアーキテクチャ間競合を修正
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/88a314417361599ed20c3c3e027c7e50e3ca003e) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/97de9734c6fbb7a7034e88fd364714016f379b09...88a314417361599ed20c3c3e027c7e50e3ca003e)。
+
+## [1.0.120] — Git 記録日: 2026-03-19
+
+- ARM64 (Windows) ビルド対応
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/97de9734c6fbb7a7034e88fd364714016f379b09) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/e3d080d1e8a63f25d23040e7d562a4c46f401295...97de9734c6fbb7a7034e88fd364714016f379b09)。
+
 ## v1.0.118 — 2026-03-19
 
 - **ローカライズ不具合の修正** — アプリ起動時にロケール辞書が適用されず、全UIにリソースキーがそのまま表示される問題を修正
@@ -332,6 +428,37 @@ Lhamiel の利用者に関係する変更をバージョンごとにまとめて
 - **ファイル関連付けの即時反映** — ファイル関連付けの変更が即座にシステムに適用されるよう修正
 - **ライセンス参照の修正** — ライセンス表示のリンク先を修正
 - **アクセントカラーオーバーレイ追加** — UIにアクセントカラーのオーバーレイ効果を追加
+
+## [1.0.116] — Git 記録日: 2026-03-19
+
+- ローカライズ全面崩壊の根本原因を修正
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/b11f1aa444e4abb553a260f713a0eec5e332584f) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/e84bc3b36544a64cee3058788eb4da129ae1ac07...b11f1aa444e4abb553a260f713a0eec5e332584f)。
+
+## [1.0.114] — Git 記録日: 2026-03-19
+
+- 上書き確認ダイアログのローカライズ不具合を修正
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/e84bc3b36544a64cee3058788eb4da129ae1ac07) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/f6f64ae15aaa0fabe0c3c081fb16bc2e82f00734...e84bc3b36544a64cee3058788eb4da129ae1ac07)。
+
+## [1.0.112] — Git 記録日: 2026-03-17
+
+- バージョンタブに7-Zipバージョン表示、ライセンス参照の修正、アクセントカラーオーバーレイ追加
+- 7zライブラリ名の表記を1llum1n4t1s.Sevenzip に修正
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/f6f64ae15aaa0fabe0c3c081fb16bc2e82f00734) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/ab2b79c4de24945693b7a609a8d758526e21a691...f6f64ae15aaa0fabe0c3c081fb16bc2e82f00734)。
+
+## [1.0.110] — Git 記録日: 2026-03-16
+
+- Vector掲載基準に準拠したREADME修正
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/ab2b79c4de24945693b7a609a8d758526e21a691) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/c78e1ebfaa9e2bc7857aa2c8b9735a425f2fcaa8...ab2b79c4de24945693b7a609a8d758526e21a691)。
+
+## [1.0.108] — Git 記録日: 2026-03-16
+
+- ファイル関連付けの変更が即座に適用されない問題を修正
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/c78e1ebfaa9e2bc7857aa2c8b9735a425f2fcaa8) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/24c5e43a8047ca5bd747201472917ef0edf226f9...c78e1ebfaa9e2bc7857aa2c8b9735a425f2fcaa8)。
 
 ## v1.0.106 — 2026-03-16
 
@@ -341,29 +468,292 @@ Lhamiel の利用者に関係する変更をバージョンごとにまとめて
 - **複数ファイルまとめ圧縮** — 複数ファイルを1つのアーカイブにまとめる機能を追加
 - **複数ファイル処理のバグ修正** — 複数ファイル指定時にアーカイブファイルが誤って展開される問題を修正
 
+## [1.0.102] — Git 記録日: 2026-03-16
+
+- プロジェクト構造変更、ラテン語・サンスクリット語追加、UI改善
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/04406f80fd5cdbf794265fd6149c0d05694ff292) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/d50d2e892dd4c5a2c0ce38fdcf21d26915472933...04406f80fd5cdbf794265fd6149c0d05694ff292)。
+
+## [1.0.100] — Git 記録日: 2026-03-16
+
+- テーマComboBoxをAOT安全なThemeItem recordに変更
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/d50d2e892dd4c5a2c0ce38fdcf21d26915472933) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/955ede413134c1c16ab3095c44f4c8cee6c91a20...d50d2e892dd4c5a2c0ce38fdcf21d26915472933)。
+
+## [1.0.98] — Git 記録日: 2026-03-16
+
+- 複数ファイルのコマンドライン圧縮対応、テーマドロップダウン修正、バグ修正
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/955ede413134c1c16ab3095c44f4c8cee6c91a20) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/58785eba76e1573baef51e19d905822cbb8eea60...955ede413134c1c16ab3095c44f4c8cee6c91a20)。
+
+## [1.0.94] — Git 記録日: 2026-03-16
+
+- 複数ファイルまとめ圧縮機能を追加、ドロップオーバーレイの透過を除去
+- ドロップオーバーレイの枠色修正、テーマ選択のコード改善
+- Actipro → Avalonia FluentTheme移行、macOS Tahoe Liquid Glass風UIデザイン適用
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/58785eba76e1573baef51e19d905822cbb8eea60) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/48675b39e08c0764229ff010d4fa83001c295c87...58785eba76e1573baef51e19d905822cbb8eea60)。
+
 ## v1.0.90 — 2026-03-07
 
 - コード品質・パフォーマンス改善
+
+## [1.0.86] — Git 記録日: 2026-02-18
+
+- 更新確認ボタン設置
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/62ba7fbef441f78fef4b42c8c5ae8c3ad06df6a1) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/607a791a3e678f1c01b6e1d8e027ca6d5255a3f9...62ba7fbef441f78fef4b42c8c5ae8c3ad06df6a1)。
+
+## [1.0.84] — Git 記録日: 2026-02-18
+
+- 上書きが正常にできていない不具合の修正
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/607a791a3e678f1c01b6e1d8e027ca6d5255a3f9) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/cdab3d2bf2e4b45da36b7e469544914960eaeb8d...607a791a3e678f1c01b6e1d8e027ca6d5255a3f9)。
+
+## [1.0.82] — Git 記録日: 2026-02-15
+
+- ドットを含むフォルダーを圧縮した際の書庫名を修正し、コマンドラインから開始した処理の完了を正しく待機。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/cdab3d2bf2e4b45da36b7e469544914960eaeb8d) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/f45702778d57567e53d9a146268418551b331137...cdab3d2bf2e4b45da36b7e469544914960eaeb8d)。
 
 ## v1.0.80 — 2026-02-18
 
 - 上書き確認ダイアログの不具合修正
 - 更新確認ボタンの追加
 
+## [1.0.76] — Git 記録日: 2026-02-10
+
+- AOT対応
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/63ab834e4cd79e626dc66fe5d64b618084244b70) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/1cc2f807f6d6a2dca191f8fa7655204d8559e526...63ab834e4cd79e626dc66fe5d64b618084244b70)。
+
+## [1.0.74] — Git 記録日: 2026-02-07
+
+- .tzファイル未認識・並列圧縮の進捗計算・設定読み込みのバグを修正
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/1cc2f807f6d6a2dca191f8fa7655204d8559e526) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/7e0d8530f260c66634f14aa6ab0b4891c3b2b9a7...1cc2f807f6d6a2dca191f8fa7655204d8559e526)。
+
+## [1.0.72] — Git 記録日: 2026-02-06
+
+- パフォーマンス改善
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/7e0d8530f260c66634f14aa6ab0b4891c3b2b9a7) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/55b951138ce90268b425cc408e03c9a5e5d83167...7e0d8530f260c66634f14aa6ab0b4891c3b2b9a7)。
+
 ## v1.0.70 — 2026-02-10
 
 - ネイティブ AOT ビルド対応
 - アプリ更新プロセスの改善
+
+## [1.0.68] — Git 記録日: 2026-02-04
+
+- README.md更新
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/7ecbfe112e5e4ee2435c3bc00c73d22b4db3de3a) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/120468eb03e76c2ba91b82ebf256f4ee89b3029f...7ecbfe112e5e4ee2435c3bc00c73d22b4db3de3a)。
+
+## [1.0.66] — Git 記録日: 2026-02-04
+
+- アプリ更新タイミング調整
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/120468eb03e76c2ba91b82ebf256f4ee89b3029f) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/d149140367d8ded082ca2d9fc1316d92c25510a9...120468eb03e76c2ba91b82ebf256f4ee89b3029f)。
+
+## [1.0.64] — Git 記録日: 2026-02-03
+
+- Aot対応延期
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/d149140367d8ded082ca2d9fc1316d92c25510a9) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/ff3f4cb335927029bfad27b989e1bc9b5cf0f127...d149140367d8ded082ca2d9fc1316d92c25510a9)。
+
+## [1.0.62] — Git 記録日: 2026-02-03
+
+- Aot対応
+- ファイル整理
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/ff3f4cb335927029bfad27b989e1bc9b5cf0f127) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/15dcdc7f2229f7e5b265d669f8bb494b1f52f112...ff3f4cb335927029bfad27b989e1bc9b5cf0f127)。
 
 ## v1.0.60 — 2026-02-06
 
 - パフォーマンス改善
 - `.tz` ファイル未認識、並列圧縮の進捗計算、設定読み込みのバグ修正
 
+## [1.0.58] — Git 記録日: 2026-02-02
+
+- System.Text.Jsonへ移行
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/437c526cb1040f1169861713b1f0a503f08ec911) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/cc66aa1749639195c9c5f96f8cf249d7cefea622...437c526cb1040f1169861713b1f0a503f08ec911)。
+
+## [1.0.56] — Git 記録日: 2026-02-02
+
+- ドキュメント整理
+- 展開仕様の見直し
+- 不要なフォールバック削除
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/cc66aa1749639195c9c5f96f8cf249d7cefea622) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/b036624b1ba40a2a109010dc777225d38ec0b97c...cc66aa1749639195c9c5f96f8cf249d7cefea622)。
+
+## [1.0.52] — Git 記録日: 2026-02-01
+
+- ドキュメント整理
+- 二重フォルダ回避ロジック修正(リフトアップ処理修正)
+- パスを修正
+- 処理タイミング統一
+- 不具合修正とMVVM化
+- Avalonia化
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/b036624b1ba40a2a109010dc777225d38ec0b97c) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/6d9f9db8c1fc6eefe4a29f51aa5a1b51850f7a57...b036624b1ba40a2a109010dc777225d38ec0b97c)。
+
 ## v1.0.50 — 2026-02-03
 
 - UI 改善
 - README 整備
+
+## [1.0.44] — Git 記録日: 2026-01-25
+
+- ライブラリ差し替え
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/ff41de54312beba43810550b5ae4806267a1379b) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/48c364d0098759e07593430038bc2c92462b7371...ff41de54312beba43810550b5ae4806267a1379b)。
+
+## [1.0.42] — Git 記録日: 2026-01-24
+
+- 配布用のバージョン情報を更新。記録された差分は版番号の変更のみ。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/48c364d0098759e07593430038bc2c92462b7371) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/dd30dc5eb5d4fc0272466a62ffd31b2a7d40f5c7...48c364d0098759e07593430038bc2c92462b7371)。
+
+## [1.0.40] — 公開記録日: 2026-01-23
+
+- GitHub に公開記録がありますが、リリース本文がなく、手元の Git 履歴でも対応する版の変更内容を特定できませんでした。
+
+出典: [公開記録](https://github.com/1llum1n4t1s/Lhamiel/releases/tag/untagged-d78a9872811492e98b1f)。
+
+## [1.0.38] — Git 記録日: 2026-01-22
+
+- 圧縮時の出力ファイル名と進捗の UI スレッドへの通知を修正し、進捗表示エラーをログへ記録。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/dd30dc5eb5d4fc0272466a62ffd31b2a7d40f5c7) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/cfa94961a9e1b3055086fd140418f55697a27616...dd30dc5eb5d4fc0272466a62ffd31b2a7d40f5c7)。
+
+## [1.0.36] — Git 記録日: 2026-01-21
+
+- 圧縮進捗が 0% のままになる問題、ドットで始まるフォルダーの書庫名、既定の圧縮形式の保存・復元を修正。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/cfa94961a9e1b3055086fd140418f55697a27616) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/a52d515253c9522d3828f0fc8619684fd28bed5a...cfa94961a9e1b3055086fd140418f55697a27616)。
+
+## [1.0.34] — Git 記録日: 2026-01-20
+
+- 設定とログの保存先をアプリの実行フォルダーからユーザーデータ領域へ移し、旧ファイルの移行処理を追加。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/a52d515253c9522d3828f0fc8619684fd28bed5a) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/3c112e3bbf3579b9e335f312680652f98a4cf9b7...a52d515253c9522d3828f0fc8619684fd28bed5a)。
+
+## [1.0.32] — Git 記録日: 2026-01-19
+
+- 圧縮・展開のキャンセル後に破棄済みオブジェクトへアクセスする問題と、進捗ウィンドウを重複して閉じる処理を改善。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/3c112e3bbf3579b9e335f312680652f98a4cf9b7) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/42c48fba52301aa15d852b15f56739486841f6b7...3c112e3bbf3579b9e335f312680652f98a4cf9b7)。
+
+## [1.0.30] — Git 記録日: 2026-01-19
+
+- ZIP の既定の圧縮レベルを Fast から Normal へ変更。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/42c48fba52301aa15d852b15f56739486841f6b7) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/038064a515eef203e198459dde5f9581763b0aac...42c48fba52301aa15d852b15f56739486841f6b7)。
+
+## [1.0.28] — Git 記録日: 2026-01-19
+
+- 開発支援用の設定を更新。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/038064a515eef203e198459dde5f9581763b0aac) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/267a73a4df822fb9abc84c2d1c876ff9fc0d26fb...038064a515eef203e198459dde5f9581763b0aac)。
+
+## [1.0.25] — Git 記録日: 2026-01-19
+
+- 更新確認をバックグラウンドで行い、実行中の圧縮・展開が完了してから更新を適用するよう変更。
+- 自己展開 EXE の判定範囲を広げ、通常の EXE は圧縮、自己展開形式は展開へ振り分け。手動更新確認ボタンを削除。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/267a73a4df822fb9abc84c2d1c876ff9fc0d26fb) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/633eee0083e3404308bce193bf1d27cf0b4f53f1...267a73a4df822fb9abc84c2d1c876ff9fc0d26fb)。
+
+## [1.0.22] — Git 記録日: 2026-01-18
+
+- 不要な名前空間の参照を整理し、配布用のバージョン情報を更新。機能変更はありません。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/633eee0083e3404308bce193bf1d27cf0b4f53f1) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/db943ac470b6bf4d9379e05a65d551a160c27e3f...633eee0083e3404308bce193bf1d27cf0b4f53f1)。
+
+## [1.0.21] — Git 記録日: 2026-01-18
+
+- 進捗ウィンドウが自分自身を所有ウィンドウに設定しないよう修正。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/db943ac470b6bf4d9379e05a65d551a160c27e3f) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/55a7d0fb202e6f6edfda026155162eb3e01a1e2a...db943ac470b6bf4d9379e05a65d551a160c27e3f)。
+
+## [1.0.20] — Git 記録日: 2026-01-18
+
+- LHA 圧縮時のクラッシュと複数項目の進捗計算を修正し、進捗画面の操作名・状態表示を整理。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/55a7d0fb202e6f6edfda026155162eb3e01a1e2a) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/828280691666d2e6b6b72dbdac973c5e9683068d...55a7d0fb202e6f6edfda026155162eb3e01a1e2a)。
+
+## [1.0.18] — Git 記録日: 2026-01-16
+
+- 展開後フォルダの表示と進捗表示を改善
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/828280691666d2e6b6b72dbdac973c5e9683068d) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/d4160b7ad938e6d94b0f0777b8b3aaf17ac7d95a...828280691666d2e6b6b72dbdac973c5e9683068d)。
+
+## [1.0.17] — Git 記録日: 2026-01-14
+
+- 手動の更新確認ボタンと、前回の更新確認時刻を保存する仕組みを追加。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/d4160b7ad938e6d94b0f0777b8b3aaf17ac7d95a) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/9c3b759ed8117019b834d7426ea61d4708076242...d4160b7ad938e6d94b0f0777b8b3aaf17ac7d95a)。
+
+## [1.0.16] — Git 記録日: 2026-01-14
+
+- LHA 圧縮の表示名と出力拡張子を LZH・.lzh に変更し、対応形式の判定を更新。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/9c3b759ed8117019b834d7426ea61d4708076242) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/37f88352ffeea4031c50e4392875b0f190b30ff9...9c3b759ed8117019b834d7426ea61d4708076242)。
+
+## [1.0.15] — Git 記録日: 2026-01-14
+
+- Implement LHA compression feature and add comprehensive tests
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/37f88352ffeea4031c50e4392875b0f190b30ff9) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/eb827618cac79c2116a81ef1b22c301f4ed3ab33...37f88352ffeea4031c50e4392875b0f190b30ff9)。
+
+## [1.0.12] — Git 記録日: 2026-01-14
+
+- 書庫直下が単一ファイル・単一フォルダー・複数項目の場合を区別し、展開先フォルダーの作成と二重フォルダーの解消を修正。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/eb827618cac79c2116a81ef1b22c301f4ed3ab33) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/acd131db84db790ccb54c96039884683a96061ea...eb827618cac79c2116a81ef1b22c301f4ed3ab33)。
+
+## [1.0.11] — Git 記録日: 2026-01-14
+
+- 書庫直下に複数の項目がある場合だけ書庫名のフォルダーを作成するよう、展開先の判定を変更。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/acd131db84db790ccb54c96039884683a96061ea) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/68495834ce5f737ccf2f242c0a8af2d95e32ade4...acd131db84db790ccb54c96039884683a96061ea)。
+
+## [1.0.10] — Git 記録日: 2026-01-14
+
+- 関連付け対象の拡張子を小文字に揃え、設定画面での照合を修正。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/68495834ce5f737ccf2f242c0a8af2d95e32ade4) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/3fd4052ebd0521e5e52854caf4f739f2ea968e1b...68495834ce5f737ccf2f242c0a8af2d95e32ade4)。
+
+## [1.0.9] — Git 記録日: 2026-01-14
+
+- 複数書庫の圧縮・展開を CPU コア数で制限した並列処理に対応させ、キャンセル処理を追加。
+- 展開時の二重フォルダー判定と、圧縮形式ごとのオプション設定を整理。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/3fd4052ebd0521e5e52854caf4f739f2ea968e1b) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/3c457c7437d72dee204b6e63766b779c073a61ca...3fd4052ebd0521e5e52854caf4f739f2ea968e1b)。
+
+## [1.0.6] — Git 記録日: 2026-01-14
+
+- AssemblyInfo.cs をコンパイル対象に明示的に追加
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/3c457c7437d72dee204b6e63766b779c073a61ca) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/c4c0ce2532b60299277d42adb9bd3959a1372e66...3c457c7437d72dee204b6e63766b779c073a61ca)。
+
+## [1.0.5] — Git 記録日: 2026-01-14
+
+- UTF-8エンコーディング機能を復元: CompressionOptionを使用
+- ビルドエラーを修正: using宣言の追加とArchiveWriterのAPI変更対応
+- 圧縮処理の改善: UTF-8エンコーディングとファイル除外機能を追加
+- 複数フォルダのドロップ&並行圧縮処理に対応
+- Fix file association for tar archive extensions
+- Migrate to Log4net for logging
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/058c2c12a5b81fd73a80bfdd01ffd3818b18643c) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/900cdf7f39809fcffdbaf29c93a894745587cdf9...058c2c12a5b81fd73a80bfdd01ffd3818b18643c)。
+
+## [1.0.1] — Git 記録日: 2026-01-13
+
+- 圧縮・展開後に出力フォルダーを開く機能と二重フォルダーを防ぐ処理を追加し、再公開時の配布処理を改善。
+
+出典: [版の記録](https://github.com/1llum1n4t1s/Lhamiel/commit/900cdf7f39809fcffdbaf29c93a894745587cdf9) / [変更差分](https://github.com/1llum1n4t1s/Lhamiel/compare/cee837adaecbd91ecfd35979c8ffd1f8e294518a...900cdf7f39809fcffdbaf29c93a894745587cdf9)。
 
 ## v1.0.0 — 2026-02-02
 
