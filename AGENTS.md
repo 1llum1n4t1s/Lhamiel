@@ -136,6 +136,8 @@ Drag-and-drop drives the app:
 
 ### Testability Pattern
 
+**ダイアログの外観**: アプリ内ダイアログと進捗画面は `DialogChrome` の高さ32のタイトルバー、角丸14の本文枠、区切り線付き操作バーを共有する。各 AXAML の `DialogBody` は本文 Grid、最終行の `DialogActions`（進捗画面は `CancelButton`）は操作領域として、ロード直後に `DialogChrome.Attach` で共通枠へ移す。本文 Grid の最終行は操作専用にする。背景のアクリル・色・濃さ・不透明フォールバックは MainWindow と揃える。SDK 更新画面は `UpdateDialogAppearance` が表示期間だけ外観を適用するため、SDK 更新時は状態別の本文・ボタン構造とバインディングを確認する。
+
 DI コンテナ不導入の方針に従い、`ArchiveProcessor` の外部依存は `internal static` プロパティで差し替え可能にしている:
 
 ```csharp

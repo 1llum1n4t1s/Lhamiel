@@ -51,6 +51,7 @@ public partial class SupportDialog : Window
         Height = CompactHeight;
         Title = App.Text("Support.Title");
         AcrylicFallbackHelper.Attach(this);
+        DialogChrome.Attach(this, "DialogBody", "DialogActions");
         AppIconManager.Apply(this);
         Opened += (_, _) => _nameBox.Focus();
         Closed += (_, _) => _cancellation.Cancel();

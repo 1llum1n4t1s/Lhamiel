@@ -10,6 +10,7 @@ public partial class ConfirmDialog : Window
     {
         AvaloniaXamlLoader.Load(this);
         Util.AcrylicFallbackHelper.Attach(this);
+        DialogChrome.Attach(this, "DialogBody", "DialogActions");
         Util.AppIconManager.Apply(this);
     }
 

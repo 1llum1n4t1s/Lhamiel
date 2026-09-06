@@ -36,7 +36,7 @@
             Background="{DynamicResource Brush.Window}"
             IsHitTestVisible="False"
             Opacity="0.5" />
-    <Grid Margin="28,40,28,20" RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <Grid x:Name="DialogBody" RowDefinitions="Auto,Auto,Auto,*,Auto">
 
         <!-- ヘッダー -->
         <TextBlock
@@ -234,7 +234,7 @@
         </Border>
 
         <!-- フッター: 全て上書き + ボタン -->
-        <Grid
+        <Grid x:Name="DialogActions"
             Grid.Row="4"
             Margin="0,14,0,0"
             ColumnDefinitions="Auto,*,Auto,Auto">
@@ -242,7 +242,6 @@
                 x:Name="OverwriteAllButton"
                 Grid.Column="0"
                 MinWidth="110"
-                Padding="16,8"
                 IsVisible="False"
                 Click="OverwriteAllButton_Click"
                 Content="{DynamicResource Text.Conflict.OverwriteAll}" />
@@ -251,14 +250,12 @@
                 Grid.Column="2"
                 MinWidth="110"
                 Margin="0,0,10,0"
-                Padding="16,8"
                 Click="ContinueButton_Click"
                 Content="{DynamicResource Text.Conflict.Continue}" />
             <Button
                 x:Name="CancelButton"
                 Grid.Column="3"
                 MinWidth="110"
-                Padding="16,8"
                 Click="CancelButton_Click"
                 Content="{DynamicResource Text.Conflict.Cancel}" />
         </Grid>

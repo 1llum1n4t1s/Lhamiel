@@ -26,7 +26,7 @@
             IsHitTestVisible="False"
             Opacity="0.5" />
 
-        <Grid Margin="22,42,22,18" RowDefinitions="*,Auto,Auto" RowSpacing="8">
+        <Grid x:Name="DialogBody" RowDefinitions="*,Auto,Auto" RowSpacing="8">
             <Grid Grid.Row="0" RowDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" RowSpacing="7">
                     <TextBlock
                         Grid.Row="0"
@@ -110,7 +110,7 @@
                 Foreground="{DynamicResource Brush.FG2}"
                 TextWrapping="Wrap" />
 
-            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto">
+            <Grid x:Name="DialogActions" Grid.Row="2" ColumnDefinitions="Auto,*,Auto">
                 <Button
                     x:Name="StatusButton"
                     Grid.Column="0"

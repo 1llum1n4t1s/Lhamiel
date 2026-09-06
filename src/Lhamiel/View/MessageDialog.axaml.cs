@@ -22,6 +22,7 @@ public partial class MessageDialog : Window
     {
         AvaloniaXamlLoader.Load(this);
         Util.AcrylicFallbackHelper.Attach(this);
+        DialogChrome.Attach(this, "DialogBody", "DialogActions");
         Util.AppIconManager.Apply(this);
         _messageText = GetRequiredControl<TextBlock>("MessageText");
         _okButton = GetRequiredControl<Button>("OkButton");

@@ -25,19 +25,18 @@
             Background="{DynamicResource Brush.Window}"
             IsHitTestVisible="False"
             Opacity="0.5" />
-        <Grid Margin="28,44,28,20" RowDefinitions="Auto,Auto">
+        <Grid x:Name="DialogBody" RowDefinitions="Auto,Auto">
 
             <!--  メッセージ  -->
             <TextBlock
                 x:Name="MessageText"
                 Grid.Row="0"
-                Margin="0,0,0,20"
                 FontSize="14"
                 Foreground="{DynamicResource Brush.FG1}"
                 TextWrapping="Wrap" />
 
             <!--  ボタン  -->
-            <StackPanel
+            <StackPanel x:Name="DialogActions"
                 Grid.Row="1"
                 HorizontalAlignment="Right"
                 Orientation="Horizontal"
@@ -45,14 +44,12 @@
                 <Button
                     x:Name="YesButton"
                     MinWidth="100"
-                    Padding="16,8"
                     Click="YesButton_Click"
                     Content="{DynamicResource Text.Button.Yes}"
                     IsDefault="True" />
                 <Button
                     x:Name="NoButton"
                     MinWidth="100"
-                    Padding="16,8"
                     Click="NoButton_Click"
                     Content="{DynamicResource Text.Button.No}"
                     IsCancel="True" />

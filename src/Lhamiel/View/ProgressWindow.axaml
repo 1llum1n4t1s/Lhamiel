@@ -7,7 +7,8 @@
     xmlns:view="using:Lhamiel.View"
     Title="{DynamicResource Text.Progress.Title}"
     Width="400"
-    Height="200"
+    MinHeight="220"
+    SizeToContent="Height"
     x:DataType="view:ProgressWindow"
     Background="Transparent"
 
@@ -30,7 +31,7 @@
             Background="{DynamicResource Brush.Window}"
             IsHitTestVisible="False"
             Opacity="0.5" />
-    <Grid Margin="20,40,20,20">
+    <Grid x:Name="DialogBody">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />

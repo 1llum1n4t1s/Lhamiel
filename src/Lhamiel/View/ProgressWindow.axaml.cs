@@ -51,6 +51,7 @@ public partial class ProgressWindow : Window
         // コンポーネントの初期化
         InitializeComponent();
         Util.AcrylicFallbackHelper.Attach(this);
+        DialogChrome.Attach(this, "DialogBody", "CancelButton");
         Util.AppIconManager.Apply(this, appIconVariant);
 
         // 操作タイプに応じたタイトルとラベルを設定

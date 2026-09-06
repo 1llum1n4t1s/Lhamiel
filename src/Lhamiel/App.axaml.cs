@@ -1187,6 +1187,7 @@ public partial class App : Application
 
                     try
                     {
+                        using var dialogAppearance = View.UpdateDialogAppearance.Observe();
                         await VelopackUpdateDialog.UpdateDialogWindow.ShowAsync(
                             owner, mgr, options, manualCheck: manually, cancelToken);
                     }

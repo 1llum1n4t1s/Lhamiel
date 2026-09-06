@@ -56,6 +56,7 @@ public partial class ErrorRecoveryDialog : Window
         ErrorInfo = errorInfo;
         InitializeComponent();
         Util.AcrylicFallbackHelper.Attach(this);
+        DialogChrome.Attach(this, "DialogBody", "DialogActions");
         Util.AppIconManager.Apply(this);
         SetErrorInfo();
     }

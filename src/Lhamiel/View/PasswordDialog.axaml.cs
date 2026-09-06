@@ -80,8 +80,21 @@ public partial class PasswordDialog : Window
     public void ClearPassword()
     {
         Password = null;
+        ClearPasswordInputs();
+    }
+
+    private void ClearPasswordInputs()
+    {
         if (_passwordBox != null) _passwordBox.Text = string.Empty;
         if (_confirmBox != null) _confirmBox.Text = string.Empty;
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        // タイトルバー・Alt+F4・外部キャンセルでも入力欄を消去する。
+        // OK の結果は呼び出し側が取得して ClearPassword するまで維持する。
+        ClearPasswordInputs();
+        base.OnClosed(e);
     }
 
     /// <summary>XAML プレビュー用のパラメータなしコンストラクタ。</summary>
@@ -98,6 +111,7 @@ public partial class PasswordDialog : Window
         Mode = mode;
         InitializeComponent();
         Util.AcrylicFallbackHelper.Attach(this);
+        DialogChrome.Attach(this, "DialogBody", "DialogActions");
         Util.AppIconManager.Apply(this);
 
         Opened += (_, _) => _passwordBox?.Focus();
@@ -166,8 +180,7 @@ public partial class PasswordDialog : Window
 
         Password = pwd;
         // 入力欄の内部参照を切り、ダイアログ閉じた後にコントロール側に平文が残り続けるのを防ぐ。
-        if (_passwordBox != null) _passwordBox.Text = string.Empty;
-        if (_confirmBox != null) _confirmBox.Text = string.Empty;
+        ClearPasswordInputs();
         Close(true);
     }
 
@@ -181,9 +194,7 @@ public partial class PasswordDialog : Window
 
     private void CancelButton_Click(object? sender, RoutedEventArgs e)
     {
-        Password = null;
-        if (_passwordBox != null) _passwordBox.Text = string.Empty;
-        if (_confirmBox != null) _confirmBox.Text = string.Empty;
+        ClearPassword();
         Close(false);
     }
 
