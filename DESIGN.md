@@ -121,6 +121,14 @@ Lhamiel enumerates and filters all archive inputs itself because the SevenZip wr
 
 Each window layers theme color between the acrylic material and interactive content. This preserves acrylic appearance while bounding contrast variation from bright desktop backgrounds; fallback detection still owns replacement of the acrylic layer when blur is unavailable. The trade-off is that window roots must preserve the shared acrylic, scrim, and content ordering.
 
+### Shared dialog chrome
+
+`DialogChrome` owns the shared 32-pixel title bar, rounded content surface, and separated action bar for application dialogs and progress windows. It reparents existing body and action controls while preserving their events and bindings, so workflow behavior remains with each dialog. Background layers remain owned by the window and follow the acrylic layering above.
+
+`UpdateDialogAppearance` adapts the Velopack SDK window during the awaited update-dialog lifetime, preserving SDK state visibility, button events, and background controls. Required root elements are checked before mutation; a mismatch leaves the SDK's standard screen in place so updating remains available. This avoids duplicating the SDK workflow but couples appearance adaptation to its control structure; implementation checks belong in [AGENTS.md](AGENTS.md#testability-pattern).
+
+`PasswordDialog.OnClosed` clears input controls for every close route, including the title bar, Alt+F4, and external cancellation. An accepted password remains available as the result until the caller retrieves it and calls `ClearPassword`, separating control cleanup from result ownership.
+
 ### Local signed releases to R2
 
 SimplySign requires a logged-in local session and device approval, so binary releases are produced locally rather than in CI. R2 is the continuing update source; old GitHub Releases are retained only as a migration bridge for legacy clients. This provides signed dual-architecture releases but makes the release workstation and signing session part of the operational boundary.
