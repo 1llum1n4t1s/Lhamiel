@@ -830,13 +830,11 @@ public static class ArchiveExtractor
         var requiredSize = precomputedUncompressedSize >= 0
             ? precomputedUncompressedSize
             : DiskSpaceChecker.GetArchiveUncompressedSize(archivePath);
-        if (requiredSize > 0)
-        {
-            var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(
-                outputPath, requiredSize, parentWindow, cancellationToken);
-            if (!hasSpace)
-                throw new OperationCanceledException(App.Text("Error.DiskSpaceCancelled"));
-        }
+        // サイズ不明 (-1) でも最低空き容量を確認する。空アーカイブ (0) とは区別する。
+        var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(
+            outputPath, requiredSize, parentWindow, cancellationToken);
+        if (!hasSpace)
+            throw new OperationCanceledException(App.Text("Error.DiskSpaceCancelled"));
 
         // 展開中のランタイム容量監視（Zip bomb 対策 / 悪意あるメタデータサイズへの保険）
         // operationCts と linkedCts で外側のキャンセルとも連携する。

@@ -22,14 +22,41 @@ internal static partial class CrashHandler
     {
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
-            if (e.ExceptionObject is Exception ex)
+            if (e.IsTerminating && e.ExceptionObject is Exception ex)
                 WriteMiniDump(ex);
         };
 
-        TaskScheduler.UnobservedTaskException += (_, e) =>
+        TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
+    }
+
+    internal static void HandleUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        // 継続するプロセスでは自己ダンプによるロック待ちを起こさない。
+        // 回収時にはパスワードの redaction scope が終了しているため、メッセージは保存しない。
+        try
         {
-            WriteMiniDump(e.Exception);
-        };
+            Logger.Log($"バックグラウンドタスクで未処理の例外が発生しました: {FormatExceptionSummary(e.Exception)}", LogLevel.Error);
+        }
+        finally
+        {
+            e.SetObserved();
+        }
+    }
+
+    internal static string FormatExceptionSummary(Exception exception)
+    {
+        var summary = $"{exception.GetType().FullName} (HResult=0x{exception.HResult:X8})\n{exception.StackTrace}";
+        // タスク例外の外側は AggregateException なので、内部の型とスタックも診断用に残す。
+        if (exception is AggregateException aggregate)
+        {
+            foreach (var inner in aggregate.InnerExceptions)
+                summary += $"\nInnerException: {FormatExceptionSummary(inner)}";
+        }
+        else if (exception.InnerException is { } inner)
+        {
+            summary += $"\nInnerException: {FormatExceptionSummary(inner)}";
+        }
+        return summary;
     }
 
     /// <summary>
@@ -39,7 +66,7 @@ internal static partial class CrashHandler
     /// 自己プロセスへの MiniDumpWriteDump は全スレッドをサスペンドするため、
     /// 他スレッドがヒープロック/ローダーロックを握ったままだと DbgHelp がデッドロックする窓がある
     /// （MS ドキュメントも自己ダンプは別プロセスからの実行を推奨）。
-    /// クラッシュハンドラ経路は「既にプロセスが死んでいる」前提でこのリスクを受容するが、
+    /// クラッシュハンドラ経路はプロセス終了直前に限定してこのリスクを受容するが、
     /// テストからは必ず子プロセスを対象にするオーバーロードを使うこと。
     /// </remarks>
     internal static string? WriteMiniDump(Exception? triggerException = null)
@@ -107,9 +134,7 @@ internal static partial class CrashHandler
                 var infoPath = Path.ChangeExtension(dumpPath, ".txt");
                 File.WriteAllText(infoPath,
                     $"Timestamp: {DateTime.Now:O}\n" +
-                    $"Exception: {triggerException.GetType().FullName}\n" +
-                    $"Message: {triggerException.Message}\n" +
-                    $"StackTrace:\n{triggerException}");
+                    $"Exception: {FormatExceptionSummary(triggerException)}");
             }
 
             RotateOldDumps();

@@ -136,15 +136,42 @@ public class DiskSpaceCheckerAdversarialTests
     }
 
     [Fact]
-    public async Task EnsureDiskSpaceAsync_負の必要量_即座にtrue()
+    public async Task EnsureDiskSpaceAsync_サイズ不明_空き容量があれば続行()
     {
         Assert.True(await DiskSpaceChecker.EnsureDiskSpaceAsync("C:\\", -1, null, CancellationToken.None));
     }
 
     [Fact]
-    public async Task EnsureDiskSpaceAsync_ParentWindowNull_trueを返す()
+    public async Task EnsureDiskSpaceAsync_ParentWindowNull_容量不足なら停止()
     {
-        Assert.True(await DiskSpaceChecker.EnsureDiskSpaceAsync("C:\\", long.MaxValue, null, CancellationToken.None));
+        Assert.False(await DiskSpaceChecker.EnsureDiskSpaceAsync("C:\\", long.MaxValue, null, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task EnsureDiskSpaceAsync_サイズ不明かつ空き容量取得不能なら停止()
+    {
+        Assert.False(await DiskSpaceChecker.EnsureDiskSpaceAsync("", -1, null, CancellationToken.None));
+    }
+
+    [Fact]
+    public void GetArchiveUncompressedSize_取得失敗は空アーカイブと区別する()
+    {
+        using var temp = TestDirectory.Create("UnknownArchiveSize");
+        var missing = Path.Combine(temp.Path, "missing.7z");
+        Assert.Equal(-1, DiskSpaceChecker.GetArchiveUncompressedSize(missing));
+        var empty = Path.Combine(temp.Path, "empty.zip");
+        using (var archive = new System.IO.Compression.ZipArchive(
+                   File.Create(empty), System.IO.Compression.ZipArchiveMode.Create)) { }
+        Assert.Equal(0, DiskSpaceChecker.GetArchiveUncompressedSize(empty));
+    }
+
+    [Fact]
+    public async Task ExtractArchiveAsync_サイズ不明かつ出力容量不明なら展開前に停止()
+    {
+        using var temp = TestDirectory.Create("UnknownSizePreflight");
+        // 書庫を開く処理へ進めば FileNotFoundException になるため、事前中止を区別できる。
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            ArchiveExtractor.ExtractArchiveAsync(Path.Combine(temp.Path, "missing.7z"), ""));
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

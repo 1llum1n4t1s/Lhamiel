@@ -118,8 +118,7 @@ public partial class App : Application
         // 1. UIスレッド（画面操作など）で発生した未処理の例外をキャッチする
         // Avaloniaでは例外ハンドリングは別の方法で行う
 
-        // 2. バックグラウンドタスク（Task.Runなど）で発生した例外をキャッチする
-        TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
+        // 2. 未観察タスク例外は Program.Main で登録済みの CrashHandler が処理する
 
         // 3. それ以外の場所で発生した致命的な例外をキャッチする
         AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
@@ -991,19 +990,6 @@ public partial class App : Application
 
 
     /// <summary>
-    /// バックグラウンドタスクで発生した未処理の例外をハンドル
-    /// </summary>
-    /// <param name="sender">イベント送信元</param>
-    /// <param name="e">未観察のタスク例外イベント引数</param>
-    private void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
-    {
-        Logger.LogException("バックグラウンドタスクで未処理の例外が発生しました", e.Exception);
-
-        // エラーを「確認済み」にすることで、プロセスの強制終了を防ぎます
-        e.SetObserved();
-    }
-
-    /// <summary>
     /// その他の致命的なエラーをハンドル
     /// </summary>
     /// <param name="sender">イベント送信元</param>
@@ -1012,7 +998,7 @@ public partial class App : Application
     {
         if (e.ExceptionObject is Exception ex)
         {
-            Logger.LogException("致命的なエラーが発生しました（AppDomain）", ex);
+            Logger.Log($"致命的なエラーが発生しました（AppDomain）: {CrashHandler.FormatExceptionSummary(ex)}", LogLevel.Error);
             // このレベルのエラーは回復不能な場合が多いですが、ログには残します
         }
     }

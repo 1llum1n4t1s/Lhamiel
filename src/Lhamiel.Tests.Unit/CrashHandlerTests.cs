@@ -6,6 +6,42 @@ namespace Lhamiel.Tests.Unit;
 [Collection("CrashHandler")]
 public class CrashHandlerTests
 {
+    [Fact]
+    public void 未観察例外は確認済みとなりダンプを作らない()
+    {
+        var originalDumpDir = CrashHandler.DumpDirectory;
+        using var temp = TestDirectory.Create("UnobservedNoDump");
+        CrashHandler.DumpDirectory = Path.Combine(temp.Path, "dumps");
+        try
+        {
+            var args = new UnobservedTaskExceptionEventArgs(
+                new AggregateException(new InvalidOperationException("abc")));
+            CrashHandler.HandleUnobservedTaskException(null, args);
+            Assert.True(args.Observed);
+            Assert.False(Directory.Exists(CrashHandler.DumpDirectory));
+        }
+        finally
+        {
+            CrashHandler.DumpDirectory = originalDumpDir;
+        }
+    }
+
+    [Fact]
+    public void 例外要約は短い秘密や内部例外メッセージを含めない()
+    {
+        var inner = Record.Exception((Action)(() => throw new InvalidOperationException("secret-in-inner")));
+        Assert.NotNull(inner);
+        var exception = new AggregateException("abc", inner, new IOException("other-secret"));
+        var summary = CrashHandler.FormatExceptionSummary(exception);
+        Assert.Contains("InvalidOperationException", summary);
+        Assert.Contains("IOException", summary);
+        Assert.Contains(nameof(例外要約は短い秘密や内部例外メッセージを含めない), summary);
+        Assert.Contains($"HResult=0x{exception.HResult:X8}", summary);
+        Assert.DoesNotContain("abc", summary);
+        Assert.DoesNotContain("secret-in-inner", summary);
+        Assert.DoesNotContain("other-secret", summary);
+    }
+
     /// <summary>
     /// ダンプ対象の子プロセスを起動する。
     /// 自プロセスへの MiniDumpWriteDump は全スレッドをサスペンドするため、
@@ -106,7 +142,7 @@ public class CrashHandlerTests
         var target = StartDumpTargetProcess();
         try
         {
-            var ex = new InvalidOperationException("テスト用例外");
+            var ex = new InvalidOperationException("abc", new Exception("secret-in-inner"));
             var dumpPath = WriteDumpWithRetry(target, ex);
             Assert.NotNull(dumpPath);
 
@@ -114,7 +150,9 @@ public class CrashHandlerTests
             Assert.True(File.Exists(txtPath), "例外情報テキストが作成されていない");
             var content = File.ReadAllText(txtPath!);
             Assert.Contains("InvalidOperationException", content);
-            Assert.Contains("テスト用例外", content);
+            Assert.Contains($"HResult=0x{ex.HResult:X8}", content);
+            Assert.DoesNotContain("abc", content);
+            Assert.DoesNotContain("secret-in-inner", content);
         }
         finally
         {

@@ -17,7 +17,7 @@ public static partial class DiskSpaceChecker
     private const int CheckIntervalSeconds = 10;
 
     /// <summary>
-    /// 定期チェック時の最低空き容量閾値（100MB）
+    /// 定期チェックとサイズ不明時の事前チェックに使う最低空き容量閾値（100MB）
     /// </summary>
     private const long MinFreeSpaceThresholdBytes = 100 * 1024 * 1024;
 
@@ -61,7 +61,7 @@ public static partial class DiskSpaceChecker
         out ulong totalNumberOfFreeBytes);
 
     /// <summary>
-    /// アーカイブ内の非圧縮サイズ合計を取得する。
+    /// アーカイブ内の非圧縮サイズ合計を取得する。取得できない場合は -1 を返す。
     /// </summary>
     public static long GetArchiveUncompressedSize(string archivePath)
     {
@@ -76,14 +76,14 @@ public static partial class DiskSpaceChecker
             foreach (var item in reader.Items)
             {
                 if (item.IsDirectory) continue;
-                total += (long)item.Length;
+                total = checked(total + (long)item.Length);
             }
             return total;
         }
         catch (Exception ex)
         {
             Logger.Log($"アーカイブサイズ取得失敗: {archivePath}, {ex.Message}");
-            return 0; // 取得失敗時はチェックをスキップ
+            return -1;
         }
     }
 
@@ -117,14 +117,15 @@ public static partial class DiskSpaceChecker
     /// ユーザーが「再開」を選び、かつ容量が確保されるまでループする。
     /// </summary>
     /// <param name="outputPath">出力先パス</param>
-    /// <param name="requiredBytes">必要なバイト数</param>
+    /// <param name="requiredBytes">必要なバイト数。負数はサイズ不明として最低空き容量を確認する</param>
     /// <param name="parentWindow">親ウィンドウ</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    /// <returns>true=続行可能、false=ユーザーがキャンセル</returns>
+    /// <returns>true=続行可能、false=ユーザーがキャンセル、または画面なしで容量不足</returns>
     public static async Task<bool> EnsureDiskSpaceAsync(
         string outputPath, long requiredBytes, Window? parentWindow, CancellationToken cancellationToken)
     {
-        if (requiredBytes <= 0 || parentWindow is null) return true;
+        if (requiredBytes == 0) return true;
+        if (requiredBytes < 0) requiredBytes = MinFreeSpaceThresholdBytes;
 
         while (true)
         {
@@ -135,6 +136,9 @@ public static partial class DiskSpaceChecker
 
             var shortage = requiredBytes - available;
             Logger.Log($"容量不足: 必要={FormatSize(requiredBytes)}, 空き={FormatSize(available)}, 不足={FormatSize(shortage)}");
+
+            // ウィンドウが無い経路も容量不足を素通りさせない。
+            if (parentWindow is null) return false;
 
             // UIスレッドでダイアログ表示
             var userChoice = await Dispatcher.UIThread.InvokeAsync(async () =>
