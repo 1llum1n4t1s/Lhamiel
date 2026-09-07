@@ -73,7 +73,7 @@ Drag-and-drop drives the app:
 4. Post-extraction: MotW propagation (`MotwPropagator`)。CRC は展開中に 7z.dll が常時照合（不一致は `SetOperationResult(CRCError)` → ライブラリが Cancel 返却 → `reader.Save` が例外、の構造的保証）。展開後の二度読み `reader.Test()` パスは v1.0.183 で廃止し、`Settings.VerifyAfterExtraction` は legacy no-op
 5. `ProgressWindow` shows real-time progress via `IProgress<T>`
 
-**圧縮の進捗表示契約** (528,450 ファイル / 60GB の実測で「100% のまま 9 分超」になった問題への対応): バイト % が動かない区間はマーキー (IsIndeterminate) + 経過テキストで埋める — (1) 容量見積り `Progress.CheckingDiskSpace`、(2) スキャン `Progress.ScanningFiles` (発見件数、`ScanSourceFiles` の `progress` 引数)、(3) `writer.Add` ループ (実測 93 秒/528k 件) と Save 冒頭の Prepare 列挙は `Progress.PreparingCompression` (i/N、`ProgressTextIntervalMs`=200ms スロットル。ライブラリの Prepare 報告は素通しで数十万件届くためここで間引く)、(4) バイト進捗 100% 到達後〜`writer.Dispose` 完了 (セントラルディレクトリ書出し + 数十万ストリーム一括 close) は `Progress.Finalizing` — `finalizing` フラグで以後の確定 % を抑止、(5) 完了直前に確定 100% を 1 回報告 (テスト契約: `CompressFilesAsync_ReportsFinalizingBeforeFinal100`)。pct=0 は `ProgressThrottler` の boundary 扱いで素通りするため 1 回に抑える。並列バッチ (`CreateMappedProgress` totalCount>1) では indeterminate を `SetNotice` に降格してバーの marquee 点滅を防ぐ。**主因はライブラリ ≤1.0.78 の `UpdateCallback.SetCompleted` 過剰計上**（completeValue はグローバル累積値なのに「ファイル毎リセット検出」で二重加算 → データ処理の 58% 時点で表示 100% 到達）— ライブラリ側で単調最大値方式に修正済み (要 1.0.79+ への PackageReference 更新)。なおライブラリは圧縮中、入力ファイルを `FileShare.Read` で writer Dispose まで保持するため、**圧縮中の対象ファイルは書き込みロックされる**（上流設計妥協、ライブラリ AGENTS.md 参照）。
+**圧縮の進捗表示契約** (528,450 ファイル / 60GB の実測で「100% のまま 9 分超」になった問題への対応): バイト % が動かない区間はマーキー (IsIndeterminate) + 経過テキストで埋める — (1) 容量見積り `Progress.CheckingDiskSpace`、(2) スキャン `Progress.ScanningFiles` (除外対象・フォルダーを含む確認件数、`ScanSourceFiles` の `progress` 引数)、(3) `writer.Add` ループ (実測 93 秒/528k 件) と Save 冒頭の Prepare 列挙は `Progress.PreparingCompression` (i/N、`ProgressTextIntervalMs`=200ms スロットル。ライブラリの Prepare 報告は素通しで数十万件届くためここで間引く)、(4) バイト進捗 100% 到達後〜`writer.Dispose` 完了 (セントラルディレクトリ書出し + 数十万ストリーム一括 close) は `Progress.Finalizing` — `finalizing` フラグで以後の確定 % を抑止、(5) 完了直前に確定 100% を 1 回報告 (テスト契約: `CompressFilesAsync_ReportsFinalizingBeforeFinal100`)。pct=0 は `ProgressThrottler` の boundary 扱いで素通りするため 1 回に抑える。並列バッチ (`CreateMappedProgress` totalCount>1) では indeterminate を `SetNotice` に降格してバーの marquee 点滅を防ぐ。**主因はライブラリ ≤1.0.78 の `UpdateCallback.SetCompleted` 過剰計上**（completeValue はグローバル累積値なのに「ファイル毎リセット検出」で二重加算 → データ処理の 58% 時点で表示 100% 到達）— ライブラリ側で単調最大値方式に修正済み (要 1.0.79+ への PackageReference 更新)。なおライブラリは圧縮中、入力ファイルを `FileShare.Read` で writer Dispose まで保持するため、**圧縮中の対象ファイルは書き込みロックされる**（上流設計妥協、ライブラリ AGENTS.md 参照）。
 
 **展開時の出力先決定** (`ArchiveProcessor`):
 - `CreateArchiveNameFolder=ON` + ルートフォルダがアーカイブ名と一致 → フォルダ作成スキップ（`ShouldSkipFolderCreation`）
@@ -95,7 +95,7 @@ Drag-and-drop drives the app:
 - `IncludeHiddenAndSystemEntries=true`（デフォルト）では `EnumerationOptions.AttributesToSkip = 0` とし、Hidden/System 属性のファイル・フォルダも含める（例: `.git`）。
 - `IncludeHiddenAndSystemEntries=false` では Hidden/System 属性をスキップする。
 - 除外パターンは `%LocalAppData%\Lhamiel\.lhaignore` に保存され、**`.gitignore` 互換のグロブ・否定・ディレクトリ限定構文に対応**（例: `*.log`, `node_modules/`, `/build`, `**/cache`, `!keep.txt`）。
-- `ArchiveCompressor.GetFilesRecursively` は除外ディレクトリで枝刈りする手書き DFS（`Stack<string>`）を使うので、`node_modules/` 配下を踏まずに済む。
+- `ArchiveCompressor.EnumerateSourceFiles` は分岐ごとの matcher と候補順位を引き継ぐ単一 DFS で、除外ルールの読込・ファイル列挙・空フォルダー用の訪問記録をまとめる。各フォルダーのルールを読んだ直後から枝刈りし、兄弟フォルダーのルールは評価に持ち込まない。除外済みエントリ・空フォルダーの確認中も 200ms 間隔で件数を通知し、各列挙ステップでキャンセルを確認する。
 - **空ディレクトリエントリは「空マーカーディレクトリ」経由で追加する**（`CreateEmptyDirectoryMarker`）。`writer.Add(realDir, "rel/")` のように**実ディレクトリ**を渡すと、ライブラリ（`1llum1n4t1s.Sevenzip`）の `AddRecursive` が `Io.GetFiles`/`Io.GetDirectories` で**フィルタなしに再走査**し、スキャンで除外したはず（Hidden/System 属性・`.lhaignore` 該当）のファイルを復活させてしまう（中身ゼロ判定のディレクトリでも実体には除外ファイルが残るため）。ライブラリ側はフィルタを一切持たない前提なので、**除外はすべて呼び出し側（Lhamiel）が担保する**。個別ファイルは `ScanSourceFiles` の結果リストから 1 件ずつ `writer.Add` するため再走査は起きない。
 - 圧縮実行ごとに `LhaignoreFile.LoadMatcher()` で最新内容を読み直すため、設定 UI を介さない外部編集も反映される。
 - 設定 UI の「共通の除外ルール」（追加・削除・既定値リセット・「共通除外ファイルを開く」）は `.lhaignore` を直接編集する。`FileSystemWatcher` が外部編集を検知して `ObservableCollection<string>` を再ロードする。画面内の設定はすべてグローバルであり、「フォルダー別ルールの読み込み」は各圧縮元で探すファイル名と優先順位を全圧縮共通で設定する。
@@ -113,7 +113,7 @@ Drag-and-drop drives the app:
 | `DiskSpaceChecker` | 展開・圧縮前と処理中の空き容量監視。Windows の `GetDiskFreeSpaceExW` を直接使い、空パス・ルート解決不能・API 失敗は容量不明として `0` を返す fail-closed 契約（取得失敗を十分な空き容量として扱わない） |
 | `LockedFileRetryPolicy` | Generic exponential backoff retry for SHARING_VIOLATION / LOCK_VIOLATION |
 | `MotwPropagator` | Zone.Identifier ADS propagation from source archive to extracted files |
-| `CrashHandler` | MiniDump P/Invoke for unhandled exceptions, dump rotation |
+| `CrashHandler` | 終了する未処理例外だけ MiniDump を出力しローテーションする。未観察タスク例外は起動時に登録するハンドラで要約ログ + `SetObserved` とし、付随テキストと遅延例外ログは型・HResult・内部例外を含むスタックだけを保存する |
 | `DiagnosticsCollector` | Export support ZIP (logs, masked settings, environment info)。圧縮パスワード等の平文を含み得る MiniDump は ZIP へ含めない |
 | `MessageService` / `MessageDialog` | 共通メッセージを UI スレッド上の Lhamiel デザインへ集約する。進捗処理のエラーは `ProgressWindow.CloseSafeAsync` の完了後にダイアログを表示し、自己終了する CLI / シェル経路はダイアログが閉じるまで await してから終了する |
 | `SupportDialog` | `Kagayoi.Support.Client` を使うメール認証付き問い合わせフォーム。製品IDは `lhamiel`、送信先は `support.kagayoi.com`。SDKは兄弟 `Kagayoi.Support` があればProjectReference、単独cloneとCIでは固定版を公開NuGet.orgから取得する |
@@ -187,6 +187,8 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 
 ## Key Technical Details
 
+- **タスクバーのアプリ識別子** — `TaskbarIdentity` をプロセスとショートカットの共通解決元にする。右クリック起動のパッケージ AUMID を尊重し、通常起動も OS が返す外部配置先と現在の `Lhamiel.exe` の場所が一致すれば同じ ID を使う。別配置の開発ビルド・登録のない環境は `velopack.Lhamiel`。既存リンクは現在の exe を指し、ID が異なるものだけ起動時に移行する。変更時は `TaskbarIdentityTests` / `AppIconVariantTests` / `ProgramLifecycleTests` で、両経路の一致・別配置の隔離・リンクの引数維持・再書込抑止を確認する。
+
 - **Avalonia 12, not WPF** — compiled bindings (`x:CompileBindings="True"`), FluentTheme. `ExtendClientAreaChromeHints` は削除済み → `WindowDecorations` を使う
 - **Native AOT** (`PublishAot=true`) — avoid reflection-heavy patterns
 - **対応形式の追加・変更** — `ArchiveFormatConstants.SupportedArchiveFormats` を更新し、展開判定・関連付け・設定 UI が共通カタログから導出される構造を維持する。
@@ -217,7 +219,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 ## CI/CD
 
 - **PR builds**: `.github/workflows/dotnet-build.yml` — restore, build, test + code coverage on every PR
-- **Release (ローカル実行)**: `pwsh scripts/release-local.ps1` — **v1.0.183 から CI リリースを廃止しローカル実行に移行** (コード署名に SimplySign Desktop 接続 + スマホ OTP が必要で GitHub Actions からは署名できないため。velopack-release.yml は削除済み)。スクリプトが publish (Native AOT) → `vpk pack` + **Authenticode 署名** (`--signParams`) → 署名検証 → `wrangler@4.129.0` (pnpm dlx) で Cloudflare R2 バケット `lhamiel-updates` にアップロード → **配信実体のサイズ・SHA256 照合 → 不一致 URL のみパージ・再照合 → manifest 配信確認 → 旧配布物整理**（保持条件と失敗時の境界は [DESIGN.md](DESIGN.md#update-and-release) を参照。配信確認が失敗した場合は公開完了とせず、原因解消後に再確認する） まで一括実行。**R2 単独配信** (GitHub Releases への継続 publish はしない。旧クライアント救済の踏み台は `/transfer-cf` 移行作業で publish 済み)。Cloudflare トークンは `C:\Users\IMT\dev\Secret\secrets.json` の `cloudflare.api_token` を実行時に読み、**取得直後のプリフライトで zone ID 解決まで行って権限不足を fail fast 検知する**（R2 アップロード後に zone 取得が失敗すると、新ファイルだけ R2 に乗ってパージ・クリーンアップが走らない半端なリリース状態になるため、何もアップロードしていない時点で落とす）。動作確認は `-SkipUpload` (ビルド + 署名のみ)、RID 絞り込みは `-Runtimes win-x64`。**実行前提: SimplySign Desktop がトークンログイン済み** (証明書が CurrentUser\My に見えること。スクリプトがプリフライトで検査して落とす)。**`/vava` は `vava.config.json` の `localRelease` キーを読んでこのスクリプトを自動実行する** (Step 0-8 で署名証明書の前提チェック → Step 10.5 でリリース実行。CI 監視ステップはスキップされる)
+- 製品ページの配信は `vps-web/deploy/deploy-lp.ps1` を使う。公開ホスト・更新ファイルの既存経路を維持する。
 - **RID 別リリース出力**: `release-local.ps1` の x64 / ARM64 `dotnet publish` は RID ごとの `--artifacts-path` を必須とし、ProjectReference 先を含む共通 `bin/obj` の再利用による異アーキテクチャ参照（CS8012）を防ぐ。
 - **CodeQL**: `.github/workflows/codeql.yml` — C# security analysis on PR + weekly
 - **Dependabot**: `.github/dependabot.yml` — NuGet weekly + github-actions weekly

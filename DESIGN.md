@@ -48,7 +48,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 ### Compression
 
 1. `ArchiveCompressor.ScanSourceFiles` builds the complete input list before capacity checks and archive creation.
-2. Global `.lhaignore`, optional source-local ignore files, Hidden/System settings, and reparse-point pruning are applied during the explicit DFS scan.
+2. Global `.lhaignore`, optional source-local ignore files, Hidden/System settings, and reparse-point pruning are applied during one DFS scan. Each branch inherits only its ancestor matchers and selected ignore-file priority; local rules are read on entry and prune children immediately. The visited-directory list is reused for empty-folder detection without another filesystem traversal. Progress counts inspected entries (including excluded entries and folders), with cancellation checks throughout enumeration.
 3. Individual files and synthetic empty-directory markers are passed to the writer; real directories are not passed for recursive library traversal because that would bypass the filter contract.
 4. Native writer work is serialized by `NativeArchiveGate`. Progress adapts scanning, preparation, byte processing, and finalization into distinct user-visible phases.
 5. Inaccessible files may be skipped according to the documented resilience contract; password-protected partial skips are surfaced because skipped plaintext sources remain outside the archive.
@@ -73,9 +73,11 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 1. Installed clients obtain `releases.win.json` or `releases.win-arm64.json` from `https://lhamiel.kagayoi.com`.
 2. `scripts/release-local.ps1` builds both Native AOT RIDs in isolated artifact trees, builds the native shell integration, packages with Velopack, and Authenticode-signs all distributed executables through SimplySign/Certum. Per-RID isolation also applies to project references so x64 intermediates cannot be reused by ARM64 publishing.
 3. The same script uploads immutable versioned packages and fixed-name manifests/installers to R2. It downloads non-`.nupkg` artifacts with a cache-busting query and compares their size and SHA256 with local outputs, purges only mismatching URLs, and rechecks them. Download, purge, or recheck failure stops release completion even after upload. After public-manifest checks, cleanup preserves manifest-referenced files, fixed names, and the latest two versions of versioned artifacts.
-4. The landing-page Worker under `web/` has an independent main-branch deployment workflow and is not part of the desktop binary release path.
+4. The landing page under `../vps-web/lp/lhamiel/` is deployed manually to the VPS through `vps-web/deploy/deploy-lp.ps1`, independently of desktop releases. The Cloudflare gateway preserves the existing update route.
 
 ## Critical invariants
+
+- Taskbar identity is shared by processes and shortcuts. `TaskbarIdentity` honors the current process's package AUMID, or resolves the registered sparse package's effective external path for unpackaged shortcut launches of the same `Lhamiel.exe`. Other locations keep `velopack.Lhamiel`. Startup migrates only existing shortcuts targeting that executable with a differing ID, preserving their targets, arguments, and icons. Package names and registration lifetimes stay unchanged.
 
 - A native archive reader or writer is never used outside `NativeArchiveGate`, and the gate is never acquired recursively.
 - Every filesystem-writing `ArchiveReader.Save` call is preceded by complete `FullName` validation. Archive `RawName` is diagnostic input, not an output path.
@@ -83,10 +85,12 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 - Top-level operations are serialized, but batch-level pure I/O may run concurrently when destinations differ and no native archive object is active.
 - Existing outputs use backup/restore semantics so preparation or move failure does not silently discard the original.
 - Capacity checks use the Windows volume API and fail closed when the target volume or available space cannot be resolved; an inspection failure is never treated as unlimited free space.
+- Unknown archive sizes use -1, distinct from an empty archive's zero. Preflight applies the existing 100 MiB free-space floor to unknown sizes; insufficient space also stops operations without an owner window. Runtime monitoring remains active.
 - Compression filters are enforced by Lhamiel's resolved file list; the SevenZip writer is not trusted to reapply `.lhaignore` or attribute filters.
 - Long-running operations use settings snapshots. UI debounce state is flushed before creating snapshots for CLI/IPC and remembered-password paths.
 - Error workflows close any transient progress window before opening a message dialog, await that dialog, and only then permit self-terminating CLI or shell launches to shut down.
 - Logs, support bundles, and user-visible error details must not contain plaintext passwords, encrypted password blobs, tokens, or user-identifying path segments.
+- Unobserved task exceptions are logged and marked observed without writing a live-process dump. Self-dumps are limited to terminating unhandled exceptions. Deferred exception logs and dump companion text retain exception types, HRESULTs, and stacks (including inner exceptions), without exception messages whose redaction scopes may have expired.
 - Update manifests and packages come from the fixed Kagayoi R2 domain. Runtime settings cannot select another update host.
 - Released executables, installers, portable packages, shell-extension DLLs, and MSIX packages are Authenticode signed and timestamped.
 - Localization uses dynamic Avalonia resources so changing locale updates existing views without restarting.
@@ -136,3 +140,9 @@ SimplySign requires a logged-in local session and device approval, so binary rel
 ### Shared support SDK with two resolution modes
 
 Sibling project references give fast coordinated local development, while a fixed public NuGet.org version keeps standalone clones and CI reproducible without repository-specific package credentials. Local sibling builds write `obj/packages.local.lock.json`; tracked `packages.lock.json` files therefore remain the package-mode source of truth used by standalone clones and CI.
+
+## 製品ページの配信先
+
+製品ページの配信HTMLは `../vps-web/lp/lhamiel/`（編集元は `../vps-web/tools/lp/templates/`）、公開実体はVPSの `/srv/www/lp/lhamiel/`。
+Cloudflare側の中継設定は `../vps-web/deploy/lp-gateways/lhamiel/` に置く。
+公開URLと既存のR2・ライセンス通信を維持し、配信は `vps-web/deploy/deploy-lp.ps1` へ統一する。
