@@ -441,261 +441,137 @@ public static class ArchiveCompressor
         IProgress<ProgressInfo>? progress = null)
     {
         var filesToCompress = new List<(string fullPath, string relativePath)>();
-        // スキャン中の経過表示 (マーキー + 発見済み件数)。数十万ファイル規模では列挙だけで
-        // 数十秒かかり、無報告だと UI が 0% のまま凍って見えるため、時間スロットルで件数を流す。
+        // 除外されたエントリや空フォルダーも確認件数に含め、ファイルが見つからない間も通知する。
         var lastScanReportTick = 0L;
+        long inspectedCount = 0;
+        void ReportScanProgress(bool inspected)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (inspected) inspectedCount++;
+            var now = Environment.TickCount64;
+            if (lastScanReportTick == 0 || now - lastScanReportTick >= ProgressTextIntervalMs)
+            {
+                lastScanReportTick = now;
+                progress?.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", inspectedCount)));
+            }
+            cancellationToken.ThrowIfCancellationRequested();
+        }
         var dirMode = dirModeOverride ?? SettingsManager.Instance.Current.DirectoryStructureMode;
         var normalizeUnicode = normalizeUnicodeOverride ?? SettingsManager.Instance.NormalizeUnicodeFileNames;
         var includeHiddenAndSystemEntries = includeHiddenAndSystemEntriesOverride
             ?? SettingsManager.Instance.Current.IncludeHiddenAndSystemEntries;
 
-        foreach (var sourcePath in sourceList)
+        var normalizedIgnoreNames = Settings.TryNormalizeSourceIgnoreFileNames(
+            sourceIgnoreFileNames ?? Settings.CreateDefaultSourceIgnoreFileNames(), out var names)
+            ? names : Settings.CreateDefaultSourceIgnoreFileNames();
+        var baseMatcher = respectNestedGitignore && globalIgnoreLines is { Count: > 0 }
+            ? GitignoreMatcher.CompileLayered(matcher, [(string.Empty, globalIgnoreLines)])
+            : matcher;
+
+        return await Task.Run(() =>
         {
+            foreach (var sourcePath in sourceList)
+            {
+                ReportScanProgress(true);
+
+                if (File.Exists(sourcePath))
+                {
+                    // 単一ファイル: ファイル名のみで判定（ソースルートが無いため）
+                    if (!ShouldExcludeFile(sourcePath, matcher, rootDir: null, isDirectory: false))
+                    {
+                        filesToCompress.Add((sourcePath, NormalizeNfc(Path.GetFileName(sourcePath), normalizeUnicode)));
+                    }
+                }
+                else if (Directory.Exists(sourcePath))
+                {
+                    Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
+
+                    var directories = new List<string>();
+                    var files = EnumerateSourceFiles(sourcePath, baseMatcher, includeHiddenAndSystemEntries,
+                        respectNestedGitignore, normalizedIgnoreNames, directories, ReportScanProgress);
+                    var parentDir = dirMode == DirectoryStructureMode.IncludeRoot
+                        ? (Path.GetDirectoryName(sourcePath) ?? "")
+                        : sourcePath;
+
+                    // ファイルが存在するディレクトリを記録（空ディレクトリ検出用）
+                    var directoriesWithFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                    var fileCount = 0;
+                    foreach (var file in files)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        var relativePath = NormalizeNfc(
+                            dirMode == DirectoryStructureMode.Flat
+                                ? Path.GetFileName(file)
+                                : Path.GetRelativePath(parentDir, file),
+                            normalizeUnicode);
+                        filesToCompress.Add((file, relativePath));
+
+                        // このファイルの全祖先ディレクトリを記録。
+                        // 既に登録済みの祖先に到達したら break（他のファイルで登録済みの場合は上位まで登録済み）。
+                        // これにより O(N × D) から平均 O(N) に近づく。
+                        var fileDir = Path.GetDirectoryName(file);
+                        while (fileDir != null && fileDir.Length >= sourcePath.Length)
+                        {
+                            if (!directoriesWithFiles.Add(fileDir)) break;
+                            fileDir = Path.GetDirectoryName(fileDir);
+                        }
+
+                        fileCount++;
+                    }
+
+                    // Flatモードでなければ空ディレクトリを収集してエントリに追加
+                    var emptyDirCount = 0;
+                    if (dirMode != DirectoryStructureMode.Flat)
+                    {
+                        foreach (var emptyDir in directories)
+                        {
+                            ReportScanProgress(false);
+                            if (directoriesWithFiles.Contains(emptyDir)) continue;
+                            var relativePath = NormalizeNfc(Path.GetRelativePath(parentDir, emptyDir), normalizeUnicode);
+                            filesToCompress.Add((emptyDir, relativePath + "/"));
+                            emptyDirCount++;
+                        }
+
+                        if (emptyDirCount > 0)
+                            Logger.Log($"空ディレクトリ: {emptyDirCount}個を追加");
+                    }
+
+                    // codex P2 #3384620482: 空ディレクトリそのものをドロップした場合 (files=0 かつ
+                    // 子の空ディレクトリも 0)、directories は root 自身を含まないため
+                    // エントリが 1 件も残らず、addedCount==0 guard が「全ソースアクセス不能」という
+                    // 誤ったエラーで中止してしまう。IncludeRoot モードでは root 自身を
+                    // 空ディレクトリエントリとして追加し、「空フォルダを圧縮」を有効な操作として
+                    // 成立させる (空フォルダ 1 個入りのアーカイブ)。
+                    // ExcludeRoot/Flat では root の相対パスが "." になり意味のあるエントリを
+                    // 表現できないため追加しない (本当に中身ゼロなら従来通り guard が中止する)。
+                    if (fileCount == 0 && emptyDirCount == 0 && dirMode == DirectoryStructureMode.IncludeRoot)
+                    {
+                        var rootRelative = NormalizeNfc(Path.GetRelativePath(parentDir, sourcePath), normalizeUnicode);
+                        filesToCompress.Add((sourcePath, rootRelative + "/"));
+                        Logger.Log($"空ディレクトリをルートエントリとして追加: {sourcePath}");
+                    }
+
+                    Logger.Log($"スキャン完了: {fileCount}個のファイルが見つかりました");
+                }
+                else
+                {
+                    throw new FileNotFoundException(App.Text("Error.PathNotFound", sourcePath));
+                }
+            }
+
+            // 同一 (fullPath, relativePath) の重複を最終的に排除する。
+            // 呼び出し側が同じパスを複数回渡した場合（CLI で重複引数、複数選択時の
+            // 偶発的重複など）や、sourceList に祖先と子孫が同時に含まれて走査で重複した
+            // ケースに備える。DetectConflicts は「異なる fullPath が同じ relativePath に
+            // 衝突するか」で判定するため、同一 fullPath 重複は衝突検出で素通しされてしまい、
+            // このステップで除去しないと ArchiveWriter が同名エントリを重複追加してしまう。
             cancellationToken.ThrowIfCancellationRequested();
-
-            if (File.Exists(sourcePath))
-            {
-                // 単一ファイル: ファイル名のみで判定（ソースルートが無いため）
-                if (!ShouldExcludeFile(sourcePath, matcher, rootDir: null, isDirectory: false))
-                {
-                    filesToCompress.Add((sourcePath, NormalizeNfc(Path.GetFileName(sourcePath), normalizeUnicode)));
-                }
-            }
-            else if (Directory.Exists(sourcePath))
-            {
-                Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
-
-                // 圧縮対象ディレクトリ内に候補の除外ルールファイルがあれば layered matcher を構築する
-                // （その source 限定）。.lhaignore (= matcher 引数) で枝刈りしながら探索するので、
-                // node_modules/ 等の除外済みサブツリー内のルールファイルは読まない。
-                // ⚠️ Codex P2 指摘対応 (#3305241279): BuildLayeredMatcherForSource は matcher (= fallbackMatcher) を
-                // 必ず base layer として保持するので、globalIgnoreLines が null でも .lhaignore ルールは保証される。
-                var effectiveMatcher = respectNestedGitignore
-                    ? BuildLayeredMatcherForSource(
-                        sourcePath,
-                        globalIgnoreLines,
-                        matcher,
-                        includeHiddenAndSystemEntries,
-                        sourceIgnoreFileNames)
-                    : matcher;
-
-                var files = GetFilesRecursively(sourcePath, effectiveMatcher, includeHiddenAndSystemEntries);
-                var parentDir = dirMode == DirectoryStructureMode.IncludeRoot
-                    ? (Path.GetDirectoryName(sourcePath) ?? "")
-                    : sourcePath;
-
-                // ファイルが存在するディレクトリを記録（空ディレクトリ検出用）
-                var directoriesWithFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                var fileCount = 0;
-                foreach (var file in files)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var relativePath = NormalizeNfc(
-                        dirMode == DirectoryStructureMode.Flat
-                            ? Path.GetFileName(file)
-                            : Path.GetRelativePath(parentDir, file),
-                        normalizeUnicode);
-                    filesToCompress.Add((file, relativePath));
-
-                    // このファイルの全祖先ディレクトリを記録。
-                    // 既に登録済みの祖先に到達したら break（他のファイルで登録済みの場合は上位まで登録済み）。
-                    // これにより O(N × D) から平均 O(N) に近づく。
-                    var fileDir = Path.GetDirectoryName(file);
-                    while (fileDir != null && fileDir.Length >= sourcePath.Length)
-                    {
-                        if (!directoriesWithFiles.Add(fileDir)) break;
-                        fileDir = Path.GetDirectoryName(fileDir);
-                    }
-
-                    fileCount++;
-                    if (fileCount % 100 == 0)
-                    {
-                        await Task.Yield();
-                    }
-
-                    var now = Environment.TickCount64;
-                    if (now - lastScanReportTick >= ProgressTextIntervalMs)
-                    {
-                        lastScanReportTick = now;
-                        progress?.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", filesToCompress.Count)));
-                    }
-                }
-
-                // Flatモードでなければ空ディレクトリを収集してエントリに追加
-                var emptyDirCount = 0;
-                if (dirMode != DirectoryStructureMode.Flat)
-                {
-                    var emptyDirs = CollectEmptyDirectories(sourcePath, effectiveMatcher, directoriesWithFiles, includeHiddenAndSystemEntries);
-                    foreach (var emptyDir in emptyDirs)
-                    {
-                        var relativePath = NormalizeNfc(Path.GetRelativePath(parentDir, emptyDir), normalizeUnicode);
-                        filesToCompress.Add((emptyDir, relativePath + "/"));
-                    }
-
-                    emptyDirCount = emptyDirs.Count;
-                    if (emptyDirs.Count > 0)
-                        Logger.Log($"空ディレクトリ: {emptyDirs.Count}個を追加");
-                }
-
-                // codex P2 #3384620482: 空ディレクトリそのものをドロップした場合 (files=0 かつ
-                // 子の空ディレクトリも 0)、CollectEmptyDirectories は root 自身を返さないため
-                // エントリが 1 件も残らず、addedCount==0 guard が「全ソースアクセス不能」という
-                // 誤ったエラーで中止してしまう。IncludeRoot モードでは root 自身を
-                // 空ディレクトリエントリとして追加し、「空フォルダを圧縮」を有効な操作として
-                // 成立させる (空フォルダ 1 個入りのアーカイブ)。
-                // ExcludeRoot/Flat では root の相対パスが "." になり意味のあるエントリを
-                // 表現できないため追加しない (本当に中身ゼロなら従来通り guard が中止する)。
-                if (fileCount == 0 && emptyDirCount == 0 && dirMode == DirectoryStructureMode.IncludeRoot)
-                {
-                    var rootRelative = NormalizeNfc(Path.GetRelativePath(parentDir, sourcePath), normalizeUnicode);
-                    filesToCompress.Add((sourcePath, rootRelative + "/"));
-                    Logger.Log($"空ディレクトリをルートエントリとして追加: {sourcePath}");
-                }
-
-                Logger.Log($"スキャン完了: {fileCount}個のファイルが見つかりました");
-            }
-            else
-            {
-                throw new FileNotFoundException(App.Text("Error.PathNotFound", sourcePath));
-            }
-        }
-
-        // 同一 (fullPath, relativePath) の重複を最終的に排除する。
-        // 呼び出し側が同じパスを複数回渡した場合（CLI で重複引数、複数選択時の
-        // 偶発的重複など）や、sourceList に祖先と子孫が同時に含まれて走査で重複した
-        // ケースに備える。DetectConflicts は「異なる fullPath が同じ relativePath に
-        // 衝突するか」で判定するため、同一 fullPath 重複は衝突検出で素通しされてしまい、
-        // このステップで除去しないと ArchiveWriter が同名エントリを重複追加してしまう。
-        return DeduplicateByIdentity(filesToCompress);
-    }
-
-    /// <summary>
-    /// 圧縮対象ディレクトリ <paramref name="sourceDir"/> 配下で、各ディレクトリごとに
-    /// <paramref name="sourceIgnoreFileNames"/> を上から確認して除外ルールファイルを選び、
-    /// 親ディレクトリ相対の layer として合成した <see cref="GitignoreMatcher"/> を返す。
-    /// 子孫では祖先と同じ候補または祖先より高優先の候補だけを選べるため、階層を下る途中で
-    /// 一度選ばれた高優先候補から低優先候補へ戻ることはない。
-    /// 既に <c>.lhaignore</c> で除外されるディレクトリ（例: <c>node_modules/</c>）配下は探索しない。
-    /// <para>
-    /// Codex P2 指摘対応: <paramref name="globalIgnoreLines"/> が <c>null</c> の場合でも
-    /// <paramref name="fallbackMatcher"/> のルールを必ず保持する。旧実装は <c>globalIgnoreLines ?? []</c> で
-    /// フォールバックしていたが、それだと呼び出し元が既に <c>.lhaignore</c> から compile 済みの matcher を
-    /// 持っている場合（生 lines を保持していないケース）に <c>fallbackMatcher</c> のルールが silent ドロップされていた。
-    /// </para>
-    /// </summary>
-    internal static GitignoreMatcher BuildLayeredMatcherForSource(
-        string sourceDir,
-        IReadOnlyList<string>? globalIgnoreLines,
-        GitignoreMatcher fallbackMatcher,
-        bool includeHiddenAndSystemEntries,
-        IReadOnlyList<string>? sourceIgnoreFileNames = null)
-    {
-        ArgumentNullException.ThrowIfNull(fallbackMatcher);
-
-        var normalizedSourceIgnoreFileNames = Settings.TryNormalizeSourceIgnoreFileNames(
-            sourceIgnoreFileNames ?? Settings.CreateDefaultSourceIgnoreFileNames(),
-            out var normalizedNames)
-            ? normalizedNames
-            : Settings.CreateDefaultSourceIgnoreFileNames();
-
-        // ベース matcher は呼び出し元から渡された fallbackMatcher (= 既にコンパイル済みの .lhaignore matcher)。
-        // globalIgnoreLines が非 null なら、それを source root スコープの追加 layer として最初に重ねる。
-        // 通常パスでは fallbackMatcher 自体が .lhaignore からビルドされているため、ルール重複が発生する場合
-        // もあるが、gitignore セマンティクスでは同一ルールの重複評価は最終 excluded 値に影響しない（後勝ちで同じ結果）。
-        var additionalLayers = new List<(string baseRelativePath, IEnumerable<string> lines)>();
-        if (globalIgnoreLines is { Count: > 0 })
-        {
-            additionalLayers.Add((string.Empty, globalIgnoreLines));
-        }
-
-        // 枝刈り用 prune matcher は fallback + global lines + root の選択済みルール（もしあれば）を合成する。
-        // DiscoverSourceIgnoreFiles が yield する layer は呼び出し時点でこの prune matcher で枝刈り済み。
-        foreach (var (relativeDir, lines) in DiscoverSourceIgnoreFiles(
-                     sourceDir,
-                     fallbackMatcher,
-                     globalIgnoreLines,
-                     includeHiddenAndSystemEntries,
-                     normalizedSourceIgnoreFileNames))
-        {
-            additionalLayers.Add((relativeDir, lines));
-        }
-
-        return additionalLayers.Count == 0
-            ? fallbackMatcher
-            : GitignoreMatcher.CompileLayered(fallbackMatcher, additionalLayers);
-    }
-
-    private static IEnumerable<(string relativeDir, string[] lines)> DiscoverSourceIgnoreFiles(
-        string sourceDir,
-        GitignoreMatcher fallbackMatcher,
-        IReadOnlyList<string>? globalIgnoreLines,
-        bool includeHiddenAndSystemEntries,
-        IReadOnlyList<string> sourceIgnoreFileNames)
-    {
-        // source root 自身で最優先の除外ルールファイル（あれば）を先に読む。
-        // ⚠️ ここで読んだ root ルールは、その後のサブディレクトリ走査 (= さらなる folder-local
-        // ルールを探す再帰探索) でも枝刈りに使う。これをしないと、root ルールで除外される
-        // 大規模サブツリー (vendor/, build/, node_modules/.pnpm/ 等) も毎回完全に走査されて
-        // O(tree size) の無駄なスキャンコストが発生する。RTK レビュー Codex P2 指摘対応。
-        string[]? rootLines = null;
-        var rootIgnoreFile = FindFirstSourceIgnoreFile(
-            sourceDir,
-            sourceIgnoreFileNames,
-            sourceIgnoreFileNames.Count - 1);
-        if (rootIgnoreFile is { } rootSelection)
-        {
-            rootLines = TryReadIgnoreFileLines(rootSelection.path);
-            if (rootLines is not null)
-                yield return (string.Empty, rootLines);
-        }
-
-        // 枝刈り matcher = fallbackMatcher + global lines + root の選択済みルールの 3 段合流。
-        // fallbackMatcher のルールを必ず保持することで、呼び出し元から渡された .lhaignore ルールが
-        // silent ドロップされる経路を排除する (Codex P2 指摘 #3305241279)。
-        var pruneAdditional = new List<(string baseRelativePath, IEnumerable<string> lines)>();
-        if (globalIgnoreLines is { Count: > 0 })
-            pruneAdditional.Add((string.Empty, globalIgnoreLines));
-        if (rootLines is { Length: > 0 })
-            pruneAdditional.Add((string.Empty, rootLines));
-
-        var pruneMatcher = pruneAdditional.Count == 0
-            ? fallbackMatcher
-            : GitignoreMatcher.CompileLayered(fallbackMatcher, pruneAdditional);
-
-        // 各分岐で現在有効な候補順位を引き継ぐ。候補 index は小さいほど高優先なので、
-        // 子では inherited index 以下だけを探索する。これにより
-        // root=.gitignore → child=.lhamielignore の昇格は許可し、
-        // root=.lhamielignore → child=.gitignore の降格は抑止する。
-        var activePriorityByDirectory = new Dictionary<string, int?>(PathComparer)
-        {
-            [Path.GetFullPath(sourceDir)] = rootIgnoreFile?.candidateIndex,
-        };
-
-        // ディレクトリツリーを併合 matcher で枝刈りしながら走査
-        foreach (var dir in EnumerateDirectoriesWithPruning(sourceDir, pruneMatcher, includeHiddenAndSystemEntries))
-        {
-            var fullDir = Path.GetFullPath(dir);
-            var parentDir = Directory.GetParent(fullDir)?.FullName;
-            var inheritedPriority = parentDir is not null
-                && activePriorityByDirectory.TryGetValue(parentDir, out var parentPriority)
-                    ? parentPriority
-                    : rootIgnoreFile?.candidateIndex;
-
-            var maxCandidateIndex = inheritedPriority ?? sourceIgnoreFileNames.Count - 1;
-            var ignoreFile = FindFirstSourceIgnoreFile(dir, sourceIgnoreFileNames, maxCandidateIndex);
-            var activePriority = ignoreFile?.candidateIndex ?? inheritedPriority;
-            activePriorityByDirectory[fullDir] = activePriority;
-
-            if (ignoreFile is not { } selection)
-                continue;
-            var lines = TryReadIgnoreFileLines(selection.path);
-            if (lines is null)
-                continue;
-            var rel = Path.GetRelativePath(sourceDir, dir);
-            yield return (rel, lines);
-        }
+            progress?.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", inspectedCount)));
+            cancellationToken.ThrowIfCancellationRequested();
+            return DeduplicateByIdentity(filesToCompress);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     private static (string path, int candidateIndex)? FindFirstSourceIgnoreFile(
@@ -1178,137 +1054,90 @@ public static class ArchiveCompressor
     }
 
     /// <summary>
-    /// ファイルを含まない空ディレクトリを再帰的に収集する。
+    /// 各フォルダーを一度だけ列挙し、その分岐の除外ルールを読みながらファイルを返す。
+    /// 訪問済みフォルダーは空ディレクトリ判定へ再利用する。
     /// </summary>
-    /// <remarks>
-    /// <c>GetFilesRecursively</c> でファイル列挙時に記録した <paramref name="directoriesWithFiles"/>
-    /// の補集合を返す。`Directory.EnumerateDirectories` による 2 回目の走査を避けるため、
-    /// HashSet 差分で高速に算出する。
-    /// </remarks>
-    /// <param name="rootDir">ルートディレクトリ</param>
-    /// <param name="matcher">除外判定に使う .gitignore 互換マッチャ</param>
-    /// <param name="directoriesWithFiles">ファイルが存在するディレクトリのセット</param>
-    /// <param name="includeHiddenAndSystemEntries">Hidden/System 属性のエントリも列挙対象に含めるか</param>
-    /// <returns>空ディレクトリのパスリスト</returns>
-    private static List<string> CollectEmptyDirectories(
-        string rootDir,
-        GitignoreMatcher matcher,
-        HashSet<string> directoriesWithFiles,
-        bool includeHiddenAndSystemEntries)
-    {
-        var emptyDirs = new List<string>();
-        try
-        {
-            // 枝刈り対応の DFS で全ディレクトリを列挙する。matcher で除外されたディレクトリは
-            // 自身も配下も対象外。
-            var dirs = EnumerateDirectoriesWithPruning(rootDir, matcher, includeHiddenAndSystemEntries);
-            foreach (var dir in dirs)
-            {
-                // ファイルを含むディレクトリ（またはその祖先）でなければ空ディレクトリ
-                if (!directoriesWithFiles.Contains(dir))
-                    emptyDirs.Add(dir);
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"空ディレクトリ収集中にエラー: {ex.Message}");
-        }
-
-        return emptyDirs;
-    }
-
-    private static IEnumerable<string> EnumerateDirectoriesWithPruning(string root, GitignoreMatcher matcher, bool includeHiddenAndSystemEntries)
+    private static IEnumerable<string> EnumerateSourceFiles(
+        string root, GitignoreMatcher baseMatcher, bool includeHiddenAndSystemEntries,
+        bool respectNestedGitignore, IReadOnlyList<string> sourceIgnoreFileNames,
+        List<string> directories, Action<bool> reportProgress)
     {
         var enumOpts = CreateNonRecursiveEnumerationOptions(includeHiddenAndSystemEntries);
+        var stack = new Stack<(string path, GitignoreMatcher matcher, int priority)>();
+        stack.Push((root, baseMatcher, sourceIgnoreFileNames.Count - 1));
 
-        var stack = new Stack<string>();
-        stack.Push(root);
-
-        while (stack.Count > 0)
+        while (stack.TryPop(out var frame))
         {
-            var current = stack.Pop();
-            // Directory.EnumerateDirectories は遅延評価で UnauthorizedAccessException / IOException は
-            // foreach 中に発生する。yield return より前に ToArray() で確定させて、列挙中の例外もここで
-            // catch できるようにする。
-            string[] dirs;
+            reportProgress(false);
+            var matcher = frame.matcher;
+            var priority = frame.priority;
+            if (respectNestedGitignore)
+            {
+                var selection = FindFirstSourceIgnoreFile(frame.path, sourceIgnoreFileNames, priority);
+                if (selection is { } selected)
+                {
+                    // 空ファイル・読込失敗でも候補順位は引き継ぎ、下位候補へ戻らない。
+                    priority = selected.candidateIndex;
+                    var lines = TryReadIgnoreFileLines(selected.path);
+                    if (lines is { Length: > 0 })
+                    {
+                        var relativeDir = Path.GetRelativePath(root, frame.path);
+                        matcher = GitignoreMatcher.CompileLayered(matcher,
+                            [(relativeDir == "." ? string.Empty : relativeDir, lines)]);
+                    }
+                }
+            }
+
+            // ToArray による全件確定を避け、列挙中も進捗通知とキャンセル確認を続ける。
+            IEnumerator<FileSystemInfo> enumerator;
             try
             {
-                dirs = Directory.EnumerateDirectories(current, "*", enumOpts).ToArray();
-            }
-            catch (UnauthorizedAccessException) { continue; }
-            catch (IOException) { continue; }
-
-            foreach (var dir in dirs)
-            {
-                if (ShouldExcludeFile(dir, matcher, root, isDirectory: true, traversalMode: true))
-                    continue;
-                yield return dir;
-                stack.Push(dir);
-            }
-        }
-    }
-
-    /// <summary>
-    /// ディレクトリ内のファイルを再帰的に取得する（除外フィルタ適用）
-    /// </summary>
-    /// <param name="directoryPath">ディレクトリパス</param>
-    /// <param name="matcher">除外判定に使う .gitignore 互換マッチャ</param>
-    /// <param name="includeHiddenAndSystemEntries">Hidden/System 属性のエントリも列挙対象に含めるか</param>
-    /// <returns>ファイルパスのリスト</returns>
-    private static IEnumerable<string> GetFilesRecursively(string directoryPath, GitignoreMatcher matcher, bool includeHiddenAndSystemEntries)
-    {
-        // ユーザーが圧縮対象として明示的に指定したソースルートそのものは除外しない。
-        // gitignore のセマンティクスでは ignore ルールは「子エントリ」に適用されるべきで、
-        // anchored パターン (例: "/build") は親基準でルート直下にマッチするものであって、
-        // ソースルート自身を意味しない。basename だけで判定すると "build" という名前の
-        // フォルダを圧縮しようとしただけで空アーカイブになる回帰が起きるので、ルート
-        // 自身の除外判定は行わない（配下のサブディレクトリ・ファイルは
-        // EnumerateFilesWithPruning 内で root 相対パスにより正しく枝刈りされる）。
-        return EnumerateFilesWithPruning(directoryPath, matcher, includeHiddenAndSystemEntries);
-    }
-
-    private static IEnumerable<string> EnumerateFilesWithPruning(string root, GitignoreMatcher matcher, bool includeHiddenAndSystemEntries)
-    {
-        var enumOpts = CreateNonRecursiveEnumerationOptions(includeHiddenAndSystemEntries);
-
-        var stack = new Stack<string>();
-        stack.Push(root);
-
-        while (stack.Count > 0)
-        {
-            var current = stack.Pop();
-
-            // Directory.Enumerate* は遅延評価で、UnauthorizedAccessException / IOException は
-            // foreach 中に発生する。yield return より前に ToArray() で確定させて、列挙中の例外も
-            // ここで catch できるようにする。
-            string[] files;
-            string[] dirs;
-            try
-            {
-                files = Directory.EnumerateFiles(current, "*", enumOpts).ToArray();
-                dirs = Directory.EnumerateDirectories(current, "*", enumOpts).ToArray();
+                enumerator = new DirectoryInfo(frame.path).EnumerateFileSystemInfos("*", enumOpts).GetEnumerator();
             }
             catch (UnauthorizedAccessException ex)
             {
-                Logger.Log($"アクセス権限がありません: {current}, {ex.Message}");
+                Logger.Log($"アクセス権限がありません: {frame.path}, {ex.Message}");
                 continue;
             }
             catch (IOException ex)
             {
-                Logger.Log($"ファイル取得中にI/Oエラー: {current}, {ex.Message}");
+                Logger.Log($"ファイル取得中にI/Oエラー: {frame.path}, {ex.Message}");
                 continue;
             }
-
-            foreach (var file in files)
+            using var entries = enumerator;
+            while (true)
             {
-                if (!ShouldExcludeFile(file, matcher, root, isDirectory: false, traversalMode: true))
-                    yield return file;
-            }
+                reportProgress(false);
+                FileSystemInfo entry;
+                try
+                {
+                    if (!entries.MoveNext()) break;
+                    entry = entries.Current;
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    Logger.Log($"アクセス権限がありません: {frame.path}, {ex.Message}");
+                    break;
+                }
+                catch (IOException ex)
+                {
+                    Logger.Log($"ファイル取得中にI/Oエラー: {frame.path}, {ex.Message}");
+                    break;
+                }
 
-            foreach (var dir in dirs)
-            {
-                if (!ShouldExcludeFile(dir, matcher, root, isDirectory: true, traversalMode: true))
-                    stack.Push(dir);
+                reportProgress(true);
+                var isDirectory = entry is DirectoryInfo;
+                if (ShouldExcludeFile(entry.FullName, matcher, root, isDirectory, traversalMode: true))
+                    continue;
+                if (isDirectory)
+                {
+                    directories.Add(entry.FullName);
+                    stack.Push((entry.FullName, matcher, priority));
+                }
+                else
+                {
+                    yield return entry.FullName;
+                }
             }
         }
     }
@@ -1318,7 +1147,7 @@ public static class ArchiveCompressor
         RecurseSubdirectories = false,
         IgnoreInaccessible = true,
         // ReparsePoint（ジャンクション / シンボリックリンク）は常に除外する。手書き DFS
-        // (EnumerateFilesWithPruning / EnumerateDirectoriesWithPruning) は RecurseSubdirectories=false で
+        // (EnumerateSourceFiles) は RecurseSubdirectories=false で
         // 自前再帰するため .NET 組込みのループ保護が効かず、自己 / 祖先参照ジャンクションを push すると
         // 無限ループ（スキャンがハング）、ツリー外向きジャンクションを辿るとドロップ対象外のファイルを
         // アーカイブに含めてしまう（情報漏えい）。MotwPropagator も同じ理由で ReparsePoint を除外する。

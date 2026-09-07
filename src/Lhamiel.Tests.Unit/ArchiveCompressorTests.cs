@@ -8,6 +8,60 @@ namespace Lhamiel.Tests.Unit;
 /// </summary>
 public class ArchiveCompressorTests
 {
+    [Fact]
+    public async Task ScanSourceFiles_EmptyTree_ReportsProgressAndHonorsCancellation()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"lhamiel_scan_{Guid.NewGuid():N}");
+        using var cts = new CancellationTokenSource();
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "empty", "child"));
+            var progress = new SyncRecordingProgress(_ => cts.Cancel());
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => ArchiveCompressor.ScanSourceFiles(
+                [root], GitignoreMatcher.Empty, cts.Token,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true, progress: progress));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public async Task ScanSourceFiles_ManySiblingRules_KeepScopesAndPruneNestedDirectories()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"lhamiel_scan_{Guid.NewGuid():N}");
+        try
+        {
+            for (var i = 0; i < 120; i++)
+            {
+                var repo = Path.Combine(root, $"repo{i}");
+                Directory.CreateDirectory(Path.Combine(repo, "ignored", "deep", "child"));
+                File.WriteAllText(Path.Combine(repo, ".gitignore"), "ignored/\n*.log\n");
+                File.WriteAllText(Path.Combine(repo, "ignored", ".gitignore"), "!rescue.txt\n");
+                File.WriteAllText(Path.Combine(repo, "ignored", "rescue.txt"), "excluded");
+                for (var j = 0; j < 20; j++)
+                    File.WriteAllText(Path.Combine(repo, $"file{j}.txt"), "included");
+                File.WriteAllText(Path.Combine(repo, "debug.log"), "excluded");
+            }
+
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            var result = await ArchiveCompressor.ScanSourceFiles(
+                [root], GitignoreMatcher.Empty, TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                normalizeUnicodeOverride: false, includeHiddenAndSystemEntriesOverride: true,
+                respectNestedGitignore: true);
+            TestContext.Current.TestOutputHelper!.WriteLine($"走査時間: {timer.ElapsedMilliseconds} ms");
+            Assert.Equal(120 * 21, result.Count);
+            Assert.DoesNotContain(result, entry => entry.fullPath.Contains("ignored") || entry.fullPath.EndsWith(".log"));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
     // === ParseFormat ===
 
     [Theory]
@@ -807,8 +861,7 @@ public class ArchiveCompressorTests
             // 一方、root 配下の通常ファイルは含まれる
             File.WriteAllText(Path.Combine(testRoot, "app.txt"), "x");
 
-            // respectNestedGitignore=true の場合は globalIgnoreLines も必須
-            // (BuildLayeredMatcherForSource の条件: respectNestedGitignore && globalIgnoreLines is not null)
+            // ルートの除外規則で枝刈りし、配下の否定ルールには到達しない。
             var result = await ArchiveCompressor.ScanSourceFiles(
                 [testRoot],
                 GitignoreMatcher.Empty,

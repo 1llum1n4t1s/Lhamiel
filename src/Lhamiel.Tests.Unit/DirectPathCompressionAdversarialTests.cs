@@ -299,7 +299,7 @@ public class DirectPathCompressionAdversarialTests
     /// @adversarial @category state @severity medium
     /// 空のディレクトリのみを圧縮した場合、root 自身を空ディレクトリエントリとして含む
     /// 有効なアーカイブを作る (codex P2 #3384620482)。
-    /// CollectEmptyDirectories は子ディレクトリしか返さないため、root マーカーを追加しないと
+    /// 走査時のディレクトリ一覧は子ディレクトリだけを含むため、root マーカーを追加しないと
     /// addedCount==0 guard が「全ソースアクセス不能」という誤ったエラーで中止していた。
     /// addedCount==0 guard は「スキャン後に全ファイルが消えた」等の本当に空のケース専用
     /// (AllFilesDeleted_ThrowsInvalidOperation テスト参照)。
