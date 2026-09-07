@@ -123,7 +123,7 @@ Each window layers theme color between the acrylic material and interactive cont
 
 ### Shared dialog chrome
 
-`DialogChrome` owns the shared 32-pixel title bar, rounded content surface, and separated action bar for application dialogs and progress windows. It reparents existing body and action controls while preserving their events and bindings, so workflow behavior remains with each dialog. Background layers remain owned by the window and follow the acrylic layering above.
+`DialogChrome` owns the shared 32-pixel title bar and rounded content surface for application dialogs and progress windows. Body and action controls share the same `Brush.Container` background with no divider or separate action-area color. It reparents existing body and action controls while preserving their events and bindings, so workflow behavior remains with each dialog. Background layers remain owned by the window and follow the acrylic layering above.
 
 `UpdateDialogAppearance` adapts the Velopack SDK window during the awaited update-dialog lifetime, preserving SDK state visibility, button events, and background controls. Required root elements are checked before mutation; a mismatch leaves the SDK's standard screen in place so updating remains available. This avoids duplicating the SDK workflow but couples appearance adaptation to its control structure; implementation checks belong in [AGENTS.md](AGENTS.md#testability-pattern).
 

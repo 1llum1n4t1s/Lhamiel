@@ -38,9 +38,7 @@
             <Grid RowDefinitions="*,Auto">
                 <ContentControl x:Name="BodyHost" Margin="24,22,24,20"
                                 HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
-                <Border Grid.Row="1" Padding="24,14" CornerRadius="0,0,13,13"
-                        Background="{DynamicResource Brush.ContainerAlt}"
-                        BorderBrush="{DynamicResource Brush.Border}" BorderThickness="0,1,0,0">
+                <Border Grid.Row="1" Padding="24,14">
                     <ContentControl x:Name="ActionHost" HorizontalContentAlignment="Stretch" />
                 </Border>
             </Grid>
