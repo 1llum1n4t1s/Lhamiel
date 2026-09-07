@@ -15,24 +15,14 @@ internal class Program
     /// --update-check 引数が指定された場合は UI なしでサイレント更新チェックのみ実行する。
     /// </summary>
     /// <summary>
-    /// プロセスに設定する AppUserModelID。
-    /// Velopack がショートカット（タスクバーピン含む）へ書き込む AUMID（"velopack.{packId}" 規約）と
-    /// 一致させる必要がある。不一致だとタスクバーがピンとウィンドウを exe パスで対応付けるため、
-    /// アップデートの current/ 差し替えでアイコン解決が壊れ白紙アイコンになる。
+    /// プロセスとショートカットで共有する、現在の配置先に対応した AppUserModelID。
     /// </summary>
-    internal const string AppUserModelId = "velopack.Lhamiel";
+    internal static string AppUserModelId => TaskbarIdentity.Current;
 
     [STAThread]
     public static void Main(string[] args)
     {
         CrashHandler.Register();
-
-        // ウィンドウ生成前（タスクバーに現れる前）に AUMID をピンと一致させる。失敗しても起動は継続する。
-        if (OperatingSystem.IsWindows())
-        {
-            try { _ = NativeMethods.SetCurrentProcessExplicitAppUserModelID(AppUserModelId); }
-            catch { /* best-effort */ }
-        }
 
         VelopackApp.Build()
             .OnAfterInstallFastCallback(v =>
@@ -65,6 +55,10 @@ internal class Program
         // ApplyUpdatesAndExit を使うサイレント更新は OnRestarted を通らないため、
         // 更新フックが残した保留マーカーを次の通常起動で一度だけ回収する。
         RestoreSelectedApplicationShortcutIconsIfPending();
+
+        // インストール／更新フックの登録完了後、最初のウィンドウ生成前に確定する。
+        TaskbarIdentity.Apply();
+        ShortcutCreator.RefreshKnownApplicationShortcutIdentity();
 
         try
         {

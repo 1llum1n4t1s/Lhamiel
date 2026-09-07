@@ -66,7 +66,7 @@ internal static partial class NativeMethods
 
     /// <summary>
     /// プロセスに明示的な AppUserModelID (AUMID) を設定する。
-    /// Velopack がショートカット（タスクバーピン含む）に書き込む AUMID と一致させることで、
+    /// TaskbarIdentity が解決したショートカット（タスクバーピン含む）の AUMID と一致させることで、
     /// タスクバーが exe パスではなく AUMID でピンとウィンドウを対応付け、
     /// アップデートで exe が差し替わってもアイコン解決が安定する。
     /// ウィンドウ生成前（タスクバーに現れる前）に呼ぶこと。

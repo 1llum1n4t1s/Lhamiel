@@ -119,11 +119,17 @@ public static class ShortcutCreator
     /// </summary>
     [SupportedOSPlatform("windows")]
     internal static void RefreshKnownApplicationShortcutIcons(string? variant = null)
+        => RefreshKnownApplicationShortcuts(variant, identityOnly: false);
+
+    internal static void RefreshKnownApplicationShortcutIdentity()
+        => RefreshKnownApplicationShortcuts(null, identityOnly: true);
+
+    private static void RefreshKnownApplicationShortcuts(string? variant, bool identityOnly)
     {
         try
         {
             var iconPath = AppIconManager.ResolveIconPath(variant);
-            if (!File.Exists(iconPath))
+            if (!identityOnly && !File.Exists(iconPath))
                 return;
 
             var shortcutPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -131,6 +137,13 @@ public static class ShortcutCreator
             AddKnownShortcuts(shortcutPaths, Environment.SpecialFolder.CommonDesktopDirectory);
             AddKnownShortcuts(shortcutPaths, Environment.SpecialFolder.Programs);
             AddKnownShortcuts(shortcutPaths, Environment.SpecialFolder.CommonPrograms);
+            // Velopack が作成する製品名サブフォルダーのリンクも移行対象。
+            foreach (var folder in new[] { Environment.SpecialFolder.Programs, Environment.SpecialFolder.CommonPrograms })
+            {
+                var directory = Environment.GetFolderPath(folder);
+                if (!string.IsNullOrEmpty(directory))
+                    shortcutPaths.Add(Path.Combine(directory, "Lhamiel", "Lhamiel.lnk"));
+            }
 
             var applicationData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             if (!string.IsNullOrEmpty(applicationData))
@@ -148,6 +161,13 @@ public static class ShortcutCreator
             var updated = false;
             foreach (var shortcutPath in shortcutPaths.Where(File.Exists))
             {
+                if (identityOnly)
+                {
+                    updated |= MigrateShortcutIdentity(shortcutPath, AppPathResolver.ExecutablePath, Program.AppUserModelId);
+                    continue;
+                }
+                if (!ShortcutTargetsExecutable(shortcutPath, AppPathResolver.ExecutablePath))
+                    continue;
                 if (ShellLinkNative.UpdateIconLocation(
                     shortcutPath,
                     iconPath,
@@ -182,6 +202,23 @@ public static class ShortcutCreator
             DesktopShortcutKind.Compress => ("Lhamiel圧縮.lnk", "Lhamiel - 圧縮", "--compress"),
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
+    }
+
+    /// <summary>現在の実行ファイルを指すリンクだけを移行し、既に同じ ID なら書き込まない。</summary>
+    internal static bool MigrateShortcutIdentity(string shortcutPath, string executablePath, string appId)
+    {
+        if (!ShortcutTargetsExecutable(shortcutPath, executablePath)
+            || ShellLinkNative.GetAppUserModelId(shortcutPath) == appId)
+            return false;
+        return ShellLinkNative.UpdateExistingShortcutAppUserModelId(shortcutPath, appId);
+    }
+
+    private static bool ShortcutTargetsExecutable(string shortcutPath, string executablePath)
+    {
+        var target = ShellLinkNative.GetTargetPath(shortcutPath);
+        return !string.IsNullOrEmpty(target)
+            && Path.GetFullPath(Environment.ExpandEnvironmentVariables(target)).Equals(
+                Path.GetFullPath(executablePath), StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AddKnownShortcuts(HashSet<string> shortcutPaths, Environment.SpecialFolder folder)

@@ -238,7 +238,15 @@ internal static partial class ShellLinkNative
     }
 
     /// <summary>テストと診断用に、ショートカットへ保存された固定引数を取得する。</summary>
-    internal static string? GetArguments(string shortcutPath)
+    internal static string? GetArguments(string shortcutPath) => ReadShortcutString(shortcutPath, targetPath: false);
+
+    internal static string? GetTargetPath(string shortcutPath) => ReadShortcutString(shortcutPath, targetPath: true);
+
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+    private delegate int GetPathDelegate(nint thisPtr, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder path,
+        int capacity, nint findData, uint flags);
+
+    private static string? ReadShortcutString(string shortcutPath, bool targetPath)
     {
         if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || !File.Exists(shortcutPath))
             return null;
@@ -266,9 +274,15 @@ internal static partial class ShellLinkNative
                     if (load(pPersistFile, shortcutPath, 0) != S_OK)
                         return null;
 
+                    var buffer = new StringBuilder(32768);
+                    if (targetPath)
+                    {
+                        var getPath = Marshal.GetDelegateForFunctionPointer<GetPathDelegate>(
+                            Marshal.ReadIntPtr(shellVtable, 3 * IntPtr.Size));
+                        return getPath(pShellLink, buffer, buffer.Capacity, 0, 4) == S_OK ? buffer.ToString() : null;
+                    }
                     var getArguments = Marshal.GetDelegateForFunctionPointer<GetArgumentsDelegate>(
                         Marshal.ReadIntPtr(shellVtable, VTable_GetArguments * IntPtr.Size));
-                    var buffer = new StringBuilder(32768);
                     return getArguments(pShellLink, buffer, buffer.Capacity) == S_OK ? buffer.ToString() : null;
                 }
                 finally
@@ -474,7 +488,7 @@ internal static partial class ShellLinkNative
         }
     }
 
-    private static bool UpdateExistingShortcutAppUserModelId(string shortcutPath, string appUserModelId)
+    internal static bool UpdateExistingShortcutAppUserModelId(string shortcutPath, string appUserModelId)
     {
         if (CoCreateInstance(CLSID_ShellLink, 0, CLSCTX_INPROC_SERVER, IID_IShellLinkW, out var pShellLink) != S_OK
             || pShellLink == 0)
