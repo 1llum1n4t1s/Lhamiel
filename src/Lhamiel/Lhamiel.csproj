@@ -70,7 +70,7 @@
          上書きされた後の Debug Rebuild で CS0246 になるため、compile/runtime asset は常時除外する。 -->
     <PackageReference
       Include="CRDebugger.Avalonia"
-      Version="1.0.30"
+      Version="1.0.32"
       ExcludeAssets="compile;runtime"
       GeneratePathProperty="true"
       PrivateAssets="all" />
