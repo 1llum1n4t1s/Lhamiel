@@ -31,8 +31,8 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # 7z.dll は 1llum1n4t1s.Sevenzip NuGet パッケージに同梱された
-      # runtimes/{rid}/native/7z.dll が dotnet publish 時に RID に応じて自動配置される。
+      # 7z.dll と unlhare.dll は各 NuGet パッケージに同梱された
+      # runtimes/{rid}/native asset が dotnet publish 時に RID に応じて自動配置される。
       # 過去は 7-zip.org から直接ダウンロードしていたが、ハッシュ検証がなく
       # サプライチェーン攻撃リスクがあるため NuGet 経由に統一した。
 
@@ -44,9 +44,15 @@ jobs:
         run: |
           $exePath = Join-Path "publish" "Lhamiel.exe"
           $dllPath = Join-Path "publish" "7z.dll"
+          $unLhaRePath = Join-Path "publish" "unlhare.dll"
+          $unLhaReLicensePath = Join-Path "publish" "licenses/Kagayoi.UnLhaRe/LICENSE"
+          $unLhaReNoticesPath = Join-Path "publish" "licenses/Kagayoi.UnLhaRe/THIRD_PARTY_NOTICES.md"
           if (-not (Test-Path $exePath)) { Write-Error "Lhamiel.exe not found"; exit 1 }
           if (-not (Test-Path $dllPath)) { Write-Error "7z.dll not found (NuGet runtimes/ から配置されているか要確認)"; exit 1 }
-          Write-Host "Lhamiel.exe と 7z.dll (NuGet 同梱版) を確認完了"
+          if (-not (Test-Path $unLhaRePath)) { Write-Error "unlhare.dll not found (Kagayoi.UnLhaRe の native asset を要確認)"; exit 1 }
+          if (-not (Test-Path $unLhaReLicensePath)) { Write-Error "Kagayoi.UnLhaRe LICENSE not found"; exit 1 }
+          if (-not (Test-Path $unLhaReNoticesPath)) { Write-Error "Kagayoi.UnLhaRe THIRD_PARTY_NOTICES.md not found"; exit 1 }
+          Write-Host "Lhamiel.exe、7z.dll、unlhare.dll、ライセンス通知を確認完了"
 
       - name: 成果物をアップロード
         # actions/upload-artifact@v7.0.1

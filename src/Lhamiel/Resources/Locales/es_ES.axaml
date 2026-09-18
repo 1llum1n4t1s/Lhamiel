@@ -268,6 +268,8 @@
   <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Verifique la conexión del dispositivo y vuelva a conectarlo antes de reintentar.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Se produjo un error de E/S</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Compruebe el estado del archivo e inténtelo de nuevo.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">El archivo supera un límite de seguridad de procesamiento</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimitAction" xml:space="preserve">Divida el archivo o inténtelo de nuevo con archivos más pequeños.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">El archivo comprimido está dañado</x:String>
   <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Intente volver a descargar o reparar el archivo.</x:String>
   <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">Se realizó una operación no válida</x:String>
@@ -381,7 +383,7 @@
   <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Protección con contraseña</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Proteger con contraseña</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Cifra ZIP con AES-256 (WinZip AE-2) y 7z con AES-256.</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR no admite protección con contraseña. Elija ZIP o 7z.</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR y LZH no admiten protección con contraseña. Elija ZIP o 7z.</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Nota: los ZIP cifrados con AES-256 no se pueden abrir con el Explorador integrado de Windows. Los destinatarios necesitan 7-Zip, WinRAR u otra herramienta compatible.</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Cifrar también los nombres de archivo</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Cifra la lista de nombres de archivo (encabezado) dentro del archivo. Sin la contraseña, ni siquiera el contenido se podrá examinar.</x:String>
@@ -414,5 +416,6 @@
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Todos los archivos de origen eran inaccesibles, por lo que se canceló la compresión. No se creó un archivo vacío.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">El formato {0} no admite protección con contraseña. Elija ZIP o 7z.</x:String>
+  <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">LZH admite hasta {1} MiB por archivo. Archivo que supera el límite: {0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Las contraseñas ZIP solo pueden contener caracteres ASCII (letras, dígitos y símbolos). Para usar otros caracteres (como letras acentuadas o japonés), elija el formato 7z.</x:String>
 </ResourceDictionary>

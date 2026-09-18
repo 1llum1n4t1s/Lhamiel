@@ -14,7 +14,8 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 | `View/` | Avalonia windows and dialogs. Code-behind is limited to UI interaction and service calls; archive and persistence rules remain under `Util/`. |
 | `MainWindowViewModel` | UI state, settings projection, drag-and-drop command entry, and debounced persistence. It delegates archive work to `ArchiveProcessor`. |
 | `ArchiveProcessor` | Application-level orchestration for extraction, compression, password acquisition, disk-space checks, conflict UI, batching, and completion behavior. |
-| `ArchiveExtractor` / `ArchiveCompressor` | Filesystem-facing archive operations around `1llum1n4t1s.Sevenzip`. They own safe path resolution, temporary outputs, scanning, format options, progress adaptation, and cleanup. |
+| `ArchiveExtractor` / `ArchiveCompressor` | Filesystem-facing archive operations around `1llum1n4t1s.Sevenzip` and the LHA/LZH UnLhaRe backend. They own safe path resolution, temporary outputs, scanning, format options, progress adaptation, and cleanup. |
+| `LzhArchiveBackendProvider` | Synchronous UnLhaRe API boundary, explicit limits and progress/cancellation adapters for LHA/LZH payload operations. |
 | `NativeArchiveGate` | The single process-wide slot around each native reader/writer lifecycle. It isolates the non-concurrent shared SevenZip library state. |
 | `ArchiveOperationGate` | Serializes top-level operations started by drag-and-drop, CLI, or IPC while preserving safe parallelism inside a batch. |
 | `ExtractionDestinationGate` | Serializes operations that converge on the same final extraction path while allowing unrelated destinations to proceed independently. |
@@ -79,7 +80,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 
 - Taskbar identity is shared by processes and shortcuts. `TaskbarIdentity` honors the current process's package AUMID, or resolves the registered sparse package's effective external path for unpackaged shortcut launches of the same `Lhamiel.exe`. Other locations keep `velopack.Lhamiel`. Startup migrates only existing shortcuts targeting that executable with a differing ID, preserving their targets, arguments, and icons. Package names and registration lifetimes stay unchanged.
 
-- A native archive reader or writer is never used outside `NativeArchiveGate`, and the gate is never acquired recursively.
+- A SevenZip native archive reader or writer is never used outside `NativeArchiveGate`, and the gate is never acquired recursively. UnLhaRe owns per-call state and does not need the SevenZip singleton gate for payload processing.
 - Every filesystem-writing `ArchiveReader.Save` call is preceded by complete `FullName` validation. Archive `RawName` is diagnostic input, not an output path.
 - Reparse points are treated as boundaries: archive scanning does not descend into them, conflict-aware extraction tree enumeration rejects them, and cleanup removes links without enumerating their targets.
 - Top-level operations are serialized, but batch-level pure I/O may run concurrently when destinations differ and no native archive object is active.
@@ -120,6 +121,12 @@ The application does not disable batch concurrency globally. A top-level operati
 ### Caller-owned compression filtering
 
 Lhamiel enumerates and filters all archive inputs itself because the SevenZip wrapper recursively rescans real directories without the application's exclusion rules. Synthetic empty-directory markers preserve empty folders without reopening that recursive path.
+
+### Versioned UnLhaRe integration
+
+LHA/LZH payload creation and extraction use `Kagayoi.UnLhaRe`, pinned by `UnLhaReVersion` and the tracked NuGet lockfiles. The package supplies RID-selected Windows x64/ARM64 DLLs and copies license notices into publish output. Structure aggregation, conflict detection, and extraction preparation use the synchronous streaming visitor; extraction preparation validates every entry but retains only selected names and directory timestamp metadata. A visitor can have delivered earlier entries before a later header error or cancellation, so Lhamiel publishes no derived result and starts no extraction until the visitor returns successfully. There is no automatic sibling source reference or manual DLL-copy synchronization. The UnLhaRe repository's `vava.config.json` updates and verifies the reference after package publication; shipping it to end users remains part of a normal Lhamiel release.
+
+UnLhaRe provides LHA/LZH structure, sizes, timestamps and conflict-entry names. Structure aggregation and conflict detection consume its synchronous streaming visitor so those phases retain only their derived results; extraction still materializes the selected-name list required by the native selection API. A streaming visit is considered complete only after the API returns successfully, because a later malformed header or cancellation can follow already delivered entries. Extraction asks UnLhaRe to restore regular-file timestamps before atomic publication; Lhamiel restores directory timestamps deepest-first after all children are written, then retains the existing overwrite/rename/final-move/MotW pipeline. Missing timestamp metadata does not prevent payload extraction. UnLhaRe errors are not retried through a different payload decoder, and its stable error kind is preserved through structure analysis and mapped separately for extraction and creation. Compression passes the already filtered explicit source list, uses LH5, rejects passwords, and consumes per-entry create results so unreadable inputs can be reported and skipped. All-skipped creation fails before publishing an empty archive. Lhamiel checks the 256 MiB per-entry creation limit before starting native creation, while UnLhaRe repeats the check to cover files that change after scanning; extraction has separate finite limits. Listing and payload operations receive the caller's cancellation token; cancellation remains cooperative and may wait for one entry's compression calculation.
 
 ### Acrylic contrast layering
 

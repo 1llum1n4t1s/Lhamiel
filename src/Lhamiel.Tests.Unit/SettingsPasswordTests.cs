@@ -119,15 +119,17 @@ public class SettingsPasswordTests
         Assert.Equal("Remember", s.PasswordMode);
     }
 
-    [Fact]
-    public void SanitizeAfterLoad_TarWithProtectionOn_DisablesProtection()
+    [Theory]
+    [InlineData("TAR")]
+    [InlineData("LZH")]
+    [InlineData("LHA")]
+    public void SanitizeAfterLoad_PasswordUnsupportedFormatWithProtectionOn_DisablesProtection(string format)
     {
-        // codex P2 #3384524013: 永続層の「TAR + 保護 ON」矛盾状態は load 時に矯正する。
-        // この状態が残るとシェル/CLI 圧縮 (App.axaml.cs → 永続設定の CompressionFormat=TAR) が
-        // TryResolveCompressionPasswordAsync の TAR fail-loud guard で必ず失敗する。
+        // 永続層の「パスワード非対応形式 + 保護 ON」矛盾状態は load 時に矯正する。
+        // この状態が残るとシェル/CLI 圧縮で暗号化されたと誤認させるか、圧縮前に失敗する。
         var s = new Settings
         {
-            CompressionFormat = "TAR",
+            CompressionFormat = format,
             IsPasswordProtectionEnabled = true,
             PasswordMode = "Remember",
             EncryptedCompressionPassword = new byte[] { 0x01 },
@@ -142,7 +144,7 @@ public class SettingsPasswordTests
     [Theory]
     [InlineData("ZIP")]
     [InlineData("7z")]
-    public void SanitizeAfterLoad_NonTarWithProtectionOn_PreservesProtection(string format)
+    public void SanitizeAfterLoad_PasswordSupportedFormatWithProtectionOn_PreservesProtection(string format)
     {
         var s = new Settings
         {

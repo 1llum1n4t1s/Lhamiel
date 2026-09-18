@@ -130,7 +130,13 @@ foreach ($runtime in $Runtimes) {
             --artifacts-path $buildArtifactsDir -o $publishDir
     }
 
-    foreach ($required in 'Lhamiel.exe', '7z.dll') {
+    foreach ($required in @(
+        'Lhamiel.exe',
+        '7z.dll',
+        'unlhare.dll',
+        'licenses\Kagayoi.UnLhaRe\LICENSE',
+        'licenses\Kagayoi.UnLhaRe\THIRD_PARTY_NOTICES.md'
+    )) {
         if (-not (Test-Path (Join-Path $publishDir $required))) {
             throw "$required が publish 出力にありません ($runtime)"
         }

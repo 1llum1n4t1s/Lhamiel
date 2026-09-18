@@ -35,6 +35,18 @@ public sealed class AppCommandLineLifecycleTests
         Assert.Equal([@"C:\sample.zip"], request.FilePaths);
     }
 
+    [Theory]
+    [InlineData("LZH")]
+    [InlineData("lha")]
+    public void ParseCommandLineArgs_AcceptsLzhAliases(string format)
+    {
+        var request = App.ParseCommandLineArgs(
+            ["--compress", "--format", format, @"C:\sample.txt"]);
+
+        Assert.Equal(CommandLineOperation.Compress, request.Operation);
+        Assert.Equal("LZH", request.CompressionFormat);
+    }
+
     [Fact]
     public void ParseCommandLineArgs_PreservesEveryPlayerSelectionArgument()
     {

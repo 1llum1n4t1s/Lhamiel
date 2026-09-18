@@ -1,6 +1,10 @@
 using Avalonia.Controls;
 using Cube.FileSystem.SevenZip;
 using System.Security;
+using LzhArchiveEntry = Kagayoi.UnLhaRe.ArchiveEntry;
+using LzhArchiveNativeException = Kagayoi.UnLhaRe.ArchiveNativeException;
+using LzhArchiveProgress = Kagayoi.UnLhaRe.ArchiveProgress;
+using LzhArchiveProgressPhase = Kagayoi.UnLhaRe.ArchiveProgressPhase;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -111,6 +115,14 @@ public static class ArchiveExtractor
         return SupportedExtensions.Contains(extension);
     }
 
+    /// <summary>LHA/LZH 拡張子を UnLhaRe 経路へ振り分ける。</summary>
+    internal static bool IsLzhArchivePath(string filePath)
+    {
+        var extension = Path.GetExtension(filePath);
+        return extension.Equals(".lzh", StringComparison.OrdinalIgnoreCase)
+               || extension.Equals(".lha", StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// 展開直通ルートで受け付ける入力かを判定する。
     /// 通常の対応形式に加え、7z.dll が内部形式を判定できる自己展開形式 EXE を許可する。
@@ -216,8 +228,12 @@ public static class ArchiveExtractor
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
     /// <param name="password">ヘッダ暗号化 (he=on) アーカイブを開くためのパスワード (通常は null)</param>
+    /// <param name="cancellationToken">LZH の一覧取得を中止するためのトークン</param>
     /// <returns>解析結果を格納したArchiveStructureInfo</returns>
-    public static ArchiveStructureInfo GetArchiveStructureInfo(string archivePath, string? password = null)
+    public static ArchiveStructureInfo GetArchiveStructureInfo(
+        string archivePath,
+        string? password = null,
+        CancellationToken cancellationToken = default)
     {
         if (!File.Exists(archivePath))
         {
@@ -226,6 +242,9 @@ public static class ArchiveExtractor
 
         try
         {
+            if (IsLzhArchivePath(archivePath))
+                return GetLzhArchiveStructureInfo(archivePath, cancellationToken);
+
             // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→使用→Dispose を覆う）
             using var nativeGate = NativeArchiveGate.Enter();
             using var reader = OpenArchiveReaderWithRetry(archivePath, password);
@@ -255,6 +274,16 @@ public static class ArchiveExtractor
                 TotalUncompressedSize = structure.TotalUncompressedSize,
                 RootItemNames = [.. allRootItems]
             };
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (LzhArchiveNativeException) when (IsLzhArchivePath(archivePath))
+        {
+            // UnLhaRe の安定した Kind を上位の ArchiveErrorHandler で分類するため、そのまま伝播する。
+            // OpenFailed へ畳み込むと Processor 側で汎用 IOException に置き換わり、原因が失われる。
+            throw;
         }
         catch (Exception ex)
         {
@@ -556,6 +585,57 @@ public static class ArchiveExtractor
         }
     }
 
+    private static ArchiveStructureInfo GetLzhArchiveStructureInfo(
+        string archivePath,
+        CancellationToken cancellationToken)
+    {
+        var rootFolders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var rootFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        long totalUncompressedSize = 0;
+
+        LzhArchiveBackendProvider.Current.VisitEntries(
+            archivePath,
+            entry =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!entry.IsDirectory)
+                    totalUncompressedSize = checked(totalUncompressedSize + (long)entry.OriginalSize);
+
+                var path = entry.Name.AsSpan();
+                var firstSeparator = path.IndexOfAny('/', '\\');
+                var rootName = (firstSeparator < 0 ? path : path[..firstSeparator]).ToString();
+                if (rootName.Length == 0 || IgnoredSystemDirectories.Contains(rootName))
+                    return;
+
+                var fileName = Path.GetFileName(entry.Name.TrimEnd('/', '\\'));
+                if (IgnoredSystemFiles.Contains(fileName))
+                    return;
+
+                var hasSubPath = firstSeparator >= 0 && firstSeparator < path.Length - 1;
+                if (entry.IsDirectory || hasSubPath)
+                    rootFolders.Add(rootName);
+                else
+                    rootFiles.Add(rootName);
+            },
+            cancellationToken);
+
+        var allRootItems = new HashSet<string>(rootFolders, StringComparer.OrdinalIgnoreCase);
+        allRootItems.UnionWith(rootFiles);
+        var singleRootItemName = allRootItems.Count == 1 ? allRootItems.First() : null;
+        var archiveName = GetArchiveBaseName(archivePath);
+        var shouldSkipFolderCreation = rootFolders.Count == 1
+            && rootFiles.Count == 0
+            && string.Equals(rootFolders.First(), archiveName, StringComparison.OrdinalIgnoreCase);
+
+        return new ArchiveStructureInfo
+        {
+            ShouldSkipFolderCreation = shouldSkipFolderCreation,
+            SingleRootItemName = singleRootItemName,
+            TotalUncompressedSize = totalUncompressedSize,
+            RootItemNames = [.. allRootItems]
+        };
+    }
+
     /// <summary>
     /// 正規化後のパスを優先し、実体が無い場合だけアーカイブ内の生 Unicode 表現でも
     /// 安全境界を再検証して既存の展開結果を解決する。
@@ -613,24 +693,32 @@ public static class ArchiveExtractor
         foreach (var entryName in entryNames)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (string.IsNullOrEmpty(entryName))
-                continue;
-
-            if (TryResolveSafeEntryPathFromNormalized(
-                    normalizedBase, entryName, out _, normalizeUnicode))
-            {
-                continue;
-            }
-
-            Logger.Log($"危険なエントリ名を検出しアーカイブ展開を中止: {entryName}", LogLevel.Warning);
-            var normalizedEntryName = entryName
-                .Replace('\\', Path.DirectorySeparatorChar)
-                .Replace('/', Path.DirectorySeparatorChar);
-            var messageKey = ContainsUnsafeWindowsPathSegment(normalizedEntryName)
-                ? "Validation.PathCheckFailed"
-                : "Error.ZipSlipDetected";
-            throw new InvalidOperationException(App.Text(messageKey, entryName));
+            ValidateArchiveEntryPath(entryName, normalizedBase, normalizeUnicode);
         }
+    }
+
+    private static void ValidateArchiveEntryPath(
+        string? entryName,
+        string normalizedDestinationBase,
+        bool normalizeUnicode)
+    {
+        if (string.IsNullOrEmpty(entryName))
+            return;
+
+        if (TryResolveSafeEntryPathFromNormalized(
+                normalizedDestinationBase, entryName, out _, normalizeUnicode))
+        {
+            return;
+        }
+
+        Logger.Log($"危険なエントリ名を検出しアーカイブ展開を中止: {entryName}", LogLevel.Warning);
+        var normalizedEntryName = entryName
+            .Replace('\\', Path.DirectorySeparatorChar)
+            .Replace('/', Path.DirectorySeparatorChar);
+        var messageKey = ContainsUnsafeWindowsPathSegment(normalizedEntryName)
+            ? "Validation.PathCheckFailed"
+            : "Error.ZipSlipDetected";
+        throw new InvalidOperationException(App.Text(messageKey, entryName));
     }
 
     private static bool ContainsUnsafeWindowsPathSegment(string normalizedPath)
@@ -657,9 +745,18 @@ public static class ArchiveExtractor
     /// <param name="outputPath">展開先ディレクトリのパス</param>
     /// <param name="normalizeUnicode">ファイル名を Unicode NFC 正規化して突き合わせるか</param>
     /// <param name="password">ヘッダ暗号化 (he=on) アーカイブの一覧取得に使うパスワード (通常は null)</param>
+    /// <param name="cancellationToken">一覧取得と衝突検出を中止するためのトークン</param>
     /// <returns>衝突するファイルの競合グループリスト。衝突がなければ空リスト</returns>
-    public static List<Models.FileConflictGroup> DetectExtractionConflicts(string archivePath, string outputPath, bool normalizeUnicode = true, string? password = null)
+    public static List<Models.FileConflictGroup> DetectExtractionConflicts(
+        string archivePath,
+        string outputPath,
+        bool normalizeUnicode = true,
+        string? password = null,
+        CancellationToken cancellationToken = default)
     {
+        if (IsLzhArchivePath(archivePath))
+            return DetectLzhExtractionConflicts(archivePath, outputPath, normalizeUnicode, cancellationToken);
+
         var conflicts = new List<Models.FileConflictGroup>();
 
         try
@@ -674,6 +771,7 @@ public static class ArchiveExtractor
 
             foreach (var item in reader.Items)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var relativePath = item.FullName.Replace('\\', '/');
 
                 // システムファイル・ディレクトリの除外（ディレクトリエントリの末尾 '/' を除いて名前判定）
@@ -738,6 +836,10 @@ public static class ArchiveExtractor
                 });
             }
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             // パスワード付きで開いた場合は例外メッセージをログへ出さない (GetArchiveStructureInfo の
@@ -749,6 +851,211 @@ public static class ArchiveExtractor
         }
 
         return conflicts;
+    }
+
+    private static List<Models.FileConflictGroup> DetectLzhExtractionConflicts(
+        string archivePath,
+        string outputPath,
+        bool normalizeUnicode,
+        CancellationToken cancellationToken)
+    {
+        var conflicts = new List<Models.FileConflictGroup>();
+        var normalizedOutputBase = NormalizeBaseDirectory(outputPath);
+
+        LzhArchiveBackendProvider.Current.VisitEntries(
+            archivePath,
+            entry =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var relativePath = entry.Name.Replace('\\', '/');
+                var fileName = Path.GetFileName(relativePath.TrimEnd('/'));
+                if (IgnoredSystemFiles.Contains(fileName) || ContainsIgnoredDirectory(relativePath))
+                    return;
+
+                if (!TryResolveSafeEntryPathFromNormalized(
+                        normalizedOutputBase, relativePath, out var destFilePath, normalizeUnicode))
+                {
+                    Logger.Log($"LZH展開衝突検出で境界外パスを検出しスキップ: {relativePath}", LogLevel.Warning);
+                    return;
+                }
+                destFilePath = TrimTrailingSeparators(destFilePath);
+                var existing = ProbeExistingEntry(destFilePath);
+
+                if (!existing.Exists && normalizeUnicode
+                    && TryResolveSafeEntryPathFromNormalized(
+                        normalizedOutputBase, relativePath, out var rawDestPath, normalizeUnicode: false)
+                    && !string.Equals(rawDestPath, destFilePath, StringComparison.Ordinal))
+                {
+                    var rawTrimmed = TrimTrailingSeparators(rawDestPath);
+                    var rawProbe = ProbeExistingEntry(rawTrimmed);
+                    if (rawProbe.Exists)
+                    {
+                        destFilePath = rawTrimmed;
+                        existing = rawProbe;
+                    }
+                }
+
+                if (!existing.Exists || (entry.IsDirectory && existing.IsDirectory))
+                    return;
+
+                var lastWriteTime = entry.ModifiedAt?.LocalDateTime ?? DateTime.MinValue;
+                var archiveSize = entry.IsDirectory
+                    ? 0
+                    : (long)Math.Min(entry.OriginalSize, (ulong)long.MaxValue);
+                conflicts.Add(new Models.FileConflictGroup
+                {
+                    ConflictingName = relativePath,
+                    Entries =
+                    [
+                        new Models.FileConflictEntry(archivePath, relativePath, archiveSize, lastWriteTime),
+                        new Models.FileConflictEntry(destFilePath, relativePath, existing.Size, existing.LastWrite)
+                    ]
+                });
+            },
+            cancellationToken);
+
+        return conflicts;
+    }
+
+    private static string NormalizeLzhEntryKey(string entryName) =>
+        entryName.Replace('\\', '/').TrimEnd('/');
+
+    private static void ExtractLzhArchiveToDirectory(
+        string archivePath,
+        string destination,
+        HashSet<string>? skipRelativePaths,
+        bool normalizeUnicode,
+        Action<ProgressInfo>? progressCallback,
+        CancellationToken cancellationToken)
+    {
+        Logger.Log($"UnLhaRe展開開始: {archivePath} -> {destination}");
+        cancellationToken.ThrowIfCancellationRequested();
+        HashSet<string>? normalizedSkips = null;
+        if (skipRelativePaths is { Count: > 0 })
+        {
+            normalizedSkips = new HashSet<string>(
+                skipRelativePaths.Select(NormalizeLzhEntryKey),
+                StringComparer.OrdinalIgnoreCase);
+        }
+
+        var normalizedDestination = NormalizeBaseDirectory(destination);
+        var selectedNames = new List<string>();
+        var selectedDirectories = new List<LzhArchiveEntry>();
+        LzhArchiveBackendProvider.Current.VisitEntries(
+            archivePath,
+            entry =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                // 無視・上書きスキップ対象を含む全エントリを検査し、安全境界を迂回させない。
+                ValidateArchiveEntryPath(entry.Name, normalizedDestination, normalizeUnicode);
+                if (!ShouldExtractLzhEntry(entry, normalizedSkips))
+                    return;
+
+                selectedNames.Add(entry.Name);
+                if (entry.IsDirectory && entry.ModifiedAt is not null)
+                    selectedDirectories.Add(entry);
+            },
+            cancellationToken);
+
+        var throttler = new LzhProgressThrottler();
+        IProgress<LzhArchiveProgress>? nativeProgress = progressCallback is null
+            ? null
+            : new InlineProgress<LzhArchiveProgress>(value =>
+                ReportLzhExtractionProgress(value, progressCallback, throttler));
+
+        progressCallback?.Invoke(new ProgressInfo(App.Text("Progress.PreparingFiles")));
+        LzhArchiveBackendProvider.Current.Extract(
+            archivePath,
+            destination,
+            selectedNames,
+            nativeProgress,
+            cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        RestoreLzhDirectoryTimestamps(
+            selectedDirectories,
+            destination,
+            normalizeUnicode,
+            cancellationToken);
+        progressCallback?.Invoke(new ProgressInfo(100, ""));
+    }
+
+    private static bool ShouldExtractLzhEntry(
+        LzhArchiveEntry entry,
+        HashSet<string>? normalizedSkips)
+    {
+        var relativePath = entry.Name.Replace('\\', '/');
+        var fileName = Path.GetFileName(relativePath.TrimEnd('/'));
+        if (IgnoredSystemFiles.Contains(fileName) || ContainsIgnoredDirectory(relativePath))
+            return false;
+        if (normalizedSkips is null)
+            return true;
+
+        var key = NormalizeLzhEntryKey(relativePath);
+        foreach (var skipped in normalizedSkips)
+        {
+            if (key.Equals(skipped, StringComparison.OrdinalIgnoreCase)
+                || key.StartsWith(skipped + "/", StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+        return true;
+    }
+
+    private static void ReportLzhExtractionProgress(
+        LzhArchiveProgress value,
+        Action<ProgressInfo> progressCallback,
+        LzhProgressThrottler throttler)
+    {
+        if (!throttler.ShouldReport(value))
+            return;
+
+        if (value.Phase == LzhArchiveProgressPhase.Prepare)
+        {
+            progressCallback(new ProgressInfo(App.Text("Progress.PreparingFiles")));
+            return;
+        }
+        if (value.Phase == LzhArchiveProgressPhase.Finalize || value.Total == 0)
+        {
+            progressCallback(new ProgressInfo(App.Text("Progress.Finalizing")));
+            return;
+        }
+
+        var percentage = Math.Clamp((int)(value.Completed * 100d / value.Total), 0, 99);
+        progressCallback(new ProgressInfo(percentage, ""));
+    }
+
+    private static void RestoreLzhDirectoryTimestamps(
+        IReadOnlyList<LzhArchiveEntry> selectedEntries,
+        string destination,
+        bool normalizeUnicode,
+        CancellationToken cancellationToken)
+    {
+        var normalizedBase = NormalizeBaseDirectory(destination);
+
+        // UnLhaRe は通常ファイルの時刻を原子的な公開前に復元する。ディレクトリは子の作成で
+        // mtime が更新されるため、すべての展開後に深い順で復元する。
+        var orderedEntries = selectedEntries
+            .Where(static entry => entry.IsDirectory && entry.ModifiedAt is not null)
+            .OrderByDescending(static entry => entry.Name.Count(c => c is '/' or '\\'));
+        foreach (var entry in orderedEntries)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!TryResolveExistingEntryPathFromNormalized(
+                    normalizedBase, entry.Name, out var extractedPath, normalizeUnicode))
+                continue;
+
+            try
+            {
+                Directory.SetLastWriteTimeUtc(extractedPath, entry.ModifiedAt!.Value.UtcDateTime);
+            }
+            catch (Exception ex) when (ex is
+                IOException or UnauthorizedAccessException or SecurityException or ArgumentOutOfRangeException)
+            {
+                Logger.Log(
+                    $"LZH展開後のtimestamp復元に失敗しました: {entry.Name}, {ex.Message}",
+                    LogLevel.Warning);
+            }
+        }
     }
 
     /// <summary>
@@ -796,7 +1103,7 @@ public static class ArchiveExtractor
     /// <returns>上書き対象が存在する場合true</returns>
     public static bool ShouldShowOverwriteDialog(string outputPath, IReadOnlyList<string>? overwriteCheckPaths)
     {
-        return overwriteCheckPaths is { Count: > 0 }
+        return overwriteCheckPaths is not null
             ? overwriteCheckPaths.Any(Path.Exists)
             : Path.Exists(outputPath);
     }
@@ -829,7 +1136,7 @@ public static class ArchiveExtractor
         // 従来通り DiskSpaceChecker 側で再計算する（後方互換）。
         var requiredSize = precomputedUncompressedSize >= 0
             ? precomputedUncompressedSize
-            : DiskSpaceChecker.GetArchiveUncompressedSize(archivePath);
+            : DiskSpaceChecker.GetArchiveUncompressedSize(archivePath, cancellationToken);
         // サイズ不明 (-1) でも最低空き容量を確認する。空アーカイブ (0) とは区別する。
         var hasSpace = await DiskSpaceChecker.EnsureDiskSpaceAsync(
             outputPath, requiredSize, parentWindow, cancellationToken);
@@ -1337,7 +1644,12 @@ public static class ArchiveExtractor
         {
             if (!overwriteConfirmed)
             {
-                var conflicts = DetectExtractionConflicts(archivePath, outputPath, normalizeUnicode, knownPassword);
+                var conflicts = DetectExtractionConflicts(
+                    archivePath,
+                    outputPath,
+                    normalizeUnicode,
+                    knownPassword,
+                    cancellationToken);
                 if (conflicts.Count > 0)
                 {
                     Logger.Log($"ExtractArchive内でファイル衝突を検出: {conflicts.Count}件");
@@ -1350,7 +1662,7 @@ public static class ArchiveExtractor
             // 保護されたディレクトリ（デスクトップ自体など）の場合は上書き確認（削除）をさせない
             // overwriteCheckPaths がある場合は実際に退避・削除される各パスをチェック、
             // ない場合は outputPath 自体が退避・削除対象となるのでそちらをチェック
-            var pathsToProtect = overwriteCheckPaths is { Count: > 0 }
+            var pathsToProtect = overwriteCheckPaths is not null
                 ? (IEnumerable<string>)overwriteCheckPaths
                 : [outputPath];
             foreach (var protectPath in pathsToProtect)
@@ -1536,9 +1848,20 @@ public static class ArchiveExtractor
             // await は 1 つも無い（ライブラリ 1.0.84 の契約はスレッドを跨いでも直列なら合法だが、
             // await を足すと nativeGate の保持中に別の非ネイティブ処理が挟まってゲートの
             // 保持時間が伸びるので、ここには await を置かない）。
-            using (var nativeGate = await NativeArchiveGate.EnterAsync(cancellationToken))
-            using (var reader = OpenArchiveReaderWithRetry(archivePath, passwordQuery, extractOption, cancellationToken))
+            if (IsLzhArchivePath(archivePath))
             {
+                ExtractLzhArchiveToDirectory(
+                    archivePath,
+                    tempOutputPath,
+                    skipRelativePaths,
+                    normalizeUnicode,
+                    progressCallback,
+                    cancellationToken);
+            }
+            else
+            {
+                using var nativeGate = await NativeArchiveGate.EnterAsync(cancellationToken);
+                using var reader = OpenArchiveReaderWithRetry(archivePath, passwordQuery, extractOption, cancellationToken);
                 Logger.Log($"一時ディレクトリへの展開処理開始: {archivePath} -> {tempOutputPath}");
 
                 // Zip Slip / Windows パス別名プリチェック。ライブラリ側フィルタより先に全件を
@@ -1801,7 +2124,7 @@ public static class ArchiveExtractor
         var backupPaths = new List<(string Original, string Backup)>();
         try
         {
-            if (overwriteCheckPaths is { Count: > 0 })
+            if (overwriteCheckPaths is not null)
             {
                 // 親フォルダ直下展開時: 実際に上書きされるパスのみ退避（outputPathは退避しない）
                 foreach (var path in overwriteCheckPaths)

@@ -268,6 +268,8 @@
   <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Error I/O accidit</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Statum fasciculi verifica et iterum tempta.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">Tabularium modum securitatis processus excedit</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimitAction" xml:space="preserve">Tabularium divide aut cum fasciculis minoribus iterum conare.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Fasciculus archivi corruptus est</x:String>
   <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Fasciculum iterum depone vel repara.</x:String>
   <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">Operatio invalida effecta est</x:String>
@@ -381,7 +383,7 @@
   <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Tutela tessera</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Tessera muniri</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP per AES-256 (WinZip AE-2), 7z per AES-256 cryptat.</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR tutelam tesserae non sustinet. ZIP vel 7z eligere.</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR et LZH tutelam tesserae non sustinent. ZIP vel 7z eligere.</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Nota: archiva ZIP per AES-256 cryptata Exploratore Windows inserto aperiri non possunt. Receptoribus 7-Zip, WinRAR vel aliud instrumentum compatibile opus est.</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Etiam nomina fasciculorum cryptare</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Indicem nominum fasciculorum (caput) intra archivum cryptat. Sine tessera ne contenta quidem inspici possunt.</x:String>
@@ -414,5 +416,6 @@
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Omnes fasciculi originales inaccessibiles erant, itaque compressio abrupta est. Archivum inane non creatum est.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Forma {0} tutelam tesserae non sustinet. ZIP vel 7z elige.</x:String>
+  <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">LZH usque ad {1} MiB pro fasciculo sustinet. Fasciculus modum excedens: {0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Tesserae ZIP solum litteras ASCII (litteras, numeros, signa) continere possunt. Ad alias litteras (ut litteras cum signis diacriticis aut Iaponicas) adhibendas formam 7z elige.</x:String>
 </ResourceDictionary>

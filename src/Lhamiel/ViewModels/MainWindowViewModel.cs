@@ -72,7 +72,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsZipFormat))]
     [NotifyPropertyChangedFor(nameof(IsSevenZipFormat))]
     [NotifyPropertyChangedFor(nameof(IsTarFormat))]
+    [NotifyPropertyChangedFor(nameof(IsLzhFormat))]
     [NotifyPropertyChangedFor(nameof(IsZipOrSevenZipFormat))]
+    [NotifyPropertyChangedFor(nameof(IsPasswordUnsupportedFormat))]
     [NotifyPropertyChangedFor(nameof(IsPasswordSubPanelVisible))]
     [NotifyPropertyChangedFor(nameof(IsZipFormatAndPasswordOn))]
     [NotifyPropertyChangedFor(nameof(ShowZipExplorerWarning))]
@@ -158,7 +160,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
     public bool IsZipFormat => string.Equals(SelectedCompressionFormat, "ZIP", StringComparison.OrdinalIgnoreCase);
     public bool IsSevenZipFormat => string.Equals(SelectedCompressionFormat, "7z", StringComparison.OrdinalIgnoreCase);
     public bool IsTarFormat => string.Equals(SelectedCompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase);
+    public bool IsLzhFormat => string.Equals(SelectedCompressionFormat, "LZH", StringComparison.OrdinalIgnoreCase);
     public bool IsZipOrSevenZipFormat => IsZipFormat || IsSevenZipFormat;
+    public bool IsPasswordUnsupportedFormat => !IsZipOrSevenZipFormat;
     public bool IsPasswordSubPanelVisible => IsPasswordProtectionEnabled && IsZipOrSevenZipFormat;
     public bool IsZipFormatAndPasswordOn => IsZipFormat && IsPasswordProtectionEnabled;
     public bool ShowZipExplorerWarning => IsZipFormatAndPasswordOn;
@@ -342,7 +346,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             // ZIP/7z に戻せば次の AutoSave で true が復活する (TAR 選択のままアプリを
             // 再起動した場合のみ保護 OFF からの再有効化が必要になる、許容トレードオフ)。
             s.IsPasswordProtectionEnabled = IsPasswordProtectionEnabled
-                && !string.Equals(SelectedCompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase);
+                && IsZipOrSevenZipFormat;
             s.PasswordMode = PasswordMode;
             s.EncryptFileNames = EncryptFileNames;
             // 除外パターンは .lhaignore ファイルが真の源なので、settings.json には書き出さない。

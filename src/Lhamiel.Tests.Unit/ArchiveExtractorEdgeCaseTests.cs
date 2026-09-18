@@ -24,6 +24,7 @@ public class ArchiveExtractorEdgeCaseTests
     [InlineData(".txz")]
     [InlineData(".rar")]
     [InlineData(".lzh")]
+    [InlineData(".lha")]
     [InlineData(".cab")]
     [InlineData(".arj")]
     [InlineData(".z")]
@@ -144,15 +145,15 @@ public class ArchiveExtractorEdgeCaseTests
     }
 
     [Fact]
-    public void ShouldShowOverwriteDialog_WithEmptyOverwriteCheckPaths_FallsBackToOutputPath()
+    public void ShouldShowOverwriteDialog_WithEmptyOverwriteCheckPaths_HasNoOverwriteTarget()
     {
         var tempDir = Path.Combine(Path.GetTempPath(), "test_" + Guid.NewGuid());
         Directory.CreateDirectory(tempDir);
         try
         {
-            // 空配列はnullと同じ扱い: outputPath自体の存在で判定される
+            // 空配列は「親フォルダー直下へ展開するが置換対象なし」を表す。
             var result = ArchiveExtractor.ShouldShowOverwriteDialog(tempDir, Array.Empty<string>());
-            Assert.True(result); // outputPath が存在するので true
+            Assert.False(result);
         }
         finally
         {
@@ -212,7 +213,7 @@ public class ArchiveExtractorEdgeCaseTests
     public void SupportedExtensions_ExactCount()
     {
         // サポート拡張子の数が意図せず増減していないか確認
-        Assert.Equal(18, ArchiveExtractor.SupportedExtensions.Count);
+        Assert.Equal(19, ArchiveExtractor.SupportedExtensions.Count);
     }
 
     [Fact]

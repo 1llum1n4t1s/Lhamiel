@@ -268,6 +268,8 @@
   <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">장치 연결을 확인한 뒤 다시 연결하고 재시도하세요.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">I/O 오류가 발생했습니다</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">파일 상태를 확인하고 다시 시도하세요.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">보관 파일이 처리 안전 제한을 초과했습니다</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimitAction" xml:space="preserve">보관 파일을 나누거나 더 작은 파일로 다시 시도하세요.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">아카이브 파일이 손상되었습니다</x:String>
   <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">파일을 다시 다운로드하거나 복구를 시도하세요.</x:String>
   <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">잘못된 작업이 수행되었습니다</x:String>
@@ -381,7 +383,7 @@
   <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">암호 보호</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">암호로 보호</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP은 AES-256 (WinZip AE-2), 7z은 AES-256으로 암호화합니다.</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR 형식은 암호 보호를 지원하지 않습니다. ZIP 또는 7z을 선택하세요.</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR 및 LZH 형식은 암호 보호를 지원하지 않습니다. ZIP 또는 7z을 선택하세요.</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">주의: AES-256으로 암호화된 ZIP은 Windows 기본 탐색기에서 열 수 없습니다. 수신자는 7-Zip, WinRAR 등 호환 도구가 필요합니다.</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">파일명도 암호화</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">아카이브 내 파일명 목록(헤더)도 암호화합니다. 암호 없이는 내용을 볼 수도 없게 됩니다.</x:String>
@@ -414,5 +416,6 @@
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">모든 원본 파일에 접근할 수 없어 압축을 중단했습니다. 빈 아카이브는 생성되지 않았습니다.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} 형식은 암호 보호를 지원하지 않습니다. ZIP 또는 7z을 선택하세요.</x:String>
+  <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">LZH는 파일당 최대 {1} MiB를 지원합니다. 제한을 초과한 파일: {0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP 형식의 비밀번호에는 ASCII 문자(영문, 숫자, 기호)만 사용할 수 있습니다. 한국어 등 다른 문자를 사용하려면 7z 형식을 선택하세요.</x:String>
 </ResourceDictionary>

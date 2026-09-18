@@ -22,6 +22,7 @@ internal static class ArchiveFormatConstants
         ("xz", "XZ (.xz)"),
         ("rar", "RAR (.rar)"),
         ("lzh", "LZH (.lzh)"),
+        ("lha", "LHA (.lha)"),
         ("cab", "CAB (.cab)"),
         ("arj", "ARJ (.arj)"),
         ("z", "Z (.z)"),

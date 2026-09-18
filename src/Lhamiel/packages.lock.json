@@ -84,6 +84,12 @@
         "resolved": "1.0.5",
         "contentHash": "9hUFCQBh6xn7kB6h1WqxaHt/6wO2ic0lNQxI8MIG60rs78c+dKSo/wisGXLlbITPDkTg9eK8tEJGhMpXP2p5/A=="
       },
+      "Kagayoi.UnLhaRe": {
+        "type": "Direct",
+        "requested": "[1.0.4, )",
+        "resolved": "1.0.4",
+        "contentHash": "mp9i46XEGB/eWAg4fiN6nrZFm4j9jjPoBF1DmdTAnPyAXyX0arGBgUnhGsbEa7bq5lPMP8AV95Z+7w/jRaS9rA=="
+      },
       "Microsoft.DotNet.ILCompiler": {
         "type": "Direct",
         "requested": "[10.0.12, )",
@@ -336,6 +342,12 @@
         "requested": "[1.0.89, )",
         "resolved": "1.0.89",
         "contentHash": "2O2qcIS6AenSj3WsPWZek5LwvAzpQ7TdUTIjHfi1MkxyAMH9NZZed7wrnWoKmwHudlWIvoCtM2QRxJRL3Y3rOw=="
+      },
+      "Kagayoi.UnLhaRe": {
+        "type": "Direct",
+        "requested": "[1.0.4, )",
+        "resolved": "1.0.4",
+        "contentHash": "mp9i46XEGB/eWAg4fiN6nrZFm4j9jjPoBF1DmdTAnPyAXyX0arGBgUnhGsbEa7bq5lPMP8AV95Z+7w/jRaS9rA=="
       },
       "Microsoft.DotNet.ILCompiler": {
         "type": "Direct",

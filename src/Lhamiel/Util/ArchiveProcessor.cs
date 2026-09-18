@@ -1,6 +1,7 @@
 #pragma warning disable CS0618 // PartialExtractionHandler は [Obsolete] だが移行完了まで使用（参照が複数メソッドに分散するためファイルレベルで抑制）
 using Avalonia.Controls;
 using Lhamiel.View;
+using LzhArchiveNativeException = Kagayoi.UnLhaRe.ArchiveNativeException;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -87,7 +88,7 @@ public static class ArchiveProcessor
         if (!settings.IsPasswordProtectionEnabled)
             return new PasswordResolutionState(null, false);
 
-        // TAR はパスワード保護非対応。明示的に TAR が要求された場合は password 解決を
+        // TAR/LZH はパスワード保護非対応。明示的に非対応形式が要求された場合は password 解決を
         // スキップして「保護なし」で続行する (codex P2 #3384620480)。
         //
         // ここは fail-loud (throw) にしない: UI は TAR 選択時に checkbox を disable して
@@ -101,9 +102,11 @@ public static class ArchiveProcessor
         // 「暗号化されたつもりの無保護 TAR」footgun への防御線は
         // ArchiveCompressor.CreateArchiveWriter の「非 null password + TAR → InvalidOperationException」
         // が担う (こちらは本物のバグ検知用で fail-loud を維持)。
-        if (formatHint is { } fmt && string.Equals(fmt, "TAR", StringComparison.OrdinalIgnoreCase))
+        if (formatHint is { } fmt
+            && !string.Equals(fmt, "ZIP", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(fmt, "7z", StringComparison.OrdinalIgnoreCase))
         {
-            Logger.Log("TAR はパスワード保護非対応のため、保護設定をスキップして圧縮を続行します", LogLevel.Info);
+            Logger.Log($"{fmt} はパスワード保護非対応のため、保護設定をスキップして圧縮を続行します", LogLevel.Info);
             return new PasswordResolutionState(null, false);
         }
 
@@ -367,7 +370,9 @@ public static class ArchiveProcessor
                 var baseDirectory = ArchiveExtractor.GetBaseOutputDirectory(filePath, outputDir, outputToSameDirectory);
 
                 // アーカイブの構造を一度だけ解析
-                var rawStructureInfo = ArchiveExtractor.GetArchiveStructureInfo(filePath);
+                var rawStructureInfo = ArchiveExtractor.GetArchiveStructureInfo(
+                    filePath,
+                    cancellationToken: cancellationToken);
 
                 // he=on (ヘッダ暗号化) の 7z/rar はパスワード無しだと開くこと自体に失敗し
                 // (7z.dll は「暗号化ヘッダ」と「破損」を ctor 時点で区別できない、実機確認済み)、
@@ -422,7 +427,7 @@ public static class ArchiveProcessor
                             // GetArchiveStructureInfo がパスワード付き失敗時に例外メッセージ自体を
                             // ログへ出さないことで守る (codex P2 #3385301557)。
                             using var attemptRedaction = Logger.RegisterRedactionToken(pw);
-                            var retried = ArchiveExtractor.GetArchiveStructureInfo(filePath, pw);
+                            var retried = ArchiveExtractor.GetArchiveStructureInfo(filePath, pw, cancellationToken);
                             if (!retried.OpenFailed)
                             {
                                 rawStructureInfo = retried;
@@ -535,9 +540,15 @@ public static class ArchiveProcessor
                     // フォルダ作成時: outputPath（baseDir/archiveName）の存在をチェック → overwriteCheckPaths=null
                     // baseDir直接展開時: 展開されるトップレベルアイテムのパスのみをチェック
                     IReadOnlyList<string>? overwriteCheckPaths = null;
-                    if (outputPath == baseDirectory && !string.IsNullOrEmpty(structureInfo.SingleRootItemName))
+                    if (outputPath == baseDirectory)
                     {
-                        overwriteCheckPaths = [Path.Combine(outputPath, structureInfo.SingleRootItemName)];
+                        // 既存の baseDirectory へ直接展開するときは、単一／複数ルートを問わず
+                        // アーカイブが実際に置換するトップレベル項目だけを退避する。
+                        // null のままだと outputPath 全体が退避・破棄され、書庫と無関係な既存
+                        // ファイルまで失われる。空配列も「置換対象なし」として明示的に渡す。
+                        overwriteCheckPaths = structureInfo.RootItemNames
+                            .Select(rootName => Path.Combine(outputPath, rootName))
+                            .ToArray();
                     }
 
                     // 一時フォルダ方式（上書き確認あり）or 直接展開
@@ -1108,7 +1119,8 @@ public static class ArchiveProcessor
                 }
                 // atomic swap 用 temp ファイルが残っていれば削除 (codex P1 #3381582647)
                 try { if (targetExists && !string.Equals(tempOutputPath, outputPath, StringComparison.OrdinalIgnoreCase) && File.Exists(tempOutputPath)) File.Delete(tempOutputPath); } catch { /* best-effort */ }
-                await UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message)));
+                await UiDispatcherImpl.InvokeAsync(() =>
+                    MessageServiceImpl.ShowError(FormatCompressionErrorMessage(ex, outputPath)));
                 return false;
             }
             finally
@@ -1630,7 +1642,8 @@ public static class ArchiveProcessor
                 {
                     progressWindow?.CloseSafe();
                 }
-                await UiDispatcherImpl.InvokeAsync(() => MessageServiceImpl.ShowError(App.Text("Error.DuringCompression", ex.Message)));
+                await UiDispatcherImpl.InvokeAsync(() =>
+                    MessageServiceImpl.ShowError(FormatCompressionErrorMessage(ex, outputPath)));
                 return false;
             }
             finally
@@ -1641,6 +1654,20 @@ public static class ArchiveProcessor
                 mergedPasswordForCleanup?.Dispose();
             }
         }, actualCancellationToken);
+    }
+
+    /// <summary>圧縮時の例外を、利用者が対処できる分類と詳細へ整形する。</summary>
+    internal static string FormatCompressionErrorMessage(Exception ex, string outputPath)
+    {
+        if (ex is not LzhArchiveNativeException lzhException)
+            return App.Text("Error.DuringCompression", ex.Message);
+
+        var errorInfo = ArchiveErrorHandler.AnalyzeLzhCreateError(lzhException, outputPath);
+        var detail = string.Join(
+            Environment.NewLine,
+            new[] { errorInfo.Message, errorInfo.Details, errorInfo.RecommendedAction }
+                .Where(static value => !string.IsNullOrWhiteSpace(value)));
+        return App.Text("Error.DuringCompression", detail);
     }
 
     /// <summary>

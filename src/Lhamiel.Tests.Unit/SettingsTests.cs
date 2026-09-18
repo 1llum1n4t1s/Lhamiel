@@ -248,6 +248,8 @@ public class SettingsTests
     [InlineData("ZIP", true)]
     [InlineData("7z", true)]
     [InlineData("TAR", true)]
+    [InlineData("LZH", true)]
+    [InlineData("LHA", false)]
     [InlineData("RAR", false)]
     [InlineData("GZ", false)]
     [InlineData("unknown", false)]
@@ -263,6 +265,8 @@ public class SettingsTests
     [Theory]
     [InlineData("ZIP", true)]
     [InlineData("7z", true)]
+    [InlineData("LZH", true)]
+    [InlineData("LHA", true)]
     [InlineData("RAR", true)]
     [InlineData("unknown", false)]
     public void SupportedExtractionFormats_ContainsExpectedFormats(string format, bool shouldBeSupported)

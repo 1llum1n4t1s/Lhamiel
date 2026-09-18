@@ -208,7 +208,7 @@ public class Settings
     /// <summary>
     /// サポートされている圧縮形式の一覧
     /// </summary>
-    public static readonly string[] SupportedCompressionFormats = ["ZIP", "7z", "TAR"];
+    public static readonly string[] SupportedCompressionFormats = ["ZIP", "7z", "TAR", "LZH"];
 
     public const string FileIconVariantClassic = "Classic";
     public const string FileIconVariantFolder = "Folder";
@@ -258,7 +258,7 @@ public class Settings
     /// <summary>
     /// サポートされている展開形式の一覧
     /// </summary>
-    public static readonly string[] SupportedExtractionFormats = ["ZIP", "7z", "TAR", "GZ", "BZ2", "LZMA", "XZ", "RAR", "LZH", "CAB", "ARJ", "Z"];
+    public static readonly string[] SupportedExtractionFormats = ["ZIP", "7z", "TAR", "GZ", "BZ2", "LZMA", "XZ", "RAR", "LZH", "LHA", "CAB", "ARJ", "Z"];
 
     /// <summary>
     /// 展開専用形式の一覧
@@ -623,8 +623,11 @@ public class Settings
                 ?? "System";
 
         // CompressionFormat も同様に canonical ケース正規化。
-        CompressionFormat = Array.Find(SupportedCompressionFormats, f => string.Equals(f, CompressionFormat, StringComparison.OrdinalIgnoreCase))
-                            ?? "ZIP";
+        // LHA は LZH の一般的な別名として受理し、作成形式は canonical な LZH に統一する。
+        CompressionFormat = string.Equals(CompressionFormat, "LHA", StringComparison.OrdinalIgnoreCase)
+            ? "LZH"
+            : Array.Find(SupportedCompressionFormats, f => string.Equals(f, CompressionFormat, StringComparison.OrdinalIgnoreCase))
+              ?? "ZIP";
 
         FileIconVariant = NormalizeFileIconVariant(FileIconVariant);
         AppIconVariant = NormalizeAppIconVariant(AppIconVariant);
@@ -698,7 +701,7 @@ public class Settings
         // 旧ビルドが書いた settings.json や手書き編集への防御として load 時にも矯正する。
         // PasswordMode / EncryptedCompressionPassword は ZIP/7z 用の選好として保持する。
         if (IsPasswordProtectionEnabled
-            && string.Equals(CompressionFormat, "TAR", StringComparison.OrdinalIgnoreCase))
+            && CompressionFormat is not ("ZIP" or "7z"))
         {
             IsPasswordProtectionEnabled = false;
         }

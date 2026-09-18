@@ -253,4 +253,28 @@ public class LocaleTests
         Assert.True(errors.Count == 0,
             $"重複キーがあります:\n{string.Join("\n", errors)}");
     }
+
+    [Fact]
+    public void AllLocales_LzhEntryTooLarge_HasPathAndLimitPlaceholders()
+    {
+        var localesDir = GetLocalesDirectory();
+        var files = Directory.GetFiles(localesDir, "*.axaml").OrderBy(f => f).ToArray();
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var errors = new List<string>();
+
+        foreach (var file in files)
+        {
+            var value = XDocument.Load(file).Descendants()
+                .Single(element => element.Attribute(x + "Key")?.Value == "Text.Error.LzhEntryTooLarge")
+                .Value;
+            if (!value.Contains("{0}", StringComparison.Ordinal)
+                || !value.Contains("{1}", StringComparison.Ordinal))
+            {
+                errors.Add(Path.GetFileName(file));
+            }
+        }
+
+        Assert.True(errors.Count == 0,
+            $"LZH項目上限メッセージのプレースホルダーが不足しています: {string.Join(", ", errors)}");
+    }
 }

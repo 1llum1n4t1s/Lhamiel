@@ -268,6 +268,8 @@
   <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Перевірте підключення пристрою та повторно підключіть його перед повторною спробою.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Сталася помилка введення/виведення</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Перевірте стан файлу та повторіть спробу.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">Архів перевищує безпечне обмеження обробки</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimitAction" xml:space="preserve">Розділіть архів або повторіть спробу з меншими файлами.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Файл архіву пошкоджено</x:String>
   <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Спробуйте повторно завантажити або відновити файл.</x:String>
   <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">Виконано недопустиму операцію</x:String>
@@ -381,7 +383,7 @@
   <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Захист паролем</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Захистити паролем</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Шифрує ZIP за допомогою AES-256 (WinZip AE-2), 7z — за допомогою AES-256.</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR не підтримує захист паролем. Виберіть ZIP або 7z.</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR і LZH не підтримують захист паролем. Виберіть ZIP або 7z.</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Примітка: ZIP-архіви, зашифровані AES-256, не можна відкрити стандартним Провідником Windows. Одержувачам потрібні 7-Zip, WinRAR або інший сумісний інструмент.</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Шифрувати також імена файлів</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Шифрує список імен файлів (заголовок) усередині архіву. Без пароля навіть вмісту не побачите.</x:String>
@@ -414,5 +416,6 @@
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Усі вихідні файли були недоступні, тож стиснення скасовано. Порожній архів не створено.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Формат {0} не підтримує захист паролем. Виберіть ZIP або 7z.</x:String>
+  <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">LZH підтримує до {1} МіБ на файл. Файл перевищує обмеження: {0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Паролі ZIP можуть містити лише символи ASCII (латинські літери, цифри та знаки). Для інших символів (наприклад, кирилиці) виберіть формат 7z.</x:String>
 </ResourceDictionary>

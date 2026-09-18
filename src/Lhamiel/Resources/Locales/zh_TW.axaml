@@ -268,6 +268,8 @@
   <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">請檢查裝置連線並重新連接後重試。</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">發生 I/O 錯誤</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">請檢查檔案狀態後重試。</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">封存檔超出處理安全限制</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimitAction" xml:space="preserve">請分割封存檔或使用較小的檔案重試。</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">壓縮檔已損毀</x:String>
   <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">請嘗試重新下載或修復檔案。</x:String>
   <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">執行了無效的操作</x:String>
@@ -381,7 +383,7 @@
   <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">密碼保護</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">使用密碼保護</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP 以 AES-256 (WinZip AE-2) 加密,7z 以 AES-256 加密。</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR 格式不支援密碼保護。請選擇 ZIP 或 7z。</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR 與 LZH 格式不支援密碼保護。請選擇 ZIP 或 7z。</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">注意:AES-256 加密的 ZIP 無法以 Windows 內建的檔案總管解壓縮。收件人需要 7-Zip、WinRAR 等相容工具。</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">同時加密檔名</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">同時加密壓縮檔內的檔名清單(標頭)。沒有密碼連內容也無法瀏覽。</x:String>
@@ -414,5 +416,6 @@
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">所有來源檔案皆無法存取,已中止壓縮。未建立空的壓縮檔。</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} 格式不支援密碼保護。請選擇 ZIP 或 7z。</x:String>
+  <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">LZH 每個檔案最多支援 {1} MiB。超出限制的檔案：{0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP 格式的密碼只能包含 ASCII 字元（字母、數字與符號）。如需使用中文等其他字元，請選擇 7z 格式。</x:String>
 </ResourceDictionary>

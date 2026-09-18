@@ -268,6 +268,8 @@
   <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">उपकरण का कनेक्शन जांचें और पुनः प्रयास करने से पहले फिर से कनेक्ट करें।</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">निवेश-निर्गमदोषः जातः</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">सञ्चिकास्थितिं परीक्ष्य पुनः प्रयततु।</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">अभिलेखः प्रक्रियासुरक्षासीमाम् अतिक्रामति</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimitAction" xml:space="preserve">अभिलेखं विभज्य अथवा लघुतरैः सञ्चिकाभिः पुनः प्रयतस्व।</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">संग्रहसञ्चिका दूषिता अस्ति</x:String>
   <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">सञ्चिकां पुनः अवतारयतु अथवा मरम्मतं कुरुत।</x:String>
   <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">अमान्या क्रिया सम्पादिता</x:String>
@@ -381,7 +383,7 @@
   <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">गुप्तशब्द-रक्षा</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">गुप्तशब्देन रक्षतु</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP-कृते AES-256 (WinZip AE-2), 7z-कृते AES-256 इत्यनेन गोपयति।</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR-रूपं गुप्तशब्द-रक्षां न समर्थयति। ZIP वा 7z वा चिनोतु।</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR/LZH-रूपे गुप्तशब्द-रक्षां न समर्थयतः। ZIP वा 7z वा चिनोतु।</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">सूचना: AES-256-गुप्तीकृताः ZIP-सञ्चिकाः Windows-स्य अन्तर्गतेन Explorer-इत्यनेन उद्घाटयितुं न शक्यन्ते। ग्राहकेभ्यः 7-Zip, WinRAR वा अन्यः अनुकूलः उपकरणः आवश्यकः।</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">सञ्चिकानामान्यपि गोपयतु</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">सञ्चयस्य अन्तर्भागे सञ्चिकानाम-सूचीम् (शीर्षकम्) अपि गोपयति। गुप्तशब्दं विना अन्तर्वस्तुनोऽपि अवलोकनं न शक्यम्।</x:String>
@@ -414,5 +416,6 @@
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">सर्वाः मूलसञ्चिकाः अप्राप्याः आसन्, अतः सङ्कोचनं विरतम्। रिक्तः सञ्चयः न रचितः।</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} रूपं गुप्तशब्द-रक्षां न समर्थयति। ZIP वा 7z वा चिनोतु।</x:String>
+  <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">LZH मध्ये प्रत्येकसञ्चिकायाः सीमा {1} MiB अस्ति। सीमातिक्रान्ता सञ्चिका: {0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP-गुप्तशब्दे केवलम् ASCII-वर्णाः (लैटिन-अक्षराणि, अङ्काः, चिह्नानि च) भवितुम् अर्हन्ति। अन्येषां वर्णानां (यथा देवनागरी) कृते 7z-प्रारूपं चिनुत।</x:String>
 </ResourceDictionary>

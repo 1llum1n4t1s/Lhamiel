@@ -410,13 +410,13 @@
                                         Text="{DynamicResource Text.Settings.Compression.EnablePasswordDescription}"
                                         TextWrapping="Wrap" />
 
-                                    <!--  TAR 警告 (format = TAR のときだけ表示)  -->
+                                    <!--  パスワード非対応形式の警告  -->
                                     <TextBlock
                                         Margin="28,-2,0,0"
                                         FontSize="12"
                                         Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"
-                                        IsVisible="{Binding IsTarFormat}"
-                                        Text="{DynamicResource Text.Settings.Compression.TarNoEncryptionNote}"
+                                        IsVisible="{Binding IsPasswordUnsupportedFormat}"
+                                        Text="{DynamicResource Text.Settings.Compression.UnsupportedEncryptionNote}"
                                         TextWrapping="Wrap" />
 
                                     <!--  ZIP Explorer 非互換注意 (format = ZIP かつ ON のときだけ表示)  -->

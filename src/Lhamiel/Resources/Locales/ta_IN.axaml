@@ -268,6 +268,8 @@
   <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">I/O பிழை ஏற்பட்டது</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">கோப்பின் நிலையைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">காப்பகம் செயலாக்கப் பாதுகாப்பு வரம்பை மீறுகிறது</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimitAction" xml:space="preserve">காப்பகத்தைப் பிரிக்கவும் அல்லது சிறிய கோப்புகளுடன் மீண்டும் முயற்சிக்கவும்.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">காப்பகக் கோப்பு சிதைந்துள்ளது</x:String>
   <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">கோப்பை மீண்டும் பதிவிறக்கவும் அல்லது பழுதுபார்க்கவும்.</x:String>
   <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">தவறான செயல்பாடு நிகழ்த்தப்பட்டது</x:String>
@@ -381,7 +383,7 @@
   <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">கடவுச்சொல் பாதுகாப்பு</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">கடவுச்சொல்லால் பாதுகாக்கவும்</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP-க்கு AES-256 (WinZip AE-2), 7z-க்கு AES-256 மூலம் குறியாக்குகிறது.</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR கடவுச்சொல் பாதுகாப்பை ஆதரிக்காது. ZIP அல்லது 7z-ஐ தேர்வுசெய்க.</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR மற்றும் LZH கடவுச்சொல் பாதுகாப்பை ஆதரிக்காது. ZIP அல்லது 7z-ஐ தேர்வுசெய்க.</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">குறிப்பு: AES-256 மூலம் குறியாக்கப்பட்ட ZIP-ஐ Windows-இன் உள்ளமைக்கப்பட்ட Explorer மூலம் திறக்க முடியாது. பெறுபவர்களுக்கு 7-Zip, WinRAR அல்லது இணக்கமான கருவி தேவை.</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">கோப்பு பெயர்களையும் குறியாக்கு</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">காப்பகத்தினுள் உள்ள கோப்பு பெயர்கள் பட்டியலையும் (தலைப்பு) குறியாக்குகிறது. கடவுச்சொல் இல்லாமல் உள்ளடக்கத்தைக் கூட பார்க்க முடியாது.</x:String>
@@ -414,5 +416,6 @@
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">அனைத்து மூல கோப்புகளும் அணுக முடியாதவை, எனவே அமுக்கம் இரத்து செய்யப்பட்டது. வெற்று காப்பகம் உருவாக்கப்படவில்லை.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} வடிவம் கடவுச்சொல் பாதுகாப்பை ஆதரிக்காது. ZIP அல்லது 7z-ஐ தேர்வுசெய்க.</x:String>
+  <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">LZH ஒரு கோப்புக்கு {1} MiB வரை ஆதரிக்கிறது. வரம்பை மீறிய கோப்பு: {0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP கடவுச்சொற்களில் ASCII எழுத்துகள் (லத்தீன் எழுத்துகள், எண்கள், குறியீடுகள்) மட்டுமே இருக்க முடியும். தமிழ் போன்ற பிற எழுத்துகளைப் பயன்படுத்த 7z வடிவத்தைத் தேர்ந்தெடுக்கவும்.</x:String>
 </ResourceDictionary>

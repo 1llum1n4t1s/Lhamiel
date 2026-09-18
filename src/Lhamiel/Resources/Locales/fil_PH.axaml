@@ -268,6 +268,8 @@
   <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">May naganap na I/O error</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Tingnan ang kalagayan ng file at subukan muli.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">Lumampas ang archive sa limitasyong pangkaligtasan sa pagproseso</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimitAction" xml:space="preserve">Hatiin ang archive o subukang muli gamit ang mas maliliit na file.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Sira ang archive file</x:String>
   <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Subukang i-download muli o ayusin ang file.</x:String>
   <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">May isinagawang hindi wastong operasyon</x:String>
@@ -381,7 +383,7 @@
   <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Password Protection</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Protect with password</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Encrypts with AES-256 (WinZip AE-2) for ZIP, AES-256 for 7z.</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR does not support password protection. Choose ZIP or 7z.</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR and LZH do not support password protection. Choose ZIP or 7z.</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Note: AES-256 encrypted ZIPs cannot be opened by the built-in Windows Explorer. Recipients need 7-Zip, WinRAR, or another compatible tool.</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Encrypt file names too</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Encrypts the file-name listing (header) inside the archive. Without the password, even the contents cannot be browsed.</x:String>
@@ -414,5 +416,6 @@
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">All source files were inaccessible, so compression was aborted. An empty archive was not created.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">The {0} format does not support password protection. Choose ZIP or 7z.</x:String>
+  <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">Sinusuportahan ng LZH ang hanggang {1} MiB bawat file. File na lampas sa limitasyon: {0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Ang mga password ng ZIP ay maaari lamang maglaman ng mga ASCII character (mga titik, numero, at simbolo). Para gumamit ng ibang character (tulad ng mga letrang may tuldik o Japanese), piliin ang 7z format.</x:String>
 </ResourceDictionary>

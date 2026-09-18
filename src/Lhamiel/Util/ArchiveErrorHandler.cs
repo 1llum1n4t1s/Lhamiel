@@ -1,5 +1,7 @@
 using Cube.FileSystem.SevenZip;
 using System.Text;
+using LzhArchiveErrorKind = Kagayoi.UnLhaRe.ArchiveErrorKind;
+using LzhArchiveNativeException = Kagayoi.UnLhaRe.ArchiveNativeException;
 namespace Lhamiel.Util;
 
 /// <summary>
@@ -79,6 +81,11 @@ public enum ArchiveErrorType
     UnsupportedFormat,
 
     /// <summary>
+    /// 安全のために設定されたアーカイブ処理上限を超えた
+    /// </summary>
+    ResourceLimitExceeded,
+
+    /// <summary>
     /// ファイルが使用中
     /// </summary>
     FileInUse,
@@ -156,6 +163,12 @@ public static class ArchiveErrorHandler
                 AnalyzeSevenZipException(sevenZipEx, errorInfo, archivePath, outputPath);
                 break;
 
+            // UnLhaRe API level 4+ が返す安定した分類を使う。メッセージ文字列の解析や、
+            // I/O エラーを根拠なくディスク不足へ決め打ちしない。
+            case LzhArchiveNativeException lzhEx:
+                AnalyzeLzhArchiveException(lzhEx, errorInfo, archivePath);
+                break;
+
             case IOException ioEx:
                 if (IsDiskSpaceError(ioEx)) ApplyDiskSpace(errorInfo, outputPath);
                 else if (IsDeviceDisconnectedError(ioEx)) ApplyDeviceDisconnected(errorInfo, outputPath);
@@ -203,6 +216,129 @@ public static class ArchiveErrorHandler
                 errorInfo.Details = ex.Message;
                 errorInfo.RecommendedAction = App.Text("ErrorHandler.UnexpectedAction");
                 errorInfo.IsRecoverable = true;
+                break;
+        }
+
+        return errorInfo;
+    }
+
+    /// <summary>UnLhaRe の安定したエラー種別を利用者向けカテゴリへ写像する。</summary>
+    private static void AnalyzeLzhArchiveException(
+        LzhArchiveNativeException ex,
+        ArchiveErrorInfo errorInfo,
+        string archivePath)
+    {
+        switch (ex.Kind)
+        {
+            case LzhArchiveErrorKind.Format:
+            case LzhArchiveErrorKind.InvalidPath:
+            case LzhArchiveErrorKind.Exists:
+                // 展開は空の一時ディレクトリへ行うため、Exists は重複名など書庫側の矛盾を示す。
+                errorInfo.ErrorType = ArchiveErrorType.CorruptedFile;
+                errorInfo.Message = App.Text("ErrorHandler.Corrupted");
+                errorInfo.Details = GetCorruptionDetails(ex, archivePath);
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.CorruptedAction");
+                errorInfo.IsRecoverable = false;
+                break;
+
+            case LzhArchiveErrorKind.Unsupported:
+                errorInfo.ErrorType = ArchiveErrorType.UnsupportedFormat;
+                errorInfo.Message = App.Text("ErrorHandler.UnsupportedFormat");
+                errorInfo.Details = App.Text("ErrorHandler.UnsupportedFormatDetail", Path.GetExtension(archivePath));
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.UnsupportedFormatAction");
+                errorInfo.IsRecoverable = false;
+                break;
+
+            case LzhArchiveErrorKind.Limit:
+                errorInfo.ErrorType = ArchiveErrorType.ResourceLimitExceeded;
+                errorInfo.Message = App.Text("ErrorHandler.ResourceLimit");
+                errorInfo.Details = ex.Message;
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.ResourceLimitAction");
+                errorInfo.IsRecoverable = false;
+                break;
+
+            case LzhArchiveErrorKind.Io:
+                errorInfo.ErrorType = ArchiveErrorType.Unknown;
+                errorInfo.Message = App.Text("ErrorHandler.IOError");
+                errorInfo.Details = ex.Message;
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.IOErrorAction");
+                errorInfo.IsRecoverable = true;
+                break;
+
+            case LzhArchiveErrorKind.InvalidArgument:
+                errorInfo.ErrorType = ArchiveErrorType.Unknown;
+                errorInfo.Message = App.Text("ErrorHandler.InvalidOperation");
+                errorInfo.Details = ex.Message;
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.InvalidOperationAction");
+                errorInfo.IsRecoverable = false;
+                break;
+
+            default:
+                // Cancelled は通常 .NET wrapper が OperationCanceledException へ変換する。
+                // Unknown / BufferTooSmall / Internal は利用者入力から原因を断定できない。
+                errorInfo.ErrorType = ArchiveErrorType.Unknown;
+                errorInfo.Message = App.Text("ErrorHandler.Unexpected");
+                errorInfo.Details = ex.Message;
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.UnexpectedAction");
+                errorInfo.IsRecoverable = false;
+                break;
+        }
+    }
+
+    /// <summary>
+    /// UnLhaRe の作成エラーを圧縮操作の文脈で分類する。
+    /// 展開用の分類と異なり、出力先の InvalidPath / Exists を書庫破損とは扱わない。
+    /// </summary>
+    internal static ArchiveErrorInfo AnalyzeLzhCreateError(
+        LzhArchiveNativeException ex,
+        string outputPath)
+    {
+        var errorInfo = new ArchiveErrorInfo
+        {
+            OriginalException = ex,
+            ProblematicFilePath = outputPath,
+            Details = ex.Message
+        };
+
+        switch (ex.Kind)
+        {
+            case LzhArchiveErrorKind.Limit:
+                errorInfo.ErrorType = ArchiveErrorType.ResourceLimitExceeded;
+                errorInfo.Message = App.Text("ErrorHandler.ResourceLimit");
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.ResourceLimitAction");
+                errorInfo.IsRecoverable = false;
+                break;
+
+            case LzhArchiveErrorKind.Io:
+                errorInfo.ErrorType = ArchiveErrorType.Unknown;
+                errorInfo.Message = App.Text("ErrorHandler.IOError");
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.IOErrorAction");
+                errorInfo.IsRecoverable = true;
+                break;
+
+            case LzhArchiveErrorKind.Unsupported:
+                errorInfo.ErrorType = ArchiveErrorType.UnsupportedFormat;
+                errorInfo.Message = App.Text("ErrorHandler.UnsupportedFormat");
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.UnsupportedFormatAction");
+                errorInfo.IsRecoverable = false;
+                break;
+
+            case LzhArchiveErrorKind.Format:
+            case LzhArchiveErrorKind.InvalidArgument:
+            case LzhArchiveErrorKind.InvalidPath:
+            case LzhArchiveErrorKind.Exists:
+                errorInfo.ErrorType = ArchiveErrorType.Unknown;
+                errorInfo.Message = App.Text("ErrorHandler.InvalidOperation");
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.InvalidOperationAction");
+                errorInfo.IsRecoverable = false;
+                break;
+
+            default:
+                // Cancelled は通常 .NET wrapper が OperationCanceledException へ変換する。
+                errorInfo.ErrorType = ArchiveErrorType.Unknown;
+                errorInfo.Message = App.Text("ErrorHandler.Unexpected");
+                errorInfo.RecommendedAction = App.Text("ErrorHandler.UnexpectedAction");
+                errorInfo.IsRecoverable = false;
                 break;
         }
 

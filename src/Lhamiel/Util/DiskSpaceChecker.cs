@@ -63,10 +63,22 @@ public static partial class DiskSpaceChecker
     /// <summary>
     /// アーカイブ内の非圧縮サイズ合計を取得する。取得できない場合は -1 を返す。
     /// </summary>
-    public static long GetArchiveUncompressedSize(string archivePath)
+    /// <param name="archivePath">対象アーカイブのパス</param>
+    /// <param name="cancellationToken">一覧走査を中止するためのトークン</param>
+    public static long GetArchiveUncompressedSize(
+        string archivePath,
+        CancellationToken cancellationToken = default)
     {
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (ArchiveExtractor.IsLzhArchivePath(archivePath))
+            {
+                return ArchiveExtractor.GetArchiveStructureInfo(
+                    archivePath,
+                    cancellationToken: cancellationToken).TotalUncompressedSize;
+            }
+
             // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→使用→Dispose を覆う）
             using var nativeGate = NativeArchiveGate.Enter();
             using var reader = new ArchiveReader(archivePath);
@@ -75,10 +87,15 @@ public static partial class DiskSpaceChecker
             long total = 0;
             foreach (var item in reader.Items)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (item.IsDirectory) continue;
                 total = checked(total + (long)item.Length);
             }
             return total;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch (Exception ex)
         {

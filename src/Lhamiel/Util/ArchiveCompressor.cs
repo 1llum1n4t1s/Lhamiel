@@ -1,5 +1,11 @@
 using Cube.FileSystem.SevenZip;
+using System.Security;
 using CompressionMethod = Cube.FileSystem.SevenZip.CompressionMethod;
+using LzhArchiveProgress = Kagayoi.UnLhaRe.ArchiveProgress;
+using LzhArchiveProgressPhase = Kagayoi.UnLhaRe.ArchiveProgressPhase;
+using LzhArchiveCreateEntryStatus = Kagayoi.UnLhaRe.ArchiveCreateEntryStatus;
+using LzhArchiveSourceEntry = Kagayoi.UnLhaRe.ArchiveSourceEntry;
+using LzhCompressionMethod = Kagayoi.UnLhaRe.CompressionMethod;
 
 namespace Lhamiel.Util;
 
@@ -13,7 +19,7 @@ public static class ArchiveCompressor
     /// </summary>
     internal static readonly HashSet<string> WritableFormats = new(StringComparer.OrdinalIgnoreCase)
     {
-        "zip", "7z", "tar", "gz", "bz2", "xz"
+        "zip", "7z", "tar", "gz", "bz2", "xz", "lzh", "lha"
     };
 
     /// <summary>
@@ -73,6 +79,7 @@ public static class ArchiveCompressor
         "ZIP" => Format.Zip,
         "7Z" => Format.SevenZip,
         "TAR" => Format.Tar,
+        "LZH" or "LHA" => Format.Lzh,
         "GZ" => Format.GZip,
         "BZ2" => Format.BZip2,
         "XZ" => Format.XZ,
@@ -91,10 +98,11 @@ public static class ArchiveCompressor
     /// <param name="settingsOverride">使用する設定のスナップショット（並列処理時の race を避けるため呼び出し側で明示）</param>
     /// <param name="password">圧縮パスワード（null または空文字列でパスワード保護なし）。
     /// ZIP は AES-256 (WinZip AE-2) を強制、7z は AES-256 をライブラリ既定で使用。
-    /// TAR/GZ/BZ2/XZ では非 null を渡すと <see cref="InvalidOperationException"/> を投げる。</param>
+    /// LZH/TAR/GZ/BZ2/XZ では非 null を渡すと <see cref="InvalidOperationException"/> を投げる。</param>
     /// <param name="encryptFileNames">7z 形式でアーカイブ内ファイル名（ヘッダ）も暗号化するか（<c>-mhe=on</c> 相当）。
     /// ZIP では仕様上ヘッダ暗号化が存在しないので無視される。<paramref name="password"/> が null/空のときは無視される。</param>
-    /// <returns>アクセス不能 (AccessException) でスキップしたファイル数。パスワード保護圧縮で
+    /// <returns>アクセス不能でスキップしたファイル数。SevenZip 経路は <c>AccessException</c>、
+    /// LZH 経路は UnLhaRe の項目別作成結果から集計する。パスワード保護圧縮で
     /// 「アーカイブに含まれず平文のまま残ったファイルがある」ことを呼び出し側が UI 警告
     /// できるようにする (codex P2 #3386876544)。</returns>
     public static async Task<int> CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null, Settings? settingsOverride = null, string? password = null, bool encryptFileNames = true)
@@ -104,6 +112,11 @@ public static class ArchiveCompressor
         {
             throw new ArgumentException(App.Text("Error.NoFilesToCompress"));
         }
+
+        // LHA/LZH にはパスワード保護形式が存在しない。UI/ArchiveProcessor は通常 password を
+        // 解決しないが、直接呼び出し等で平文が渡された場合は暗号化されたと誤認させず明示拒否する。
+        if (format == Format.Lzh && !string.IsNullOrEmpty(password))
+            throw new InvalidOperationException(App.Text("Error.PasswordNotSupportedByFormat", "LZH"));
 
         // パスワード平文がログに偶発的に混入するのを防ぐ defense-in-depth。
         // ライブラリ例外の ex.Message に password が含まれるケースなどを想定。
@@ -151,6 +164,17 @@ public static class ArchiveCompressor
                 progress: progress);
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
+
+            if (format == Format.Lzh)
+            {
+                // UnLhaRe は内部一時ファイルを no-clobber で原子的に確定し、失敗時の掃除も担う。
+                // 共通 catch に既存出力を部分ファイルとして削除させないため outputCreated は false のままにする。
+                inaccessibleSkipped = await CompressLzhAsync(
+                    filesToCompress, outputPath, progress, cancellationToken);
+                Logger.Log(
+                    $"LZH圧縮完了: {outputPath}（要求{filesToCompress.Count}件、スキップ{inaccessibleSkipped}件）");
+                return inaccessibleSkipped;
+            }
 
             // 圧縮処理を開始（ロック中ファイルはライブラリ側で自動的に一時コピーされる）
             progress?.Report(new ProgressInfo(0, App.Text("Compressor.Processing")));
@@ -371,6 +395,121 @@ public static class ArchiveCompressor
             if (emptyDirMarker is not null)
                 FileOperations.CleanupTemporaryPath(emptyDirMarker, m => Logger.Log(m, LogLevel.Warning));
         }
+    }
+
+    /// <summary>UnLhaRe を使って LZH アーカイブを作成する。</summary>
+    private static async Task<int> CompressLzhAsync(
+        IReadOnlyList<(string fullPath, string relativePath)> filesToCompress,
+        string outputPath,
+        IProgress<ProgressInfo>? progress,
+        CancellationToken cancellationToken)
+    {
+        ValidateLzhSourceEntrySizes(filesToCompress, cancellationToken);
+
+        var entries = new List<LzhArchiveSourceEntry>(filesToCompress.Count);
+        foreach (var (fullPath, relativePath) in filesToCompress)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // ScanSourceFiles は Windows の区切り文字を返すが、LHA ヘッダー名は
+            // UnLhaRe の契約どおり '/' へ正規化する。7-Zip 経路の名前は変更しない。
+            var archiveName = relativePath.Replace('\\', '/');
+            entries.Add(new LzhArchiveSourceEntry(fullPath, archiveName));
+        }
+
+        if (entries.Count == 0)
+            throw new InvalidOperationException(App.Text("Error.AllSourcesInaccessible"));
+
+        var throttler = new LzhProgressThrottler();
+        IProgress<LzhArchiveProgress>? nativeProgress = progress is null
+            ? null
+            : new InlineProgress<LzhArchiveProgress>(value =>
+                ReportLzhCompressionProgress(value, progress, throttler));
+
+        progress?.Report(new ProgressInfo(App.Text("Progress.PreparingFiles")));
+        var report = await Task.Run(
+            () => LzhArchiveBackendProvider.Current.Create(
+                outputPath,
+                entries,
+                LzhCompressionMethod.Lh5,
+                nativeProgress,
+                cancellationToken),
+            cancellationToken).ConfigureAwait(false);
+        // Create が返った時点で原子的な出力確定まで完了している。ここで改めて token を確認すると、
+        // 完了直後のキャンセルを「失敗」に変換して有効な出力を取り残すため、成功として扱う。
+        progress?.Report(new ProgressInfo(100, ""));
+        var skippedEntries = report.Entries
+            .Where(static entry => entry.Status == LzhArchiveCreateEntryStatus.Skipped)
+            .ToArray();
+        foreach (var skipped in skippedEntries)
+        {
+            var detail = string.IsNullOrWhiteSpace(skipped.Error)
+                ? skipped.Name
+                : $"{skipped.Name}: {skipped.Error}";
+            Logger.Log($"アクセスできない圧縮元をスキップ: {detail}", LogLevel.Warning);
+        }
+        return skippedEntries.Length;
+    }
+
+    /// <summary>
+    /// 現行LH5 encoderが1項目をメモリ上で処理するため、native作成を開始する前に
+    /// 1ファイル上限を明示する。取得不能・消失はUnLhaReの項目別スキップ契約へ委ねる。
+    /// native側の再検査はTOCTOU防止のため維持する。
+    /// </summary>
+    internal static void ValidateLzhSourceEntrySizes(
+        IReadOnlyList<(string fullPath, string relativePath)> filesToCompress,
+        CancellationToken cancellationToken = default)
+    {
+        var maxEntryBytes = LzhArchiveBackendProvider.CreateLimits.MaxEntryBytes;
+        var maxEntryMiB = maxEntryBytes / (1024UL * 1024UL);
+
+        foreach (var (fullPath, relativePath) in filesToCompress)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (relativePath.EndsWith('/') || relativePath.EndsWith('\\'))
+            {
+                continue;
+            }
+
+            try
+            {
+                var file = new FileInfo(fullPath);
+                if (!file.Exists)
+                    continue;
+                if ((ulong)file.Length <= maxEntryBytes)
+                    continue;
+
+                throw new InvalidOperationException(
+                    App.Text("Error.LzhEntryTooLarge", relativePath.Replace('\\', '/'), maxEntryMiB));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
+            {
+                // 作成時に読み取れない入力はUnLhaReが項目別結果として返し、残りを続行する。
+            }
+        }
+    }
+
+    private static void ReportLzhCompressionProgress(
+        LzhArchiveProgress value,
+        IProgress<ProgressInfo> progress,
+        LzhProgressThrottler throttler)
+    {
+        if (!throttler.ShouldReport(value))
+            return;
+
+        if (value.Phase == LzhArchiveProgressPhase.Prepare)
+        {
+            progress.Report(new ProgressInfo(
+                App.Text("Progress.PreparingCompression", value.Completed, value.Total)));
+            return;
+        }
+        if (value.Phase == LzhArchiveProgressPhase.Finalize || value.Total == 0)
+        {
+            progress.Report(new ProgressInfo(App.Text("Progress.Finalizing")));
+            return;
+        }
+
+        var percentage = Math.Clamp((int)(value.Completed * 100d / value.Total), 0, 99);
+        progress.Report(new ProgressInfo(percentage, ""));
     }
 
     /// <summary>
@@ -721,7 +860,7 @@ public static class ArchiveCompressor
     /// <param name="encryptFileNames">7z でファイル名（ヘッダ）も暗号化するか（<c>-mhe=on</c> 相当）。ZIP では仕様上不可能なので無視。</param>
     /// <param name="maxThreads">最大スレッド数（0または負の値で自動設定）</param>
     /// <returns>ArchiveWriterインスタンス</returns>
-    /// <exception cref="InvalidOperationException">TAR/GZ/BZ2/XZ で <paramref name="password"/> を指定した場合（これらの形式は暗号化非対応）。</exception>
+    /// <exception cref="InvalidOperationException">LZH/TAR/GZ/BZ2/XZ で <paramref name="password"/> を指定した場合（これらの形式は暗号化非対応）。</exception>
     private static ArchiveWriter CreateArchiveWriter(Format format, Settings settings, string? password = null, bool encryptFileNames = true, int maxThreads = -1)
     {
         // スレッド数を [1, 論理プロセッサ数] に丸める。

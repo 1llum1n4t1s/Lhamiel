@@ -1,6 +1,8 @@
 using Cube.FileSystem.SevenZip;
 using Lhamiel.Util;
 using Xunit;
+using LzhArchiveErrorKind = Kagayoi.UnLhaRe.ArchiveErrorKind;
+using LzhArchiveNativeException = Kagayoi.UnLhaRe.ArchiveNativeException;
 namespace Lhamiel.Tests.Unit;
 
 /// <summary>
@@ -9,6 +11,79 @@ namespace Lhamiel.Tests.Unit;
 /// </summary>
 public class ArchiveErrorHandlerTests
 {
+    [Theory]
+    [InlineData(LzhArchiveErrorKind.Format)]
+    [InlineData(LzhArchiveErrorKind.InvalidPath)]
+    [InlineData(LzhArchiveErrorKind.Exists)]
+    public void AnalyzeError_UnLhaReArchiveFailure_ReturnsCorruptedFileType(
+        LzhArchiveErrorKind kind)
+    {
+        var ex = new LzhArchiveNativeException(-1, kind, "native archive failure");
+
+        var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\broken.lzh", @"C:\out");
+
+        Assert.Equal(ArchiveErrorType.CorruptedFile, info.ErrorType);
+        Assert.False(info.IsRecoverable);
+    }
+
+    [Fact]
+    public void AnalyzeError_UnLhaReLimit_ReturnsResourceLimitType()
+    {
+        var ex = new LzhArchiveNativeException(-1, LzhArchiveErrorKind.Limit, "entry limit exceeded");
+
+        var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\large.lzh", @"C:\out");
+
+        Assert.Equal(ArchiveErrorType.ResourceLimitExceeded, info.ErrorType);
+        Assert.Equal(App.Text("ErrorHandler.ResourceLimit"), info.Message);
+        Assert.Equal("entry limit exceeded", info.Details);
+        Assert.False(info.IsRecoverable);
+    }
+
+    [Fact]
+    public void AnalyzeError_UnLhaReIo_ReturnsLocalizedIoErrorWithoutAssumingDiskFull()
+    {
+        var ex = new LzhArchiveNativeException(-1, LzhArchiveErrorKind.Io, "source disappeared");
+
+        var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\input.lzh", @"C:\out");
+
+        Assert.Equal(ArchiveErrorType.Unknown, info.ErrorType);
+        Assert.Equal(App.Text("ErrorHandler.IOError"), info.Message);
+        Assert.NotEqual(ArchiveErrorType.InsufficientDiskSpace, info.ErrorType);
+        Assert.True(info.IsRecoverable);
+    }
+
+    [Theory]
+    [InlineData(LzhArchiveErrorKind.Format)]
+    [InlineData(LzhArchiveErrorKind.InvalidArgument)]
+    [InlineData(LzhArchiveErrorKind.InvalidPath)]
+    [InlineData(LzhArchiveErrorKind.Exists)]
+    public void AnalyzeLzhCreateError_InputOrOutputFailure_IsNotReportedAsCorruptedArchive(
+        LzhArchiveErrorKind kind)
+    {
+        var ex = new LzhArchiveNativeException(-1, kind, "create failed");
+
+        var info = ArchiveErrorHandler.AnalyzeLzhCreateError(ex, @"C:\output.lzh");
+
+        Assert.Equal(ArchiveErrorType.Unknown, info.ErrorType);
+        Assert.Equal(App.Text("ErrorHandler.InvalidOperation"), info.Message);
+        Assert.NotEqual(App.Text("ErrorHandler.Corrupted"), info.Message);
+        Assert.False(info.IsRecoverable);
+    }
+
+    [Fact]
+    public void AnalyzeLzhCreateError_UnLhaReLimit_UsesLocalizedClassification()
+    {
+        var ex = new LzhArchiveNativeException(-1, LzhArchiveErrorKind.Limit, "entry limit exceeded");
+
+        var info = ArchiveErrorHandler.AnalyzeLzhCreateError(ex, @"C:\output.lzh");
+
+        Assert.Equal(ArchiveErrorType.ResourceLimitExceeded, info.ErrorType);
+        Assert.Equal(App.Text("ErrorHandler.ResourceLimit"), info.Message);
+        Assert.Equal("entry limit exceeded", info.Details);
+        Assert.Equal(App.Text("ErrorHandler.ResourceLimitAction"), info.RecommendedAction);
+        Assert.False(info.IsRecoverable);
+    }
+
     [Fact]
     public void AnalyzeError_EncryptionException_ReturnsEncryptedOrWrongPasswordType()
     {

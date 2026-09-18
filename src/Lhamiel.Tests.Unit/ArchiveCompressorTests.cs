@@ -68,6 +68,8 @@ public class ArchiveCompressorTests
     [InlineData("ZIP", Format.Zip)]
     [InlineData("7Z", Format.SevenZip)]
     [InlineData("TAR", Format.Tar)]
+    [InlineData("LZH", Format.Lzh)]
+    [InlineData("LHA", Format.Lzh)]
     [InlineData("GZ", Format.GZip)]
     [InlineData("BZ2", Format.BZip2)]
     [InlineData("XZ", Format.XZ)]
@@ -80,6 +82,8 @@ public class ArchiveCompressorTests
     [InlineData("zip", Format.Zip)]
     [InlineData("7z", Format.SevenZip)]
     [InlineData("tar", Format.Tar)]
+    [InlineData("lzh", Format.Lzh)]
+    [InlineData("lha", Format.Lzh)]
     [InlineData("gz", Format.GZip)]
     [InlineData("bz2", Format.BZip2)]
     [InlineData("xz", Format.XZ)]
@@ -100,7 +104,6 @@ public class ArchiveCompressorTests
     [Theory]
     [InlineData("")]
     [InlineData("rar")]
-    [InlineData("lzh")]
     [InlineData("cab")]
     [InlineData("unknown")]
     [InlineData("  zip  ")]
@@ -184,6 +187,8 @@ public class ArchiveCompressorTests
     [InlineData("gz")]
     [InlineData("bz2")]
     [InlineData("xz")]
+    [InlineData("lzh")]
+    [InlineData("lha")]
     public void WritableFormats_ContainsExpected(string format)
     {
         Assert.Contains(format, ArchiveCompressor.WritableFormats);
@@ -193,6 +198,8 @@ public class ArchiveCompressorTests
     [InlineData("ZIP")]
     [InlineData("7Z")]
     [InlineData("TAR")]
+    [InlineData("LZH")]
+    [InlineData("LHA")]
     public void WritableFormats_IsCaseInsensitive(string format)
     {
         Assert.Contains(format, ArchiveCompressor.WritableFormats);
@@ -200,7 +207,6 @@ public class ArchiveCompressorTests
 
     [Theory]
     [InlineData("rar")]
-    [InlineData("lzh")]
     [InlineData("cab")]
     [InlineData("arj")]
     [InlineData("")]

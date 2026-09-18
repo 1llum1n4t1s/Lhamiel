@@ -268,6 +268,8 @@
   <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">デバイスの接続状態を確認し、再接続してから再試行してください。</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">I/Oエラーが発生しました</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">ファイルの状態を確認し、再試行してください。</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">アーカイブ処理の安全上限を超えています</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimitAction" xml:space="preserve">書庫を分割するか、より小さいファイルで再試行してください。</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">アーカイブファイルが破損しています</x:String>
   <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">ファイルの再ダウンロードまたは修復を試してください。</x:String>
   <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">無効な操作が実行されました</x:String>
@@ -380,7 +382,7 @@
   <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">パスワード保護</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">パスワードで保護する</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">ZIP は AES-256 (WinZip AE-2)、7z は AES-256 で暗号化します。</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR 形式はパスワード保護をサポートしていません。ZIP または 7z を選択してください。</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR / LZH 形式はパスワード保護をサポートしていません。ZIP または 7z を選択してください。</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">注意: AES-256 で暗号化した ZIP は Windows 標準のエクスプローラーでは展開できません。受信者は 7-Zip / WinRAR 等の対応ツールが必要です。</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">ファイル名も暗号化する</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">アーカイブ内のファイル名一覧 (ヘッダ) も暗号化します。パスワード無しでは内容を見ることもできなくなります。</x:String>
@@ -417,5 +419,6 @@
   <!-- パスワード関連エラー -->
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">すべてのファイルがアクセス不能のため圧縮を中止しました。空のアーカイブは作成していません。</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} 形式はパスワード保護をサポートしていません。ZIP または 7z を選択してください。</x:String>
+  <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">LZHでは1ファイル{1} MiBまでです。上限を超えたファイル: {0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP 形式のパスワードに使用できるのは半角英数字と記号 (ASCII 文字) のみです。日本語など他の文字を使う場合は 7z 形式を選択してください。</x:String>
 </ResourceDictionary>

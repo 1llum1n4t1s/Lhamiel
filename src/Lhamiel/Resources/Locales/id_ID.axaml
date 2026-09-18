@@ -268,6 +268,8 @@
   <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Periksa koneksi perangkat lalu sambungkan ulang sebelum mencoba lagi.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Terjadi kesalahan I/O</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Periksa status berkas dan coba lagi.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">Arsip melampaui batas keamanan pemrosesan</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimitAction" xml:space="preserve">Bagi arsip atau coba lagi dengan file yang lebih kecil.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">Berkas arsip rusak</x:String>
   <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Coba unduh ulang atau perbaiki berkas tersebut.</x:String>
   <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">Operasi tidak valid dilakukan</x:String>
@@ -381,7 +383,7 @@
   <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Perlindungan Kata Sandi</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Lindungi dengan kata sandi</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Mengenkripsi ZIP dengan AES-256 (WinZip AE-2), 7z dengan AES-256.</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR tidak mendukung perlindungan kata sandi. Pilih ZIP atau 7z.</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR dan LZH tidak mendukung perlindungan kata sandi. Pilih ZIP atau 7z.</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Catatan: ZIP terenkripsi AES-256 tidak dapat dibuka dengan Windows Explorer bawaan. Penerima memerlukan 7-Zip, WinRAR, atau alat lain yang kompatibel.</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Enkripsi juga nama file</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Mengenkripsi daftar nama file (header) di dalam arsip. Tanpa kata sandi, bahkan isinya pun tidak dapat dijelajahi.</x:String>
@@ -414,5 +416,6 @@
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Semua berkas sumber tidak dapat diakses, sehingga kompresi dibatalkan. Arsip kosong tidak dibuat.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Format {0} tidak mendukung perlindungan kata sandi. Pilih ZIP atau 7z.</x:String>
+  <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">LZH mendukung hingga {1} MiB per file. File yang melebihi batas: {0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Kata sandi ZIP hanya dapat berisi karakter ASCII (huruf, angka, dan simbol). Untuk menggunakan karakter lain (seperti huruf beraksen atau bahasa Jepang), pilih format 7z.</x:String>
 </ResourceDictionary>

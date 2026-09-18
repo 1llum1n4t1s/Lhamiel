@@ -314,6 +314,7 @@ public class ArchiveExtractorAdversarialTests
     [InlineData(".txz")]
     [InlineData(".rar")]
     [InlineData(".lzh")]
+    [InlineData(".lha")]
     [InlineData(".cab")]
     [InlineData(".arj")]
     [InlineData(".z")]

@@ -265,6 +265,8 @@
   <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">An I/O error occurred</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Check the file status and retry.</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">The archive exceeds a processing safety limit</x:String>
+  <x:String x:Key="Text.ErrorHandler.ResourceLimitAction" xml:space="preserve">Split the archive or retry with smaller files.</x:String>
   <x:String x:Key="Text.ErrorHandler.Corrupted" xml:space="preserve">The archive file is corrupted</x:String>
   <x:String x:Key="Text.ErrorHandler.CorruptedAction" xml:space="preserve">Try re-downloading or repairing the file.</x:String>
   <x:String x:Key="Text.ErrorHandler.InvalidOperation" xml:space="preserve">An invalid operation was performed</x:String>
@@ -379,7 +381,7 @@
   <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Password Protection</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Protect with password</x:String>
   <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Encrypts with AES-256 (WinZip AE-2) for ZIP, AES-256 for 7z.</x:String>
-  <x:String x:Key="Text.Settings.Compression.TarNoEncryptionNote" xml:space="preserve">TAR does not support password protection. Choose ZIP or 7z.</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR and LZH do not support password protection. Choose ZIP or 7z.</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Note: AES-256 encrypted ZIPs cannot be opened by the built-in Windows Explorer. Recipients need 7-Zip, WinRAR, or another compatible tool.</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Encrypt file names too</x:String>
   <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Encrypts the file-name listing (header) inside the archive. Without the password, even the contents cannot be browsed.</x:String>
@@ -416,5 +418,6 @@
   <!-- Password-related errors -->
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">All source files were inaccessible, so compression was aborted. An empty archive was not created.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">The {0} format does not support password protection. Choose ZIP or 7z.</x:String>
+  <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">LZH supports up to {1} MiB per file. File over the limit: {0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">ZIP passwords can only contain ASCII characters (letters, digits, and symbols). To use other characters (such as accented letters or Japanese), choose the 7z format.</x:String>
 </ResourceDictionary>

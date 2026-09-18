@@ -394,9 +394,11 @@ public partial class App : Application
                     break;
                 case "--format" when index + 1 < args.Length:
                     var requestedFormat = args[++index];
-                    compressionFormat = Array.Find(Settings.SupportedCompressionFormats,
-                        format => string.Equals(format, requestedFormat, StringComparison.OrdinalIgnoreCase))
-                        ?? "default";
+                    compressionFormat = string.Equals(requestedFormat, "LHA", StringComparison.OrdinalIgnoreCase)
+                        ? "LZH"
+                        : Array.Find(Settings.SupportedCompressionFormats,
+                            format => string.Equals(format, requestedFormat, StringComparison.OrdinalIgnoreCase))
+                          ?? "default";
                     break;
                 default:
                     if (!args[index].StartsWith("--", StringComparison.Ordinal))

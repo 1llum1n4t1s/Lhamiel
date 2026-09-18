@@ -69,8 +69,8 @@ Solution file: `Lhamiel.slnx` (VS 2026 format). **x64 / ARM64** 両対応。`Tre
 Drag-and-drop drives the app:
 1. `MainWindow.DropZone_Drop` → `MainWindowViewModel.ProcessDroppedPathsAsync`
 2. ViewModel delegates to `ArchiveProcessor` which orchestrates extraction/compression
-3. `ArchiveExtractor` / `ArchiveCompressor` wrap `1llum1n4t1s.Sevenzip`
-4. Post-extraction: MotW propagation (`MotwPropagator`)。CRC は展開中に 7z.dll が常時照合（不一致は `SetOperationResult(CRCError)` → ライブラリが Cancel 返却 → `reader.Save` が例外、の構造的保証）。展開後の二度読み `reader.Test()` パスは v1.0.183 で廃止し、`Settings.VerifyAfterExtraction` は legacy no-op
+3. `ArchiveExtractor` / `ArchiveCompressor` wrap `1llum1n4t1s.Sevenzip`。LHA / LZH のペイロード処理だけは `Kagayoi.UnLhaRe` を使い、一覧・展開・LH5 圧縮を `LzhArchiveBackendProvider` 境界から呼ぶ
+4. Post-extraction: MotW propagation (`MotwPropagator`)。CRC は展開中に照合し、通常形式は 7z.dll の `SetOperationResult(CRCError)` → Cancel → `reader.Save` 例外、LHA / LZH は UnLhaRe が CRC 検証後だけ一時出力を確定する。展開後の二度読み `reader.Test()` パスは v1.0.183 で廃止し、`Settings.VerifyAfterExtraction` は legacy no-op
 5. `ProgressWindow` shows real-time progress via `IProgress<T>`
 
 **圧縮の進捗表示契約** (528,450 ファイル / 60GB の実測で「100% のまま 9 分超」になった問題への対応): バイト % が動かない区間はマーキー (IsIndeterminate) + 経過テキストで埋める — (1) 容量見積り `Progress.CheckingDiskSpace`、(2) スキャン `Progress.ScanningFiles` (除外対象・フォルダーを含む確認件数、`ScanSourceFiles` の `progress` 引数)、(3) `writer.Add` ループ (実測 93 秒/528k 件) と Save 冒頭の Prepare 列挙は `Progress.PreparingCompression` (i/N、`ProgressTextIntervalMs`=200ms スロットル。ライブラリの Prepare 報告は素通しで数十万件届くためここで間引く)、(4) バイト進捗 100% 到達後〜`writer.Dispose` 完了 (セントラルディレクトリ書出し + 数十万ストリーム一括 close) は `Progress.Finalizing` — `finalizing` フラグで以後の確定 % を抑止、(5) 完了直前に確定 100% を 1 回報告 (テスト契約: `CompressFilesAsync_ReportsFinalizingBeforeFinal100`)。pct=0 は `ProgressThrottler` の boundary 扱いで素通りするため 1 回に抑える。並列バッチ (`CreateMappedProgress` totalCount>1) では indeterminate を `SetNotice` に降格してバーの marquee 点滅を防ぐ。**主因はライブラリ ≤1.0.78 の `UpdateCallback.SetCompleted` 過剰計上**（completeValue はグローバル累積値なのに「ファイル毎リセット検出」で二重加算 → データ処理の 58% 時点で表示 100% 到達）— ライブラリ側で単調最大値方式に修正済み (要 1.0.79+ への PackageReference 更新)。なおライブラリは圧縮中、入力ファイルを `FileShare.Read` で writer Dispose まで保持するため、**圧縮中の対象ファイルは書き込みロックされる**（上流設計妥協、ライブラリ AGENTS.md 参照）。
@@ -107,6 +107,7 @@ Drag-and-drop drives the app:
 | `ArchiveProcessor` | Orchestrator — decides extract vs compress, manages workflow |
 | `ArchiveExtractor` | Extraction with `ShouldSkipFolderCreation`, `TryExtractEntryAsync` (retry with exponential backoff)。構造解析の共有違反は再試行し、`.7z` / `.rar` 以外で構造を取得できない場合は空のルート情報で展開へ進まず fail closed。展開後処理の生 Unicode パス fallback も同じ出力境界を再検証する |
 | `ArchiveCompressor` | Compression with Unicode NFC normalization, Hidden/System enumeration control, and `.gitignore` 互換除外マッチ (`GitignoreMatcher` + ディレクトリ枝刈り DFS) |
+| `LzhArchiveBackendProvider` | `Kagayoi.UnLhaRe` の同期 API 境界。構造集計・衝突検出・展開準備は項目visitorで全件を安全検査し、展開対象名とディレクトリtimestampだけを保持する。visitorの途中通知はAPI成功時だけ確定結果として扱い、正常return前に展開を始めない。選択展開・結果付きLH5圧縮には有限の件数／サイズ上限、進捗、キャンセルを渡す。作成は読めない入力だけを結果から集計し、全件スキップ時は空書庫を公開しない。x64 / ARM64 native asset とライセンスは NuGet package の RID / buildTransitive asset から配布する |
 | `GitignoreMatcher` | `.gitignore` 互換のパターンコンパイラ／マッチャ（`*` / `?` / `**` / `[abc]` / 否定 `!` / アンカー `/` / ディレクトリ限定 `/` 末尾）。`IsExcluded(..., traversalMode)` の 2 経路: **traversal**（DFS 枝刈り併用・各エントリを自身レベルだけで照合し、除外の推移性は DFS が担保）と **flat**（単発ファイル判定用・推移マッチ）。traversal では非 globstar ルールに末尾 `$` の `ExactPathRegex` を使い、git 同様に**ディレクトリ否定再包含**（`*.xcodeproj/*` + `!*.xcodeproj/xcshareddata/` 等で配下を救う）を正しく扱う。globstar（`foo/**`）は `/` を跨ぐので通常 `Regex` を使う |
 | `LhaignoreFile` | `%LocalAppData%\Lhamiel\.lhaignore` の I/O（読込・追記・削除・既定値リセット・移行）。`LoadMatcher()` で `GitignoreMatcher` を返す |
 | `ArchiveErrorHandler` | HResult-based error classification (二段判定: HResult → メッセージ走査フォールバック) |
