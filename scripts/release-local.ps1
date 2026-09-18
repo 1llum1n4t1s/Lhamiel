@@ -212,13 +212,15 @@ Write-Host "✅ R2 アップロード完了: $uploaded ファイル"
 
 # ---- 2.5 Cloudflare エッジキャッシュのパージ ----
 # 固定名ファイル (Setup.exe / Portable.zip / RELEASES / releases.*.json / assets.*.json) は
-# 毎リリースで中身が変わるため、キャッシュ回避付き GET と SHA256 で配信実体を照合する。
+# 毎リリースで中身が変わるため、公開される固定 URL 自体を GET して SHA256 で配信実体を照合する。
 # 不一致を確認した URL だけをパージし、再照合が通るまで公開完了とは扱わない。
 function Test-PublishedArtifact([System.IO.FileInfo]$File) {
     $client = [System.Net.Http.HttpClient]::new()
     $client.Timeout = [TimeSpan]::FromSeconds(60)
     try {
-        $url = "$BaseUrl/$($File.Name)?release_check=$([Guid]::NewGuid().ToString('N'))"
+        # クエリ付き URL は Cloudflare の別キャッシュキーになり得るため、固定 URL の
+        # 古いキャッシュを検出できない。利用者が取得する URL をそのまま照合する。
+        $url = "$BaseUrl/$($File.Name)"
         $bytes = $client.GetByteArrayAsync($url).GetAwaiter().GetResult()
         $remoteHash = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes))
         return $bytes.LongLength -eq $File.Length -and $remoteHash -eq (Get-FileHash -LiteralPath $File.FullName -Algorithm SHA256).Hash
