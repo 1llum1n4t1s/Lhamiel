@@ -33,7 +33,7 @@
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</OutputPath>
     <IntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</IntermediateOutputPath>
-    <KagayoiSupportClientVersion>1.0.5</KagayoiSupportClientVersion>
+    <KagayoiSupportClientVersion>1.0.6</KagayoiSupportClientVersion>
     <UnLhaReVersion>1.0.4</UnLhaReVersion>
   </PropertyGroup>
 
@@ -61,30 +61,30 @@
       SetConfiguration="Configuration=$(Configuration)"
       SetPlatform="Platform=AnyCPU" />
     <PackageReference Include="Kagayoi.Support.Client" Version="$(KagayoiSupportClientVersion)" Condition="'$(KagayoiSupportClientProject)' == ''" />
-    <PackageReference Include="Avalonia" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.2" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.2" />
+    <PackageReference Include="Avalonia" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.3" />
     <!-- CRDebugger.Avalonia は復元グラフを構成非依存に保ち、Debug 時だけ下の Reference で使用する。
          PackageReference を Configuration 条件付きにすると、共有 project.assets.json が Release 復元で
          上書きされた後の Debug Rebuild で CS0246 になるため、compile/runtime asset は常時除外する。 -->
     <PackageReference
       Include="CRDebugger.Avalonia"
-      Version="1.0.32"
+      Version="1.0.34"
       ExcludeAssets="compile;runtime"
       GeneratePathProperty="true"
       PrivateAssets="all" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.89" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.90" />
     <PackageReference Include="Kagayoi.UnLhaRe" Version="$(UnLhaReVersion)" />
-    <PackageReference Include="SuperLightLogger" Version="1.0.16" />
+    <PackageReference Include="SuperLightLogger" Version="1.0.17" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.1" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。
          Windows 専用 (Lhamiel 自体 Windows 専用なので問題なし)。Native AOT 対応 (10.x)。 -->
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.11" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
-    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.17" />
+    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.19" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
