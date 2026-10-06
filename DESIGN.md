@@ -86,7 +86,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 - Top-level operations are serialized, but batch-level pure I/O may run concurrently when destinations differ and no native archive object is active.
 - Existing outputs use backup/restore semantics so preparation or move failure does not silently discard the original.
 - Capacity checks use the Windows volume API and fail closed when the target volume or available space cannot be resolved; an inspection failure is never treated as unlimited free space.
-- Unknown archive sizes use -1, distinct from an empty archive's zero. Preflight applies the existing 100 MiB free-space floor to unknown sizes; insufficient space also stops operations without an owner window. Runtime monitoring remains active.
+- Unknown archive sizes use -1, distinct from an empty archive's zero. Compression size aggregation also treats missing, unreadable, or overflowing inputs as unknown: it returns -1 when the known subtotal is below 100 MiB, otherwise preserves that subtotal as a lower bound. Single and merged compression both check nonzero estimates, including -1. Preflight applies the existing 100 MiB free-space floor to unknown sizes; insufficient space also stops operations without an owner window. Runtime monitoring remains active.
 - Compression filters are enforced by Lhamiel's resolved file list; the SevenZip writer is not trusted to reapply `.lhaignore` or attribute filters.
 - Long-running operations use settings snapshots. UI debounce state is flushed before creating snapshots for CLI/IPC and remembered-password paths.
 - Error workflows close any transient progress window before opening a message dialog, await that dialog, and only then permit self-terminating CLI or shell launches to shut down.
@@ -149,6 +149,10 @@ Each window layers theme color between the acrylic material and interactive cont
 ### Local signed releases to R2
 
 SimplySign requires a logged-in local session and device approval, so binary releases are produced locally rather than in CI. R2 is the continuing update source; old GitHub Releases are retained only as a migration bridge for legacy clients. This provides signed dual-architecture releases but makes the release workstation and signing session part of the operational boundary.
+
+Release preparation and distribution can be resumed separately without cleaning `local-release/`. `ReusePublish` checks the existing executable's product version against `Directory.Build.props` and validates the shell DLL/MSIX signatures and Certum subject before reusing a RID's publish directory; a missing executable triggers that RID's build. Required application/backend files and license notices are checked even on reuse, and Velopack signs the application during repackaging. A new build initializes the RID's Visual Studio Developer Shell and passes its tools to AOT; shell generation can use the existing MSVC compiler directly when the platform toolset definition is missing, retaining the project's Release flags.
+
+`UploadOnly` skips building and packaging, using completed files in `local-release/artifacts/`. Before upload, each selected channel's manifest must contain assets of the current version with filename-only paths; package sizes and SHA256 hashes must match, the channel's Setup must exist, and artifact executables must have valid signatures from the configured Certum subject. This avoids rebuilding already signed packages after a distribution failure. These options still run the normal tooling/signing preflight and, when uploading, the public-URL verification and retention flow described [above](#update-and-release). They do not relax release validation or establish source freshness for reused publish output; operational commands belong in [AGENTS.md](AGENTS.md#cicd).
 
 ### Shared support SDK with two resolution modes
 

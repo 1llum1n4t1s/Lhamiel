@@ -222,6 +222,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - **PR builds**: `.github/workflows/dotnet-build.yml` — restore, build, test + code coverage on every PR
 - 製品ページの配信は `vps-web/deploy/deploy-lp.ps1` を使う。公開ホスト・更新ファイルの既存経路を維持する。
 - **RID 別リリース出力**: `release-local.ps1` の x64 / ARM64 `dotnet publish` は RID ごとの `--artifacts-path` を必須とし、ProjectReference 先を含む共通 `bin/obj` の再利用による異アーキテクチャ参照（CS8012）を防ぐ。
+- **リリースの再開**: リポジトリルートで `pwsh scripts/release-local.ps1 -ReusePublish` を使うと、`local-release/publish-<RID>/` の同じ版の出力を検証して再パッケージし、exe がない RID はビルドする。完成済み配布物から配信だけ再開する場合は `pwsh scripts/release-local.ps1 -UploadOnly` を使う。検証条件と再開の境界は [DESIGN.md](DESIGN.md#local-signed-releases-to-r2) を参照する。`-Runtimes win-x64` または `-Runtimes win-arm64` で対象を限定でき、`-SkipUpload` は配信前で終了する。通常実行は `local-release/` を清掃するため、再開時には再開オプションを省略しない。
 - **ネイティブ配布物**: `.github/workflows/build.yml` と `scripts/release-local.ps1` の両 RID の publish 検査では、`Lhamiel.exe`、`7z.dll`、`unlhare.dll`、`licenses/Kagayoi.UnLhaRe/LICENSE`、`licenses/Kagayoi.UnLhaRe/THIRD_PARTY_NOTICES.md` の存在確認を維持する。UnLhaRe 更新時は `src/Lhamiel/Lhamiel.csproj` の `UnLhaReVersion` とパッケージ構成の lockfile を揃え、DLL の手動コピー経路を作らない。上流 `../UnLhaRe/vava.config.json` の consumer update も同じ参照・lockfile を更新して locked restore と Release テストを行うため、通常の依存更新でもこの検証を維持する。
 - **配信完了判定**: `Test-PublishedArtifact` は [DESIGN.md の配信フロー](DESIGN.md#update-and-release) に従い、利用者が取得する固定 URL で照合する。キャッシュ回避クエリへ戻さず、ダウンロード・不一致 URL のパージ・再照合の失敗を成功扱いにしない。
 - **CodeQL**: `.github/workflows/codeql.yml` — C# security analysis on PR + weekly
