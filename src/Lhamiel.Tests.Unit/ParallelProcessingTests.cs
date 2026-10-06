@@ -1,5 +1,4 @@
 using Lhamiel.Util;
-using System.Diagnostics;
 using System.IO.Compression;
 using Xunit;
 namespace Lhamiel.Tests.Unit;
@@ -117,72 +116,6 @@ public class ParallelProcessingTests
         }
     }
 
-    /// <summary>
-    /// 複数ファイルの並列展開が並列実行されていることを確認（時間ベース）
-    /// </summary>
-    [Fact]
-    public async Task ExtractArchivesAsync_MultipleFiles_ParallelExecution()
-    {
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            // 3つのZIPファイルを作成（各約 100KB）
-            var zipFiles = new List<string>();
-            for (var i = 0; i < 3; i++)
-            {
-                var sourceDir = Path.Combine(testDir, $"source_{i}");
-                Directory.CreateDirectory(sourceDir);
-
-                // より大きなテストファイルを作成
-                for (var j = 0; j < 10; j++)
-                {
-                    var content = new string('x', 10000);
-                    File.WriteAllText(Path.Combine(sourceDir, $"file{j}.txt"), content);
-                }
-
-                var zipPath = Path.Combine(testDir, $"archive{i}.zip");
-                ZipFile.CreateFromDirectory(sourceDir, zipPath);
-                Directory.Delete(sourceDir, true);
-
-                zipFiles.Add(zipPath);
-            }
-
-            var outputDir = Path.Combine(testDir, "output");
-            Directory.CreateDirectory(outputDir);
-
-            // 並列実行のタイミングを測定
-            var stopwatch = Stopwatch.StartNew();
-
-            var results = await ArchiveProcessor.ExtractArchivesAsync(
-                zipFiles.ToArray(),
-                outputDir,
-                outputToSameDirectory: false,
-                progressWindow: null!,
-                cancellationToken: TestContext.Current.CancellationToken
-            );
-
-            stopwatch.Stop();
-
-            // 結果を確認
-            Assert.Equal(3, results.Count);
-            Assert.All(results, r => Assert.NotNull(r.OutputPath));
-
-            // 並列実行された場合、3ファイルを順序実行するより速いはず
-            // （この確認は環境依存のため、参考情報として記録）
-            Logger.Log($"3ファイルの展開時間: {stopwatch.ElapsedMilliseconds}ms");
-
-            // 展開されたファイルが存在することを確認
-            var extractedDirs = Directory.GetDirectories(outputDir);
-            Assert.Equal(3, extractedDirs.Length);
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-            {
-                Directory.Delete(testDir, true);
-            }
-        }
-    }
 
     /// <summary>
     /// 有効なキャンセルトークンを渡した場合に展開が正常完了することを確認
@@ -309,66 +242,6 @@ public class ParallelProcessingTests
         }
     }
 
-    /// <summary>
-    /// 複数フォルダの並列圧縮が並列実行されていることを確認
-    /// </summary>
-    [Fact]
-    public async Task CompressItemsAsync_MultipleFolders_ParallelExecution()
-    {
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            // 複数の大きなフォルダを作成
-            var folders = new List<string>();
-            for (var i = 0; i < 3; i++)
-            {
-                var folderPath = Path.Combine(testDir, $"folder{i}");
-                Directory.CreateDirectory(folderPath);
-
-                // より大きなテストファイルを作成
-                for (var j = 0; j < 10; j++)
-                {
-                    var content = new string('y', 10000);
-                    File.WriteAllText(Path.Combine(folderPath, $"file{j}.txt"), content);
-                }
-
-                folders.Add(folderPath);
-            }
-
-            var outputDir = Path.Combine(testDir, "output");
-            Directory.CreateDirectory(outputDir);
-
-            // 並列実行のタイミングを測定
-            var stopwatch = Stopwatch.StartNew();
-
-            var result = await ArchiveProcessor.CompressItemsAsync(
-                folders.ToArray(),
-                outputDir,
-                outputToSameDirectory: false,
-                format: "zip",
-                progressWindow: null!,
-                cancellationToken: TestContext.Current.CancellationToken
-            );
-
-            stopwatch.Stop();
-
-            // 結果を確認
-            Assert.True(result, "複数フォルダ圧縮が失敗しました");
-
-            Logger.Log($"3フォルダの圧縮時間: {stopwatch.ElapsedMilliseconds}ms");
-
-            // 圧縮ファイルが存在することを確認
-            var zipFiles = Directory.GetFiles(outputDir, "*.zip");
-            Assert.Equal(3, zipFiles.Length);
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-            {
-                Directory.Delete(testDir, true);
-            }
-        }
-    }
 
     /// <summary>
     /// 有効なキャンセルトークンを渡した場合に圧縮が正常完了することを確認

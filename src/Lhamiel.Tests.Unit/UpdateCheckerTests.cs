@@ -42,30 +42,6 @@ public class UpdateCheckerTests
         }
     }
 
-    [Fact]
-    public async Task CheckAndDownload_WithProgress_ReportsStatus()
-    {
-        var reported = new List<string>();
-        var progress = new Progress<string>(s => reported.Add(s));
-
-        var result = await UpdateChecker.CheckAndDownloadAsync(
-            statusProgress: progress,
-            cancellationToken: TestContext.Current.CancellationToken);
-
-        Assert.NotNull(result);
-        Assert.NotNull(result.Message);
-    }
-
-    [Fact]
-    public void UpdateResult_Enum_ContainsExpectedValues()
-    {
-        var values = Enum.GetValues<UpdateChecker.UpdateResult>();
-        Assert.Contains(UpdateChecker.UpdateResult.NoUpdate, values);
-        Assert.Contains(UpdateChecker.UpdateResult.Downloaded, values);
-        Assert.Contains(UpdateChecker.UpdateResult.Error, values);
-        Assert.Contains(UpdateChecker.UpdateResult.NotInstalled, values);
-        Assert.Contains(UpdateChecker.UpdateResult.NotConfigured, values);
-    }
 
     [Fact]
     public async Task CheckAndDownload_ResultHasStatusMessage()

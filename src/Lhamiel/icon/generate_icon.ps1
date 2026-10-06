@@ -115,7 +115,15 @@ function Create-IconFromPng {
 
         if (Test-Path $OutputIcoPath) {
             [System.IO.File]::Replace($tempIcoPath, $OutputIcoPath, "$OutputIcoPath.bak")
-            if (Test-Path "$OutputIcoPath.bak") { Remove-Item "$OutputIcoPath.bak" -Force }
+            if (Test-Path -LiteralPath "$OutputIcoPath.bak") {
+                $cleanupModule = Join-Path $env:USERPROFILE '.codex/scripts/CodexCleanup.psm1'
+                if ([Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT -and (Test-Path -LiteralPath $cleanupModule -PathType Leaf)) {
+                    Import-Module $cleanupModule -ErrorAction Stop
+                    Remove-CodexItem -LiteralPath ([IO.Path]::GetFullPath("$OutputIcoPath.bak")) -AllowedRoot $PSScriptRoot
+                } else {
+                    Write-Warning "ごみ箱清掃ヘルパーを利用できないため、アイコンのバックアップを保持します: $OutputIcoPath.bak"
+                }
+            }
         } else {
             Move-Item -Path $tempIcoPath -Destination $OutputIcoPath -Force
         }
@@ -174,4 +182,5 @@ if ($allSuccess) {
     Write-Host "`nIcon generation completed successfully!" -ForegroundColor Green
 } else {
     Write-Host "`nIcon generation completed with some warnings." -ForegroundColor Yellow
+    exit 1
 }

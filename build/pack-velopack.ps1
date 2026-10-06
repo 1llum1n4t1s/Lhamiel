@@ -4,6 +4,7 @@ param(
     [string]$Channel = "release"
 )
 
+
 $ErrorActionPreference = "Stop"
 
 $root = Resolve-Path (Join-Path $PSScriptRoot "..")
@@ -40,7 +41,8 @@ Write-Host "  Version: $Version"
 Write-Host "  Channel: $Channel"
 
 if (Test-Path $publishDir) {
-    Remove-Item -Path $publishDir -Recurse -Force
+    Import-Module (Join-Path $env:USERPROFILE '.codex/scripts/CodexCleanup.psm1') -ErrorAction Stop
+    Remove-CodexItem -LiteralPath $publishDir -AllowedRoot $root.Path
 }
 
 dotnet publish $project -c Release -r win-x64 --self-contained false
@@ -53,7 +55,8 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Packing release with vpk" -ForegroundColor Cyan
 
 if (Test-Path $releaseDir) {
-    Remove-Item -Path $releaseDir -Recurse -Force
+    Import-Module (Join-Path $env:USERPROFILE '.codex/scripts/CodexCleanup.psm1') -ErrorAction Stop
+    Remove-CodexItem -LiteralPath $releaseDir -AllowedRoot $root.Path
 }
 New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
 

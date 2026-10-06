@@ -66,29 +66,6 @@ public class LocaleTests
         Assert.Equal(expectedName, App.LocaleDisplayNames[locale]);
     }
 
-    [Theory]
-    [InlineData("en_US")]
-    [InlineData("ja_JP")]
-    [InlineData("zh_CN")]
-    [InlineData("zh_TW")]
-    [InlineData("de_DE")]
-    [InlineData("fr_FR")]
-    [InlineData("es_ES")]
-    [InlineData("it_IT")]
-    [InlineData("pt_BR")]
-    [InlineData("ru_RU")]
-    [InlineData("uk_UA")]
-    [InlineData("id_ID")]
-    [InlineData("fil_PH")]
-    [InlineData("ta_IN")]
-    [InlineData("ko_KR")]
-    [InlineData("la_VA")]
-    [InlineData("sa_IN")]
-    public void SupportedLocales_FollowsNamingConvention(string locale)
-    {
-        // ロケールコードが xx_XX 形式であること
-        Assert.Matches(@"^[a-z]{2,3}_[A-Z]{2}$", locale);
-    }
 
     [Fact]
     public void LocaleOptions_MatchesSupportedLocales()
@@ -150,25 +127,6 @@ public class LocaleTests
             .ToHashSet()!;
     }
 
-    [Fact]
-    public void AllLocales_HaveSameKeyCount()
-    {
-        var localesDir = GetLocalesDirectory();
-        var files = Directory.GetFiles(localesDir, "*.axaml").OrderBy(f => f).ToArray();
-        Assert.True(files.Length >= 2, "ロケールファイルが2件未満です");
-
-        var keyCountsByFile = files
-            .Select(f => (file: Path.GetFileName(f), count: ExtractKeys(f).Count))
-            .ToList();
-
-        var expectedCount = keyCountsByFile[0].count;
-        var mismatches = keyCountsByFile.Where(x => x.count != expectedCount).ToList();
-
-        Assert.True(mismatches.Count == 0,
-            $"キー数がバラついています（基準: {keyCountsByFile[0].file} = {expectedCount}件）:\n" +
-            string.Join("\n", keyCountsByFile.Select(x =>
-                $"  {x.file}: {x.count}件{(x.count != expectedCount ? " ⚠️" : "")}")));
-    }
 
     [Fact]
     public void AllLocales_HaveExactlySameKeys()

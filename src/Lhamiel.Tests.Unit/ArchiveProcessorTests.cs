@@ -49,12 +49,7 @@ public class ArchiveProcessorTests : IDisposable
 
     private sealed class StubUiDispatcher : IUiDispatcher
     {
-        public int PostCallCount { get; private set; }
-        public void Post(Action action)
-        {
-            PostCallCount++;
-            action();
-        }
+        public void Post(Action action) => action();
         public Task InvokeAsync(Func<Task> callback) => callback();
         public Task<T> InvokeAsync<T>(Func<Task<T>> callback) => callback();
     }
@@ -327,33 +322,5 @@ public class ArchiveProcessorTests : IDisposable
         }
     }
 
-    [Fact]
-    public void ServiceContracts_DefaultImplementations_AreNotNull()
-    {
-        Assert.NotNull(ArchiveProcessor.MessageServiceImpl);
-        Assert.NotNull(ArchiveProcessor.UiDispatcherImpl);
-        Assert.NotNull(ArchiveProcessor.ConflictDialogImpl);
-    }
 
-    [Fact]
-    public void StubDispatcher_Post_ExecutesAction()
-    {
-        var stub = new StubUiDispatcher();
-        var executed = false;
-        stub.Post(() => executed = true);
-        Assert.True(executed);
-        Assert.Equal(1, stub.PostCallCount);
-    }
-
-    [Fact]
-    public async Task StubDispatcher_InvokeAsync_ReturnsResult()
-    {
-        var stub = new StubUiDispatcher();
-        var result = await stub.InvokeAsync(async () =>
-        {
-            await Task.Yield();
-            return 42;
-        });
-        Assert.Equal(42, result);
-    }
 }

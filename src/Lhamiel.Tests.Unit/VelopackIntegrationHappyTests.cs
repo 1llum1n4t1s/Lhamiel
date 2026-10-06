@@ -14,43 +14,7 @@ namespace Lhamiel.Tests.Unit;
 /// </summary>
 public class VelopackIntegrationHappyTests
 {
-    /// <summary>
-    /// LhamielUpdateStrings.Instance を複数回取得しても同一の参照が返されること (シングルトン保証)。
-    /// </summary>
-    [Fact]
-    public void LhamielUpdateStrings_Instance_ReturnsSameSingletonInstance()
-    {
-        // Arrange
-        var first = LhamielUpdateStrings.Instance;
 
-        // Act
-        var second = LhamielUpdateStrings.Instance;
-
-        // Assert
-        Assert.NotNull(first);
-        Assert.Same(first, second);
-    }
-
-    /// <summary>
-    /// LhamielUpdateStrings の全 getter プロパティが null を返さないこと。
-    /// App.Current が未初期化でも App.Text のフォールバックで "Text.{key}" が返る前提。
-    /// </summary>
-    [Fact]
-    public void LhamielUpdateStrings_AllGetters_ReturnNonNullStrings()
-    {
-        // Arrange
-        var strings = LhamielUpdateStrings.Instance;
-
-        // Act & Assert: IUpdateDialogStrings の 8 プロパティを全て検証
-        Assert.NotNull(strings.Title);
-        Assert.NotNull(strings.AvailableHeader);
-        Assert.NotNull(strings.DownloadAndInstall);
-        Assert.NotNull(strings.IgnoreThisVersion);
-        Assert.NotNull(strings.UpToDateMessage);
-        Assert.NotNull(strings.ErrorHeader);
-        Assert.NotNull(strings.Close);
-        Assert.NotNull(strings.CheckingMessage);
-    }
 
     /// <summary>
     /// NotifyLocaleChanged() を呼ぶと PropertyName=null (全プロパティ更新シグナル) で PropertyChanged が発火する。

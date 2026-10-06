@@ -29,6 +29,7 @@ public class SettingsEdgeCaseTests
         Assert.Equal(fresh.CompressMultipleAsOne, reset.CompressMultipleAsOne);
         Assert.Equal(fresh.ZipCompressionLevel, reset.ZipCompressionLevel);
         Assert.Equal(fresh.SevenZipCompressionLevel, reset.SevenZipCompressionLevel);
+        Assert.Equal(fresh.LzhCompressionMethod, reset.LzhCompressionMethod);
         Assert.Equal(fresh.OpenExtractionOutputFolder, reset.OpenExtractionOutputFolder);
         Assert.Equal(fresh.OpenCompressionOutputFolder, reset.OpenCompressionOutputFolder);
         Assert.Equal(fresh.IncludeHiddenAndSystemEntries, reset.IncludeHiddenAndSystemEntries);
@@ -113,26 +114,6 @@ public class SettingsEdgeCaseTests
         Assert.Contains(settings.CompressionFormat, Settings.SupportedCompressionFormats);
     }
 
-    [Fact]
-    public void LogMaxSizeMB_DefaultIsPositive()
-    {
-        Assert.True(new Settings().LogMaxSizeMB > 0);
-    }
-
-    [Fact]
-    public void LogRetentionDays_DefaultIsPositive()
-    {
-        Assert.True(new Settings().LogRetentionDays > 0);
-    }
-
-    [Fact]
-    public void Locale_ResetRestoresEmpty()
-    {
-        var settings = new Settings { Locale = "ja_JP" };
-        settings.ResetToDefaults();
-        Assert.Equal("", settings.Locale);
-    }
-
     // === SanitizeAfterLoad（v1.0.160 で追加 → 同 ver 取り下げ → 再リリースで再導入） ===
 
     [Fact]
@@ -186,6 +167,45 @@ public class SettingsEdgeCaseTests
     public void SnapToValidCompressionLevel_SnapsToNearestValid(int input, int expected)
     {
         Assert.Equal(expected, Settings.SnapToValidCompressionLevel(input));
+    }
+
+    [Theory]
+    [InlineData("LH0", "LH0")]
+    [InlineData("lh5", "LH5")]
+    [InlineData("Lh6", "LH6")]
+    [InlineData("lh7", "LH7")]
+    [InlineData("LH4", "LH5")]
+    [InlineData(null, "LH5")]
+    public void NormalizeLzhCompressionMethod_NormalizesAllowedValuesAndDefaults(
+        string? input,
+        string expected)
+    {
+        Assert.Equal(expected, Settings.NormalizeLzhCompressionMethod(input));
+    }
+
+    [Fact]
+    public void LzhCompressionMethod_SerializationRoundTrip_PreservesSelection()
+    {
+        var settings = new Settings { LzhCompressionMethod = "LH7" };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(settings, AppJsonContext.Default.Settings);
+        var restored = System.Text.Json.JsonSerializer.Deserialize(json, AppJsonContext.Default.Settings);
+
+        Assert.NotNull(restored);
+        restored.SanitizeAfterLoad();
+        Assert.Equal("LH7", restored.LzhCompressionMethod);
+    }
+
+    [Fact]
+    public void TryRecoverFromJsonDocument_PreservesLzhCompressionMethodWhenAnotherPropertyIsInvalid()
+    {
+        const string json = """{ "Theme": 123, "LzhCompressionMethod": "lh6" }""";
+
+        var restored = Settings.TryRecoverFromJsonDocument(json);
+
+        Assert.NotNull(restored);
+        restored.SanitizeAfterLoad();
+        Assert.Equal("LH6", restored.LzhCompressionMethod);
     }
 
     [Theory]

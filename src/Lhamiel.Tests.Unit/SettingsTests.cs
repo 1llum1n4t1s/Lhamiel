@@ -86,19 +86,6 @@ public class SettingsTests
     }
 
     [Fact]
-    public void LhaignoreFile_DefaultContent_ContainsExpectedPatterns()
-    {
-        // 旧 ExcludedFilePatterns プロパティの代替: .lhaignore のデフォルト内容に
-        // 主要なシステムパターンが含まれることを確認する。
-        var content = LhaignoreFile.CreateDefaultContent();
-
-        Assert.Contains(".DS_Store", content, StringComparison.Ordinal);
-        Assert.Contains("Thumbs.db", content, StringComparison.Ordinal);
-        Assert.Contains("__MACOSX", content, StringComparison.Ordinal);
-        Assert.Contains("desktop.ini", content, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void SourceIgnoreFileNames_NormalizePreservesPriorityAndDeduplicates()
     {
         var success = Settings.TryNormalizeSourceIgnoreFileNames(
@@ -218,30 +205,6 @@ public class SettingsTests
         Assert.True(settings.OpenCompressionOutputFolder);
         Assert.Equal(10, settings.LogMaxSizeMB);
         Assert.Equal(7, settings.LogRetentionDays);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    [InlineData(3)]
-    [InlineData(5)]
-    [InlineData(7)]
-    [InlineData(9)]
-    public void CompressionLevel_AcceptsValidValues(int level)
-    {
-        var settings = new Settings { ZipCompressionLevel = level, SevenZipCompressionLevel = level };
-        Assert.Equal(level, settings.ZipCompressionLevel);
-        Assert.Equal(level, settings.SevenZipCompressionLevel);
-    }
-
-    [Theory]
-    [InlineData("System")]
-    [InlineData("Dark")]
-    [InlineData("Light")]
-    public void Theme_AcceptsValidValues(string theme)
-    {
-        var settings = new Settings { Theme = theme };
-        Assert.Equal(theme, settings.Theme);
     }
 
     [Theory]

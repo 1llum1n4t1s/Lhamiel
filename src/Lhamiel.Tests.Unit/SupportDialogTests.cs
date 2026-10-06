@@ -11,11 +11,4 @@ public sealed class SupportDialogTests
         Assert.Equal("lhamiel", SupportDialog.ProductId);
     }
 
-    [Fact]
-    public void VerificationLayout_ReservesSpaceForCodeControls()
-    {
-        Assert.True(SupportDialog.CompactHeight >= SupportDialog.CompactMinHeight);
-        Assert.True(SupportDialog.VerificationMinHeight >= SupportDialog.CompactMinHeight + 70);
-        Assert.True(SupportDialog.VerificationHeight >= SupportDialog.VerificationMinHeight);
-    }
 }

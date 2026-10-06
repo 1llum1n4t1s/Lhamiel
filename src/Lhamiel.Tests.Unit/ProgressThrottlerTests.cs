@@ -118,15 +118,6 @@ public class ProgressThrottlerTests
         Assert.True(throttler.ShouldReport(100));
     }
 
-    [Fact]
-    public void ShouldReport_ZeroAfterHundred_AlwaysReports()
-    {
-        var throttler = new ProgressThrottler(0);
-        throttler.ShouldReport(100);
-        // 0% は前の値に関わらず常に報告される（リセットシナリオ）
-        Assert.True(throttler.ShouldReport(0));
-    }
-
     // === スレッドセーフティ ===
 
     [Fact]

@@ -57,9 +57,42 @@ public class DiskSpaceCheckerAdversarialTests
     }
 
     [Fact]
-    public void GetTotalFileSize_存在しないパス_ゼロを返す()
+    public void GetTotalFileSize_存在しないパス_サイズ不明を返す()
     {
-        Assert.Equal(0, DiskSpaceChecker.GetTotalFileSize([@"C:\NonExistent\File.txt"]));
+        Assert.Equal(-1, DiskSpaceChecker.GetTotalFileSize([@"C:\NonExistent\File.txt"]));
+    }
+
+    [Fact]
+    public void GetTotalFileSize_既存ファイルと消失ファイルの混在_サイズ不明を返す()
+    {
+        var existing = Path.GetTempFileName();
+        try
+        {
+            Assert.Equal(-1, DiskSpaceChecker.GetTotalFileSize(
+                [existing, Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.txt")]));
+        }
+        finally
+        {
+            File.Delete(existing);
+        }
+    }
+
+    [Fact]
+    public void GetTotalFileSize_大きい既存ファイルと消失ファイルの混在_既知サイズを維持する()
+    {
+        var existing = Path.GetTempFileName();
+        const long knownSize = 101L * 1024 * 1024;
+        try
+        {
+            using (var stream = new FileStream(existing, FileMode.Open, FileAccess.Write))
+                stream.SetLength(knownSize);
+            Assert.Equal(knownSize, DiskSpaceChecker.GetTotalFileSize(
+                [existing, Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}.txt")]));
+        }
+        finally
+        {
+            File.Delete(existing);
+        }
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

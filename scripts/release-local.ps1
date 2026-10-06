@@ -20,6 +20,7 @@ param(
     [string[]]$Runtimes = @('win-x64', 'win-arm64')
 )
 
+
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -72,6 +73,16 @@ if ($env:PATH -notlike "*$vsInstallerDir*") { $env:PATH = "$env:PATH;$vsInstalle
 # vpk (dotnet tool) は .NET 9 ランタイム要求だがローカルは 8/10 のみ → 10 にロールフォワード
 $env:DOTNET_ROLL_FORWARD = 'Major'
 
+# コンポーネント登録の照合が失敗する環境でも、実在する既存の VS ツールを利用する。
+# RID 切替ごとに Developer Shell を初期化し、AOT にその linker / LIB を渡す。
+$vswhere = Join-Path $vsInstallerDir 'vswhere.exe'
+$visualStudioPath = & $vswhere -latest -prerelease -products * -property installationPath |
+    Select-Object -First 1
+if (-not $visualStudioPath) { throw 'Visual Studio のインストール先が見つかりません' }
+$developerShell = Join-Path $visualStudioPath 'Common7\Tools\Microsoft.VisualStudio.DevShell.dll'
+if (-not (Test-Path -LiteralPath $developerShell)) { throw "Developer Shell が見つかりません: $developerShell" }
+Import-Module $developerShell -ErrorAction Stop
+
 # XPath で取得 (member enumeration は Version を持たない PropertyGroup 混在時に StrictMode で throw する)
 $versionNode = ([xml](Get-Content 'Directory.Build.props' -Raw)).SelectSingleNode('/Project/PropertyGroup/Version')
 $version = if ($versionNode) { $versionNode.InnerText.Trim() } else { $null }
@@ -111,7 +122,7 @@ if (-not $SkipUpload) {
     Write-Host "Cloudflare zone: $ZoneName ($zoneId)"
 }
 
-if (Test-Path $WorkDir) { Remove-Item $WorkDir -Recurse -Force }
+if (Test-Path $WorkDir) { Import-Module (Join-Path $env:USERPROFILE '.codex/scripts/CodexCleanup.psm1') -ErrorAction Stop; Remove-CodexItem -LiteralPath $WorkDir -AllowedRoot $RepoRoot }
 New-Item -ItemType Directory -Path $ArtifactsDir -Force | Out-Null
 
 # ---- 1. ビルド + 署名付きパッケージング (RID ごと) ----
@@ -124,9 +135,11 @@ foreach ($runtime in $Runtimes) {
     $buildArtifactsDir = Join-Path $WorkDir "build-$runtime"
 
     Write-Host "== publish: $runtime ==" -ForegroundColor Cyan
+    Enter-VsDevShell -VsInstallPath $visualStudioPath -SkipAutomaticLocation `
+        -DevCmdArguments "-arch=$($config.PlatformTarget) -host_arch=x64"
     Invoke-Native "dotnet publish ($runtime)" {
         dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r $runtime `
-            -p:PlatformTarget=$($config.PlatformTarget) -p:OS=Windows_NT `
+            -p:PlatformTarget=$($config.PlatformTarget) -p:OS=Windows_NT -p:IlcUseEnvironmentalTools=true `
             --artifacts-path $buildArtifactsDir -o $publishDir
     }
 

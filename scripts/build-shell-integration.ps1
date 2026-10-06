@@ -15,6 +15,7 @@ param(
     [switch]$SkipSigning
 )
 
+
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -35,6 +36,13 @@ $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer
 if (-not (Test-Path -LiteralPath $vswhere)) { throw "vswhere.exe が見つかりません: $vswhere" }
 $msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' |
     Select-Object -First 1
+if (-not $msbuild) {
+    $vsPath = & $vswhere -latest -prerelease -products * -property installationPath | Select-Object -First 1
+    if ($vsPath) {
+        $candidate = Join-Path $vsPath 'MSBuild\Current\Bin\MSBuild.exe'
+        if (Test-Path -LiteralPath $candidate) { $msbuild = $candidate }
+    }
+}
 if (-not $msbuild) { throw 'Visual Studio の MSBuild.exe が見つかりません' }
 
 $windowsKitsBin = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\bin'
@@ -50,8 +58,28 @@ foreach ($tool in $makeAppx, $signTool) {
 }
 
 Write-Host "== Shell 拡張ビルド: $Runtime ==" -ForegroundColor Cyan
-& $msbuild $projectPath /t:Build /p:Configuration=Release /p:Platform=$platform /nologo /verbosity:minimal
-if ($LASTEXITCODE -ne 0) { throw "Shell 拡張のビルドに失敗しました (exit $LASTEXITCODE)" }
+$vsRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $msbuild)))
+$toolsetPath = Join-Path $vsRoot "MSBuild\Microsoft\VC\v180\Platforms\$platform\PlatformToolsets\v145"
+if (Test-Path -LiteralPath $toolsetPath) {
+    & $msbuild $projectPath /t:Build /p:Configuration=Release /p:Platform=$platform /nologo /verbosity:minimal
+    if ($LASTEXITCODE -ne 0) { throw "Shell 拡張のビルドに失敗しました (exit $LASTEXITCODE)" }
+} else {
+    # VS のプラットフォーム定義だけが欠けている場合、同じ既存 MSVC で直接ビルドする。
+    # vcxproj の Release 設定（C++20 / W4 / WX / MT / LTCG）と export 定義を維持する。
+    $devShellModule = Join-Path $vsRoot 'Common7\Tools\Microsoft.VisualStudio.DevShell.dll'
+    Import-Module $devShellModule -ErrorAction Stop
+    Enter-VsDevShell -VsInstallPath $vsRoot -SkipAutomaticLocation -DevCmdArguments "-arch=$platform -host_arch=x64"
+    $compiler = (Get-Command cl.exe -ErrorAction Stop).Source
+    New-Item -ItemType Directory -Path $nativeOutput -Force | Out-Null
+    $sourcePath = Join-Path $repoRoot 'src\Lhamiel.ShellExtension\ShellExtension.cpp'
+    $definitionPath = Join-Path $repoRoot 'src\Lhamiel.ShellExtension\dll.def'
+    & $compiler /nologo /LD /O2 /GL /Gy /W4 /WX /std:c++20 /permissive- /EHsc /MT /utf-8 `
+        /DUNICODE /D_UNICODE /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DNDEBUG `
+        "/Fo$(Join-Path $nativeOutput 'ShellExtension.obj')" $sourcePath `
+        /link "/IMPLIB:$(Join-Path $nativeOutput 'Lhamiel.ShellExtension.lib')" "/OUT:$(Join-Path $nativeOutput 'Lhamiel.ShellExtension.dll')" "/DEF:$definitionPath" `
+        /SUBSYSTEM:WINDOWS "/MACHINE:$platform" /LTCG /OPT:REF /OPT:ICF /DEBUG shell32.lib ole32.lib user32.lib uuid.lib
+    if ($LASTEXITCODE -ne 0) { throw "Shell 拡張の直接ビルドに失敗しました (exit $LASTEXITCODE)" }
+}
 
 $nativeDll = Join-Path $nativeOutput 'Lhamiel.ShellExtension.dll'
 if (-not (Test-Path -LiteralPath $nativeDll)) { throw "Shell 拡張 DLL が見つかりません: $nativeDll" }
@@ -82,7 +110,7 @@ $writerSettings.Indent = $true
 $writer = [System.Xml.XmlWriter]::Create($manifestPath, $writerSettings)
 try { $packageManifest.Save($writer) } finally { $writer.Dispose() }
 
-if (Test-Path -LiteralPath $packageOutput) { Remove-Item -LiteralPath $packageOutput -Force }
+if (Test-Path -LiteralPath $packageOutput) { Import-Module (Join-Path $env:USERPROFILE '.codex/scripts/CodexCleanup.psm1') -ErrorAction Stop; Remove-CodexItem -LiteralPath $packageOutput -AllowedRoot (Join-Path $repoRoot "src\Lhamiel.ShellExtension\obj") }
 # sparse package は実体を外部配置先から解決するため、MakeAppx のファイル存在検証を無効化する。
 & $makeAppx pack /d $packageWorkDirectory /p $packageOutput /o /nv
 if ($LASTEXITCODE -ne 0) { throw "sparse MSIX の生成に失敗しました (exit $LASTEXITCODE)" }

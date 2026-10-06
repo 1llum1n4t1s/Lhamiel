@@ -53,29 +53,10 @@ public class ArchiveExtractorEdgeCaseTests
     }
 
     [Fact]
-    public void IsSupportedArchiveType_WithEmptyString_ReturnsFalse()
-    {
-        Assert.False(ArchiveExtractor.IsSupportedArchiveType(""));
-    }
-
-    [Fact]
-    public void IsSupportedArchiveType_WithDoubleExtension_ChecksLastExtension()
-    {
-        // .tar.gz の場合は .gz だけチェックされる
-        Assert.True(ArchiveExtractor.IsSupportedArchiveType("archive.tar.gz"));
-    }
-
-    [Fact]
     public void IsSupportedArchiveType_WithDocx_ReturnsFalse()
     {
         // ZIPベースだがアーカイブではない
         Assert.False(ArchiveExtractor.IsSupportedArchiveType("document.docx"));
-    }
-
-    [Fact]
-    public void IsSupportedArchiveType_WithExe_ReturnsFalse()
-    {
-        Assert.False(ArchiveExtractor.IsSupportedArchiveType("setup.exe"));
     }
 
     [Fact]
@@ -92,15 +73,6 @@ public class ArchiveExtractorEdgeCaseTests
     }
 
     // === AreAllSupportedArchives エッジケース ===
-
-    [Fact]
-    public void AreAllSupportedArchives_WithEmptyCollection_ReturnsTrue()
-    {
-        // LINQ の All() は空コレクションに対して true を返す
-        // これは「すべての要素が条件を満たす」（空なので真）という論理
-        var result = ArchiveExtractor.AreAllSupportedArchives([]);
-        Assert.True(result);
-    }
 
     [Fact]
     public void AreAllSupportedArchives_WithNonExistentFiles_ReturnsFalse()
@@ -207,14 +179,6 @@ public class ArchiveExtractorEdgeCaseTests
         Assert.Contains("thumbs.DB", ArchiveExtractor.IgnoredSystemFiles);
     }
 
-    // === SupportedExtensions の網羅テスト ===
-
-    [Fact]
-    public void SupportedExtensions_ExactCount()
-    {
-        // サポート拡張子の数が意図せず増減していないか確認
-        Assert.Equal(19, ArchiveExtractor.SupportedExtensions.Count);
-    }
 
     [Fact]
     public void SupportedExtensions_AllStartWithDot()

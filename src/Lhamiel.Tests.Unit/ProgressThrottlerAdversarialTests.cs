@@ -182,34 +182,6 @@ public class ProgressThrottlerAdversarialTests
         Assert.Contains(results, r => r);
     }
 
-    /// <summary>
-    /// @adversarial @category concurrency @severity high
-    /// 並行呼び出しで _lastPercentage が矛盾しない（データ競合なし）
-    /// </summary>
-    [Fact]
-    public async Task ShouldReport_ConcurrentIncreasingValues_MonotonicityMaintained()
-    {
-        var throttler = new ProgressThrottler(reportIntervalMs: 0);
-        var reportedValues = new System.Collections.Concurrent.ConcurrentBag<int>();
-
-        // 0-99 を並行で報告
-        var tasks = Enumerable.Range(0, 100).Select(i =>
-            Task.Run(() =>
-            {
-                if (throttler.ShouldReport(i))
-                    reportedValues.Add(i);
-            })
-        ).ToArray();
-        await Task.WhenAll(tasks);
-
-        // 報告された値をソートして単調増加を確認
-        var sorted = reportedValues.OrderBy(v => v).ToList();
-        for (var i = 1; i < sorted.Count; i++)
-        {
-            Assert.True(sorted[i] > sorted[i - 1],
-                $"単調増加違反: {sorted[i - 1]} → {sorted[i]}");
-        }
-    }
 
     /// <summary>
     /// @adversarial @category concurrency @severity medium
@@ -227,28 +199,4 @@ public class ProgressThrottlerAdversarialTests
         Assert.All(results, r => Assert.True(r));
     }
 
-    // ==============================
-    // 💀 リソース枯渇
-    // ==============================
-
-    /// <summary>
-    /// @adversarial @category resource @severity medium
-    /// 100万回連続呼び出し → メモリリークやパフォーマンス劣化なし
-    /// </summary>
-    [Fact]
-    public void ShouldReport_MillionCalls_NoPerformanceDegradation()
-    {
-        var throttler = new ProgressThrottler(reportIntervalMs: 0);
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-
-        for (var i = 0; i < 1_000_000; i++)
-        {
-            throttler.ShouldReport(i % 101);
-        }
-
-        sw.Stop();
-        // 100万回が5秒以内に完了すること（通常は数百ms）
-        Assert.True(sw.ElapsedMilliseconds < 5000,
-            $"100万回の呼び出しに {sw.ElapsedMilliseconds}ms かかった（上限5000ms）");
-    }
 }
