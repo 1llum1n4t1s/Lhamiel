@@ -12,6 +12,7 @@
 # 使い方:
 #   pwsh scripts/release-local.ps1                # フルリリース (build + sign + upload + cleanup)
 #   pwsh scripts/release-local.ps1 -SkipUpload    # ビルド + 署名のみ (アップロードしない動作確認用)
+#   pwsh scripts/release-local.ps1 -UploadOnly  # 同じ版の完成済みpackageを検証して配信から再開
 #   pwsh scripts/release-local.ps1 -ReusePublish  # 同じ版の署名済みpublishを検証して再利用し、未完了RIDをビルド
 #   pwsh scripts/release-local.ps1 -Runtimes win-x64   # 対象 RID を絞る (テスト用)
 
@@ -19,6 +20,7 @@
 param(
     [switch]$SkipUpload,
     [switch]$ReusePublish,
+    [switch]$UploadOnly,
     [string[]]$Runtimes = @('win-x64', 'win-arm64')
 )
 
@@ -124,10 +126,11 @@ if (-not $SkipUpload) {
     Write-Host "Cloudflare zone: $ZoneName ($zoneId)"
 }
 
-if (-not $ReusePublish -and (Test-Path -LiteralPath $WorkDir)) { Import-Module (Join-Path $env:USERPROFILE '.codex/scripts/CodexCleanup.psm1') -ErrorAction Stop; Remove-CodexItem -LiteralPath $WorkDir -AllowedRoot $RepoRoot }
+if (-not $UploadOnly -and -not $ReusePublish -and (Test-Path -LiteralPath $WorkDir)) { Import-Module (Join-Path $env:USERPROFILE '.codex/scripts/CodexCleanup.psm1') -ErrorAction Stop; Remove-CodexItem -LiteralPath $WorkDir -AllowedRoot $RepoRoot }
 New-Item -ItemType Directory -Path $ArtifactsDir -Force | Out-Null
 
 # ---- 1. ビルド + 署名付きパッケージング (RID ごと) ----
+if (-not $UploadOnly) {
 foreach ($runtime in $Runtimes) {
     $config = $RuntimeMatrix[$runtime]
     if (-not $config) { throw "未知の runtime: $runtime" }
@@ -204,6 +207,21 @@ foreach ($runtime in $Runtimes) {
             --shortcuts 'StartMenuRoot,Desktop' `
             --signParams $SignParams
     }
+}
+
+}
+
+# 保存済み成果物だけを配信するときも、版・実体・署名を確認する。
+foreach ($runtime in $Runtimes) {
+    $channel = $RuntimeMatrix[$runtime].Channel
+    $manifest = Get-Content -LiteralPath (Join-Path $ArtifactsDir "releases.$channel.json") -Raw | ConvertFrom-Json
+    if (@($manifest.Assets).Count -eq 0) { throw "配信manifestが空です: $channel" }
+    foreach ($asset in $manifest.Assets) {
+        if ($asset.Version -ne $version -or [IO.Path]::GetFileName($asset.FileName) -ne $asset.FileName) { throw "再開できないmanifestです: $channel" }
+        $package = Get-Item -LiteralPath (Join-Path $ArtifactsDir $asset.FileName)
+        if ($package.Length -ne $asset.Size -or (Get-FileHash -LiteralPath $package.FullName -Algorithm SHA256).Hash -ne $asset.SHA256) { throw "保存packageが一致しません: $channel" }
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $ArtifactsDir "Lhamiel-$channel-Setup.exe"))) { throw "Setupがありません: $channel" }
 }
 
 # 署名検証 (Setup.exe が正しく署名されているかリリース前に確認)
