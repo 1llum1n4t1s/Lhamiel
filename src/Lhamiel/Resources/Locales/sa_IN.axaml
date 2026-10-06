@@ -75,6 +75,7 @@
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">सङ्कोचनस्तरः</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP सङ्कोचनस्तरः</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z सङ्कोचनस्तरः</x:String>
+  <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">LZH सङ्कोचनविधिः</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">गुप्त/System सञ्चिकाः कोशाश्च समावेशय</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden अथवा System गुणयुक्तानि अपि सञ्चिकागारे योज्यन्ते।</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">सङ्कोचनवर्जनविन्यासाः</x:String>

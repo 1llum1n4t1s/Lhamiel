@@ -75,6 +75,7 @@
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">壓縮等級</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP 壓縮等級</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z 壓縮等級</x:String>
+  <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">LZH 壓縮方式</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">包含隱藏/System 檔案與資料夾</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">具有 Hidden 或 System 屬性的項目也會加入壓縮檔。</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">壓縮排除設定</x:String>

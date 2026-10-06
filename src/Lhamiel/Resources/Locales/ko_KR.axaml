@@ -75,6 +75,7 @@
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">압축 수준</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">ZIP 압축 수준</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">7z 압축 수준</x:String>
+  <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">LZH 압축 방식</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">숨김/System 파일 및 폴더 포함</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden 또는 System 특성이 있는 항목도 아카이브에 추가합니다.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">압축 제외 설정</x:String>

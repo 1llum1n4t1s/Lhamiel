@@ -296,6 +296,12 @@ public class Settings
     public int SevenZipCompressionLevel { get; set; } = 5; // Normal
 
     /// <summary>
+    /// LZH 圧縮方式の設定。<c>LH0</c> は無圧縮、<c>LH5</c> / <c>LH6</c> / <c>LH7</c> は
+    /// 辞書サイズが順に大きくなる LZH 圧縮方式。
+    /// </summary>
+    public string LzhCompressionMethod { get; set; } = "LH5";
+
+    /// <summary>
     /// [Legacy / no-op] 展開後にアーカイブの CRC 整合性検証を実行するかどうか。
     /// v1.0.183 以降は CRC を展開中に 7z.dll が常時照合する (不一致は展開自体が失敗する) ため、
     /// 展開後の二度読み再検証パスは廃止され、この設定は参照されない。
@@ -678,6 +684,7 @@ public class Settings
         // 最近傍の有効値にスナップする。
         ZipCompressionLevel = SnapToValidCompressionLevel(ZipCompressionLevel);
         SevenZipCompressionLevel = SnapToValidCompressionLevel(SevenZipCompressionLevel);
+        LzhCompressionMethod = NormalizeLzhCompressionMethod(LzhCompressionMethod);
 
         // PasswordMode の allow-list 化（未知値は PromptEachTime に矯正）。
         PasswordMode = Array.Find(SupportedPasswordModes,
@@ -720,6 +727,19 @@ public class Settings
     /// MainWindowViewModel.CompressionLevels の Level と同期させること。
     /// </summary>
     internal static readonly int[] ValidCompressionLevels = [0, 1, 3, 5, 7, 9];
+
+    /// <summary>LZH 作成で選択できる圧縮方式（canonical な大文字表記）。</summary>
+    public static readonly string[] SupportedLzhCompressionMethods = ["LH0", "LH5", "LH6", "LH7"];
+
+    /// <summary>
+    /// LZH 圧縮方式を canonical な大文字表記へ正規化する。
+    /// null または未対応値は後方互換の既定値 <c>LH5</c> に戻す。
+    /// </summary>
+    internal static string NormalizeLzhCompressionMethod(string? method) =>
+        Array.Find(
+            SupportedLzhCompressionMethods,
+            candidate => string.Equals(candidate, method, StringComparison.OrdinalIgnoreCase))
+        ?? "LH5";
 
     /// <summary>
     /// 範囲外の圧縮レベルを最近傍の有効値 (<see cref="ValidCompressionLevels"/>) にスナップする。
@@ -945,6 +965,7 @@ public class Settings
         Locale = "";
         ZipCompressionLevel = 5;
         SevenZipCompressionLevel = 5;
+        LzhCompressionMethod = "LH5";
         VerifyAfterExtraction = true;
         NormalizeUnicodeFileNames = true;
         PropagateMarkOfTheWeb = true;
@@ -964,7 +985,7 @@ public class Settings
     /// JSON 自体がパースできない（構文エラー）場合は null を返す。
     /// プロパティ個別の型不整合はスキップしてデフォルト値を維持する。
     /// </summary>
-    private static Settings? TryRecoverFromJsonDocument(string json)
+    internal static Settings? TryRecoverFromJsonDocument(string json)
     {
         JsonDocument doc;
         try
@@ -1023,6 +1044,7 @@ public class Settings
             if (TryGetInt(root, nameof(LogRetentionDays), out var lrd)) { s.LogRetentionDays = lrd; recoveredCount++; }
             if (TryGetInt(root, nameof(ZipCompressionLevel), out var zcl)) { s.ZipCompressionLevel = zcl; recoveredCount++; }
             if (TryGetInt(root, nameof(SevenZipCompressionLevel), out var szcl)) { s.SevenZipCompressionLevel = szcl; recoveredCount++; }
+            if (TryGetString(root, nameof(LzhCompressionMethod), out var lcm)) { s.LzhCompressionMethod = lcm!; recoveredCount++; }
 
             if (TryGetEnum<DirectoryStructureMode>(root, nameof(DirectoryStructureMode), out var dsm))
             {

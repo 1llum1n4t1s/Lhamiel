@@ -19,6 +19,12 @@ public record CompressionLevelItem(int Level, string ResourceKey)
     public string Name => App.Text(ResourceKey);
 }
 
+/// <summary>LZH 圧縮方式の表示用クラス。</summary>
+public record LzhCompressionMethodItem(string Method)
+{
+    public string Name => Method == "LH0" ? $"{App.Text("CompressionLevel.None")} (LH0)" : Method;
+}
+
 /// <summary>
 /// テーマ選択肢の表示用クラス（リソースキーから動的に表示名を取得）
 /// </summary>
@@ -253,6 +259,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
     private int _sevenZipCompressionLevel = 5;
 
     [ObservableProperty]
+    private string _lzhCompressionMethod = "LH5";
+
+    [ObservableProperty]
+    private LzhCompressionMethodItem? _selectedLzhMethod;
+
+    public ObservableCollection<LzhCompressionMethodItem> LzhCompressionMethods { get; } =
+        new(Settings.SupportedLzhCompressionMethods.Select(method => new LzhCompressionMethodItem(method)));
+
+    [ObservableProperty]
     private CompressionLevelItem? _selectedZipLevel;
 
     [ObservableProperty]
@@ -329,6 +344,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
             s.ZipCompressionLevel = ZipCompressionLevel;
             s.SevenZipCompressionLevel = SevenZipCompressionLevel;
+            s.LzhCompressionMethod = LzhCompressionMethod;
             // パスワード保護: 永続化するのは ON/OFF と Mode のみ。
             // EncryptFileNames は実行時のみの選択値（パスワード ON のたびに true 強制リセット、
             // decision #4）で、永続化は [JsonIgnore] が防ぐが、in-memory の Settings には同期する
@@ -682,6 +698,18 @@ public sealed partial class MainWindowViewModel : ObservableObject
         AutoSave();
     }
 
+    partial void OnLzhCompressionMethodChanged(string value)
+    {
+        SelectedLzhMethod = LzhCompressionMethods.FirstOrDefault(m => m.Method == value)
+            ?? LzhCompressionMethods.First(m => m.Method == "LH5");
+        AutoSave();
+    }
+
+    partial void OnSelectedLzhMethodChanged(LzhCompressionMethodItem? value)
+    {
+        if (value != null) LzhCompressionMethod = value.Method;
+    }
+
     partial void OnSelectedZipLevelChanged(CompressionLevelItem? value)
     {
         if (value != null) ZipCompressionLevel = value.Level;
@@ -716,6 +744,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         var savedZipLevel = ZipCompressionLevel;
         var savedSevenZipLevel = SevenZipCompressionLevel;
+        var savedLzhMethod = LzhCompressionMethod;
 
         _isLoading = true;
         for (var i = 0; i < CompressionLevels.Count; i++)
@@ -724,9 +753,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
             CompressionLevels[i] = new CompressionLevelItem(old.Level, old.ResourceKey);
         }
 
+        for (var i = 0; i < LzhCompressionMethods.Count; i++)
+            LzhCompressionMethods[i] = new LzhCompressionMethodItem(LzhCompressionMethods[i].Method);
+
         // 選択状態を復元
         SelectedZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == savedZipLevel);
         SelectedSevenZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == savedSevenZipLevel);
+        SelectedLzhMethod = LzhCompressionMethods.FirstOrDefault(m => m.Method == savedLzhMethod);
         _isLoading = false;
     }
 
@@ -924,6 +957,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         // 初期選択状態を設定
         OnZipCompressionLevelChanged(ZipCompressionLevel);
         OnSevenZipCompressionLevelChanged(SevenZipCompressionLevel);
+        OnLzhCompressionMethodChanged(LzhCompressionMethod);
         _isLoading = false;
     }
 
@@ -1053,6 +1087,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         SelectedLocale = string.IsNullOrEmpty(s.Locale) ? App.DetectDefaultLocale() : s.Locale;
         ZipCompressionLevel = s.ZipCompressionLevel;
         SevenZipCompressionLevel = s.SevenZipCompressionLevel;
+        LzhCompressionMethod = s.LzhCompressionMethod;
         // パスワード保護: 永続値から復元。EncryptFileNames は毎回 true で初期化（decision #4）。
         IsPasswordProtectionEnabled = s.IsPasswordProtectionEnabled;
         PasswordMode = string.Equals(s.PasswordMode, "Remember", StringComparison.Ordinal)

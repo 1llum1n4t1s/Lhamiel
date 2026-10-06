@@ -65,4 +65,31 @@ public sealed class ShellSelectionFileTests
         }
         finally { File.Delete(path); }
     }
+
+    [Fact]
+    public void Read_RejectsReparsePointAndDeletesOnlyLink()
+    {
+        Assert.SkipWhen(!OperatingSystem.IsWindows(), "シェル選択リストは Windows 専用");
+        var token = Guid.NewGuid().ToString("N");
+        var path = ShellSelectionFile.GetPath(token);
+        var target = Path.Combine(Path.GetTempPath(), $"Lhamiel-selection-target-{Guid.NewGuid():N}.bin");
+        try
+        {
+            File.WriteAllBytes(target, System.Text.Encoding.Unicode.GetBytes(@"C:\source.txt" + '\0'));
+            try { File.CreateSymbolicLink(path, target); }
+            catch (IOException ex) when (ex.HResult == unchecked((int)0x80070522))
+            {
+                Assert.Skip("この実行ユーザーにはシンボリックリンク作成権限がありません");
+            }
+
+            Assert.Throws<InvalidDataException>(() => ShellSelectionFile.Read(token));
+            Assert.False(File.Exists(path));
+            Assert.True(File.Exists(target));
+        }
+        finally
+        {
+            File.Delete(path);
+            File.Delete(target);
+        }
+    }
 }

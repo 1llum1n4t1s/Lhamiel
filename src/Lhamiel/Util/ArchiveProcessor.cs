@@ -992,7 +992,7 @@ public static class ArchiveProcessor
                     resolvedFiles
                         .Where(f => !f.relativePath.EndsWith("/", StringComparison.Ordinal))
                         .Select(f => f.fullPath));
-                if (estimatedSize > 0)
+                if (estimatedSize != 0)
                 {
                     var hasSpace = await EnsureDiskSpaceAsyncImpl(
                         outputPath, estimatedSize, progressWindow, actualCancellationToken);
@@ -1549,12 +1549,11 @@ public static class ArchiveProcessor
                 }
 
                 // 圧縮前のディスク容量チェック
-                var estimatedMergeSize = resolvedFiles.Sum(f =>
-                {
-                    try { return File.Exists(f.fullPath) ? new FileInfo(f.fullPath).Length : 0L; }
-                    catch { return 0L; }
-                });
-                if (estimatedMergeSize > 0)
+                var estimatedMergeSize = DiskSpaceChecker.GetTotalFileSize(
+                    resolvedFiles
+                        .Where(f => !f.relativePath.EndsWith("/", StringComparison.Ordinal))
+                        .Select(f => f.fullPath));
+                if (estimatedMergeSize != 0)
                 {
                     var hasSpace = await EnsureDiskSpaceAsyncImpl(
                         outputPath, estimatedMergeSize, progressWindow, actualCancellationToken);

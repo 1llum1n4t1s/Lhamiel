@@ -137,6 +137,43 @@ public sealed class LzhArchiveIntegrationTests
         Assert.InRange(Math.Abs((actualDirectoryTimestamp - expectedDirectoryTimestamp).TotalSeconds), 0, 2);
     }
 
+    [Theory]
+    [InlineData("LH0", "-lh0-")]
+    [InlineData("LH5", "-lh5-")]
+    [InlineData("LH6", "-lh6-")]
+    [InlineData("LH7", "-lh7-")]
+    public async Task CompressLzh_SelectedMethod_WritesExpectedHeaderAndRoundTrips(
+        string selectedMethod,
+        string expectedHeaderMethod)
+    {
+        Assert.SkipWhen(!OperatingSystem.IsWindows(), "Kagayoi.UnLhaRe の native asset は Windows 限定");
+        using var temp = TestDirectory.Create($"{nameof(CompressLzh_SelectedMethod_WritesExpectedHeaderAndRoundTrips)}_{selectedMethod}");
+        var source = Path.Combine(temp.Path, "source.txt");
+        var contents = string.Concat(Enumerable.Repeat("日本語の LZH 圧縮方式別ラウンドトリップ\n", 4096));
+        File.WriteAllText(source, contents);
+        var archive = Path.Combine(temp.Path, $"{selectedMethod}.lzh");
+
+        await ArchiveCompressor.CompressFilesAsync(
+            [source],
+            archive,
+            Format.Lzh,
+            cancellationToken: TestContext.Current.CancellationToken,
+            resolvedFiles: [(source, "source.txt")],
+            settingsOverride: new Settings { LzhCompressionMethod = selectedMethod });
+
+        var entry = Assert.Single(LzhArchiveBackendProvider.Current.List(archive));
+        Assert.Equal(expectedHeaderMethod, entry.Method);
+
+        var output = Path.Combine(temp.Path, "output");
+        LzhArchiveBackendProvider.Current.Extract(
+            archive,
+            output,
+            selectedNames: null,
+            progress: null,
+            cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal(contents, File.ReadAllText(Path.Combine(output, "source.txt")));
+    }
+
     [Fact]
     public async Task CompressLzh_WithExistingOutput_PreservesOriginalBytes()
     {

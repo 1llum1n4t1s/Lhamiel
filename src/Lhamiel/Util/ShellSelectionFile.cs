@@ -19,7 +19,13 @@ internal static class ShellSelectionFile
     {
         var path = GetPath(token);
         if ((File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0)
+        {
+            // DeleteOnClose で開く前に拒否するため、リンク自体だけを掃除する。
+            try { File.Delete(path); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
             throw new InvalidDataException("Shell selection must not be a reparse point.");
+        }
 
         using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None,
             4096, FileOptions.DeleteOnClose | FileOptions.SequentialScan);

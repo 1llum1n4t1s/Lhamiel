@@ -352,7 +352,7 @@
                             </primitives:HeaderedContentControl>
 
                             <primitives:HeaderedContentControl Header="{DynamicResource Text.Settings.Compression.LevelHeader}">
-                                <Grid>
+                                <Grid RowDefinitions="Auto,Auto">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="*" />
@@ -386,6 +386,19 @@
                                             SelectedItem="{Binding SelectedSevenZipLevel}">
                                             <ComboBox.ItemTemplate>
                                                 <DataTemplate x:DataType="vm:CompressionLevelItem">
+                                                    <TextBlock Text="{Binding Name}" />
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,12,0,0">
+                                        <TextBlock Margin="0,0,0,6" FontSize="13"
+                                            Text="{DynamicResource Text.Settings.Compression.LzhMethod}" />
+                                        <ComboBox HorizontalAlignment="Stretch"
+                                            ItemsSource="{Binding LzhCompressionMethods}"
+                                            SelectedItem="{Binding SelectedLzhMethod}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:LzhCompressionMethodItem">
                                                     <TextBlock Text="{Binding Name}" />
                                                 </DataTemplate>
                                             </ComboBox.ItemTemplate>

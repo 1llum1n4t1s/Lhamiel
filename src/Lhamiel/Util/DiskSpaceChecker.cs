@@ -110,23 +110,28 @@ public static partial class DiskSpaceChecker
     public static long GetTotalFileSize(IEnumerable<string> filePaths)
     {
         long total = 0;
+        var sizeUnknown = false;
         foreach (var path in filePaths)
         {
             try
             {
                 if (File.Exists(path))
-                    total += new FileInfo(path).Length;
+                    total = checked(total + new FileInfo(path).Length);
                 else if (Directory.Exists(path))
-                    total += new DirectoryInfo(path)
+                    total = checked(total + new DirectoryInfo(path)
                         .EnumerateFiles("*", SearchOption.AllDirectories)
-                        .Sum(f => f.Length);
+                        .Sum(f => f.Length));
+                else
+                    sizeUnknown = true;
             }
             catch (Exception ex)
             {
                 Logger.Log($"ファイルサイズ取得失敗: {path}, {ex.Message}");
+                sizeUnknown = true;
             }
         }
-        return total;
+        // 未読項目があっても、判明しているサイズが最低閾値を超えるならその値を下回らせない。
+        return sizeUnknown && total < MinFreeSpaceThresholdBytes ? -1 : total;
     }
 
     /// <summary>

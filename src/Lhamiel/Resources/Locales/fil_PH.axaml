@@ -75,6 +75,7 @@
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Antas ng Compression</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Antas ng ZIP Compression</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Antas ng 7z Compression</x:String>
+  <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">Paraan ng compression ng LZH</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Isama ang hidden/System na file at folder</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Isinasama rin sa archive ang mga entry na may Hidden o System attribute.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Mga Hindi Isasama sa Compression</x:String>

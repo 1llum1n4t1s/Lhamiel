@@ -75,6 +75,7 @@
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Livello di compressione</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Livello di compressione ZIP</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Livello di compressione 7z</x:String>
+  <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">Metodo di compressione LZH</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Includi file e cartelle nascosti/di sistema</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Anche gli elementi con attributo Hidden o System vengono aggiunti agli archivi.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Esclusioni di compressione</x:String>

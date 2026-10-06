@@ -75,6 +75,7 @@
   <x:String x:Key="Text.Settings.Compression.LevelHeader" xml:space="preserve">Gradus Compressionis</x:String>
   <x:String x:Key="Text.Settings.Compression.ZipLevel" xml:space="preserve">Gradus Compressionis ZIP</x:String>
   <x:String x:Key="Text.Settings.Compression.SevenZipLevel" xml:space="preserve">Gradus Compressionis 7z</x:String>
+  <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">Modus compressionis LZH</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Includere fasciculos et folders occultos/systema</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Elementa attributis Hidden vel System etiam in archivum adduntur.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Exclusiones compressionis</x:String>

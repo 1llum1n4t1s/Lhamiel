@@ -219,7 +219,7 @@ public partial class App : Application
             {
                 commandLineRequest = ParseCommandLineArgs(startupArgs);
             }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidDataException)
             {
                 Logger.LogException("シェルの選択リストを読み込めませんでした", ex);
                 await MessageService.ShowError(App.Text("Error.DuringProcessing", ex.Message));
@@ -910,7 +910,7 @@ public partial class App : Application
                     {
                         request = ParseCommandLineArgs(args);
                     }
-                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidDataException)
                     {
                         Logger.LogException("シェルの選択リストを読み込めませんでした", ex);
                         _ = MessageService.ShowError(App.Text("Error.DuringProcessing", ex.Message));

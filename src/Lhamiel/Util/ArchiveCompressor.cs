@@ -170,7 +170,11 @@ public static class ArchiveCompressor
                 // UnLhaRe は内部一時ファイルを no-clobber で原子的に確定し、失敗時の掃除も担う。
                 // 共通 catch に既存出力を部分ファイルとして削除させないため outputCreated は false のままにする。
                 inaccessibleSkipped = await CompressLzhAsync(
-                    filesToCompress, outputPath, progress, cancellationToken);
+                    filesToCompress,
+                    outputPath,
+                    ResolveLzhCompressionMethod(settings.LzhCompressionMethod),
+                    progress,
+                    cancellationToken);
                 Logger.Log(
                     $"LZH圧縮完了: {outputPath}（要求{filesToCompress.Count}件、スキップ{inaccessibleSkipped}件）");
                 return inaccessibleSkipped;
@@ -401,6 +405,7 @@ public static class ArchiveCompressor
     private static async Task<int> CompressLzhAsync(
         IReadOnlyList<(string fullPath, string relativePath)> filesToCompress,
         string outputPath,
+        LzhCompressionMethod compressionMethod,
         IProgress<ProgressInfo>? progress,
         CancellationToken cancellationToken)
     {
@@ -430,7 +435,7 @@ public static class ArchiveCompressor
             () => LzhArchiveBackendProvider.Current.Create(
                 outputPath,
                 entries,
-                LzhCompressionMethod.Lh5,
+                compressionMethod,
                 nativeProgress,
                 cancellationToken),
             cancellationToken).ConfigureAwait(false);
@@ -450,8 +455,19 @@ public static class ArchiveCompressor
         return skippedEntries.Length;
     }
 
+    /// <summary>Settings の文字列値を UnLhaRe の圧縮方式へ変換する。</summary>
+    internal static LzhCompressionMethod ResolveLzhCompressionMethod(string? method) =>
+        Settings.NormalizeLzhCompressionMethod(method) switch
+        {
+            "LH0" => LzhCompressionMethod.Stored,
+            "LH5" => LzhCompressionMethod.Lh5,
+            "LH6" => LzhCompressionMethod.Lh6,
+            "LH7" => LzhCompressionMethod.Lh7,
+            _ => LzhCompressionMethod.Lh5,
+        };
+
     /// <summary>
-    /// 現行LH5 encoderが1項目をメモリ上で処理するため、native作成を開始する前に
+    /// 現行 LZH encoder が1項目をメモリ上で処理するため、native作成を開始する前に
     /// 1ファイル上限を明示する。取得不能・消失はUnLhaReの項目別スキップ契約へ委ねる。
     /// native側の再検査はTOCTOU防止のため維持する。
     /// </summary>

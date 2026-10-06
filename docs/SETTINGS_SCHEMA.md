@@ -33,6 +33,7 @@
   "PropagateMarkOfTheWeb": true,
   "ZipCompressionLevel": 5,
   "SevenZipCompressionLevel": 5,
+  "LzhCompressionMethod": "LH5",
   "IsPasswordProtectionEnabled": false,
   "PasswordMode": "PromptEachTime",
   "EncryptedCompressionPassword": null,
@@ -86,6 +87,7 @@
 | `IncludeHiddenAndSystemEntries` | bool | `true` | 圧縮時に Hidden/System 属性のファイル・フォルダも列挙対象に含める |
 | `ZipCompressionLevel` | int | `5` | ZIP圧縮レベル（0-9） |
 | `SevenZipCompressionLevel` | int | `5` | 7z圧縮レベル（0-9） |
+| `LzhCompressionMethod` | string | `"LH5"` | LZH圧縮方式（`LH0`：無圧縮 / `LH5` / `LH6` / `LH7`）。未設定・不正値は `LH5` |
 | `IsPasswordProtectionEnabled` | bool | `false` | パスワード保護を有効化（ZIP=AES-256 / 7z=AES-256、TAR は非対応で UI ガード）。`v1.0.181+` |
 | `PasswordMode` | string | `"PromptEachTime"` | パスワード入力モード。`"PromptEachTime"`（ドロップごとに確認）または `"Remember"`（DPAPI で保存）。`v1.0.181+` |
 | `EncryptedCompressionPassword` | byte[]? (Base64) | `null` | DPAPI（CurrentUser scope）で暗号化された圧縮パスワード。`PasswordMode="Remember"` のときのみ書込み。4096 バイト超は破棄。`v1.0.181+` |
