@@ -1,3 +1,4 @@
+using System.IO.Enumeration;
 using System.Runtime.InteropServices;
 using System.Security;
 namespace Lhamiel.Util;
@@ -67,9 +68,16 @@ internal static class MotwPropagator
             var current = stack.Pop();
             try
             {
-                files.AddRange(Directory.EnumerateFiles(current, "*", enumOpts));
-                foreach (var sub in Directory.EnumerateDirectories(current, "*", enumOpts))
-                    stack.Push(sub);
+                // 列挙時の情報だけで分類し、二重走査と不要な FileSystemInfo の生成を避ける。
+                var entries = new FileSystemEnumerable<(string Path, bool IsDirectory)>(current,
+                    static (ref FileSystemEntry entry) => (entry.ToSpecifiedFullPath(), entry.IsDirectory), enumOpts);
+                foreach (var entry in entries)
+                {
+                    if (entry.IsDirectory)
+                        stack.Push(entry.Path);
+                    else
+                        files.Add(entry.Path);
+                }
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
             {

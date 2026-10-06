@@ -15,7 +15,7 @@ internal enum ContextMenuOperation
 
 /// <summary>
 /// エクスプローラーのファイル／フォルダ右クリックメニューへ用途別の Lhamiel コマンドを登録する。
-/// Windows 11 では sparse MSIX + IExplorerCommand、それ以前では静的 verb を使う。
+/// Windows 11 では sparse MSIX + IExplorerCommand に静的 verb を併設し、従来型のシェルにも対応する。
 /// </summary>
 [SupportedOSPlatform("windows")]
 internal static class ShellContextMenu
@@ -98,7 +98,7 @@ internal static class ShellContextMenu
         }
     }
 
-    /// <summary>OS と配布物に応じてモダン／従来方式を切り替える。</summary>
+    /// <summary>従来型を登録し、OS と配布物が対応する場合はモダン方式も併設する。</summary>
     internal static void ApplyRegistration(
         RegistryKey root,
         string classesRootPath,
@@ -122,16 +122,12 @@ internal static class ShellContextMenu
             return;
         }
 
-        if (preferModernMenu && TryRegisterModernPackage(appPath, registerModernPackage, isModernPackageCurrent))
-        {
-            Unregister(root, classesRootPath);
-            // パッケージ登録と旧 verb の削除が完了してから、ネイティブ拡張へ新状態を公開する。
-            // 先に書くと登録失敗時に UI / settings.json だけが旧値へ戻り、Explorer と不一致になる。
-            WriteState(root, classesRootPath, extractEnabled, compressEnabled);
-            return;
-        }
+        // モダン登録の失敗時は、従来型と公開済みの表示状態を変更しない。
+        if (preferModernMenu)
+            _ = TryRegisterModernPackage(appPath, registerModernPackage, isModernPackageCurrent);
 
-        // Windows 10、開発ビルド、portable の不完全コピーでは従来方式を維持する。
+        // Kiriha などの IContextMenu 利用側と「その他のオプション」にも表示する。
+        // Register は旧 SendTo verb を除去し、有効な展開／圧縮だけを登録する。
         Register(root, classesRootPath, appPath, extractEnabled, compressEnabled);
         WriteState(root, classesRootPath, extractEnabled, compressEnabled);
     }

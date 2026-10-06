@@ -25,6 +25,9 @@ public static class IpcService
     /// </summary>
     private const int ConnectTotalTimeoutMs = 2000;
 
+    // 接続できても読み取りを停止した相手への送信で起動を無期限に止めない。
+    private const int SendTimeoutMs = 2000;
+
     /// <summary>
     /// 単一接続試行のタイムアウト（ミリ秒）
     /// </summary>
@@ -73,10 +76,14 @@ public static class IpcService
     /// <param name="cancellationToken">
     /// 呼び出し側の Cancellation Token。アプリ終了時等の早期打ち切りに使う。
     /// 省略時は <see cref="CancellationToken.None"/> で、<see cref="ConnectTotalTimeoutMs"/> の
-    /// タイムアウトのみで制御される。
+    /// 接続期限と送信期限で制御される。
     /// </param>
     /// <returns>送信に成功した場合は true</returns>
-    public static async Task<bool> SendArgsToExistingInstanceAsync(string[] args, CancellationToken cancellationToken = default)
+    public static Task<bool> SendArgsToExistingInstanceAsync(string[] args, CancellationToken cancellationToken = default) =>
+        SendArgsToExistingInstanceAsync(args, PipeName, cancellationToken);
+
+    // テスト用の通信先は引数で分離し、実行中の製品インスタンスへ流さない。
+    internal static async Task<bool> SendArgsToExistingInstanceAsync(string[] args, string pipeName, CancellationToken cancellationToken = default)
     {
         var startedAt = Environment.TickCount64;
         var attempt = 0;
@@ -95,8 +102,8 @@ public static class IpcService
                 // PipeOptions.CurrentUserOnly: 同名のパイプを別ユーザーが先回りして
                 // 作成していた場合の接続・書き込みを拒否する（悪意ある待ち伏せへの保険）。
                 using var client = new NamedPipeClientStream(
-                    ".", PipeName, PipeDirection.Out,
-                    PipeOptions.CurrentUserOnly);
+                    ".", pipeName, PipeDirection.Out,
+                    PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                 await client.ConnectAsync(ConnectAttemptTimeoutMs, cancellationToken);
 
                 var json = JsonSerializer.Serialize(args, AppJsonContext.Default.StringArray);
@@ -114,7 +121,9 @@ public static class IpcService
                     return false;
                 }
 
-                await client.WriteAsync(buffer, cancellationToken);
+                using var sendTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                sendTimeout.CancelAfter(SendTimeoutMs);
+                await client.WriteAsync(buffer, sendTimeout.Token);
 
                 // FlushAsync でキャンセルトークンを伝搬させたうえで、
                 // WaitForPipeDrain でパイプ他端が受信完了するまで同期待機。
@@ -122,7 +131,7 @@ public static class IpcService
                 // ハングしているケースに備えて Task.Run でバックグラウンドへオフロード + WaitAsync で
                 // PipeDrainTimeoutMs の上限を設ける。タイムアウトしても送信自体は完了済みなので
                 // 起動を継続して問題ない（既存インスタンスのフォアグラウンド化は失敗扱い）。
-                await client.FlushAsync(cancellationToken);
+                await client.FlushAsync(sendTimeout.Token);
                 try
                 {
                     await Task.Run(client.WaitForPipeDrain, cancellationToken)
@@ -140,6 +149,11 @@ public static class IpcService
             {
                 // 呼び出し側からの明示キャンセル。リトライせず即終了。
                 Logger.Log("IPC引数送信がキャンセルされました", LogLevel.Debug);
+                return false;
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Log($"IPC 送信が {SendTimeoutMs}ms 以内に完了しませんでした。", LogLevel.Warning);
                 return false;
             }
             catch (TimeoutException)
@@ -180,7 +194,10 @@ public static class IpcService
     /// </summary>
     /// <param name="onArgsReceived">引数を受信したときに呼び出されるアクション</param>
     /// <param name="cancellationToken">キャンセル用トークン</param>
-    public static async Task StartServerAsync(Action<string[]> onArgsReceived, CancellationToken cancellationToken)
+    public static Task StartServerAsync(Action<string[]> onArgsReceived, CancellationToken cancellationToken) =>
+        StartServerAsync(onArgsReceived, PipeName, cancellationToken);
+
+    internal static async Task StartServerAsync(Action<string[]> onArgsReceived, string pipeName, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -189,7 +206,7 @@ public static class IpcService
                 // PipeOptions.CurrentUserOnly: 同一ログオンユーザーのプロセスからの接続のみ許可
                 // （悪意ある別ユーザープロセスや低権限アカウントからのコマンド注入を防ぐ）
                 using var server = new NamedPipeServerStream(
-                    PipeName,
+                    pipeName,
                     PipeDirection.In,
                     1,
                     PipeTransmissionMode.Byte,

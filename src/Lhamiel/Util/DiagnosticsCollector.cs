@@ -9,7 +9,7 @@ namespace Lhamiel.Util;
 
 /// <summary>
 /// サポート用の診断情報を ZIP にまとめてエクスポートする。
-/// ログ・マスク済み settings.json・環境情報・ダンプを収集。
+/// ログ・マスク済み settings.json・環境情報を収集。
 /// </summary>
 internal static partial class DiagnosticsCollector
 {
@@ -157,6 +157,14 @@ internal static partial class DiagnosticsCollector
 
     private static void WriteElement(Utf8JsonWriter writer, JsonElement element, string? propertyName)
     {
+        // 秘密フィールドが配列やオブジェクトでも、子の型や名前に依存せず全体を伏せる。
+        if (propertyName != null && element.ValueKind is JsonValueKind.Object or JsonValueKind.Array
+            && ShouldMask(propertyName))
+        {
+            writer.WriteStringValue("***");
+            return;
+        }
+
         switch (element.ValueKind)
         {
             case JsonValueKind.Object:

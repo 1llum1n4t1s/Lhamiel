@@ -83,7 +83,7 @@ public sealed class ShellContextMenuTests : IDisposable
             Assert.Equal(Path.Combine(applicationDirectory, ShellContextMenu.ShellExtensionFileName), invocation!.Value.ExtensionPath);
             Assert.Equal(new Uri(Path.Combine(applicationDirectory, ShellContextMenu.ModernPackageFileName)).AbsoluteUri, invocation.Value.PackageUri);
             Assert.Equal(new Uri(applicationDirectory + Path.DirectorySeparatorChar).AbsoluteUri, invocation.Value.ExternalLocationUri);
-            Assert.False(VerbExists("*", ContextMenuOperation.Extract));
+            AssertVerb("*", appPath, ContextMenuOperation.Extract);
             Assert.False(VerbExists("*", ContextMenuOperation.Compress));
             AssertState(extractEnabled: true, compressEnabled: false);
         }
@@ -154,7 +154,7 @@ public sealed class ShellContextMenuTests : IDisposable
     }
 
     [Fact]
-    public void ApplyRegistration_WhenModernPackageUpdateIsPending_PublishesStateWithoutLegacyFallback()
+    public void ApplyRegistration_WhenModernPackageUpdateIsPending_PublishesStateAndClassicVerbs()
     {
         var applicationDirectory = CreateModernArtifacts();
         try
@@ -173,7 +173,7 @@ public sealed class ShellContextMenuTests : IDisposable
                 preferModernMenu: true,
                 (_, _, _) => ShellContextMenu.PackagePendingRemovalHResult);
 
-            Assert.False(VerbExists("*", ContextMenuOperation.Extract));
+            AssertVerb("*", appPath, ContextMenuOperation.Extract);
             Assert.False(VerbExists("*", ContextMenuOperation.Compress));
             AssertState(extractEnabled: true, compressEnabled: false);
         }

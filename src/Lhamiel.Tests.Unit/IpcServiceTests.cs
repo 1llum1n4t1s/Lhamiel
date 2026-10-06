@@ -16,6 +16,14 @@ public class IpcServiceTests
 {
     private const int TestTimeoutMs = 10_000;
 
+    private readonly string _testPipeName = $"Lhamiel.Tests.Ipc.{Guid.NewGuid():N}";
+
+    private Task StartServerAsync(Action<string[]> onArgsReceived, CancellationToken cancellationToken) =>
+        IpcService.StartServerAsync(onArgsReceived, _testPipeName, cancellationToken);
+
+    private Task<bool> SendArgsToExistingInstanceAsync(string[] args, CancellationToken cancellationToken = default) =>
+        IpcService.SendArgsToExistingInstanceAsync(args, _testPipeName, cancellationToken);
+
     [Fact]
     public async Task SendAndReceive_SelectionToken_ConsumesWholeBatchInReceiver()
     {
@@ -24,12 +32,12 @@ public class IpcServiceTests
         var paths = Enumerable.Range(0, 2000).Select(i => $@"C:\日本語の選択\file {i}.txt").ToArray();
         using var cts = new CancellationTokenSource(TestTimeoutMs);
         var received = new TaskCompletionSource<string[]>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var server = Task.Run(() => IpcService.StartServerAsync(args =>
+        var server = Task.Run(() => StartServerAsync(args =>
             received.TrySetResult(App.ParseCommandLineArgs(args).FilePaths), cts.Token));
         try
         {
             File.WriteAllBytes(path, System.Text.Encoding.Unicode.GetBytes(string.Join('\0', paths) + '\0'));
-            Assert.True(await IpcService.SendArgsToExistingInstanceAsync(
+            Assert.True(await SendArgsToExistingInstanceAsync(
                 ["--compress", ShellSelectionFile.Argument, token], cts.Token));
             Assert.Equal(paths, await received.Task.WaitAsync(cts.Token));
             Assert.False(File.Exists(path));
@@ -50,7 +58,7 @@ public class IpcServiceTests
 
         var serverTask = Task.Run(async () =>
         {
-            await IpcService.StartServerAsync(args =>
+            await StartServerAsync(args =>
             {
                 received.TrySetResult(args);
             }, cts.Token);
@@ -59,7 +67,7 @@ public class IpcServiceTests
         await Task.Delay(100, cts.Token);
 
         var sent = new[] { @"C:\test\file.zip", "--extract" };
-        var success = await IpcService.SendArgsToExistingInstanceAsync(sent, cts.Token);
+        var success = await SendArgsToExistingInstanceAsync(sent, cts.Token);
 
         Assert.True(success);
 
@@ -76,7 +84,7 @@ public class IpcServiceTests
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
-        var result = await IpcService.SendArgsToExistingInstanceAsync(
+        var result = await SendArgsToExistingInstanceAsync(
             ["test.zip"], cts.Token);
 
         Assert.False(result);
@@ -88,7 +96,7 @@ public class IpcServiceTests
         // テスト用の短い待機で失敗を確認（実際の ConnectTotalTimeoutMs は長いため、即キャンセルで代替）
         using var cts = new CancellationTokenSource(500);
 
-        var result = await IpcService.SendArgsToExistingInstanceAsync(
+        var result = await SendArgsToExistingInstanceAsync(
             ["test.zip"], cts.Token);
 
         Assert.False(result);
@@ -100,7 +108,7 @@ public class IpcServiceTests
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
-        await IpcService.StartServerAsync(_ => { }, cts.Token);
+        await StartServerAsync(_ => { }, cts.Token);
     }
 
     [Fact]
@@ -111,7 +119,7 @@ public class IpcServiceTests
 
         var serverTask = Task.Run(async () =>
         {
-            await IpcService.StartServerAsync(args =>
+            await StartServerAsync(args =>
             {
                 received.TrySetResult(args);
             }, cts.Token);
@@ -119,7 +127,7 @@ public class IpcServiceTests
 
         await Task.Delay(100, cts.Token);
 
-        var success = await IpcService.SendArgsToExistingInstanceAsync([], cts.Token);
+        var success = await SendArgsToExistingInstanceAsync([], cts.Token);
         Assert.True(success);
 
         var result = await received.Task.WaitAsync(cts.Token);
@@ -137,7 +145,7 @@ public class IpcServiceTests
 
         var serverTask = Task.Run(async () =>
         {
-            await IpcService.StartServerAsync(args =>
+            await StartServerAsync(args =>
             {
                 received.TrySetResult(args);
             }, cts.Token);
@@ -146,7 +154,7 @@ public class IpcServiceTests
         await Task.Delay(100, cts.Token);
 
         var sent = new[] { @"C:\テスト\ファイル.zip", "日本語パス", "émojis🎉" };
-        var success = await IpcService.SendArgsToExistingInstanceAsync(sent, cts.Token);
+        var success = await SendArgsToExistingInstanceAsync(sent, cts.Token);
         Assert.True(success);
 
         var result = await received.Task.WaitAsync(cts.Token);
@@ -166,7 +174,7 @@ public class IpcServiceTests
 
         var serverTask = Task.Run(async () =>
         {
-            await IpcService.StartServerAsync(args =>
+            await StartServerAsync(args =>
             {
                 lock (allReceived)
                 {
@@ -181,7 +189,7 @@ public class IpcServiceTests
 
         for (var i = 0; i < expectedCount; i++)
         {
-            var success = await IpcService.SendArgsToExistingInstanceAsync([$"file{i}.zip"], cts.Token);
+            var success = await SendArgsToExistingInstanceAsync([$"file{i}.zip"], cts.Token);
             Assert.True(success);
         }
 
