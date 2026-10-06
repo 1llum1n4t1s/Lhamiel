@@ -139,54 +139,54 @@ foreach ($runtime in $Runtimes) {
     if ($ReusePublish -and (Test-Path -LiteralPath (Join-Path $publishDir 'Lhamiel.exe'))) {
         $existingVersion = (Get-Item -LiteralPath (Join-Path $publishDir 'Lhamiel.exe')).VersionInfo.ProductVersion.Split('+')[0]
         if ($existingVersion -ne $version) { throw "既存 publish の version が異なります: $existingVersion" }
-        foreach ($name in @('Lhamiel.exe', 'Lhamiel.ShellExtension.dll', 'Lhamiel.ContextMenu.msix')) {
+        foreach ($name in @('Lhamiel.ShellExtension.dll', 'Lhamiel.ContextMenu.msix')) {
             $sig = Get-AuthenticodeSignature -LiteralPath (Join-Path $publishDir $name)
             if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notlike "CN=$CertSubjectName*") { throw "再利用できない署名です: $name" }
         }
         Write-Host "== 署名済み publish を再利用: $runtime =="
     } else {
-    Write-Host "== publish: $runtime ==" -ForegroundColor Cyan
-    Enter-VsDevShell -VsInstallPath $visualStudioPath -SkipAutomaticLocation `
-        -DevCmdArguments "-arch=$($config.PlatformTarget.ToLowerInvariant()) -host_arch=x64"
-    Invoke-Native "dotnet publish ($runtime)" {
-        dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r $runtime `
-            -p:PlatformTarget=$($config.PlatformTarget) -p:OS=Windows_NT -p:IlcUseEnvironmentalTools=true `
-            --artifacts-path $buildArtifactsDir -o $publishDir
-    }
-
-    foreach ($required in @(
-        'Lhamiel.exe',
-        '7z.dll',
-        'unlhare.dll',
-        'licenses\Kagayoi.UnLhaRe\LICENSE',
-        'licenses\Kagayoi.UnLhaRe\THIRD_PARTY_NOTICES.md'
-    )) {
-        if (-not (Test-Path (Join-Path $publishDir $required))) {
-            throw "$required が publish 出力にありません ($runtime)"
+        Write-Host "== publish: $runtime ==" -ForegroundColor Cyan
+        Enter-VsDevShell -VsInstallPath $visualStudioPath -SkipAutomaticLocation `
+            -DevCmdArguments "-arch=$($config.PlatformTarget.ToLowerInvariant()) -host_arch=x64"
+        Invoke-Native "dotnet publish ($runtime)" {
+            dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r $runtime `
+                -p:PlatformTarget=$($config.PlatformTarget) -p:OS=Windows_NT -p:IlcUseEnvironmentalTools=true `
+                --artifacts-path $buildArtifactsDir -o $publishDir
         }
-    }
-
-    Invoke-Native "Windows 11 Shell 統合の生成 ($runtime)" {
-        pwsh scripts/build-shell-integration.ps1 `
-            -Runtime $runtime `
-            -PublishDir $publishDir `
-            -CertificateSubjectName $CertSubjectName
-    }
-
-    # README.txt 生成 (CI 版の Markdown 除去ロジックを移植)
-    $content = Get-Content 'README.md' -Raw -Encoding utf8
-    $content = $content -replace '!\[.*?\]\(.*?\)\r?\n?', ''
-    $content = $content -replace '<img[^>]*/?>\r?\n?', ''
-    $content = $content -replace '\[([^\]]+)\]\(([^\)]+)\)', '$1 ($2)'
-    $content = $content -replace '(?m)^#{1,6}\s+', ''
-    $content = $content -replace '\*\*([^*]+)\*\*', '$1'
-    $content = $content -replace '`([^`]+)`', '$1'
-    $content = $content -replace '(?m)^\| .+\|$', ''
-    $content = $content -replace '(?m)^\|[-: ]+\|$', ''
-    $content = $content -replace '(?m)^>\s*', ''
-    $content = $content -replace '\r?\n{3,}', "`n`n"
-    [System.IO.File]::WriteAllText((Join-Path $publishDir 'README.txt'), $content.Trim(), [System.Text.Encoding]::UTF8)
-
+    
+        foreach ($required in @(
+            'Lhamiel.exe',
+            '7z.dll',
+            'unlhare.dll',
+            'licenses\Kagayoi.UnLhaRe\LICENSE',
+            'licenses\Kagayoi.UnLhaRe\THIRD_PARTY_NOTICES.md'
+        )) {
+            if (-not (Test-Path (Join-Path $publishDir $required))) {
+                throw "$required が publish 出力にありません ($runtime)"
+            }
+        }
+    
+        Invoke-Native "Windows 11 Shell 統合の生成 ($runtime)" {
+            pwsh scripts/build-shell-integration.ps1 `
+                -Runtime $runtime `
+                -PublishDir $publishDir `
+                -CertificateSubjectName $CertSubjectName
+        }
+    
+        # README.txt 生成 (CI 版の Markdown 除去ロジックを移植)
+        $content = Get-Content 'README.md' -Raw -Encoding utf8
+        $content = $content -replace '!\[.*?\]\(.*?\)\r?\n?', ''
+        $content = $content -replace '<img[^>]*/?>\r?\n?', ''
+        $content = $content -replace '\[([^\]]+)\]\(([^\)]+)\)', '$1 ($2)'
+        $content = $content -replace '(?m)^#{1,6}\s+', ''
+        $content = $content -replace '\*\*([^*]+)\*\*', '$1'
+        $content = $content -replace '`([^`]+)`', '$1'
+        $content = $content -replace '(?m)^\| .+\|$', ''
+        $content = $content -replace '(?m)^\|[-: ]+\|$', ''
+        $content = $content -replace '(?m)^>\s*', ''
+        $content = $content -replace '\r?\n{3,}', "`n`n"
+        [System.IO.File]::WriteAllText((Join-Path $publishDir 'README.txt'), $content.Trim(), [System.Text.Encoding]::UTF8)
+    
     }
     Write-Host "== vpk pack + 署名: $runtime ==" -ForegroundColor Cyan
     Invoke-Native "vpk pack ($runtime)" {
