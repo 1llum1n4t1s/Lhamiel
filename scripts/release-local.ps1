@@ -153,7 +153,7 @@ foreach ($runtime in $Runtimes) {
                 -p:PlatformTarget=$($config.PlatformTarget) -p:OS=Windows_NT -p:IlcUseEnvironmentalTools=true `
                 --artifacts-path $buildArtifactsDir -o $publishDir
         }
-    
+
         foreach ($required in @(
             'Lhamiel.exe',
             '7z.dll',
@@ -165,14 +165,14 @@ foreach ($runtime in $Runtimes) {
                 throw "$required が publish 出力にありません ($runtime)"
             }
         }
-    
+
         Invoke-Native "Windows 11 Shell 統合の生成 ($runtime)" {
             pwsh scripts/build-shell-integration.ps1 `
                 -Runtime $runtime `
                 -PublishDir $publishDir `
                 -CertificateSubjectName $CertSubjectName
         }
-    
+
         # README.txt 生成 (CI 版の Markdown 除去ロジックを移植)
         $content = Get-Content 'README.md' -Raw -Encoding utf8
         $content = $content -replace '!\[.*?\]\(.*?\)\r?\n?', ''
@@ -186,7 +186,7 @@ foreach ($runtime in $Runtimes) {
         $content = $content -replace '(?m)^>\s*', ''
         $content = $content -replace '\r?\n{3,}', "`n`n"
         [System.IO.File]::WriteAllText((Join-Path $publishDir 'README.txt'), $content.Trim(), [System.Text.Encoding]::UTF8)
-    
+
     }
     Write-Host "== vpk pack + 署名: $runtime ==" -ForegroundColor Cyan
     Invoke-Native "vpk pack ($runtime)" {
