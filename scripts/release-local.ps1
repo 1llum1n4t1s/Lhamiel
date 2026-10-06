@@ -12,11 +12,13 @@
 # 使い方:
 #   pwsh scripts/release-local.ps1                # フルリリース (build + sign + upload + cleanup)
 #   pwsh scripts/release-local.ps1 -SkipUpload    # ビルド + 署名のみ (アップロードしない動作確認用)
+#   pwsh scripts/release-local.ps1 -ReusePublish  # 同じ版の署名済みpublishを検証して再利用し、未完了RIDをビルド
 #   pwsh scripts/release-local.ps1 -Runtimes win-x64   # 対象 RID を絞る (テスト用)
 
 [CmdletBinding()]
 param(
     [switch]$SkipUpload,
+    [switch]$ReusePublish,
     [string[]]$Runtimes = @('win-x64', 'win-arm64')
 )
 
@@ -122,7 +124,7 @@ if (-not $SkipUpload) {
     Write-Host "Cloudflare zone: $ZoneName ($zoneId)"
 }
 
-if (Test-Path $WorkDir) { Import-Module (Join-Path $env:USERPROFILE '.codex/scripts/CodexCleanup.psm1') -ErrorAction Stop; Remove-CodexItem -LiteralPath $WorkDir -AllowedRoot $RepoRoot }
+if (-not $ReusePublish -and (Test-Path -LiteralPath $WorkDir)) { Import-Module (Join-Path $env:USERPROFILE '.codex/scripts/CodexCleanup.psm1') -ErrorAction Stop; Remove-CodexItem -LiteralPath $WorkDir -AllowedRoot $RepoRoot }
 New-Item -ItemType Directory -Path $ArtifactsDir -Force | Out-Null
 
 # ---- 1. ビルド + 署名付きパッケージング (RID ごと) ----
@@ -134,9 +136,18 @@ foreach ($runtime in $Runtimes) {
     # ビルドした x64 の参照アセンブリが ARM64 publish で再利用され CS8012 になる。
     $buildArtifactsDir = Join-Path $WorkDir "build-$runtime"
 
+    if ($ReusePublish -and (Test-Path -LiteralPath (Join-Path $publishDir 'Lhamiel.exe'))) {
+        $existingVersion = (Get-Item -LiteralPath (Join-Path $publishDir 'Lhamiel.exe')).VersionInfo.ProductVersion.Split('+')[0]
+        if ($existingVersion -ne $version) { throw "既存 publish の version が異なります: $existingVersion" }
+        foreach ($name in @('Lhamiel.exe', 'Lhamiel.ShellExtension.dll', 'Lhamiel.ContextMenu.msix')) {
+            $sig = Get-AuthenticodeSignature -LiteralPath (Join-Path $publishDir $name)
+            if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notlike "CN=$CertSubjectName*") { throw "再利用できない署名です: $name" }
+        }
+        Write-Host "== 署名済み publish を再利用: $runtime =="
+    } else {
     Write-Host "== publish: $runtime ==" -ForegroundColor Cyan
     Enter-VsDevShell -VsInstallPath $visualStudioPath -SkipAutomaticLocation `
-        -DevCmdArguments "-arch=$($config.PlatformTarget) -host_arch=x64"
+        -DevCmdArguments "-arch=$($config.PlatformTarget.ToLowerInvariant()) -host_arch=x64"
     Invoke-Native "dotnet publish ($runtime)" {
         dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r $runtime `
             -p:PlatformTarget=$($config.PlatformTarget) -p:OS=Windows_NT -p:IlcUseEnvironmentalTools=true `
@@ -176,6 +187,7 @@ foreach ($runtime in $Runtimes) {
     $content = $content -replace '\r?\n{3,}', "`n`n"
     [System.IO.File]::WriteAllText((Join-Path $publishDir 'README.txt'), $content.Trim(), [System.Text.Encoding]::UTF8)
 
+    }
     Write-Host "== vpk pack + 署名: $runtime ==" -ForegroundColor Cyan
     Invoke-Native "vpk pack ($runtime)" {
         vpk pack `
@@ -188,6 +200,7 @@ foreach ($runtime in $Runtimes) {
             --packDir $publishDir `
             --outputDir $ArtifactsDir `
             --channel $config.Channel `
+            --runtime $runtime `
             --shortcuts 'StartMenuRoot,Desktop' `
             --signParams $SignParams
     }

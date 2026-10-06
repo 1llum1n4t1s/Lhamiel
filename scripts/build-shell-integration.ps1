@@ -68,7 +68,7 @@ if (Test-Path -LiteralPath $toolsetPath) {
     # vcxproj の Release 設定（C++20 / W4 / WX / MT / LTCG）と export 定義を維持する。
     $devShellModule = Join-Path $vsRoot 'Common7\Tools\Microsoft.VisualStudio.DevShell.dll'
     Import-Module $devShellModule -ErrorAction Stop
-    Enter-VsDevShell -VsInstallPath $vsRoot -SkipAutomaticLocation -DevCmdArguments "-arch=$platform -host_arch=x64"
+    Enter-VsDevShell -VsInstallPath $vsRoot -SkipAutomaticLocation -DevCmdArguments "-arch=$($platform.ToLowerInvariant()) -host_arch=x64"
     $compiler = (Get-Command cl.exe -ErrorAction Stop).Source
     New-Item -ItemType Directory -Path $nativeOutput -Force | Out-Null
     $sourcePath = Join-Path $repoRoot 'src\Lhamiel.ShellExtension\ShellExtension.cpp'
