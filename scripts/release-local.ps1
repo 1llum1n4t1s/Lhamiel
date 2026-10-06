@@ -154,18 +154,6 @@ foreach ($runtime in $Runtimes) {
                 --artifacts-path $buildArtifactsDir -o $publishDir
         }
 
-        foreach ($required in @(
-            'Lhamiel.exe',
-            '7z.dll',
-            'unlhare.dll',
-            'licenses\Kagayoi.UnLhaRe\LICENSE',
-            'licenses\Kagayoi.UnLhaRe\THIRD_PARTY_NOTICES.md'
-        )) {
-            if (-not (Test-Path (Join-Path $publishDir $required))) {
-                throw "$required が publish 出力にありません ($runtime)"
-            }
-        }
-
         Invoke-Native "Windows 11 Shell 統合の生成 ($runtime)" {
             pwsh scripts/build-shell-integration.ps1 `
                 -Runtime $runtime `
@@ -188,6 +176,18 @@ foreach ($runtime in $Runtimes) {
         [System.IO.File]::WriteAllText((Join-Path $publishDir 'README.txt'), $content.Trim(), [System.Text.Encoding]::UTF8)
 
     }
+    foreach ($required in @(
+        'Lhamiel.exe',
+        '7z.dll',
+        'unlhare.dll',
+        'licenses\Kagayoi.UnLhaRe\LICENSE',
+        'licenses\Kagayoi.UnLhaRe\THIRD_PARTY_NOTICES.md'
+    )) {
+        if (-not (Test-Path (Join-Path $publishDir $required))) {
+            throw "$required が publish 出力にありません ($runtime)"
+        }
+    }
+
     Write-Host "== vpk pack + 署名: $runtime ==" -ForegroundColor Cyan
     Invoke-Native "vpk pack ($runtime)" {
         vpk pack `
