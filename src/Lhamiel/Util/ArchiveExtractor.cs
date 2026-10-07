@@ -1527,6 +1527,15 @@ public static class ArchiveExtractor
     {
         var directories = new List<string>();
         var files = new List<string>();
+        foreach (var entry in EnumerateExtractionEntriesSafely(rootDirectory, cancellationToken))
+            (entry.IsDirectory ? directories : files).Add(entry.Path);
+
+        return (directories, files);
+    }
+
+    private static IEnumerable<(string Path, bool IsDirectory)> EnumerateExtractionEntriesSafely(
+        string rootDirectory, CancellationToken cancellationToken)
+    {
         var options = new EnumerationOptions
         {
             RecurseSubdirectories = false,
@@ -1541,6 +1550,8 @@ public static class ArchiveExtractor
         {
             cancellationToken.ThrowIfCancellationRequested();
             var current = stack.Pop();
+            if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+                throw new SecurityException($"Reparse point in extracted archive is not allowed: {current}");
             foreach (var entry in Directory.EnumerateFileSystemEntries(current, "*", options))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -1548,19 +1559,12 @@ public static class ArchiveExtractor
                 if ((attributes & FileAttributes.ReparsePoint) != 0)
                     throw new SecurityException($"Reparse point in extracted archive is not allowed: {entry}");
 
-                if ((attributes & FileAttributes.Directory) != 0)
-                {
-                    directories.Add(entry);
+                var isDirectory = (attributes & FileAttributes.Directory) != 0;
+                if (isDirectory)
                     stack.Push(entry);
-                }
-                else
-                {
-                    files.Add(entry);
-                }
+                yield return (entry, isDirectory);
             }
         }
-
-        return (directories, files);
     }
 
     /// <summary>
@@ -1949,6 +1953,12 @@ public static class ArchiveExtractor
             }
 
             cancellationToken.ThrowIfCancellationRequested();
+
+            // 通常展開も、原本の退避や最終出力への公開より先に一時ツリー全体を検査する。
+            // 衝突処理と同じ列挙境界を使い、通常経路では全パスの一覧を保持しない。
+            foreach (var _ in EnumerateExtractionEntriesSafely(tempOutputPath, cancellationToken))
+            {
+            }
 
             // 最終的な展開先への移動処理（原子性のため既存は削除せず退避し、移動成功後にバックアップを削除）
             Logger.Log($"一時ディレクトリから最終展開先へ移動します: {tempOutputPath} -> {outputPath}");

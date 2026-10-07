@@ -68,6 +68,11 @@ internal static class MotwPropagator
             var current = stack.Pop();
             try
             {
+                // 列挙オプションは子だけに適用される。起点や stack へ積んだ後に
+                // リンクへ差し替えられたディレクトリ自身も、開く直前に除外する。
+                if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
+                    continue;
+
                 // 列挙時の情報だけで分類し、二重走査と不要な FileSystemInfo の生成を避ける。
                 var entries = new FileSystemEnumerable<(string Path, bool IsDirectory)>(current,
                     static (ref FileSystemEntry entry) => (entry.ToSpecifiedFullPath(), entry.IsDirectory), enumOpts);
@@ -124,6 +129,8 @@ internal static class MotwPropagator
     {
         try
         {
+            if ((File.GetAttributes(filePath) & FileAttributes.ReparsePoint) != 0)
+                return false;
             var adsPath = PathValidator.EnsureLongPathPrefix(filePath) + ZoneIdentifierSuffix;
             LockedFileRetryPolicy.Execute(() => File.WriteAllText(adsPath, zoneIdentifierContent), filePath);
             return true;
