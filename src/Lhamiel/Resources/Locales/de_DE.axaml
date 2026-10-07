@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Archiv-Komprimierungs- &amp; Entpackungstool</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">Das Komprimierungsziel ist eine Verknüpfung zu einem Ordner und kann nicht überschrieben werden: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} Elemente</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Alle abbrechen</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Verarbeitung...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Datei ersetzen</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Fehlerwiederherstellungsoptionen</x:String>

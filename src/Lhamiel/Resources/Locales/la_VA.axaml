@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Instrumentum Compressionis &amp; Extractionis Archivorum</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">Destinatio compressionis est nexus ad indicem et superscribi non potest: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} elementa</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Omnia revoca</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Processus...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Substitutio Fasciculi</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Optiones Recuperationis Erroris</x:String>

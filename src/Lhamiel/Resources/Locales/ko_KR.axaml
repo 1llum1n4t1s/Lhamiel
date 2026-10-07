@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - 아카이브 압축 &amp; 해제 도구</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">압축 출력 대상이 폴더 링크이므로 덮어쓸 수 없습니다: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">대상 {0}개</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">모두 취소</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">처리 중...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">파일 덮어쓰기</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">오류 복구 옵션</x:String>

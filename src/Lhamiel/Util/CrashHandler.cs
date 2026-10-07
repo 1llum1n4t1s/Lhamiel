@@ -23,10 +23,26 @@ internal static partial class CrashHandler
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
             if (e.IsTerminating && e.ExceptionObject is Exception ex)
-                WriteMiniDump(ex);
+                HandleTerminatingException(ex,
+                    summary => Logger.Log(summary, LogLevel.Error),
+                    exception => { WriteMiniDump(exception); });
         };
 
         TaskScheduler.UnobservedTaskException += HandleUnobservedTaskException;
+    }
+
+    internal static void HandleTerminatingException(Exception exception, Action<string> logSummary, Action<Exception> writeDump)
+    {
+        // ダンプの失敗・停止より前に、サポート ZIP に含まれる通常ログへ診断情報を残す。
+        // 例外メッセージにはパスワードが含まれ得るため、型・HResult・スタックだけを保存する。
+        try
+        {
+            logSummary($"アプリケーションを終了する未処理の例外が発生しました: {FormatExceptionSummary(exception)}");
+        }
+        finally
+        {
+            writeDump(exception);
+        }
     }
 
     internal static void HandleUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)

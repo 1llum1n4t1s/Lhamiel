@@ -107,6 +107,35 @@ public static class ArchiveCompressor
     /// できるようにする (codex P2 #3386876544)。</returns>
     public static async Task<int> CompressFilesAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null, Settings? settingsOverride = null, string? password = null, bool encryptFileNames = true)
     {
+        // 直接呼び出しの LHA/LZH は UnLhaRe と同じ no-clobber 契約を保つ。
+        // UI の承認済み上書きは Processor が Core とバックアップ復元を所有する。
+        if (format == Format.Lzh && (File.Exists(outputPath) || Directory.Exists(outputPath)))
+            throw new Kagayoi.UnLhaRe.ArchiveNativeException(1, Kagayoi.UnLhaRe.ArchiveErrorKind.Exists,
+                $"destination already exists: {outputPath}");
+        var plan = CompressionOutputRegistry.Plan.Create(outputPath);
+        using var outputRegistration = CompressionOutputRegistry.Register([plan], cancellationToken);
+        try
+        {
+            plan.Prepare();
+            var skipped = await CompressFilesCoreAsync(sourcePaths, plan.TemporaryPath, format, progress,
+                cancellationToken, resolvedFiles, settingsOverride, password, encryptFileNames);
+            cancellationToken.ThrowIfCancellationRequested();
+            try { File.Move(plan.TemporaryPath, plan.FinalPath, overwrite: format != Format.Lzh); }
+            catch (IOException ex) when (format == Format.Lzh &&
+                ((ex.HResult & 0xffff) is 80 or 183 || File.Exists(plan.FinalPath) || Directory.Exists(plan.FinalPath)))
+            {
+                // staging 保存中に他プロセスが final を作成した場合も同じ分類で拒否する。
+                throw new Kagayoi.UnLhaRe.ArchiveNativeException(1, Kagayoi.UnLhaRe.ArchiveErrorKind.Exists,
+                    $"destination already exists: {plan.FinalPath}");
+            }
+            return skipped;
+        }
+        finally { plan.Cleanup(); }
+    }
+
+    // 呼び出し元が登録済みの staging と出力確定を所有する経路。
+    internal static async Task<int> CompressFilesCoreAsync(IEnumerable<string> sourcePaths, string outputPath, Format format, IProgress<ProgressInfo>? progress = null, CancellationToken cancellationToken = default, List<(string fullPath, string relativePath)>? resolvedFiles = null, Settings? settingsOverride = null, string? password = null, bool encryptFileNames = true)
+    {
         var sourceList = sourcePaths.ToList();
         if (sourceList.Count == 0)
         {
@@ -625,6 +654,10 @@ public static class ArchiveCompressor
 
         return await Task.Run(() =>
         {
+            var outputIdentity = OutputPathIdentity.CreateResolver(sourceList);
+            using var scan = CompressionOutputRegistry.BeginScan(cancellationToken);
+            // 明示的に選ばれた単一ファイルは、既存アーカイブも含め入力として尊重する。
+            var explicitFiles = new HashSet<string>(sourceList.Where(File.Exists).Select(Path.GetFullPath), StringComparer.OrdinalIgnoreCase);
             foreach (var sourcePath in sourceList)
             {
                 ReportScanProgress(true);
@@ -643,7 +676,7 @@ public static class ArchiveCompressor
 
                     var directories = new List<string>();
                     var files = EnumerateSourceFiles(sourcePath, baseMatcher, includeHiddenAndSystemEntries,
-                        respectNestedGitignore, normalizedIgnoreNames, directories, ReportScanProgress);
+                        respectNestedGitignore, normalizedIgnoreNames, directories, ReportScanProgress, scan.Initial, outputIdentity);
                     var parentDir = dirMode == DirectoryStructureMode.IncludeRoot
                         ? (Path.GetDirectoryName(sourcePath) ?? "")
                         : sourcePath;
@@ -725,6 +758,10 @@ public static class ArchiveCompressor
             cancellationToken.ThrowIfCancellationRequested();
             progress?.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", inspectedCount)));
             cancellationToken.ThrowIfCancellationRequested();
+            // 走査途中で開始・完了した別 worker の出力も、確定済みの一覧から除外する。
+            // 履歴はこの走査の終了まで保持されるので、完了済み出力の混入競合も防ぐ。
+            var exclusions = scan.Finish();
+            filesToCompress.RemoveAll(entry => !explicitFiles.Contains(Path.GetFullPath(entry.fullPath)) && exclusions.Contains(outputIdentity.GetKey(entry.fullPath)));
             return DeduplicateByIdentity(filesToCompress);
         }, cancellationToken).ConfigureAwait(false);
     }
@@ -1215,7 +1252,8 @@ public static class ArchiveCompressor
     private static IEnumerable<string> EnumerateSourceFiles(
         string root, GitignoreMatcher baseMatcher, bool includeHiddenAndSystemEntries,
         bool respectNestedGitignore, IReadOnlyList<string> sourceIgnoreFileNames,
-        List<string> directories, Action<bool> reportProgress)
+        List<string> directories, Action<bool> reportProgress, CompressionOutputRegistry.Exclusions outputExclusions,
+        OutputPathIdentity.Resolver outputIdentity)
     {
         var enumOpts = CreateNonRecursiveEnumerationOptions(includeHiddenAndSystemEntries);
         var stack = new Stack<(string path, GitignoreMatcher matcher, int priority)>();
@@ -1282,6 +1320,7 @@ public static class ArchiveCompressor
 
                 reportProgress(true);
                 var isDirectory = entry is DirectoryInfo;
+                if (outputExclusions.Contains(outputIdentity.GetKey(entry.FullName))) continue;
                 if (ShouldExcludeFile(entry.FullName, matcher, root, isDirectory, traversalMode: true))
                     continue;
                 if (isDirectory)

@@ -1,17 +1,16 @@
 namespace Lhamiel.Util;
 
 /// <summary>
-/// ドロップ・CLI・IPC から開始されるトップレベルのアーカイブ操作を、プロセス全体で直列化するゲート。
+/// 各圧縮・展開 worker 内の操作をプロセス単位で直列化するゲート。
 /// </summary>
 /// <remarks>
 /// <para>
 /// <see cref="NativeArchiveGate"/> は 7z.dll への接触だけを保護するため、展開後の最終移動や
-/// 圧縮結果の atomic swap、進捗ウィンドウは並行し得る。本ゲートはユーザー操作全体を 1 単位として
-/// キュー化し、第 2 インスタンスの IPC とメイン画面のドロップが重なることを防ぐ。
+/// 圧縮結果の atomic swap、進捗ウィンドウは並行し得る。全アーカイブ受付は本ゲートの前で
+/// 独立 worker に渡すため、追加要求をメインプロセスの待ち行列へ入れない。
 /// </para>
 /// <para>
-/// 取得箇所は <c>App.ProcessCommandLineFiles</c> と
-/// <c>MainWindowViewModel.ProcessDroppedPathsAsync</c> のトップレベル 2 経路だけに限定する。
+/// 取得箇所は <c>App.ProcessCommandLineFilesCore</c> に限定する。
 /// 非リエントラントなので、配下の ArchiveProcessor から再取得してはならない。
 /// </para>
 /// </remarks>

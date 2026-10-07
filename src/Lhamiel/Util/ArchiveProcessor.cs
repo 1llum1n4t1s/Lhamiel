@@ -405,6 +405,8 @@ public static class ArchiveProcessor
                             await ExtractionPasswordDialogGate.WaitAsync(cancellationToken);
                             try
                             {
+                                using var processDialogGate = await CrossProcessResourceGate.EnterMetadataAsync(
+                                    Path.Combine(Settings.AppDataDirectory, "extraction-password-dialog"), cancellationToken);
                                 pw = await PasswordDialogImpl.PromptForPasswordAsync(
                                     archiveDisplayName, View.PasswordDialogMode.Extract, attempt > 1, progressWindow, cancellationToken);
                             }
@@ -834,8 +836,9 @@ public static class ArchiveProcessor
     /// <param name="overrideOutputPath">出力パスを明示的に指定する場合（衝突回避で事前計算済みのパス）</param>
     /// <param name="settingsSnapshot">設定のスナップショット（バッチ処理時に呼び出し側で 1 回だけ取得して渡すと、各ファイルごとのロック競合＆アロケを削減できる）</param>
     /// <param name="resolvedPasswordState">バッチ呼び出し側で解決済みのパスワード状態。<c>null</c> なら内部で <see cref="TryResolveCompressionPasswordAsync"/> を呼んで解決する（単発呼び出し時の経路）。</param>
+    /// <param name="outputPlan">バッチ全体で登録済みの出力計画。単発では内部で作成する。</param>
     /// <returns>処理が成功した場合はtrue、そうでなければfalse</returns>
-    internal static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true, string? overrideOutputPath = null, Settings? settingsSnapshot = null, PasswordResolutionState? resolvedPasswordState = null)
+    internal static async Task<bool> CompressItemAsync(string sourcePath, string outputDir, bool outputToSameDirectory, string format, ProgressWindow? progressWindow, IProgress<ProgressInfo>? progressReporter = null, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true, string? overrideOutputPath = null, Settings? settingsSnapshot = null, PasswordResolutionState? resolvedPasswordState = null, CompressionOutputRegistry.Plan? outputPlan = null)
     {
         Logger.Log($"ArchiveProcessor.CompressItemAsync開始: sourcePath={sourcePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}, format={format}");
 
@@ -865,9 +868,18 @@ public static class ArchiveProcessor
         // catch/finally から見えるよう、上書き判定 / temp パスを Task.Run 外スコープで宣言する。
         // 圧縮成功時の atomic swap (codex P1 #3381582647) と例外時の temp 削除に必要。
         var outputPath = overrideOutputPath ?? ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
+        var ownsOutputRegistration = outputPlan is null;
+        outputPlan ??= CompressionOutputRegistry.Plan.Create(outputPath);
+        // 事前計画を渡したバッチは、全子の完了までその登録を所有する。
+        // 項目ごとの重複登録を作らず、重なる長い走査の履歴も増殖させない。
+        using var outputRegistration = ownsOutputRegistration
+            ? CompressionOutputRegistry.Register([outputPlan], actualCancellationToken) : null;
+        // 展開先の退避・配置・復元と協調する。親は共有、出力ファイルだけ排他にして
+        // 同じフォルダー内の別アーカイブの並列圧縮を保つ。取得順は階層ゲート→mutex。
+        using var destinationGate = await ExtractionDestinationGate.EnterAsync(outputPath, actualCancellationToken);
         using var outputGate = await CrossProcessResourceGate.EnterAsync(outputPath, actualCancellationToken);
         var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
-        var tempOutputPath = outputPath;
+        var tempOutputPath = outputPlan.TemporaryPath;
 
         // 重い処理全体を Task.Run でバックグラウンドへ移動
         return await Task.Run(async () =>
@@ -929,10 +941,8 @@ public static class ArchiveProcessor
 
                 // 既存ファイルを失わないため、圧縮は一時パスに対して行い、成功時に atomic swap する
                 // (codex P1 #3381582647: 旧パスに直接書くと addedCount==0 早期 throw 等で既存が消える)。
-                if (targetExists)
-                {
-                    tempOutputPath = outputPath + ".lhamiel-tmp-" + Guid.NewGuid().ToString("N").Substring(0, 8);
-                }
+                // TAR/LZH の内部 sidecar も登録済みの私有領域へ閉じ込める。
+                outputPlan.Prepare();
 
                 // CompressFilesAsync が IProgress<ProgressInfo> に統一されたので直接渡す。
                 // progressReporter が渡されていればそれをそのまま使い、Progress<T> の二重
@@ -1003,7 +1013,7 @@ public static class ArchiveProcessor
                         throw new OperationCanceledException(App.Text("Error.DiskSpaceCancelled"));
                 }
 
-                var inaccessibleSkipped = await ArchiveCompressor.CompressFilesAsync(
+                var inaccessibleSkipped = await ArchiveCompressor.CompressFilesCoreAsync(
                     [sourcePath], tempOutputPath, parsedFormat, compressionProgress, actualCancellationToken,
                     resolvedFiles, settingsOverride: settings,
                     password: passwordState.Password, encryptFileNames: passwordState.EncryptFileNames);
@@ -1021,7 +1031,7 @@ public static class ArchiveProcessor
                         // 元のファイルが無傷で残っており、ここで backupPath を non-null に
                         // していると下の catch が元ファイルを「部分置換の残骸」とみなして
                         // 削除してしまう (バックアップは存在しないので復元もできない)。
-                        var backupCandidate = outputPath + ".lhamiel-bak-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                        var backupCandidate = outputPlan.BackupPath;
                         if (Directory.Exists(outputPath))
                         {
                             Directory.Move(outputPath, backupCandidate);
@@ -1089,6 +1099,7 @@ public static class ArchiveProcessor
                     }
                 }
 
+                if (!targetExists) File.Move(tempOutputPath, outputPath);
                 Logger.Log($"圧縮処理が完了: {sourcePath} -> {outputPath}");
 
                 if (progressReporter == null && closeWindowOnCompletion)
@@ -1137,6 +1148,7 @@ public static class ArchiveProcessor
                 try { if (targetExists && !string.Equals(tempOutputPath, outputPath, StringComparison.OrdinalIgnoreCase) && File.Exists(tempOutputPath)) File.Delete(tempOutputPath); } catch { /* best-effort */ }
                 // redaction scope を最後に解放 (catch 内 LogException 実行後に Dispose されるよう保証)。
                 passwordStateForCleanup?.Dispose();
+                outputPlan.Cleanup();
             }
         }, actualCancellationToken);
     }
@@ -1240,8 +1252,9 @@ public static class ArchiveProcessor
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
-    /// <returns>すべての処理が成功した場合はtrue、そうでなければfalse</returns>
-    public static async Task<bool> CompressItemsAsync(string[] sourcePaths, string outputDir, bool outputToSameDirectory, string format, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true)
+    /// <param name="reportAllSucceeded">既存の成功出力あり判定とは別に、全項目が成功したかを通知する。</param>
+    /// <returns>成功した出力が1つ以上ある場合はtrue、そうでなければfalse</returns>
+    public static async Task<bool> CompressItemsAsync(string[] sourcePaths, string outputDir, bool outputToSameDirectory, string format, ProgressWindow progressWindow, CancellationToken cancellationToken = default, bool closeWindowOnCompletion = true, Action<bool>? reportAllSucceeded = null)
     {
         // codex P2 #3381905952: catch 内 LogException が redaction 適用中に走るよう、
         // batchPasswordState を try/catch 外スコープで保持する。
@@ -1276,6 +1289,9 @@ public static class ArchiveProcessor
 
             // 衝突解決後のカウントで進捗管理
             totalCount = resolvedSourcePaths.Length;
+            // 待機中の子も含め、全出力の final/temp/bak を最初の走査より先に登録する。
+            var outputPlans = resolvedOutputPaths.Select(CompressionOutputRegistry.Plan.Create).ToArray();
+            using var batchOutputRegistration = CompressionOutputRegistry.Register(outputPlans, actualCancellationToken);
 
             // 全タスク横断で共有するスロットラー（UIスレッドへの通知頻度を全体で制限）
             var sharedThrottler = new ProgressThrottler();
@@ -1318,7 +1334,7 @@ public static class ArchiveProcessor
                         totalCount, lockObject, () => successCount + failedPaths.Count, progressWindow, sharedThrottler);
 
                     // 事前計算された出力パスを使用して圧縮処理を実行（共有スナップショット + バッチ解決済みパスワードを再利用）
-                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false, overrideOutputPath: resolvedOutputPaths[index], settingsSnapshot: sharedSettings, resolvedPasswordState: batchPasswordState);
+                    var success = await CompressItemAsync(sourcePath, outputDir, outputToSameDirectory, format, progressWindow, innerProgress, actualCancellationToken, closeWindowOnCompletion: false, overrideOutputPath: resolvedOutputPaths[index], settingsSnapshot: sharedSettings, resolvedPasswordState: batchPasswordState, outputPlan: outputPlans[index]);
 
                     // lock 内で状態のみ更新し、Dispatcher への通知は lock 外で実行
                     var completedProgress = 0;
@@ -1367,6 +1383,7 @@ public static class ArchiveProcessor
             actualCancellationToken.ThrowIfCancellationRequested();
 
             // 完了メッセージを表示
+            reportAllSucceeded?.Invoke(successCount == totalCount);
             if (successCount == totalCount)
             {
                 Logger.Log($"複数対象圧縮完了: {successCount}/{totalCount}個の圧縮に成功");
@@ -1453,9 +1470,13 @@ public static class ArchiveProcessor
         var actualCancellationToken = linkedCts.Token;
 
         // catch/finally から見えるよう、temp パスを Task.Run 外スコープで宣言する (codex P1 #3381582647)。
+        var outputPlan = CompressionOutputRegistry.Plan.Create(outputPath);
+        using var outputRegistration = CompressionOutputRegistry.Register([outputPlan], actualCancellationToken);
+        // 単体・バッチ圧縮と同じ順序で展開との階層排他を取得し、復元完了まで保持する。
+        using var destinationGate = await ExtractionDestinationGate.EnterAsync(outputPath, actualCancellationToken);
         using var outputGate = await CrossProcessResourceGate.EnterAsync(outputPath, actualCancellationToken);
         var targetExists = File.Exists(outputPath);
-        var tempMergedOutputPath = outputPath;
+        var tempMergedOutputPath = outputPlan.TemporaryPath;
 
         return await Task.Run(async () =>
         {
@@ -1493,10 +1514,7 @@ public static class ArchiveProcessor
                 mergedPasswordForCleanup = mergedPasswordState;
 
                 // 既存ファイルは atomic swap 直前まで残す (codex P1 #3381582647)。
-                if (targetExists)
-                {
-                    tempMergedOutputPath = outputPath + ".lhamiel-tmp-" + Guid.NewGuid().ToString("N").Substring(0, 8);
-                }
+                outputPlan.Prepare();
 
                 // 進捗ラッパは scan より前に用意する (スキャン経過のマーキー表示に使うため)。
                 // DispatchProgress 経由にすることで IsIndeterminate も正しく処理される
@@ -1574,7 +1592,7 @@ public static class ArchiveProcessor
 
                 // 解決済みリストで圧縮 (一時パスに書く)
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
-                var inaccessibleSkipped = await ArchiveCompressor.CompressFilesAsync(
+                var inaccessibleSkipped = await ArchiveCompressor.CompressFilesCoreAsync(
                     sourcePaths, tempMergedOutputPath, parsedFormat, progress, actualCancellationToken,
                     resolvedFiles, settingsOverride: settings,
                     password: mergedPasswordState.Password, encryptFileNames: mergedPasswordState.EncryptFileNames);
@@ -1588,7 +1606,7 @@ public static class ArchiveProcessor
                         // codex P2 #3384761808: backupPath への代入は move 成功後に行う
                         // (元ファイルが無傷のまま catch の残骸削除で消えるのを防ぐ。
                         //  詳細は CompressItemAsync の同処理コメント参照)。
-                        var backupCandidate = outputPath + ".lhamiel-bak-" + Guid.NewGuid().ToString("N").Substring(0, 8);
+                        var backupCandidate = outputPlan.BackupPath;
                         if (File.Exists(outputPath))
                         {
                             File.Move(outputPath, backupCandidate);
@@ -1622,6 +1640,7 @@ public static class ArchiveProcessor
                     }
                 }
 
+                if (!targetExists) File.Move(tempMergedOutputPath, outputPath);
                 Logger.Log($"まとめ圧縮完了: {outputPath}（{resolvedFiles.Count}個のファイル）");
 
                 // パスワード保護圧縮のアクセス不能スキップ警告 (codex P2 #3386876544)。
@@ -1655,6 +1674,7 @@ public static class ArchiveProcessor
                     progressWindow?.CloseSafe();
                 // catch 内 LogException 完了後に redaction を解除する (codex P2 #3381905952)
                 mergedPasswordForCleanup?.Dispose();
+                outputPlan.Cleanup();
             }
         }, actualCancellationToken);
     }

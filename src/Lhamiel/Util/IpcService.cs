@@ -82,8 +82,14 @@ public static class IpcService
     public static Task<bool> SendArgsToExistingInstanceAsync(string[] args, CancellationToken cancellationToken = default) =>
         SendArgsToExistingInstanceAsync(args, PipeName, cancellationToken);
 
+    internal static Task<bool> SendArgsToExistingInstanceAsync(string[] args, Action<uint> onConnected, CancellationToken cancellationToken = default) =>
+        SendArgsToExistingInstanceAsync(args, PipeName, cancellationToken, onConnected);
+
     // テスト用の通信先は引数で分離し、実行中の製品インスタンスへ流さない。
-    internal static async Task<bool> SendArgsToExistingInstanceAsync(string[] args, string pipeName, CancellationToken cancellationToken = default)
+    internal static Task<bool> SendArgsToExistingInstanceAsync(string[] args, string pipeName, CancellationToken cancellationToken = default) =>
+        SendArgsToExistingInstanceAsync(args, pipeName, cancellationToken, null);
+
+    internal static async Task<bool> SendArgsToExistingInstanceAsync(string[] args, string pipeName, CancellationToken cancellationToken, Action<uint>? onConnected)
     {
         var startedAt = Environment.TickCount64;
         var attempt = 0;
@@ -105,6 +111,15 @@ public static class IpcService
                     ".", pipeName, PipeDirection.Out,
                     PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
                 await client.ConnectAsync(ConnectAttemptTimeoutMs, cancellationToken);
+
+                // 権限は JSON を渡す前に実際の IPC 受信者へ付与する。取得失敗時も送信は維持する。
+                if (onConnected is not null && OperatingSystem.IsWindows())
+                {
+                    if (NativeMethods.GetNamedPipeServerProcessId(client.SafePipeHandle, out var serverPid))
+                        onConnected(serverPid);
+                    else
+                        Logger.Log($"IPC 所有 PID の取得に失敗しました: {System.Runtime.InteropServices.Marshal.GetLastPInvokeError()}", LogLevel.Warning);
+                }
 
                 var json = JsonSerializer.Serialize(args, AppJsonContext.Default.StringArray);
                 var buffer = Encoding.UTF8.GetBytes(json);

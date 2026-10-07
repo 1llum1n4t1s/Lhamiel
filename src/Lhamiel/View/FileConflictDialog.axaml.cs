@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Automation;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media.Imaging;
@@ -18,6 +19,7 @@ public partial class FileConflictDialog : Window
     private readonly List<ConflictRowViewModel> _rows;
     private readonly string[] _columnNames;
     private readonly bool _isTwoPane;
+    private bool _automationRefreshPending;
 
     // ダイアログ Close 時にアイコン遅延ロードを停止するためのソース。
     // ユーザーが大量衝突 (例: 数千件) のダイアログを即座に閉じた場合、
@@ -125,6 +127,13 @@ public partial class FileConflictDialog : Window
         }
 
         // リストバインド
+        RefreshAutomationNames();
+        var application = Avalonia.Application.Current;
+        if (application != null)
+        {
+            application.ResourcesChanged += OnApplicationResourcesChanged;
+            Closed += (_, _) => application.ResourcesChanged -= OnApplicationResourcesChanged;
+        }
         var conflictList = this.FindControl<ItemsControl>("ConflictList");
         if (conflictList != null)
             conflictList.ItemsSource = _rows;
@@ -255,9 +264,51 @@ public partial class FileConflictDialog : Window
         };
 
         var checkBox = new CheckBox { Content = panel };
+        AutomationProperties.SetName(checkBox, App.Text(isLeft ? "Conflict.ColumnLeft" : "Conflict.ColumnRight", path));
         checkBox.IsCheckedChanged += (_, _) => SetAllInColumn(isLeft, checkBox.IsChecked == true);
         Grid.SetColumn(checkBox, column);
         return checkBox;
+    }
+
+    private void OnApplicationResourcesChanged(object? sender, ResourcesChangedEventArgs e)
+    {
+        if (_automationRefreshPending) return;
+        _automationRefreshPending = true;
+        // ロケール辞書の差し替え通知は App の active locale 確定より先に発生する。
+        // 一連のリソース更新後に読み直し、同時に remove/add の多重通知をまとめる。
+        Dispatcher.UIThread.Post(() =>
+        {
+            _automationRefreshPending = false;
+            RefreshAutomationNames();
+        });
+    }
+
+    private void RefreshAutomationNames()
+    {
+        foreach (var row in _rows)
+        {
+            if (row.Left is { } left)
+                left.AutomationName = GetCellAutomationName(left, isLeft: true);
+            if (row.Right is { } right)
+                right.AutomationName = GetCellAutomationName(right, isLeft: false);
+        }
+
+        if (_isTwoPane && this.FindControl<Grid>("ColumnHeaders") is { } headers)
+        {
+            foreach (var checkBox in headers.Children.OfType<CheckBox>())
+            {
+                var column = Grid.GetColumn(checkBox);
+                AutomationProperties.SetName(checkBox,
+                    App.Text(column == 0 ? "Conflict.ColumnLeft" : "Conflict.ColumnRight", _columnNames[column]));
+            }
+        }
+    }
+
+    private string GetCellAutomationName(ConflictCellViewModel cell, bool isLeft)
+    {
+        // 圧縮時は全候補が圧縮元なので、左右の役割ではなく元のフォルダーで区別する。
+        var location = App.Text(_isTwoPane && !isLeft ? "Conflict.ColumnRight" : "Conflict.ColumnLeft", cell.FullPathDisplay);
+        return $"{cell.Entry.RelativePath} — {location}";
     }
 
     /// <summary>
@@ -572,6 +623,9 @@ public partial class ConflictCellViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isSelected;
+
+    [ObservableProperty]
+    private string _automationName = "";
 
     public string FileSizeDisplay => Entry.FileSizeDisplay;
     public string LastModifiedDisplay => Entry.LastModified.ToString("yyyy/MM/dd HH:mm");

@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - காப்பக சுருக்கம் &amp; பிரித்தெடுத்தல் கருவி</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">சுருக்கக் கோப்பின் வெளியீட்டு இடம் ஒரு கோப்புறைக்கான இணைப்பாக இருப்பதால் அதை மேலெழுத முடியாது: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} உருப்படிகள்</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">அனைத்தையும் ரத்துசெய்</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">செயலாக்கம்...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">கோப்பை மாற்றவும்</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">பிழை மீட்பு விருப்பங்கள்</x:String>

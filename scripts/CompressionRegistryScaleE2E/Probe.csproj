@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Assets Condition="'$(Assets)' == ''">../../src/Lhamiel/bin/Release/net10.0-windows8.0/win-x64</Assets><OutputType>Exe</OutputType><AssemblyName>Lhamiel.Tests.Unit</AssemblyName>
+    <TargetFramework>net10.0-windows8.0</TargetFramework><RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><PublishAot>false</PublishAot>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors><EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild><RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(Assets)/Avalonia*.dll;$(Assets)/Lhamiel.dll;$(Assets)/Cube*.dll;$(Assets)/CommunityToolkit.Mvvm.dll;$(Assets)/Kagayoi*.dll;$(Assets)/Velopack*.dll;$(Assets)/SkiaSharp.dll;$(Assets)/HarfBuzzSharp.dll;$(Assets)/MicroCom*.dll;$(Assets)/Microsoft.Extensions*.dll;$(Assets)/SuperLightLogger.dll;$(Assets)/Tmds*.dll;$(Assets)/System.Security.Cryptography.ProtectedData.dll" Exclude="$(Assets)/7z.dll;$(Assets)/av_libglesv2.dll;$(Assets)/libHarfBuzzSharp.dll;$(Assets)/libSkiaSharp.dll;$(Assets)/unlhare.dll" />
+    <Content Include="$(Assets)/*.ico;$(Assets)/7z.dll;$(Assets)/av_libglesv2.dll;$(Assets)/libHarfBuzzSharp.dll;$(Assets)/libSkiaSharp.dll;$(Assets)/unlhare.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(Assets)/native/**/*" Link="native/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(Assets)/win-x64/**/*" Link="win-x64/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <PropertyGroup><RegistrySource Condition="'$(RegistrySource)' == ''">../../src/Lhamiel/Util/CompressionOutputRegistry.cs</RegistrySource></PropertyGroup><ItemGroup><Compile Include="$(RegistrySource)" Link="CompressionOutputRegistry.cs" /><Compile Include="../../src/Lhamiel/Util/CrossProcessResourceGate.cs" Link="CrossProcessResourceGate.cs" Condition="'$(UseCurrentMetadataGate)' != 'false'" /><Compile Include="../../src/Lhamiel/Util/OutputPathIdentity.cs" Link="OutputPathIdentity.cs" Condition="Exists('../../src/Lhamiel/Util/OutputPathIdentity.cs')" /></ItemGroup></Project>

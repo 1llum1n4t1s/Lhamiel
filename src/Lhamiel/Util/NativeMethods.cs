@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Microsoft.Win32.SafeHandles;
 using System.Runtime.Versioning;
 namespace Lhamiel.Util;
 
@@ -43,6 +44,11 @@ internal static partial class NativeMethods
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool AllowSetForegroundWindow(uint dwProcessId);
+
+    // 接続済みパイプから実際の受信所有者を取得する（同名 worker の列挙に依存しない）。
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool GetNamedPipeServerProcessId(SafePipeHandle pipe, out uint serverProcessId);
 
     /// <summary>
     /// シェルに関連する変更を通知する

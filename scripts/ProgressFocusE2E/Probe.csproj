@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssetDir Condition="'$(AssetDir)' == ''">../../src/Lhamiel/bin/Release/net10.0-windows8.0/win-x64</AssetDir>
+    <OutputType>Exe</OutputType><AssemblyName>Lhamiel.Tests.Unit</AssemblyName>
+    <TargetFramework>net10.0-windows8.0</TargetFramework><RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><PublishAot>false</PublishAot>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors><EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild><RunAnalyzersDuringBuild>false</RunAnalyzersDuringBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(AssetDir)/Avalonia*.dll;$(AssetDir)/Lhamiel.dll;$(AssetDir)/Cube*.dll;$(AssetDir)/CommunityToolkit.Mvvm.dll;$(AssetDir)/Kagayoi*.dll;$(AssetDir)/Velopack*.dll;$(AssetDir)/SkiaSharp.dll;$(AssetDir)/HarfBuzzSharp.dll;$(AssetDir)/MicroCom*.dll;$(AssetDir)/Microsoft.Extensions*.dll;$(AssetDir)/SuperLightLogger.dll;$(AssetDir)/Tmds*.dll;$(AssetDir)/System.Security.Cryptography.ProtectedData.dll" Exclude="$(AssetDir)/7z.dll;$(AssetDir)/av_libglesv2.dll;$(AssetDir)/libHarfBuzzSharp.dll;$(AssetDir)/libSkiaSharp.dll;$(AssetDir)/unlhare.dll" />
+    <Content Include="$(AssetDir)/*.ico;$(AssetDir)/7z.dll;$(AssetDir)/av_libglesv2.dll;$(AssetDir)/libHarfBuzzSharp.dll;$(AssetDir)/libSkiaSharp.dll;$(AssetDir)/unlhare.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(AssetDir)/native/**/*" Link="native/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="$(AssetDir)/win-x64/**/*" Link="win-x64/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

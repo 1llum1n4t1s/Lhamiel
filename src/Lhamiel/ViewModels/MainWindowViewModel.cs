@@ -1306,131 +1306,42 @@ public sealed partial class MainWindowViewModel : ObservableObject
     {
         if (paths.Count == 0) return;
 
-        // IPC/CLI とドロップが同時に開始されてもトップレベルのアーカイブ操作は 1 件ずつ実行する。
-        // バッチ内部の安全な並列処理は、このゲートの内側で従来どおり維持される。
-        using var operationGate = await ArchiveOperationGate.EnterAsync();
-
         ProgressWindow? progressWindow = null;
         try
         {
-            // 有効なパスのみ収集
-            var validPaths = paths.Where(p => Directory.Exists(p) || File.Exists(p)).ToList();
-            if (validPaths.Count == 0) return;
+            var validPaths = paths.Where(path => Directory.Exists(path) || File.Exists(path)).ToArray();
+            if (validPaths.Length == 0) return;
+            var isExtraction = ArchiveExtractor.AreAllSupportedArchives(validPaths);
 
-            // 展開か圧縮かを事前に判定して操作種別ラベルを決定
-            var isExtraction = validPaths.Count == 1
-                ? File.Exists(validPaths[0]) && ArchiveExtractor.IsSupportedArchiveType(validPaths[0])
-                : ArchiveExtractor.AreAllSupportedArchives(validPaths);
-            var operationLabel = isExtraction
-                ? App.Text("Progress.Extracting")
-                : App.Text("Progress.Compressing");
+            // 受付時に全 UI 設定を確定する。worker の起動待ちや別のドロップで
+            // format / output / password / EncryptFileNames が差し替わらないようにする。
+            FlushPendingAutoSave();
+            var settings = _settingsManager.CreateSnapshot();
+            if (!isExtraction)
+            {
+                await CompressionWorkerLauncher.RunAsync(validPaths, settings.CompressionFormat, settings, processAsBatch: true);
+                return;
+            }
 
-            progressWindow = new ProgressWindow(operationLabel, SelectedAppIconVariant) { WindowStartupLocation = WindowStartupLocation.CenterOwner };
+            if (validPaths.Length == 1)
+            {
+                await CompressionWorkerLauncher.RunExtractionAsync(validPaths, settings);
+                return;
+            }
+
+            // 複数書庫は独立 worker に分け、全体のキャンセルだけを共有する。
+            progressWindow = new ProgressWindow(App.Text("Progress.Extracting"), settings.AppIconVariant)
+            {
+                WindowStartupLocation = WindowStartupLocation.CenterOwner
+            };
+            progressWindow.SetOperationTarget(validPaths, cancelAll: true);
             _showProgressWindow(progressWindow);
             await Task.Yield();
-            var cancellationToken = progressWindow.GetCancellationToken();
-            // 並列処理中にUIスレッドが設定を書き換えても影響を受けないよう、処理開始時点で
-            // スナップショットを取って以降は固定値として使う（/rere P0 #3 対応）。
-            // パスワード保護関連 (IsPasswordProtectionEnabled / PasswordMode / EncryptFileNames) は
-            // 300ms debounce の AutoSave に依存していると、ON にして即ドロップしたとき
-            // Snapshot が古い値を見て「パスワード無しのアーカイブ」が作られる事故が起きる。
-            // ここで全部 VM の現在値を Settings に同期してから Snapshot を取る (codex P1 #3381085181)。
-            //
-            // TAR 形式は仕様上パスワード保護を持たない。UI は checkbox を disable するだけで
-            // VM の IsPasswordProtectionEnabled 自体は ZIP/7z の設定を保持する設計だが、
-            // そのまま Snapshot に流すと「TAR なのにパスワード入力ダイアログが出て CreateArchiveWriter
-            // で InvalidOperationException」になる。Snapshot 段で TAR なら強制 false に押し下げる
-            // (VM 側の値は保持されるので ZIP/7z に戻せば自動復活、codex P2 #3381085177)。
-            // Snapshot を取る前に VM の現在値を「全て」永続層へ同期する。AutoSave は 300ms
-            // デバウンスのため、設定を切り替えた直後にドロップすると snapshot が古い値を読む。
-            // 以前はここで password/format の 4 フィールドだけを Mutate していたが、
-            // OpenExtractionOutputFolder / CreateArchiveNameFolder / OpenCompressionOutputFolder /
-            // 出力ディレクトリ等の表示系設定は同期されず、「展開先を開く」を切り替えた直後の
-            // ドロップで snapshot が古い値を引きずる陳腐化レースがあった。ApplySettingsToManager()
-            // で全設定を確定させることで全フィールドの陳腐化を防ぐ (TAR 時のパスワード保護
-            // coerce も ApplySettingsToManager 内で同じく実施され、codex P2 #3381582652 /
-            // #3381085181 の意図「全部 VM の現在値を Settings に同期してから Snapshot」を満たす)。
-            ApplySettingsToManager();
-            var settings = _settingsManager.CreateSnapshot();
-
-            if (validPaths.Count == 1)
-            {
-                // 単一ファイル/フォルダ: 展開か圧縮かを自動判定
-                var path = validPaths[0];
-                if (isExtraction)
-                {
-                    var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
-                        [path],
-                        settings.ExtractionOutputDirectory,
-                        settings.ExtractionOutputToSameDirectory,
-                        progressWindow,
-                        cancellationToken,
-                        closeWindowOnCompletion: true);
-                    if (extractionResults.Count > 0 && settings.OpenExtractionOutputFolder)
-                        OpenExtractedFolders(extractionResults, settings.CreateArchiveNameFolder);
-                }
-                else
-                {
-                    await ArchiveProcessor.CompressItemsAsync(
-                        [path],
-                        settings.CompressionOutputDirectory,
-                        settings.CompressionOutputToSameDirectory,
-                        settings.CompressionFormat,
-                        progressWindow,
-                        cancellationToken,
-                        closeWindowOnCompletion: true);
-                    // 「元と同じ場所に保存」ON でも出力フォルダを開く（CLI 経路と挙動を統一）。
-                    if (settings.OpenCompressionOutputFolder)
-                        FolderOpener.OpenFolder(ResolveCompressionOutputFolder(settings, path));
-                }
-            }
-            else if (isExtraction)
-            {
-                // 複数ファイル: すべてアーカイブなら個別展開
-                var extractionResults = await ArchiveProcessor.ExtractArchivesAsync(
-                    validPaths.ToArray(),
-                    settings.ExtractionOutputDirectory,
-                    settings.ExtractionOutputToSameDirectory,
-                    progressWindow,
-                    cancellationToken,
-                    closeWindowOnCompletion: true);
-                if (extractionResults.Count > 0 && settings.OpenExtractionOutputFolder)
-                    OpenExtractedFolders(extractionResults, settings.CreateArchiveNameFolder);
-            }
-            else
-            {
-                // 複数ファイル: アーカイブ以外が混在 or 通常ファイルのみ → 圧縮
-                if (settings.CompressMultipleAsOne)
-                {
-                    await ArchiveProcessor.CompressMergedAsync(
-                        validPaths.ToArray(),
-                        settings.CompressionOutputDirectory,
-                        settings.CompressionOutputToSameDirectory,
-                        settings.CompressionFormat,
-                        progressWindow,
-                        cancellationToken,
-                        closeWindowOnCompletion: true);
-                    // まとめ圧縮は単一アーカイブなので出力先も 1 つ。「元と同じ場所に保存」ON でも開く。
-                    if (settings.OpenCompressionOutputFolder)
-                        FolderOpener.OpenFolder(ResolveCompressionOutputFolder(settings, validPaths[0]));
-                }
-                else
-                {
-                    await ArchiveProcessor.CompressItemsAsync(
-                        validPaths.ToArray(),
-                        settings.CompressionOutputDirectory,
-                        settings.CompressionOutputToSameDirectory,
-                        settings.CompressionFormat,
-                        progressWindow,
-                        cancellationToken,
-                        closeWindowOnCompletion: true);
-                    // 個別圧縮は各アーカイブがソースと同じ場所に作られる。「元と同じ場所に保存」ON で
-                    // ソースが複数ディレクトリに跨る場合は、重複を除いた全出力ディレクトリを開く
-                    // (validPaths[0] だけだと 2 つ目以降の出力先が開かない、codex P2 #3415910507)。
-                    if (settings.OpenCompressionOutputFolder)
-                        OpenCompressionOutputFolders(settings, validPaths);
-                }
-            }
+            var progress = new Progress<int>(completed =>
+                progressWindow.UpdateProgress(completed * 100 / validPaths.Length));
+            await CompressionWorkerLauncher.RunExtractionAsync(
+                validPaths, settings, progressWindow.GetCancellationToken(), progress);
+            progressWindow.CloseSafe();
         }
         catch (OperationCanceledException)
         {
@@ -1616,51 +1527,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             Logger.LogException("IgnoreUpdateTag のクリアに失敗", ex);
             _ = MessageService.ShowError(App.Text("Error.SaveSettingsFailed", ex.Message));
-        }
-    }
-
-    private static void OpenExtractedFolders(
-        IEnumerable<(string SourcePath, string OutputPath, ArchiveExtractor.ArchiveStructureInfo StructureInfo)> extractionResults,
-        bool createArchiveNameFolder)
-    {
-        foreach (var (_, outputPath, structureInfo) in extractionResults)
-            FolderOpener.OpenExtractionResult(outputPath, structureInfo, createArchiveNameFolder);
-    }
-
-    /// <summary>
-    /// 圧縮後に開く出力フォルダを決定する。「元と同じ場所に保存」ON のときはソースのある
-    /// ディレクトリ（＝アーカイブが作られる場所）を、OFF のときは出力先ディレクトリ設定を返す。
-    /// CLI 経路（App.ProcessCompression / ProcessMergedCompression）と挙動を揃える。
-    /// </summary>
-    private static string ResolveCompressionOutputFolder(Settings settings, string firstSourcePath)
-    {
-        return settings.CompressionOutputToSameDirectory
-            ? (Path.GetDirectoryName(firstSourcePath) ?? settings.CompressionOutputDirectory)
-            : settings.CompressionOutputDirectory;
-    }
-
-    /// <summary>
-    /// 個別圧縮（<see cref="CompressMultipleAsOne"/>=false）の出力フォルダを開く。
-    /// 「元と同じ場所に保存」ON のときは各アーカイブがソースと同じディレクトリに作られるため、
-    /// ソースが複数ディレクトリに跨る場合は重複を除いた全ディレクトリを開く。OFF のときは
-    /// 単一の出力先ディレクトリ設定を開く。
-    /// </summary>
-    private static void OpenCompressionOutputFolders(Settings settings, IReadOnlyList<string> sourcePaths)
-    {
-        if (!settings.CompressionOutputToSameDirectory)
-        {
-            FolderOpener.OpenFolder(settings.CompressionOutputDirectory);
-            return;
-        }
-
-        var openedDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var source in sourcePaths)
-        {
-            var dir = Path.GetDirectoryName(source);
-            if (string.IsNullOrEmpty(dir))
-                dir = settings.CompressionOutputDirectory;
-            if (openedDirs.Add(dir))
-                FolderOpener.OpenFolder(dir);
         }
     }
 

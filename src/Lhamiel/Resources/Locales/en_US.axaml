@@ -3,6 +3,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Archive Compression &amp; Extraction Tool</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">The compression output is a link to a folder and cannot be overwritten: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} targets</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Cancel all</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Processing...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Replace File</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Error Recovery Options</x:String>

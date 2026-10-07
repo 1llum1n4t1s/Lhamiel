@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - 壓縮檔壓縮與解壓縮工具</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">壓縮輸出位置是指向資料夾的連結，無法覆寫: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} 個項目</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">全部取消</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">處理中...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">取代檔案</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">錯誤復原選項</x:String>

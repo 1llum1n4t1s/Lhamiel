@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - 压缩与解压工具</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">压缩输出位置是指向文件夹的链接，无法覆盖: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} 个项目</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">全部取消</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">处理中...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">替换文件</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">错误恢复选项</x:String>

@@ -8,7 +8,33 @@ internal static class CrossProcessResourceGate
 {
     internal static IDisposable Enter(string path, CancellationToken cancellationToken = default)
     {
-        var identity = Path.GetFullPath(path).ToUpperInvariant();
+        var identities = new[]
+        {
+            OutputPathIdentity.GetCanonicalPath(path).ToUpperInvariant(),
+            // 旧 worker の表記は long-path prefix も含め、そのまま維持する。
+            Path.GetFullPath(path).ToUpperInvariant()
+        }.Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase);
+        var leases = new List<IDisposable>();
+        try
+        {
+            // 全キーを同じ順で取得し、実パス表記を使う旧 worker とも循環待ちを作らない。
+            foreach (var identity in identities) leases.Add(EnterCore(identity, cancellationToken));
+            return new CombinedLease(leases);
+        }
+        catch
+        {
+            DisposeReverse(leases);
+            throw;
+        }
+    }
+
+    // 固定 AppData 内のメタデータは、稼働中の旧 worker と同じ lexical key で保護する。
+    // 出力パスの別名解決とは別契約にし、v1 台帳との共存中も mutex を分断しない。
+    internal static IDisposable EnterMetadata(string path, CancellationToken cancellationToken = default)
+        => EnterCore(Path.GetFullPath(path).ToUpperInvariant(), cancellationToken);
+
+    private static IDisposable EnterCore(string identity, CancellationToken cancellationToken)
+    {
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
         var mutex = new Mutex(false, @"Local\Lhamiel_Resource_" + hash);
         try
@@ -38,6 +64,12 @@ internal static class CrossProcessResourceGate
     }
 
     internal static Task<IDisposable> EnterAsync(string path, CancellationToken cancellationToken)
+        => EnterAsyncCore(path, cancellationToken, metadata: false);
+
+    internal static Task<IDisposable> EnterMetadataAsync(string path, CancellationToken cancellationToken)
+        => EnterAsyncCore(path, cancellationToken, metadata: true);
+
+    private static Task<IDisposable> EnterAsyncCore(string path, CancellationToken cancellationToken, bool metadata)
     {
         var acquired = new TaskCompletionSource<IDisposable>(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -47,7 +79,7 @@ internal static class CrossProcessResourceGate
         {
             try
             {
-                using var lease = Enter(path, cancellationToken);
+                using var lease = metadata ? EnterMetadata(path, cancellationToken) : Enter(path, cancellationToken);
                 acquired.SetResult(new AsyncLease(release));
                 release.Task.GetAwaiter().GetResult();
             }
@@ -66,6 +98,22 @@ internal static class CrossProcessResourceGate
     private sealed class AsyncLease(TaskCompletionSource release) : IDisposable
     {
         public void Dispose() => release.TrySetResult();
+    }
+
+    private static void DisposeReverse(List<IDisposable> leases)
+    {
+        for (var index = leases.Count - 1; index >= 0; index--) leases[index].Dispose();
+    }
+
+    private sealed class CombinedLease(List<IDisposable> leases) : IDisposable
+    {
+        private bool _disposed;
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            DisposeReverse(leases);
+        }
     }
 
     private sealed class MutexLease(Mutex mutex) : IDisposable

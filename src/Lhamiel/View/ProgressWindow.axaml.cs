@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Automation;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
@@ -60,6 +61,36 @@ public partial class ProgressWindow : Window
 
         // キャンセル処理用のトークンソースを初期化
         _cancellationTokenSource = new CancellationTokenSource();
+    }
+
+    /// <summary>受付時の対象と取消単位を、進捗更新から独立して表示する。</summary>
+    public void SetOperationTarget(IReadOnlyList<string> paths, bool cancelAll = false)
+    {
+        var targets = paths.Select(path => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path))).ToArray();
+        if (targets.Length == 0) return;
+        var displayName = Path.GetFileName(targets[0]);
+        if (string.IsNullOrEmpty(displayName)) displayName = targets[0];
+        var summary = targets.Length == 1 ? displayName
+            : $"{App.Text("Progress.TargetCount", targets.Length)}: {displayName}";
+        var parent = Path.GetDirectoryName(targets[0]);
+        var identity = string.IsNullOrEmpty(parent) ? summary : $"{summary} — {parent}";
+        Title = $"{_operationLabel?.Text} — {identity} - Lhamiel";
+        AutomationProperties.SetName(this, Title + "\n" + string.Join("\n", targets));
+        var targetBlock = this.FindControl<TextBlock>("TargetTextBlock");
+        if (targetBlock is not null)
+        {
+            targetBlock.Text = string.Join("\n", targets);
+            targetBlock.IsVisible = true;
+            ToolTip.SetTip(targetBlock, targetBlock.Text);
+            AutomationProperties.SetName(targetBlock, targetBlock.Text);
+        }
+        if (_cancelButton is not null)
+        {
+            var label = App.Text(cancelAll ? "Progress.CancelAll" : "Button.Cancel");
+            _cancelButton.Content = label;
+            AutomationProperties.SetName(_cancelButton, $"{label}: {identity}");
+            ToolTip.SetTip(_cancelButton, string.Join("\n", targets));
+        }
     }
 
     /// <summary>

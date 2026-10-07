@@ -12,7 +12,6 @@ namespace Lhamiel.View;
 public partial class MainWindow : Window
 {
     private Border? _dropOverlay;
-    private bool _isProcessingDrop;
 
     private void InitializeComponent()
     {
@@ -107,9 +106,6 @@ public partial class MainWindow : Window
         if (_dropOverlay != null)
             _dropOverlay.IsVisible = false;
 
-        if (_isProcessingDrop)
-            return;
-
         if (!e.DataTransfer.Contains(DataFormat.File) || e.DataTransfer.TryGetFiles() is not { } files)
             return;
         var filePaths = new List<string>();
@@ -120,15 +116,7 @@ public partial class MainWindow : Window
         }
         if (filePaths.Count > 0 && DataContext is MainWindowViewModel vm)
         {
-            _isProcessingDrop = true;
-            try
-            {
-                await vm.ProcessDroppedPathsAsync(filePaths);
-            }
-            finally
-            {
-                _isProcessingDrop = false;
-            }
+            await vm.ProcessDroppedPathsAsync(filePaths);
         }
     }
 

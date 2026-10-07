@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Tool sa Pag-compress &amp; Pag-extract ng Archive</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">Ang patutunguhan ng compression ay isang link sa folder at hindi maaaring patungan: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} item</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Kanselahin lahat</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Pinoproseso...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Palitan ang File</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Mga Opsyon sa Pagbawi mula sa Error</x:String>

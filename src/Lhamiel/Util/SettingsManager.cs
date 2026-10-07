@@ -89,7 +89,15 @@ public sealed class SettingsManager
     {
         try
         {
-            _settings = Settings.Load();
+            var requestSettings = CompressionWorkerLauncher.CurrentRequest?.Settings;
+            if (requestSettings is not null)
+                _settings = requestSettings;
+            else
+            {
+                // 他の圧縮 worker が Remember を保存している途中の設定を読まない。
+                using var gate = CrossProcessResourceGate.EnterMetadata(Path.Combine(Settings.AppDataDirectory, "settings.json"));
+                _settings = Settings.Load();
+            }
             _savedCompressionPassword = _settings.EncryptedCompressionPassword;
             // Logger が未初期化の場合は設定を渡して初期化（循環参照防止）
             Logger.Initialize(new LoggerConfig
@@ -145,9 +153,9 @@ public sealed class SettingsManager
 
     private void SaveWithProcessLock(Action<Settings>? mutator = null)
     {
-        using var gate = CrossProcessResourceGate.Enter(Path.Combine(Settings.AppDataDirectory, "settings.json"));
+        using var gate = CrossProcessResourceGate.EnterMetadata(Path.Combine(Settings.AppDataDirectory, "settings.json"));
         var latest = Settings.Load();
-        if (Program.IsCompressionWorker)
+        if (Program.IsArchiveWorker)
         {
             // worker の変更は Remember パスワードだけ。古い UI 設定全体を再保存しない。
             mutator?.Invoke(latest);
@@ -169,7 +177,7 @@ public sealed class SettingsManager
     {
         lock (_lock)
         {
-            using var gate = CrossProcessResourceGate.Enter(Path.Combine(Settings.AppDataDirectory, "settings.json"));
+            using var gate = CrossProcessResourceGate.EnterMetadata(Path.Combine(Settings.AppDataDirectory, "settings.json"));
             _settings.EncryptedCompressionPassword = Settings.Load().EncryptedCompressionPassword;
             _savedCompressionPassword = _settings.EncryptedCompressionPassword;
         }

@@ -328,7 +328,8 @@ public static class ArchiveExtractor
     {
         var dir = Path.Combine(basePath ?? Path.GetTempPath(), $"{TempDirPrefix}{suffix}_{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
-        TempCleanup.RegisterTrackedDirectory(dir);
+        if (!TempCleanup.RegisterTrackedDirectory(dir))
+            throw new IOException("Extraction temporary directory could not be protected.");
         return dir;
     }
 
@@ -374,9 +375,17 @@ public static class ArchiveExtractor
         var dirs = Directory.GetDirectories(sourceDir);
         var files = Directory.GetFiles(sourceDir);
         foreach (var dir in dirs)
-            MoveWithRetry(() => Directory.Move(dir, Path.Combine(destDir, Path.GetFileName(dir))), dir);
+        {
+            var destination = Path.Combine(destDir, Path.GetFileName(dir));
+            ValidateExtractionDestinationPath(destDir, destination);
+            MoveWithRetry(() => Directory.Move(dir, destination), dir);
+        }
         foreach (var file in files)
-            MoveWithRetry(() => File.Move(file, Path.Combine(destDir, Path.GetFileName(file)), overwrite: true), file);
+        {
+            var destination = Path.Combine(destDir, Path.GetFileName(file));
+            ValidateExtractionDestinationPath(destDir, destination);
+            MoveWithRetry(() => File.Move(file, destination, overwrite: true), file);
+        }
     }
 
     private static void MoveWithRetry(Action moveAction, string sourcePath)
@@ -490,6 +499,42 @@ public static class ArchiveExtractor
     internal static string NormalizeBaseDirectory(string basePath) =>
         Path.GetFullPath(basePath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
         + Path.DirectorySeparatorChar;
+
+    /// <summary>
+    /// 明示された出力ルート配下の既存 reparse point をたどる配置・退避・復元を拒否する。
+    /// ルート自体とその上位のリンクは利用者が選んだ出力先として許容する。
+    /// 検査と操作の間の非協調な外部変更を原子的に防ぐものではない。
+    /// </summary>
+    internal static void ValidateExtractionDestinationPath(string outputRoot, string destinationPath, bool includeLeaf = false)
+    {
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(outputRoot));
+        var destination = Path.GetFullPath(destinationPath);
+        if (string.Equals(root, destination, PathComparison))
+            return;
+        if (!destination.StartsWith(NormalizeBaseDirectory(root), PathComparison))
+            throw new SecurityException($"Extraction destination escaped its output root: {destination}");
+
+        var end = includeLeaf ? destination : Path.GetDirectoryName(destination)!;
+        var relative = Path.GetRelativePath(root, end);
+        if (relative == ".")
+            return;
+
+        // root から順に検査し、リンク配下へ入る前に拒否する。
+        var current = root;
+        foreach (var segment in relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+        {
+            current = Path.Combine(current, segment);
+            FileAttributes attributes;
+            try
+            {
+                attributes = File.GetAttributes(current);
+            }
+            catch (FileNotFoundException) { continue; }
+            catch (DirectoryNotFoundException) { continue; }
+            if ((attributes & FileAttributes.ReparsePoint) != 0)
+                throw new SecurityException($"Reparse point inside extraction destination is not allowed: {current}");
+        }
+    }
 
     /// <summary>
     /// アーカイブ内のエントリ名を展開先の相対パスとして安全に解決する（呼び出しごとに basePath を正規化する版）。
@@ -1397,12 +1442,12 @@ public static class ArchiveExtractor
                 // 例外種別で絞らない。SecurityException（境界外エントリ検出）や
                 // OperationCanceledException（ループ内のキャンセル確認）で抜けた場合も、
                 // 既に上書きした原本を戻さないとユーザーは「失敗＝元のまま」と誤認して原本を失う。
-                RestoreFromBackup(backupPaths);
+                RestoreFromBackup(backupPaths, destDir);
                 throw;
             }
 
             // 全件の配置が成功したときだけ退避を破棄する（原子性の完了）
-            DiscardBackups(backupPaths);
+            DiscardBackups(backupPaths, destDir);
         }, cancellationToken);
     }
 
@@ -1428,7 +1473,7 @@ public static class ArchiveExtractor
                 return;
             }
 
-            MoveExistingToBackup(destDir, backupPaths);
+            MoveExistingToBackup(destDir, backupPaths, destDir);
         }
         Directory.CreateDirectory(destDir);
 
@@ -1447,6 +1492,7 @@ public static class ArchiveExtractor
                     out var destSubDir,
                     normalizeUnicode: false))
                 throw new SecurityException($"Extracted directory escaped its destination: {relDir}");
+            ValidateExtractionDestinationPath(destDir, destSubDir, includeLeaf: true);
             if (!Directory.Exists(destSubDir))
                 Directory.CreateDirectory(destSubDir);
         }
@@ -1467,6 +1513,7 @@ public static class ArchiveExtractor
                     out var destFile,
                     normalizeUnicode: false))
                 throw new SecurityException($"Extracted file escaped its destination: {relativePath}");
+            ValidateExtractionDestinationPath(destDir, destFile);
             // 親ディレクトリは上のディレクトリ構造作成ループで既に作られているため
             // CreateDirectory の重複呼び出しは基本的に不要。ただし空ディレクトリ列挙で
             // 親が拾えないエッジケース（権限等）に備えて、未存在時のみ作成する。
@@ -1479,14 +1526,14 @@ public static class ArchiveExtractor
             {
                 if (PathValidator.IsProtectedDirectory(destFile))
                     throw new SecurityException($"Protected directory cannot be replaced by an extracted file: {destFile}");
-                MoveExistingToBackup(destFile, backupPaths);
+                MoveExistingToBackup(destFile, backupPaths, destDir);
             }
 
             // 既存ファイルも上書きせず退避してから移動する。退避で宛先が空くため overwrite 指定は
             // 不要で、ReadOnly 属性の一時解除と巻き戻しも要らなくなる（ReadOnly ファイルも
             // File.Move で退避できることを .NET 10 で確認済み）。
             if (File.Exists(destFile))
-                MoveExistingToBackup(destFile, backupPaths);
+                MoveExistingToBackup(destFile, backupPaths, destDir);
 
             MoveWithRetry(() => File.Move(sourceFile, destFile), sourceFile);
         }
@@ -1496,12 +1543,15 @@ public static class ArchiveExtractor
     /// 退避済みバックアップを破棄する（移動が全件成功したときだけ呼ぶ）。
     /// 削除に失敗したものは残して手動復旧の余地を残し、警告ログに留める。
     /// </summary>
-    private static void DiscardBackups(List<(string Original, string Backup)> backups)
+    private static void DiscardBackups(List<(string Original, string Backup)> backups, string outputRoot)
     {
-        foreach (var (_, backupPath) in backups)
+        foreach (var (original, backupPath) in backups)
         {
             try
             {
+                // バックアップは原本と同じ親にある。root 自体の退避は root の隣になるため、
+                // root 内の原本の祖先を検査して、その親を共有する退避先も保護する。
+                ValidateExtractionDestinationPath(outputRoot, original);
                 // ReadOnly の原本を退避したケースでは属性が残っているため、削除前に解除する
                 // （解除しないと File.Delete が UnauthorizedAccessException になり
                 //   .Lhamiel_backup_<guid> が宛先の隣に残り続ける）。
@@ -1808,6 +1858,8 @@ public static class ArchiveExtractor
                 await ArchiveProcessor.ExtractionPasswordDialogGate.WaitAsync(cancellationToken);
                 try
                 {
+                    using var processDialogGate = await CrossProcessResourceGate.EnterMetadataAsync(
+                        Path.Combine(Settings.AppDataDirectory, "extraction-password-dialog"), cancellationToken);
                     pw = await ArchiveProcessor.PasswordDialogImpl.PromptForPasswordAsync(
                         archiveName, View.PasswordDialogMode.Extract, isRetry, parentWindow, cancellationToken);
                 }
@@ -1982,12 +2034,12 @@ public static class ArchiveExtractor
                 // 退避済みの原本を元の場所へ戻す（原子性の完成）。退避だけで復元しないと、
                 // 失敗時に原本が .Lhamiel_backup_<guid> に退避されたまま宛先が空/部分になり、
                 // ユーザーは「失敗＝元のまま」と誤認したまま原本を失う。
-                RestoreFromBackup(backupPaths);
+                RestoreFromBackup(backupPaths, outputPath);
                 throw new InvalidOperationException(App.Text("Error.MoveFailed"), ex);
             }
 
             // 移動成功後のみバックアップを削除（原子性の完了）
-            DiscardBackups(backupPaths);
+            DiscardBackups(backupPaths, outputPath);
 
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
 
@@ -2139,7 +2191,7 @@ public static class ArchiveExtractor
                 // 親フォルダ直下展開時: 実際に上書きされるパスのみ退避（outputPathは退避しない）
                 foreach (var path in overwriteCheckPaths)
                 {
-                    var moved = MoveExistingToBackup(path, backupPaths);
+                    var moved = MoveExistingToBackup(path, backupPaths, outputPath);
                     if (moved)
                         cancellationToken.ThrowIfCancellationRequested();
                 }
@@ -2147,7 +2199,7 @@ public static class ArchiveExtractor
             else
             {
                 // 複数ルート等でoutputPathを新規作成する場合: outputPathを退避してから作成
-                MoveExistingToBackup(outputPath, backupPaths);
+                MoveExistingToBackup(outputPath, backupPaths, outputPath);
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
@@ -2156,7 +2208,7 @@ public static class ArchiveExtractor
         catch (OperationCanceledException)
         {
             // 退避直後にキャンセルされた場合も原本を通常パスへ戻す。
-            RestoreFromBackup(backupPaths);
+            RestoreFromBackup(backupPaths, outputPath);
             throw;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or SecurityException)
@@ -2164,7 +2216,7 @@ public static class ArchiveExtractor
             Logger.Log($"既存対象の退避に失敗しました: {ex.Message}");
             // 退避を途中まで行った分を元へ戻してから中止する（一部だけ退避された
             // 状態で放置すると、その原本が .Lhamiel_backup_<guid> に残ったまま消える）。
-            RestoreFromBackup(backupPaths);
+            RestoreFromBackup(backupPaths, outputPath);
             throw new InvalidOperationException(App.Text("Error.PreparationFailed"), ex);
         }
     }
@@ -2175,9 +2227,11 @@ public static class ArchiveExtractor
     /// </summary>
     /// <param name="path">退避対象のパス（ファイルまたはディレクトリ）</param>
     /// <param name="backups">退避元と退避先のペアを追加するリスト</param>
+    /// <param name="outputRoot">利用者が指定した最終出力ルート（配下の既存リンクを検査する境界）</param>
     /// <returns>退避を行った場合はtrue、対象が存在しなかった場合はfalse</returns>
-    private static bool MoveExistingToBackup(string path, List<(string Original, string Backup)> backups)
+    private static bool MoveExistingToBackup(string path, List<(string Original, string Backup)> backups, string outputRoot)
     {
+        ValidateExtractionDestinationPath(outputRoot, path);
         var isDirectory = Directory.Exists(path);
         if (!isDirectory && !File.Exists(path))
             return false;
@@ -2223,7 +2277,7 @@ public static class ArchiveExtractor
     /// バックアップを元へ戻す」best-effort 復元を行う。復元できなかったバックアップは
     /// 削除せず保持し、手動復旧の余地を残す。
     /// </summary>
-    private static void RestoreFromBackup(List<(string Original, string Backup)> backups)
+    private static void RestoreFromBackup(List<(string Original, string Backup)> backups, string outputRoot)
     {
         // LIFO (登録逆順) で復元する。バックアップ作成は親 → 子の順で登録される可能性があり
         // (例: `a/`, `a/b/`, `a/b/c.txt` を退避すると Move 時にこの順序で entries が積まれる)、
@@ -2235,6 +2289,7 @@ public static class ArchiveExtractor
             var (original, backup) = backups[index];
             try
             {
+                ValidateExtractionDestinationPath(outputRoot, original);
                 // 移動段で original 側へ書き込まれた残骸を先に除去してから戻す
                 // （残骸が残っていると Directory.Move/File.Move が失敗するため）。
                 // ファイル残骸・ディレクトリ残骸とも read-only 属性を先に解除する。

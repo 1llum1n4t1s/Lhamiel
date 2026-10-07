@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - アーカイブ圧縮・展開ツール</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">圧縮の出力先がフォルダーへのリンクのため、上書きできません: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">対象 {0} 件</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">すべてキャンセル</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">処理中...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">ファイルの置き換え</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">エラー回復オプション</x:String>

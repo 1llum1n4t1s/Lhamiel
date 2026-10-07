@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Ferramenta de Compressão &amp; Extração de Arquivos</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">O destino da compactação é um link para uma pasta e não pode ser sobrescrito: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} itens</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Cancelar tudo</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Processando...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Substituir Arquivo</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Opções de Recuperação de Erro</x:String>

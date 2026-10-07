@@ -76,7 +76,7 @@
       GeneratePathProperty="true"
       PrivateAssets="all" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.90" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.91" />
     <PackageReference Include="Kagayoi.UnLhaRe" Version="$(UnLhaReVersion)" />
     <PackageReference Include="SuperLightLogger" Version="1.0.17" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.1" />

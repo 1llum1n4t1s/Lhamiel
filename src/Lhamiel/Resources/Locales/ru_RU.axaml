@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Инструмент сжатия &amp; распаковки архивов</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">Путь вывода архива является ссылкой на папку, поэтому его нельзя перезаписать: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} объектов</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Отменить всё</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Обработка...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Замена файла</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Параметры восстановления после ошибки</x:String>

@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GateSourceDir Condition="'$(GateSourceDir)' == ''">../../src/Lhamiel/Util</GateSourceDir>
+    <RegistrySource Condition="'$(RegistrySource)' == ''">../../src/Lhamiel/Util/CompressionOutputRegistry.cs</RegistrySource>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(GateSourceDir)/ExtractionDestinationGate.cs" Link="ExtractionDestinationGate.cs" />
+    <Compile Include="$(GateSourceDir)/CrossProcessResourceGate.cs" Link="CrossProcessResourceGate.cs" />
+    <Compile Include="$(RegistrySource)" Link="CompressionOutputRegistry.cs" />
+    <Compile Include="../../src/Lhamiel/Util/OutputPathIdentity.cs" Link="OutputPathIdentity.cs" Condition="Exists('../../src/Lhamiel/Util/OutputPathIdentity.cs')" />
+  </ItemGroup>
+</Project>

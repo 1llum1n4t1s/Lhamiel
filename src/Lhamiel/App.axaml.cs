@@ -36,11 +36,14 @@ public partial class App : Application
     /// IPC サーバーのキャンセル用トークンソース
     /// </summary>
     private CancellationTokenSource? _ipcCts;
+    private IDisposable? _workerWindowOpenedSubscription;
+    private CancellationTokenRegistration _workerCancellationRegistration;
 
     // UI スレッド上で、実行中とゲート待機中の CLI / IPC 要求をまとめて管理する。
     private int _pendingCommandLineRequests;
     private ShutdownMode _commandLineShutdownMode;
     private bool _commandLineLifetimeHeld;
+    private ArchiveWorkerOutcome _commandLineOutcome;
     private int _pendingIpcDispatches;
 
     /// <summary>
@@ -131,7 +134,7 @@ public partial class App : Application
             var startupArgs = Environment.GetCommandLineArgs().Skip(1).ToArray();
 
             // 独立した圧縮 worker は、通常画面の単一インスタンスや IPC に参加しない。
-            if (!Program.IsCompressionWorker)
+            if (!Program.IsArchiveWorker)
             {
                 // メインウィンドウの多重起動チェック。
                 // Local\ プレフィックスでセッションローカルに限定し、別セッション/別ユーザーによる
@@ -146,7 +149,6 @@ public partial class App : Application
                     {
                         // 既に起動しているインスタンスがある場合
                         Logger.Log("アプリケーションは既に起動しています。既存のインスタンスをアクティブ化します。");
-                        ActivateExistingInstance();
 
                         // 引数の有無に関わらず IPC を送る。空配列 = 「メイン画面を表示して前面化して」という
                         // 活性化要求として既存インスタンスに伝わる。関連付け / アイコンドロップ起動の圧縮中は
@@ -154,7 +156,7 @@ public partial class App : Application
                         Logger.Log(startupArgs.Length > 0
                             ? "コマンドライン引数を既存のインスタンスに送信します。"
                             : "活性化要求（引数なし）を既存のインスタンスに送信します。");
-                        var forwarded = await IpcService.SendArgsToExistingInstanceAsync(startupArgs);
+                        var forwarded = await IpcService.SendArgsToExistingInstanceAsync(startupArgs, ActivateExistingInstance);
                         HandleIpcForwardResult(
                             forwarded,
                             () => NativeMethods.ShowErrorMessageBox(
@@ -208,10 +210,11 @@ public partial class App : Application
             }
 
             // 前回の実行で残存した一時ディレクトリを掃除する（OneDrive 同期フォルダや中断時対策）
-            if (!Program.IsCompressionWorker)
+            if (!Program.IsArchiveWorker)
                 _ = Task.Run(() => Util.TempCleanup.CleanupOrphanedTempDirectories());
 
             base.OnFrameworkInitializationCompleted();
+            InitializeWorkerCancellation();
 
 #if DEBUG
             // デバッグモード: CRDebugger を初期化（ダイアログプレビュー機能付き）
@@ -232,6 +235,7 @@ public partial class App : Application
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidDataException)
             {
+                if (Program.IsArchiveWorker) Environment.ExitCode = (int)ArchiveWorkerOutcome.Failed;
                 Logger.LogException("シェルの選択リストを読み込めませんでした", ex);
                 await MessageService.ShowError(App.Text("Error.DuringProcessing", ex.Message));
                 if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime failedLifetime)
@@ -269,6 +273,8 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
+            // 起動自体の失敗は表示済みの操作失敗と分け、親へ異常終了として返す。
+            if (Program.IsArchiveWorker) Environment.ExitCode = 1;
             var appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lhamiel");
             if (!Directory.Exists(appDataDir))
             {
@@ -317,56 +323,24 @@ public partial class App : Application
     /// <summary>
     /// 既に起動しているメインウィンドウインスタンスをアクティブ化する
     /// </summary>
-    private static void ActivateExistingInstance()
+    private static void ActivateExistingInstance(uint serverPid)
     {
         try
         {
-            var currentProcess = Process.GetCurrentProcess();
-            var currentSessionId = currentProcess.SessionId;
-
-            // 重要: SessionId で同一セッションのプロセスに絞り込む。
-            // Mutex / IPC パイプはどちらも `Local\` / SessionId 付きでセッションスコープ化されているため、
-            // 「既存インスタンス」も同一セッション内のものに限定しないと、RDP + console で
-            // 別セッションの Lhamiel を選んでしまい SetForegroundWindow が空振り→そのまま終了
-            // という経路が成立する。
-            var otherProcess = Process.GetProcessesByName(currentProcess.ProcessName)
-                .FirstOrDefault(p =>
-                {
-                    if (p.Id == currentProcess.Id) return false;
-                    try { return p.SessionId == currentSessionId; }
-                    catch { return false; } // 権限不足等で SessionId 取得不能なプロセスは対象外
-                });
-
-            if (otherProcess != null)
-            {
-                Logger.Log($"既存インスタンスを見つけました。PID: {otherProcess.Id} (Session: {currentSessionId})");
-
-                // メインウィンドウをアクティブ化（NativeMethods を使用）
-                try
-                {
-                    // 既存インスタンスに「自分自身を前面化する権利」を付与する。
-                    // ユーザー操作（ダブルクリック）直後の本プロセスはフォアグラウンド権を持つため、
-                    // ここで付与しておくと、既存インスタンス側が IPC 受信後に行う SetForegroundWindow /
-                    // Activate が Win32 フォアグラウンドロックで空振りせず確実に前面化できる。
-                    // MainWindowHandle がまだ無い headless 圧縮中インスタンスでも、メイン画面生成後の
-                    // 前面化を有効にするため、ハンドルの有無に関わらず先に付与する。
-                    NativeMethods.AllowSetForegroundWindow((uint)otherProcess.Id);
-
-                    if (otherProcess.MainWindowHandle != IntPtr.Zero)
-                    {
-                        NativeMethods.SetForegroundWindow(otherProcess.MainWindowHandle);
-                        Logger.Log("既存インスタンスをアクティブ化しました。");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log($"既存インスタンスのアクティブ化に失敗: {ex.Message}");
-                }
-            }
+            if (serverPid == 0 || serverPid == (uint)Environment.ProcessId || serverPid > int.MaxValue) return;
+            using var currentProcess = Process.GetCurrentProcess();
+            using var owner = Process.GetProcessById((int)serverPid);
+            if (owner.HasExited || owner.SessionId != currentProcess.SessionId) return;
+            if (!NativeMethods.AllowSetForegroundWindow(serverPid))
+                Logger.Log($"IPC 所有者への前面化許可が得られませんでした: PID={serverPid}", LogLevel.Warning);
+            else
+                Logger.Log($"IPC 所有者へ前面化を許可しました: PID={serverPid}");
+            // ハンドル未生成の親も IPC 受信後の画面生成で権限を使用できる。
         }
         catch (Exception ex)
         {
-            Logger.Log($"既存インスタンスのアクティブ化処理でエラーが発生: {ex.Message}");
+            // 接続直後の終了競合・セッション取得失敗でも handoff の送信を妨げない。
+            Logger.LogException("IPC 所有者への前面化許可に失敗しました", ex);
         }
     }
 
@@ -399,6 +373,16 @@ public partial class App : Application
                 case "--compress":
                     operation = CommandLineOperation.Compress;
                     break;
+                case CompressionWorkerLauncher.RequestArgument:
+                    if (!Program.IsArchiveWorker || index + 1 >= args.Length)
+                        throw new InvalidDataException("Compression request requires a worker.");
+                    index++;
+                    var workerRequest = CompressionWorkerLauncher.CurrentRequest
+                        ?? throw new InvalidDataException("Compression request is unavailable.");
+                    filePaths.AddRange(workerRequest.SourcePaths);
+                    compressionFormat = workerRequest.CompressionFormat;
+                    operation = workerRequest.IsExtraction ? CommandLineOperation.Extract : CommandLineOperation.Compress;
+                    break;
                 case "--format" when index + 1 < args.Length:
                     var requestedFormat = args[++index];
                     compressionFormat = string.Equals(requestedFormat, "LHA", StringComparison.OrdinalIgnoreCase)
@@ -428,6 +412,7 @@ public partial class App : Application
         _pendingCommandLineRequests++;
         if (!_commandLineLifetimeHeld && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            _commandLineOutcome = ArchiveWorkerOutcome.Succeeded;
             _commandLineShutdownMode = desktop.ShutdownMode;
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _commandLineLifetimeHeld = true;
@@ -435,17 +420,109 @@ public partial class App : Application
 
         try
         {
+            if (!Program.IsArchiveWorker
+                && await TryRunArchiveWorkersAsync(filePaths, compressionFormat, operation))
+                return;
+
             if (_pendingCommandLineRequests > 1)
-                Logger.Log($"先行処理の完了を待機します（CLI / IPC 要求: {_pendingCommandLineRequests} 件）。");
+                Logger.Log($"先行する展開処理の完了を待機します（CLI / IPC 要求: {_pendingCommandLineRequests} 件）。");
 
             // 各操作の終了ではなく、ゲート待機中の要求も含めた全要求の完了時に終了する。
             await ProcessCommandLineFilesCore(filePaths, compressionFormat, operation, shouldShutdown: false);
+        }
+        catch (OperationCanceledException)
+        {
+            RecordCommandLineOutcome(ArchiveWorkerOutcome.Cancelled);
+            Logger.Log("コマンドライン要求がキャンセルされました");
+        }
+        catch (Exception ex)
+        {
+            RecordCommandLineOutcome(ArchiveWorkerOutcome.Failed);
+            Logger.LogException("コマンドライン要求の処理に失敗しました", ex);
+            await MessageService.ShowError(App.Text("Error.DuringProcessing", ex.Message));
         }
         finally
         {
             _pendingCommandLineRequests--;
             ScheduleCommandLineCompletion();
         }
+    }
+
+    private async Task<bool> TryRunArchiveWorkersAsync(
+        string[] filePaths, string compressionFormat, CommandLineOperation operation)
+    {
+        var validPaths = filePaths.Where(path => File.Exists(path)
+            || (operation != CommandLineOperation.Extract && Directory.Exists(path))).ToArray();
+        if (validPaths.Length != filePaths.Length)
+            RecordCommandLineOutcome(ArchiveWorkerOutcome.Failed);
+        if (validPaths.Length == 0)
+            return false;
+
+        ViewModels.MainWindowViewModel.Current?.FlushPendingAutoSave();
+        var settings = SettingsManager.Instance.CreateSnapshot();
+        if (operation == CommandLineOperation.Extract
+            || (operation == CommandLineOperation.Automatic && compressionFormat == "default"
+                && ArchiveExtractor.AreAllSupportedArchives(validPaths)))
+        {
+            await RunExtractionWorkersAsync(validPaths, settings);
+            return true;
+        }
+        if (operation == CommandLineOperation.Automatic && compressionFormat == "default"
+            && !settings.CompressMultipleAsOne && validPaths.Length > 1)
+        {
+            // 自動判定の個別処理では、従来どおりアーカイブだけを展開する。
+            // 展開も書庫ごとの worker へ渡し、圧縮と並行して処理する。
+            var extractionPaths = validPaths.Where(path => File.Exists(path) && ArchiveExtractor.IsSupportedArchiveType(path)).ToArray();
+            var extractionSet = extractionPaths.ToHashSet(StringComparer.Ordinal);
+            var compressionPaths = validPaths.Where(path => !extractionSet.Contains(path)).ToArray();
+            var compression = CompressionWorkerLauncher.RunAsync(compressionPaths, compressionFormat, settings);
+            if (extractionPaths.Length > 0)
+                await Task.WhenAll(compression, RunExtractionWorkersAsync(extractionPaths, settings));
+            else
+                await compression;
+            RecordCommandLineOutcome((await compression).Outcome);
+        }
+        else
+            RecordCommandLineOutcome((await CompressionWorkerLauncher.RunAsync(validPaths, compressionFormat, settings)).Outcome);
+        return true;
+    }
+
+    private async Task RunExtractionWorkersAsync(string[] filePaths, Settings settings)
+    {
+        if (filePaths.Length == 1)
+        {
+            RecordCommandLineOutcome((await CompressionWorkerLauncher.RunExtractionAsync(filePaths, settings)).Outcome);
+            return;
+        }
+
+        await RunWithProgressWindowAsync(async (progressWindow, cancellationToken) =>
+        {
+            var progress = new Progress<int>(completed =>
+                progressWindow.UpdateProgress(completed * 100 / filePaths.Length));
+            var result = await CompressionWorkerLauncher.RunExtractionAsync(filePaths, settings, cancellationToken, progress);
+            RecordCommandLineOutcome(result.Outcome);
+        }, App.Text("Progress.Extracting"), "Error.DuringExtraction", shouldShutdown: false, targetPaths: filePaths, cancelAll: true);
+    }
+
+    private void InitializeWorkerCancellation()
+    {
+        if (!Program.IsExtractionWorker) return;
+        var token = CompressionWorkerLauncher.WorkerCancellationToken;
+        // 共通取消は、token を受け取らない衝突・容量ダイアログも終了させる。
+        // 取消後に開くダイアログも対象にし、親の全 worker 完了待ちを止めない。
+        _workerWindowOpenedSubscription = Window.WindowOpenedEvent.AddClassHandler<Window>((window, _) =>
+        {
+            if (token.IsCancellationRequested && window is not ProgressWindow)
+                Dispatcher.UIThread.Post(window.Close);
+        });
+        _workerCancellationRegistration = token.Register(() => Dispatcher.UIThread.Post(() =>
+        {
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                foreach (var window in desktop.Windows.ToArray())
+                    if (window is not ProgressWindow) window.Close();
+            }
+        }));
     }
 
     private void ScheduleCommandLineCompletion()
@@ -474,6 +551,21 @@ public partial class App : Application
                 }
             }
         });
+    }
+
+    private void RecordCommandLineOutcome(ArchiveWorkerOutcome outcome)
+    {
+        // 複数要求の一部失敗を後続の成功・取消で上書きしない。
+        if (outcome == ArchiveWorkerOutcome.Failed || _commandLineOutcome == ArchiveWorkerOutcome.Succeeded)
+            _commandLineOutcome = outcome;
+    }
+
+    private static ArchiveWorkerOutcome GetUnsuccessfulOperationOutcome()
+    {
+        // CloseSafe も進捗画面の token を取り消すため、null/false はそれで分類しない。
+        // 操作の OCE は別途扱い、共通取消は画面とは独立した named event だけで確認する。
+        return CompressionWorkerLauncher.WorkerCancellationToken.IsCancellationRequested
+            ? ArchiveWorkerOutcome.Cancelled : ArchiveWorkerOutcome.Failed;
     }
 
     private async Task ProcessCommandLineFilesCore(
@@ -517,6 +609,9 @@ public partial class App : Application
                 Logger.Log($"指定されたパスが存在しません: {path}");
         }
 
+        if (validPaths.Count != filePaths.Length)
+            RecordCommandLineOutcome(ArchiveWorkerOutcome.Failed);
+
         if (TryFinishEmptyCommandLineRequest(validPaths.Count, shouldShutdown, ScheduleShutdownIfNeeded))
             return;
 
@@ -542,6 +637,10 @@ public partial class App : Application
             if (settings.CompressMultipleAsOne && validPaths.Count > 1)
             {
                 await ProcessMergedCompression(validPaths.ToArray(), settings, format, shouldShutdown);
+            }
+            else if (CompressionWorkerLauncher.CurrentRequest?.ProcessAsBatch == true)
+            {
+                await ProcessBatchCompression(validPaths.ToArray(), settings, format, shouldShutdown);
             }
             else
             {
@@ -585,13 +684,13 @@ public partial class App : Application
     /// </summary>
     private async Task RunWithProgressWindowAsync(
         Func<ProgressWindow, CancellationToken, Task> operation,
-        string operationName, string errorResourceKey, bool shouldShutdown)
+        string operationName, string errorResourceKey, bool shouldShutdown, IReadOnlyList<string> targetPaths, bool cancelAll = false)
     {
         ProgressWindow? progressWindow = null;
 
         try
         {
-            (progressWindow, var cancellationTokenSource, var cancelHandler) = SetupProgressWindow(operationName);
+            (progressWindow, var cancellationTokenSource, var cancelHandler) = SetupProgressWindow(operationName, targetPaths, cancelAll);
 
             using (cancellationTokenSource)
             {
@@ -618,12 +717,14 @@ public partial class App : Application
         }
         catch (OperationCanceledException)
         {
+            RecordCommandLineOutcome(ArchiveWorkerOutcome.Cancelled);
             Logger.Log($"{operationName}がキャンセルされました");
             progressWindow?.CloseSafe();
             ShutdownIfNeeded(shouldShutdown);
         }
         catch (Exception ex)
         {
+            RecordCommandLineOutcome(ArchiveWorkerOutcome.Failed);
             Logger.LogException($"{operationName}でエラーが発生", ex);
             try
             {
@@ -654,6 +755,9 @@ public partial class App : Application
                 filePaths, settings.ExtractionOutputDirectory, settings.ExtractionOutputToSameDirectory,
                 progressWindow, ct, allowSelfExtractingExecutable: allowSelfExtractingExecutable);
 
+            if (extractionResults.Count != filePaths.Length)
+                RecordCommandLineOutcome(GetUnsuccessfulOperationOutcome());
+
             if (extractionResults.Count > 0)
             {
                 Logger.Log($"複数ファイル展開が完了しました: {extractionResults.Count}/{filePaths.Length}個成功");
@@ -673,7 +777,7 @@ public partial class App : Application
             {
                 Logger.Log("複数ファイル展開処理がすべて失敗しました");
             }
-        }, App.Text("Progress.Extracting"), "Error.DuringExtraction", shouldShutdown);
+        }, App.Text("Progress.Extracting"), "Error.DuringExtraction", shouldShutdown, targetPaths: filePaths, cancelAll: true);
     }
 
     /// <summary>
@@ -702,9 +806,10 @@ public partial class App : Application
             }
             else
             {
+                RecordCommandLineOutcome(GetUnsuccessfulOperationOutcome());
                 Logger.Log("まとめ圧縮処理が失敗しました");
             }
-        }, App.Text("Progress.Compressing"), "Error.DuringCompression", shouldShutdown);
+        }, App.Text("Progress.Compressing"), "Error.DuringCompression", shouldShutdown, targetPaths: sourcePaths, cancelAll: true);
     }
 
     /// <summary>
@@ -727,6 +832,7 @@ public partial class App : Application
             // パスが存在するかチェック
             if (!File.Exists(path) && !Directory.Exists(path))
             {
+                RecordCommandLineOutcome(ArchiveWorkerOutcome.Failed);
                 Logger.Log($"指定されたパスが存在しません: {path}");
                 await MessageService.ShowAfterClosingAsync(
                     closeTransientWindow: null,
@@ -791,6 +897,7 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
+            RecordCommandLineOutcome(ArchiveWorkerOutcome.Failed);
             Logger.LogException("コマンドライン処理でエラーが発生", ex);
             try
             {
@@ -806,8 +913,36 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 圧縮形式を解決する。"default" の場合は設定値を使用する。
+    /// 画面から受け付けた複数入力を、共通のパスワードとキャンセル単位で圧縮する。
     /// </summary>
+    private async Task ProcessBatchCompression(string[] sourcePaths, Settings settings, string format, bool shouldShutdown)
+    {
+        await RunWithProgressWindowAsync(async (progressWindow, cancellationToken) =>
+        {
+            // UI の 1 ドロップは 1 バッチ。衝突の事前解決・1 回のパスワード入力・全体取消を維持する。
+            var success = await ArchiveProcessor.CompressItemsAsync(
+                sourcePaths, settings.CompressionOutputDirectory, settings.CompressionOutputToSameDirectory,
+                format, progressWindow, cancellationToken, closeWindowOnCompletion: true,
+                reportAllSucceeded: allSucceeded =>
+                {
+                    if (!allSucceeded) RecordCommandLineOutcome(ArchiveWorkerOutcome.Failed);
+                });
+            if (!success)
+                RecordCommandLineOutcome(GetUnsuccessfulOperationOutcome());
+            if (success && settings.OpenCompressionOutputFolder)
+            {
+                var outputDirectories = settings.CompressionOutputToSameDirectory
+                    ? sourcePaths.Select(path => Path.GetDirectoryName(path))
+                        .Select(dir => string.IsNullOrEmpty(dir) ? settings.CompressionOutputDirectory : dir)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                    : [settings.CompressionOutputDirectory];
+                foreach (var directory in outputDirectories)
+                    await FolderOpener.OpenFolderAsync(directory);
+            }
+        }, App.Text("Progress.Compressing"), "Error.DuringCompression", shouldShutdown, targetPaths: sourcePaths, cancelAll: true);
+    }
+
+    /// <summary>圧縮形式を解決する。"default" の場合は設定値を使用する。</summary>
     private static string ResolveCompressionFormat(string compressionFormat, Settings settings)
     {
         return compressionFormat == "default" ? settings.CompressionFormat : compressionFormat;
@@ -817,15 +952,18 @@ public partial class App : Application
     /// ProgressWindow を初期化し、キャンセル処理をセットアップする
     /// </summary>
     /// <param name="operationType">操作タイプ（"展開"、"圧縮"など）</param>
+    /// <param name="targetPaths">受付時の処理対象パス</param>
+    /// <param name="cancelAll">全対象をまとめて取消する操作かどうか</param>
     /// <returns>(progressWindow, cts, cancelHandler)</returns>
-    private static (ProgressWindow progressWindow, CancellationTokenSource cts, EventHandler cancelHandler) SetupProgressWindow(string operationType)
+    private static (ProgressWindow progressWindow, CancellationTokenSource cts, EventHandler cancelHandler) SetupProgressWindow(string operationType, IReadOnlyList<string> targetPaths, bool cancelAll)
     {
         var progressWindow = new ProgressWindow(operationType);
+        progressWindow.SetOperationTarget(targetPaths, cancelAll);
         if (Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null && desktop.MainWindow != progressWindow)
             progressWindow.WindowStartupLocation = WindowStartupLocation.CenterOwner;
         else
             progressWindow.WindowStartupLocation = WindowStartupLocation.CenterScreen;
-        var cts = new CancellationTokenSource();
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(CompressionWorkerLauncher.WorkerCancellationToken);
         EventHandler cancelHandler = (_, _) =>
         {
             try
@@ -865,9 +1003,10 @@ public partial class App : Application
             }
             else
             {
+                RecordCommandLineOutcome(GetUnsuccessfulOperationOutcome());
                 Logger.Log("ファイル展開処理が失敗しました");
             }
-        }, App.Text("Progress.Extracting"), "Error.DuringExtraction", shouldShutdown);
+        }, App.Text("Progress.Extracting"), "Error.DuringExtraction", shouldShutdown, targetPaths: [filePath]);
     }
 
     /// <summary>
@@ -897,9 +1036,10 @@ public partial class App : Application
             }
             else
             {
+                RecordCommandLineOutcome(GetUnsuccessfulOperationOutcome());
                 Logger.Log("圧縮処理が失敗しました");
             }
-        }, App.Text("Progress.Compressing"), "Error.DuringCompression", shouldShutdown);
+        }, App.Text("Progress.Compressing"), "Error.DuringCompression", shouldShutdown, targetPaths: [sourcePath]);
     }
 
     /// <summary>
@@ -913,7 +1053,9 @@ public partial class App : Application
             var hasVisibleWindow = desktop.Windows.OfType<Window>().Any(w => w.IsVisible);
             if (!hasVisibleWindow)
             {
-                desktop.Shutdown();
+                // MainWindow のある通常 UI は終了せず、自己終了する CLI / worker だけに返す。
+                Environment.ExitCode = (int)_commandLineOutcome;
+                desktop.Shutdown((int)_commandLineOutcome);
             }
         }
     }
@@ -960,32 +1102,6 @@ public partial class App : Application
                         return;
                     }
 
-                    // 選択リストのトークンも未展開のまま渡し、worker が一度だけ回収する。
-                    if (args.Contains("--compress", StringComparer.Ordinal) && HasFileArguments(args))
-                    {
-                        try
-                        {
-                            ViewModels.MainWindowViewModel.Current?.FlushPendingAutoSave();
-                            var startInfo = new ProcessStartInfo(
-                                Environment.ProcessPath ?? throw new InvalidOperationException("Application path is unavailable."))
-                            {
-                                UseShellExecute = false,
-                            };
-                            startInfo.ArgumentList.Add(Program.CompressionWorkerArgument);
-                            foreach (var argument in args)
-                                startInfo.ArgumentList.Add(argument);
-                            using var worker = Process.Start(startInfo)
-                                ?? throw new InvalidOperationException("Compression worker could not be started.");
-                            Logger.Log($"別プロセスで圧縮処理を開始しました。PID: {worker.Id}");
-                        }
-                        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
-                        {
-                            Logger.LogException("圧縮プロセスの起動に失敗しました", ex);
-                            _ = MessageService.ShowError(App.Text("Error.DuringCompression", ex.Message));
-                        }
-                        return;
-                    }
-
                     CommandLineRequest request;
                     try
                     {
@@ -1005,7 +1121,7 @@ public partial class App : Application
                         return;
                     }
 
-                    // ファイル処理要求はメイン画面を生成せず、先行要求に続けて実行する。
+                    // 起動時と同じ入口で圧縮・展開を独立 worker へ渡す。
                     _ = ProcessCommandLineFiles(
                         request.FilePaths,
                         request.CompressionFormat,
@@ -1022,23 +1138,6 @@ public partial class App : Application
                 }
             });
         }
-    }
-
-    private static bool HasFileArguments(string[] args)
-    {
-        for (var index = 0; index < args.Length; index++)
-        {
-            if (args[index] == ShellSelectionFile.Argument)
-                return true;
-            if (args[index] == "--format")
-            {
-                index++;
-                continue;
-            }
-            if (!args[index].StartsWith("--", StringComparison.Ordinal))
-                return true;
-        }
-        return false;
     }
 
     /// <summary>
@@ -1365,6 +1464,9 @@ public partial class App : Application
 
         // CTS の安全な破棄（ObjectDisposedException を無視）
         TryCancelAndDispose(_ipcCts);
+        _workerCancellationRegistration.Dispose();
+        _workerWindowOpenedSubscription?.Dispose();
+        CompressionWorkerLauncher.ReleaseWorkerCancellation();
 
         // Mutex の安全な解放と破棄
         try

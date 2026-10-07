@@ -78,6 +78,7 @@ internal static class MotwPropagator
                     static (ref FileSystemEntry entry) => (entry.ToSpecifiedFullPath(), entry.IsDirectory), enumOpts);
                 foreach (var entry in entries)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (entry.IsDirectory)
                         stack.Push(entry.Path);
                     else

@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Alat Kompresi &amp; Ekstraksi Arsip</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">Tujuan kompresi merupakan tautan ke folder dan tidak dapat ditimpa: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} item</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Batalkan semua</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Memproses...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Ganti Berkas</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Opsi Pemulihan Kesalahan</x:String>

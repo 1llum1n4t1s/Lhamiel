@@ -12,6 +12,7 @@ namespace Lhamiel.Util;
     PropertyNamingPolicy = JsonKnownNamingPolicy.Unspecified)]
 [JsonSerializable(typeof(Settings))]
 [JsonSerializable(typeof(string[]))]
+[JsonSerializable(typeof(CompressionWorkerRequest))]
 internal partial class AppJsonContext : JsonSerializerContext
 {
 }

@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - संग्रहसङ्कोचन-निष्कर्षणसाधनम्</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">संपीडनस्य निर्गमस्थानं सञ्चयिकायाः संयोजकम् अस्ति, अतः अधिलेखनं कर्तुं न शक्यते: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} वस्तूनि</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">सर्वं निरस्यताम्</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">संसाधनम्...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">सञ्चिकाप्रतिस्थापनम्</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">दोषपुनर्लाभविकल्पाः</x:String>

@@ -132,6 +132,7 @@
                                                 Margin="0,0,8,0"
                                                 MinHeight="0"
                                                 VerticalAlignment="Center"
+                                                AutomationProperties.Name="{Binding Left.AutomationName}"
                                                 IsChecked="{Binding Left.IsSelected}" />
                                             <Image
                                                 Grid.Column="1"
@@ -184,6 +185,7 @@
                                                 Margin="0,0,8,0"
                                                 MinHeight="0"
                                                 VerticalAlignment="Center"
+                                                AutomationProperties.Name="{Binding Right.AutomationName}"
                                                 IsChecked="{Binding Right.IsSelected}" />
                                             <Image
                                                 Grid.Column="1"

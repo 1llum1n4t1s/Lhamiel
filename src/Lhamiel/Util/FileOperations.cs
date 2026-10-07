@@ -21,6 +21,8 @@ internal static class FileOperations
         var fullOutputPath = Path.GetFullPath(outputPath);
         var sourcePath = EnsureSafePath(fullTempPath, fullName, "source");
         var targetPath = EnsureSafePath(fullOutputPath, fullName, "target");
+        // File.Copy は既存のファイルリンクもたどるため、末端を含めて拒否する。
+        ArchiveExtractor.ValidateExtractionDestinationPath(fullOutputPath, targetPath, includeLeaf: true);
 
         if (isDirectory)
         {

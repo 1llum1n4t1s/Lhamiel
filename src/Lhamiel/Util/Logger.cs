@@ -195,9 +195,9 @@ public static class Logger
             _appName = config.FilePrefix;
 
             Directory.CreateDirectory(config.LogDirectory);
-            var logFilePrefix = Program.IsCompressionWorker
-                ? $"{config.FilePrefix}_compression_{Environment.ProcessId}"
-                : config.FilePrefix;
+            var logFilePrefix = Program.IsExtractionWorker
+                ? $"{config.FilePrefix}_extraction_{Environment.ProcessId}"
+                : Program.IsCompressionWorker ? $"{config.FilePrefix}_compression_{Environment.ProcessId}" : config.FilePrefix;
 
             // 文字列ベース API を使用（Lhamiel.Util.LogLevel と MEL の LogLevel の名前衝突を回避）
             LogManager.Configure(builder =>

@@ -6,6 +6,9 @@
 
   <!-- Window Titles -->
   <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Інструмент стиснення &amp; розпакування архівів</x:String>
+  <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">Шлях виведення архіву є посиланням на папку, тому його не можна перезаписати: {0}</x:String>
+  <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} об’єктів</x:String>
+  <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Скасувати все</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Обробка...</x:String>
   <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Заміна файлу</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Параметри відновлення після помилки</x:String>
