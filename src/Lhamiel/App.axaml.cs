@@ -37,6 +37,12 @@ public partial class App : Application
     /// </summary>
     private CancellationTokenSource? _ipcCts;
 
+    // UI スレッド上で、実行中とゲート待機中の CLI / IPC 要求をまとめて管理する。
+    private int _pendingCommandLineRequests;
+    private ShutdownMode _commandLineShutdownMode;
+    private bool _commandLineLifetimeHeld;
+    private int _pendingIpcDispatches;
+
     /// <summary>
     /// 現在アクティブなロケール辞書
     /// </summary>
@@ -124,81 +130,86 @@ public partial class App : Application
             // メソッド冒頭でコマンドライン引数を一度取得
             var startupArgs = Environment.GetCommandLineArgs().Skip(1).ToArray();
 
-            // メインウィンドウの多重起動チェック。
-            // Local\ プレフィックスでセッションローカルに限定し、別セッション/別ユーザーによる
-            // Mutex 先取りでのサービス妨害（DoS）を防ぐ。
-            const string mutexName = @"Local\Lhamiel_MainWindow_SingleInstance";
-
-            try
+            // 独立した圧縮 worker は、通常画面の単一インスタンスや IPC に参加しない。
+            if (!Program.IsCompressionWorker)
             {
-                _instanceMutex = new Mutex(true, mutexName, out var createdNew);
+                // メインウィンドウの多重起動チェック。
+                // Local\ プレフィックスでセッションローカルに限定し、別セッション/別ユーザーによる
+                // Mutex 先取りでのサービス妨害（DoS）を防ぐ。
+                const string mutexName = @"Local\Lhamiel_MainWindow_SingleInstance";
 
-                if (!createdNew)
+                try
                 {
-                    // 既に起動しているインスタンスがある場合
-                    Logger.Log("アプリケーションは既に起動しています。既存のインスタンスをアクティブ化します。");
-                    ActivateExistingInstance();
+                    _instanceMutex = new Mutex(true, mutexName, out var createdNew);
 
-                    // 引数の有無に関わらず IPC を送る。空配列 = 「メイン画面を表示して前面化して」という
-                    // 活性化要求として既存インスタンスに伝わる。関連付け / アイコンドロップ起動の圧縮中は
-                    // 既存インスタンスに MainWindow が存在しないため、この経路だけがメイン画面を生成・表示できる。
-                    Logger.Log(startupArgs.Length > 0
-                        ? "コマンドライン引数を既存のインスタンスに送信します。"
-                        : "活性化要求（引数なし）を既存のインスタンスに送信します。");
-                    var forwarded = await IpcService.SendArgsToExistingInstanceAsync(startupArgs);
-                    HandleIpcForwardResult(
-                        forwarded,
-                        () => NativeMethods.ShowErrorMessageBox(
-                            App.Text("Error.IpcForwardFailed"),
-                            App.Text("Dialog.Error")));
-
-                    if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                    if (!createdNew)
                     {
-                        // 同期で Shutdown すると StartWithClassicDesktopLifetime と競合するため、
-                        // Dispatcher 上で後続に実行して初期化が正常に返るようにする
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            try
-                            {
-                                desktop.Shutdown();
-                            }
-                            catch (InvalidOperationException)
-                            {
-                            }
-                        });
-                    }
-                    return;
-                }
-            }
-            catch (AbandonedMutexException)
-            {
-                // 前回プロセスが Release せずに死んだケース。new Mutex(true, ...) は所有権を引き継いで
-                // 例外を投げるため _instanceMutex は取得済みになる。新規オーナーとして続行する。
-                Logger.Log("前回のアプリケーション終了時に Mutex が正常にリリースされていません。Mutex を再取得しました。", LogLevel.Warning);
-            }
-            catch (Exception ex)
-            {
-                // Mutex 作成自体に失敗（ACL 拒否 / リソース枯渇 / AV 干渉等）。
-                // 単一インスタンス保証は失われるが、起動を拒否するとユーザーが詰まるためフォールバック起動。
-                // ⚠️ _instanceMutex が null のまま fall-through するので、後続経路の `_instanceMutex?.ReleaseMutex()` が
-                // no-op になることを許容している（RTK レビュー #B1-006 対応で明示化）。
-                _instanceMutex = null;
-                Logger.LogException("Mutex 初期化エラー（単一インスタンス保証なしで起動継続）", ex);
-            }
+                        // 既に起動しているインスタンスがある場合
+                        Logger.Log("アプリケーションは既に起動しています。既存のインスタンスをアクティブ化します。");
+                        ActivateExistingInstance();
 
-            // 初回起動時は IPC サーバーを開始して後続インスタンスからの引数を待機
-            _ipcCts = new CancellationTokenSource();
-            // fire-and-forget で捨てた Task が予期せぬ例外で黙って停止すると
-            // シングルインスタンス引継ぎが機能しなくなるため、ContinueWith でログ出力
-            _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token)
-                .ContinueWith(
-                    t => Logger.LogException("IPCサーバーが予期せず停止しました", t.Exception!),
-                    CancellationToken.None,
-                    TaskContinuationOptions.OnlyOnFaulted,
-                    TaskScheduler.Default);
+                        // 引数の有無に関わらず IPC を送る。空配列 = 「メイン画面を表示して前面化して」という
+                        // 活性化要求として既存インスタンスに伝わる。関連付け / アイコンドロップ起動の圧縮中は
+                        // 既存インスタンスに MainWindow が存在しないため、この経路だけがメイン画面を生成・表示できる。
+                        Logger.Log(startupArgs.Length > 0
+                            ? "コマンドライン引数を既存のインスタンスに送信します。"
+                            : "活性化要求（引数なし）を既存のインスタンスに送信します。");
+                        var forwarded = await IpcService.SendArgsToExistingInstanceAsync(startupArgs);
+                        HandleIpcForwardResult(
+                            forwarded,
+                            () => NativeMethods.ShowErrorMessageBox(
+                                App.Text("Error.IpcForwardFailed"),
+                                App.Text("Dialog.Error")));
+
+                        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                        {
+                            // 同期で Shutdown すると StartWithClassicDesktopLifetime と競合するため、
+                            // Dispatcher 上で後続に実行して初期化が正常に返るようにする
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                try
+                                {
+                                    desktop.Shutdown();
+                                }
+                                catch (InvalidOperationException)
+                                {
+                                }
+                            });
+                        }
+                        return;
+                    }
+                }
+                catch (AbandonedMutexException)
+                {
+                    // 前回プロセスが Release せずに死んだケース。new Mutex(true, ...) は所有権を引き継いで
+                    // 例外を投げるため _instanceMutex は取得済みになる。新規オーナーとして続行する。
+                    Logger.Log("前回のアプリケーション終了時に Mutex が正常にリリースされていません。Mutex を再取得しました。", LogLevel.Warning);
+                }
+                catch (Exception ex)
+                {
+                    // Mutex 作成自体に失敗（ACL 拒否 / リソース枯渇 / AV 干渉等）。
+                    // 単一インスタンス保証は失われるが、起動を拒否するとユーザーが詰まるためフォールバック起動。
+                    // ⚠️ _instanceMutex が null のまま fall-through するので、後続経路の `_instanceMutex?.ReleaseMutex()` が
+                    // no-op になることを許容している（RTK レビュー #B1-006 対応で明示化）。
+                    _instanceMutex = null;
+                    Logger.LogException("Mutex 初期化エラー（単一インスタンス保証なしで起動継続）", ex);
+                }
+
+                // 初回起動時は IPC サーバーを開始して後続インスタンスからの引数を待機
+                _ipcCts = new CancellationTokenSource();
+                // fire-and-forget で捨てた Task が予期せぬ例外で黙って停止すると
+                // シングルインスタンス引継ぎが機能しなくなるため、ContinueWith でログ出力
+                _ = IpcService.StartServerAsync(OnArgsReceived, _ipcCts.Token)
+                    .ContinueWith(
+                        t => Logger.LogException("IPCサーバーが予期せず停止しました", t.Exception!),
+                        CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnFaulted,
+                        TaskScheduler.Default);
+            }
 
             // 前回の実行で残存した一時ディレクトリを掃除する（OneDrive 同期フォルダや中断時対策）
-            _ = Task.Run(() => Util.TempCleanup.CleanupOrphanedTempDirectories());
+            if (!Program.IsCompressionWorker)
+                _ = Task.Run(() => Util.TempCleanup.CleanupOrphanedTempDirectories());
 
             base.OnFrameworkInitializationCompleted();
 
@@ -412,8 +423,64 @@ public partial class App : Application
     private async Task ProcessCommandLineFiles(
         string[] filePaths,
         string compressionFormat = "default",
-        CommandLineOperation operation = CommandLineOperation.Automatic,
-        bool shouldShutdown = true)
+        CommandLineOperation operation = CommandLineOperation.Automatic)
+    {
+        _pendingCommandLineRequests++;
+        if (!_commandLineLifetimeHeld && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            _commandLineShutdownMode = desktop.ShutdownMode;
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            _commandLineLifetimeHeld = true;
+        }
+
+        try
+        {
+            if (_pendingCommandLineRequests > 1)
+                Logger.Log($"先行処理の完了を待機します（CLI / IPC 要求: {_pendingCommandLineRequests} 件）。");
+
+            // 各操作の終了ではなく、ゲート待機中の要求も含めた全要求の完了時に終了する。
+            await ProcessCommandLineFilesCore(filePaths, compressionFormat, operation, shouldShutdown: false);
+        }
+        finally
+        {
+            _pendingCommandLineRequests--;
+            ScheduleCommandLineCompletion();
+        }
+    }
+
+    private void ScheduleCommandLineCompletion()
+    {
+        if (!_commandLineLifetimeHeld || _pendingCommandLineRequests != 0)
+            return;
+
+        // 無効パスだけの初回要求も、Avalonia の初期化が返った後に終了する。
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (!_commandLineLifetimeHeld || _pendingCommandLineRequests != 0
+                || Volatile.Read(ref _pendingIpcDispatches) != 0)
+                return;
+
+            _commandLineLifetimeHeld = false;
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            {
+                try
+                {
+                    // 引数なし起動で表示したメイン画面があれば、そのまま常駐する。
+                    ShutdownIfNeeded(shouldShutdown: true);
+                }
+                finally
+                {
+                    desktop.ShutdownMode = _commandLineShutdownMode;
+                }
+            }
+        });
+    }
+
+    private async Task ProcessCommandLineFilesCore(
+        string[] filePaths,
+        string compressionFormat,
+        CommandLineOperation operation,
+        bool shouldShutdown)
     {
         if (TryFinishEmptyCommandLineRequest(filePaths.Length, shouldShutdown, ScheduleShutdownIfNeeded))
             return;
@@ -522,21 +589,6 @@ public partial class App : Application
     {
         ProgressWindow? progressWindow = null;
 
-        // 自己終了する CLI / ファイル関連付け / アイコンドロップ経路 (shouldShutdown=true) では、
-        // 操作中だけ自動シャットダウン (ShutdownMode.OnLastWindowClose) を抑止する。
-        // ProgressWindow のクローズ (ArchiveProcessor が CloseSafe で Dispatcher に Post) が、
-        // 「展開先/圧縮先を開く」のファイルマネージャー起動 (await 中に別スレッドで Process.Start) の最中に
-        // 処理されると、最後のウィンドウクローズ → 自動シャットダウンがファイルマネージャー起動と競合し、
-        // 起動し切る前にプロセスが落ちてフォルダが開かない回帰があった (#61 の await 化だけでは
-        // 明示 ShutdownIfNeeded 経路しか守れず、暗黙の自動シャットダウンが残っていた)。
-        // 操作完了後は finally で元の ShutdownMode に戻し、明示 ShutdownIfNeeded、または
-        // 復帰後の OnLastWindowClose (ダイアログ表示でシャットダウンを見送ったケース) で終了する。
-        // IPC 経路 (shouldShutdown=false) は常駐 MainWindow が居るため触らない。
-        var desktop = ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
-        var originalShutdownMode = desktop?.ShutdownMode;
-        if (shouldShutdown && desktop != null)
-            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-
         try
         {
             (progressWindow, var cancellationTokenSource, var cancelHandler) = SetupProgressWindow(operationName);
@@ -559,7 +611,7 @@ public partial class App : Application
             }
 
             // ファイルマネージャー起動 (operation 内で await 済み) が完了してから ProgressWindow を閉じる。
-            // OnExplicitShutdown 中なのでこのクローズでは自動シャットダウンしない (ArchiveProcessor が
+            // 全 CLI / IPC 要求の完了までは自動シャットダウンしない (ArchiveProcessor が
             // 既に閉じていれば CloseSafe は no-op)。
             progressWindow.CloseSafe();
             ShutdownIfNeeded(shouldShutdown);
@@ -583,14 +635,6 @@ public partial class App : Application
             {
                 ShutdownIfNeeded(shouldShutdown);
             }
-        }
-        finally
-        {
-            // 自動シャットダウンを元に戻す。ShutdownIfNeeded が (ProgressWindow / エラーダイアログが
-            // まだ可視で) シャットダウンを見送った場合でも、最後のウィンドウが閉じた時点で
-            // OnLastWindowClose が確実に終了させる安全網になる。
-            if (desktop != null && originalShutdownMode.HasValue)
-                desktop.ShutdownMode = originalShutdownMode.Value;
         }
     }
 
@@ -894,17 +938,54 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // 受信済みだが UI スレッドでまだ処理していない要求も、終了判定から守る。
+            Interlocked.Increment(ref _pendingIpcDispatches);
             Dispatcher.UIThread.Post(() =>
             {
-                Logger.Log("IPC経由でコマンドライン引数を受信しました。");
-
-                // 引数の有無に関わらず、まずメイン画面を前面化する（存在しなければ生成する）。
-                // 関連付け / アイコンドロップ起動の圧縮中は既存インスタンスに MainWindow が無いため、
-                // ここで生成しないと「圧縮中にショートカットを再起動してもメイン画面が出ない」状態になる。
-                EnsureMainWindowShown(desktop, showExplicitly: true);
-
-                if (args.Length > 0)
+                try
                 {
+                    Logger.Log("IPC経由でコマンドライン引数を受信しました。");
+
+                    if (args is [Program.SavedPasswordChangedArgument])
+                    {
+                        ViewModels.MainWindowViewModel.Current?.FlushPendingAutoSave();
+                        SettingsManager.Instance.RefreshSavedCompressionPassword();
+                        ViewModels.MainWindowViewModel.RaiseSavedPasswordExternallyChanged();
+                        return;
+                    }
+
+                    if (args.Length == 0)
+                    {
+                        EnsureMainWindowShown(desktop, showExplicitly: true);
+                        return;
+                    }
+
+                    // 選択リストのトークンも未展開のまま渡し、worker が一度だけ回収する。
+                    if (args.Contains("--compress", StringComparer.Ordinal) && HasFileArguments(args))
+                    {
+                        try
+                        {
+                            ViewModels.MainWindowViewModel.Current?.FlushPendingAutoSave();
+                            var startInfo = new ProcessStartInfo(
+                                Environment.ProcessPath ?? throw new InvalidOperationException("Application path is unavailable."))
+                            {
+                                UseShellExecute = false,
+                            };
+                            startInfo.ArgumentList.Add(Program.CompressionWorkerArgument);
+                            foreach (var argument in args)
+                                startInfo.ArgumentList.Add(argument);
+                            using var worker = Process.Start(startInfo)
+                                ?? throw new InvalidOperationException("Compression worker could not be started.");
+                            Logger.Log($"別プロセスで圧縮処理を開始しました。PID: {worker.Id}");
+                        }
+                        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+                        {
+                            Logger.LogException("圧縮プロセスの起動に失敗しました", ex);
+                            _ = MessageService.ShowError(App.Text("Error.DuringCompression", ex.Message));
+                        }
+                        return;
+                    }
+
                     CommandLineRequest request;
                     try
                     {
@@ -917,20 +998,47 @@ public partial class App : Application
                         return;
                     }
 
-                    // 受信した引数で処理を実行。
-                    // IPC 経由の場合は処理終了後にアプリを終了させないようにする（shouldShutdown:false）。
+                    // 操作フラグだけの起動も、初回起動と同じくメイン画面を表示する。
+                    if (request.FilePaths.Length == 0)
+                    {
+                        EnsureMainWindowShown(desktop, showExplicitly: true);
+                        return;
+                    }
+
+                    // ファイル処理要求はメイン画面を生成せず、先行要求に続けて実行する。
                     _ = ProcessCommandLineFiles(
                         request.FilePaths,
                         request.CompressionFormat,
-                        request.Operation,
-                        false).ContinueWith(t =>
+                        request.Operation).ContinueWith(t =>
                     {
                         if (t.IsFaulted)
                             Logger.LogException("IPC経由の処理でエラーが発生", t.Exception!);
                     }, TaskScheduler.FromCurrentSynchronizationContext());
                 }
+                finally
+                {
+                    Interlocked.Decrement(ref _pendingIpcDispatches);
+                    ScheduleCommandLineCompletion();
+                }
             });
         }
+    }
+
+    private static bool HasFileArguments(string[] args)
+    {
+        for (var index = 0; index < args.Length; index++)
+        {
+            if (args[index] == ShellSelectionFile.Argument)
+                return true;
+            if (args[index] == "--format")
+            {
+                index++;
+                continue;
+            }
+            if (!args[index].StartsWith("--", StringComparison.Ordinal))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>

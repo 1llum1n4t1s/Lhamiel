@@ -216,6 +216,8 @@ public static class ArchiveProcessor
                         // SettingsManager.Current 直読みのため、PropertyChanged を明示発火しないと
                         // 次回起動まで UI が古い (Remember 初回保存後も「未設定」のまま、Clear 不可)。
                         ViewModels.MainWindowViewModel.RaiseSavedPasswordExternallyChanged();
+                        if (Program.IsCompressionWorker)
+                            await IpcService.SendArgsToExistingInstanceAsync([Program.SavedPasswordChangedArgument]);
                     }
                     else
                     {
@@ -863,6 +865,7 @@ public static class ArchiveProcessor
         // catch/finally から見えるよう、上書き判定 / temp パスを Task.Run 外スコープで宣言する。
         // 圧縮成功時の atomic swap (codex P1 #3381582647) と例外時の temp 削除に必要。
         var outputPath = overrideOutputPath ?? ArchiveCompressor.GetCompressedFileName(sourcePath, format, outputDir, outputToSameDirectory);
+        using var outputGate = await CrossProcessResourceGate.EnterAsync(outputPath, actualCancellationToken);
         var targetExists = File.Exists(outputPath) || Directory.Exists(outputPath);
         var tempOutputPath = outputPath;
 
@@ -1450,6 +1453,7 @@ public static class ArchiveProcessor
         var actualCancellationToken = linkedCts.Token;
 
         // catch/finally から見えるよう、temp パスを Task.Run 外スコープで宣言する (codex P1 #3381582647)。
+        using var outputGate = await CrossProcessResourceGate.EnterAsync(outputPath, actualCancellationToken);
         var targetExists = File.Exists(outputPath);
         var tempMergedOutputPath = outputPath;
 

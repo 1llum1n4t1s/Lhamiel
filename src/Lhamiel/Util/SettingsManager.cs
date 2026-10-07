@@ -12,6 +12,7 @@ public sealed class SettingsManager
     /// </summary>
     private static readonly Lazy<SettingsManager> _instance = new(() => new SettingsManager());
     private readonly Settings _settings;
+    private byte[]? _savedCompressionPassword;
 
     /// <summary>
     /// 変更・保存・スナップショット作成を直列化するためのロック。
@@ -76,8 +77,7 @@ public sealed class SettingsManager
         ArgumentNullException.ThrowIfNull(mutator);
         lock (_lock)
         {
-            mutator(_settings);
-            _settings.Save();
+            SaveWithProcessLock(mutator);
         }
         Logger.Log("設定を変更し保存しました");
     }
@@ -90,6 +90,7 @@ public sealed class SettingsManager
         try
         {
             _settings = Settings.Load();
+            _savedCompressionPassword = _settings.EncryptedCompressionPassword;
             // Logger が未初期化の場合は設定を渡して初期化（循環参照防止）
             Logger.Initialize(new LoggerConfig
             {
@@ -132,13 +133,45 @@ public sealed class SettingsManager
     {
         try
         {
-            lock (_lock) _settings.Save();
+            lock (_lock) SaveWithProcessLock();
             Logger.Log("設定を保存しました");
         }
         catch (Exception ex)
         {
             Logger.LogException("設定の保存に失敗しました", ex);
             throw;
+        }
+    }
+
+    private void SaveWithProcessLock(Action<Settings>? mutator = null)
+    {
+        using var gate = CrossProcessResourceGate.Enter(Path.Combine(Settings.AppDataDirectory, "settings.json"));
+        var latest = Settings.Load();
+        if (Program.IsCompressionWorker)
+        {
+            // worker の変更は Remember パスワードだけ。古い UI 設定全体を再保存しない。
+            mutator?.Invoke(latest);
+            latest.Save();
+            _settings.EncryptedCompressionPassword = latest.EncryptedCompressionPassword;
+        }
+        else
+        {
+            // UI でパスワードを変更・消去していない場合は、worker が保存した最新値を維持する。
+            if (ReferenceEquals(_settings.EncryptedCompressionPassword, _savedCompressionPassword))
+                _settings.EncryptedCompressionPassword = latest.EncryptedCompressionPassword;
+            mutator?.Invoke(_settings);
+            _settings.Save();
+        }
+        _savedCompressionPassword = _settings.EncryptedCompressionPassword;
+    }
+
+    internal void RefreshSavedCompressionPassword()
+    {
+        lock (_lock)
+        {
+            using var gate = CrossProcessResourceGate.Enter(Path.Combine(Settings.AppDataDirectory, "settings.json"));
+            _settings.EncryptedCompressionPassword = Settings.Load().EncryptedCompressionPassword;
+            _savedCompressionPassword = _settings.EncryptedCompressionPassword;
         }
     }
 

@@ -8,6 +8,11 @@ namespace Lhamiel;
 /// </summary>
 internal class Program
 {
+    internal const string CompressionWorkerArgument = "--compression-worker";
+    internal const string SavedPasswordChangedArgument = "--saved-compression-password-changed";
+    internal static bool IsCompressionWorker { get; } =
+        Environment.GetCommandLineArgs().Contains(CompressionWorkerArgument, StringComparer.Ordinal);
+
     private const string ShortcutIconRestoreMarkerFileName = ".shortcut-icon-restore-pending";
 
     /// <summary>

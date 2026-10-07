@@ -195,16 +195,19 @@ public static class Logger
             _appName = config.FilePrefix;
 
             Directory.CreateDirectory(config.LogDirectory);
+            var logFilePrefix = Program.IsCompressionWorker
+                ? $"{config.FilePrefix}_compression_{Environment.ProcessId}"
+                : config.FilePrefix;
 
             // 文字列ベース API を使用（Lhamiel.Util.LogLevel と MEL の LogLevel の名前衝突を回避）
             LogManager.Configure(builder =>
             {
                 builder.AddSuperLightFile(opt =>
                 {
-                    opt.FileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}.log");
+                    opt.FileName = Path.Combine(config.LogDirectory, $"{logFilePrefix}_${{date:format=yyyyMMdd}}.log");
                     opt.Layout = "${longdate} [${level:uppercase=true}] ${message}${onexception:inner=${newline}${exception:format=tostring}}";
                     opt.ArchiveAboveSize = (long)config.MaxSizeMB * 1024 * 1024;
-                    opt.ArchiveFileName = Path.Combine(config.LogDirectory, $"{config.FilePrefix}_${{date:format=yyyyMMdd}}_{{#}}.log");
+                    opt.ArchiveFileName = Path.Combine(config.LogDirectory, $"{logFilePrefix}_${{date:format=yyyyMMdd}}_{{#}}.log");
                     opt.ArchiveNumbering = ArchiveNumbering.Sequence;
                     opt.MaxArchiveFiles = config.MaxArchiveFiles;
                     opt.Encoding = System.Text.Encoding.UTF8;
