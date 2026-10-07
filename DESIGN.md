@@ -36,6 +36,8 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 2. `App` acquires the single-instance mutex. Later processes forward arguments through `IpcService` and exit.
 3. UI drag-and-drop enters through `MainWindowViewModel.ProcessDroppedPathsAsync`; CLI, shortcut, and file-association launches enter through `App.ProcessCommandLineFiles`. `--extract` forces extraction (including self-extracting `.exe` archives), `--compress` forces compression, and a route flag without paths opens the normal main window.
 4. `ArchiveOperationGate` queues the top-level request, then `ArchiveProcessor` selects extraction or compression and creates immutable settings snapshots.
+5. IPC `--compress` requests containing file arguments start independent processes with `--compression-worker`, preserving raw arguments and selection-file tokens. Workers skip the main-window mutex, IPC server, and orphan extraction cleanup, show their own progress window, and exit independently. The main instance flushes pending UI settings before launching each worker. Other CLI/IPC operations retain their process-local queue and windowless shutdown protection; empty requests explicitly show the main window.
+6. `NativeArchiveGate` remains process-local, so distinct compression workers can use independent native libraries concurrently. `CrossProcessResourceGate` serializes only identical final compression paths, including overwrite checks and output commit/rollback. Named-mutex ownership stays on one dedicated thread across async compression; abandoned ownership can be recovered after a process exits. Settings saves use the same gate: workers mutate the latest persisted settings, and the main instance preserves an externally updated remembered password unless it explicitly changes or clears it. Worker logs include their PID in the filename.
 
 ### Extraction
 
@@ -82,7 +84,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 
 - A SevenZip native archive reader or writer is never used outside `NativeArchiveGate`, and the gate is never acquired recursively. UnLhaRe owns per-call state and does not need the SevenZip singleton gate for payload processing.
 - Every filesystem-writing `ArchiveReader.Save` call is preceded by complete `FullName` validation. Archive `RawName` is diagnostic input, not an output path.
-- Reparse points are treated as boundaries: archive scanning does not descend into them, conflict-aware extraction tree enumeration rejects them, and cleanup removes links without enumerating their targets.
+- Reparse points are treated as boundaries: archive scanning does not descend into them, and normal/conflict-aware extraction tree validation rejects staging roots and descendants that are links. Normal extraction validates the complete staging tree before backing up existing outputs or publishing it. MotW propagation skips linked traversal roots and linked file targets; cleanup removes links without enumerating their targets. Attribute checks do not guarantee safety against a concurrent link swap after validation.
 - Top-level operations are serialized, but batch-level pure I/O may run concurrently when destinations differ and no native archive object is active.
 - Existing outputs use backup/restore semantics so preparation or move failure does not silently discard the original.
 - Capacity checks use the Windows volume API and fail closed when the target volume or available space cannot be resolved; an inspection failure is never treated as unlimited free space.
