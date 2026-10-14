@@ -89,7 +89,7 @@ $WorkDir = Resolve-ExternalWorkDirectory -Path $WorkDirectory -RepositoryRoot $R
 if (-not $UploadOnly -and -not $ReusePublish -and (Test-Path -LiteralPath $WorkDir) -and @(Get-ChildItem -LiteralPath $WorkDir -Force).Count) {
     throw "WorkDirectory が空ではありません: $WorkDir。PRUNLET.md に従い Prunlet CLI を直接 CMD から実行して清掃するか、新しいディレクトリを指定してください。"
 }
-$ArtifactsDir = Join-Path $WorkDir 'artifacts'
+$ArtifactsDir = Join-Path $WorkDir 'packages'
 Write-Host "作業ディレクトリ: $WorkDir"
 # vpk / AOT / 署名ツールの一時出力も同じ作業ルートに置く。
 $previousTemp = $env:TEMP
