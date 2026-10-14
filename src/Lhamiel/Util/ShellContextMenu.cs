@@ -15,16 +15,21 @@ internal enum ContextMenuOperation
 
 /// <summary>
 /// エクスプローラーのファイル／フォルダ右クリックメニューへ用途別の Lhamiel コマンドを登録する。
-/// Windows 11 では sparse MSIX + IExplorerCommand に静的 verb を併設し、従来型のシェルにも対応する。
+/// Windows 10 2004 以降では sparse MSIX の COM コマンドで選択集合を処理し、
+/// Windows 11 の IExplorerCommand と従来型 verb のコマンド GUID を揃えて登録する。
 /// </summary>
 [SupportedOSPlatform("windows")]
 internal static class ShellContextMenu
 {
     internal const string ExtractMenuText = "Lhamielで展開";
     internal const string CompressMenuText = "Lhamielで圧縮";
-    internal const string ExtractVerbName = "Lhamiel.Extract";
-    internal const string CompressVerbName = "Lhamiel.Compress";
     internal const string LegacyVerbName = "Lhamiel.SendTo";
+    internal const string ExtractCommandClsid = "{ABB8423C-A40B-4259-9F8A-6C62435C29CA}";
+    internal const string CompressCommandClsid = "{E1856DF5-177C-4A12-A9B5-F3D1C63C9D1B}";
+    internal const string ExtractVerbName = ExtractCommandClsid;
+    internal const string CompressVerbName = CompressCommandClsid;
+    private const string PreviousExtractVerbName = "Lhamiel.Extract";
+    private const string PreviousCompressVerbName = "Lhamiel.Compress";
     internal const string ModernPackageFamilyName = "Nephilim.Lhamiel.ContextMenu_n9k69gpd3y5t4";
     internal const string ModernPackageFileName = "Lhamiel.ContextMenu.msix";
     internal const string ShellExtensionFileName = "Lhamiel.ShellExtension.dll";
@@ -57,9 +62,10 @@ internal static class ShellContextMenu
                 appPath,
                 extractEnabled,
                 compressEnabled,
-                OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000),
+                OperatingSystem.IsWindowsVersionAtLeast(10, 0, 19041),
                 RegisterModernPackageNative,
-                IsModernPackageCurrentNative);
+                IsModernPackageCurrentNative,
+                CheckSelectionCommandActivationNative);
 
             FileAssociation.NotifyExplorer();
             Logger.Log(
@@ -98,7 +104,7 @@ internal static class ShellContextMenu
         }
     }
 
-    /// <summary>従来型を登録し、OS と配布物が対応する場合はモダン方式も併設する。</summary>
+    /// <summary>対応環境では同じ GUID の COM コマンドで従来／モダンメニューの選択集合を処理する。</summary>
     internal static void ApplyRegistration(
         RegistryKey root,
         string classesRootPath,
@@ -107,7 +113,8 @@ internal static class ShellContextMenu
         bool compressEnabled,
         bool preferModernMenu,
         Func<string, string, string, int> registerModernPackage,
-        Func<string, string, ulong, bool>? isModernPackageCurrent = null)
+        Func<string, string, ulong, bool>? isModernPackageCurrent = null,
+        Func<string, string, int>? checkSelectionCommandActivation = null)
     {
         ArgumentNullException.ThrowIfNull(root);
         ArgumentNullException.ThrowIfNull(registerModernPackage);
@@ -115,7 +122,7 @@ internal static class ShellContextMenu
         if (!extractEnabled && !compressEnabled)
         {
             // sparse パッケージを削除すると、Explorer が DLL を使用中の間は削除保留になり、
-            // 直後の再有効化やアプリ更新による再登録が ERROR_PACKAGE_PENDING_REMOVAL で失敗する。
+            // 直後の再有効化やアプリ更新による再登録が ERROR_BLOCKED_BY_PENDING_PACKAGE_REMOVAL で失敗する。
             // 通常の設定変更ではパッケージを維持し、ネイティブ拡張の表示フラグだけを無効にする。
             Unregister(root, classesRootPath);
             WriteState(root, classesRootPath, extractEnabled: false, compressEnabled: false);
@@ -123,12 +130,22 @@ internal static class ShellContextMenu
         }
 
         // モダン登録の失敗時は、従来型と公開済みの表示状態を変更しない。
-        if (preferModernMenu)
-            _ = TryRegisterModernPackage(appPath, registerModernPackage, isModernPackageCurrent);
+        var useSelectionHandler = preferModernMenu
+            && TryRegisterModernPackage(appPath, registerModernPackage, isModernPackageCurrent);
 
-        // Kiriha などの IContextMenu 利用側と「その他のオプション」にも表示する。
-        // Register は旧 SendTo verb を除去し、有効な展開／圧縮だけを登録する。
-        Register(root, classesRootPath, appPath, extractEnabled, compressEnabled);
+        if (useSelectionHandler && checkSelectionCommandActivation != null)
+        {
+            // 配置成功だけでは旧 COM サーバーの終了を保証しない。実際の起動能力を先に確認する。
+            var extensionPath = GetModernArtifacts(appPath).ExtensionPath;
+            if (extractEnabled)
+                Marshal.ThrowExceptionForHR(checkSelectionCommandActivation(extensionPath, ExtractCommandClsid));
+            if (compressEnabled)
+                Marshal.ThrowExceptionForHR(checkSelectionCommandActivation(extensionPath, CompressCommandClsid));
+        }
+
+        // 従来型の verb 名もネイティブ拡張の canonical GUID に揃え、旧名から移行する。
+        // 生の command は COM 非対応のファイルマネージャーや未登録環境向けに維持する。
+        Register(root, classesRootPath, appPath, extractEnabled, compressEnabled, useSelectionHandler);
         WriteState(root, classesRootPath, extractEnabled, compressEnabled);
     }
 
@@ -172,12 +189,10 @@ internal static class ShellContextMenu
             externalLocationUri);
         if (hResult == PackagePendingRemovalHResult)
         {
-            // DeferRegistrationWhenPackagesAreInUse による更新保留中は、現在登録済みの
-            // パッケージが引き続き有効。再登録せず状態だけ公開すれば設定変更は反映できる。
+            // 削除保留による配置拒否は登録成功ではない。既存の verb と表示状態を保持する。
             Logger.Log(
-                "右クリックメニューのパッケージ更新は Explorer の使用終了まで保留中です。現在の登録へ設定を反映します。",
+                "右クリックメニューのパッケージは削除保留中のため登録できません。ログオフ・再ログオン後に再試行してください。",
                 LogLevel.Warning);
-            return true;
         }
 
         Marshal.ThrowExceptionForHR(hResult);
@@ -208,6 +223,9 @@ internal static class ShellContextMenu
 
     private static unsafe bool IsModernPackageCurrentNative(string extensionPath, string directory, ulong version)
     {
+        // EffectiveExternalPath は末尾区切り付き。配布 DLL の完全比較にも同じ表記を渡す。
+        if (!Path.EndsInDirectorySeparator(directory))
+            directory += Path.DirectorySeparatorChar;
         var module = NativeLibrary.Load(extensionPath);
         try
         {
@@ -222,6 +240,23 @@ internal static class ShellContextMenu
                 Marshal.ThrowExceptionForHR(result);
                 return result == 0;
             }
+        }
+        finally
+        {
+            NativeLibrary.Free(module);
+        }
+    }
+
+    private static unsafe int CheckSelectionCommandActivationNative(string extensionPath, string classId)
+    {
+        var module = NativeLibrary.Load(extensionPath);
+        try
+        {
+            var check = (delegate* unmanaged[Stdcall]<char*, int>)NativeLibrary.GetExport(
+                module,
+                "LhamielCheckSelectionCommandActivation");
+            fixed (char* classIdPointer = classId)
+                return check(classIdPointer);
         }
         finally
         {
@@ -304,16 +339,17 @@ internal static class ShellContextMenu
         string classesRootPath,
         string appPath,
         bool extractEnabled,
-        bool compressEnabled)
+        bool compressEnabled,
+        bool useSelectionHandler = false)
     {
         if (string.IsNullOrWhiteSpace(appPath))
             throw new ArgumentException("実行ファイルパスが空です。", nameof(appPath));
 
         Unregister(root, classesRootPath);
         if (extractEnabled)
-            RegisterOperation(root, classesRootPath, appPath, ContextMenuOperation.Extract, FileTargetClasses);
+            RegisterOperation(root, classesRootPath, appPath, ContextMenuOperation.Extract, FileTargetClasses, useSelectionHandler);
         if (compressEnabled)
-            RegisterOperation(root, classesRootPath, appPath, ContextMenuOperation.Compress, CompressTargetClasses);
+            RegisterOperation(root, classesRootPath, appPath, ContextMenuOperation.Compress, CompressTargetClasses, useSelectionHandler);
     }
 
     private static void RegisterOperation(
@@ -321,7 +357,8 @@ internal static class ShellContextMenu
         string classesRootPath,
         string appPath,
         ContextMenuOperation operation,
-        IEnumerable<string> targetClasses)
+        IEnumerable<string> targetClasses,
+        bool useSelectionHandler)
     {
         var command = BuildCommand(appPath, operation);
         var icon = $"\"{appPath}\",0";
@@ -339,10 +376,15 @@ internal static class ShellContextMenu
             using var commandKey = verbKey.CreateSubKey("command")
                 ?? throw new InvalidOperationException($"command キーを作成できませんでした: {verbPath}");
             commandKey.SetValue("", command, RegistryValueKind.String);
+            if (useSelectionHandler)
+            {
+                var clsid = operation == ContextMenuOperation.Extract ? ExtractCommandClsid : CompressCommandClsid;
+                commandKey.SetValue("DelegateExecute", clsid, RegistryValueKind.String);
+            }
         }
     }
 
-    /// <summary>新旧すべての Lhamiel 静的 verb を削除する。</summary>
+    /// <summary>GUID への移行前を含め、新旧すべての Lhamiel verb を削除する。</summary>
     internal static void Unregister(RegistryKey root, string classesRootPath)
     {
         foreach (var targetClass in LegacyTargetClasses)
@@ -350,6 +392,8 @@ internal static class ShellContextMenu
             root.DeleteSubKeyTree(BuildLegacyVerbPath(classesRootPath, targetClass), throwOnMissingSubKey: false);
             root.DeleteSubKeyTree(BuildVerbPath(classesRootPath, targetClass, ContextMenuOperation.Extract), throwOnMissingSubKey: false);
             root.DeleteSubKeyTree(BuildVerbPath(classesRootPath, targetClass, ContextMenuOperation.Compress), throwOnMissingSubKey: false);
+            root.DeleteSubKeyTree($@"{classesRootPath}\{targetClass}\shell\{PreviousExtractVerbName}", throwOnMissingSubKey: false);
+            root.DeleteSubKeyTree($@"{classesRootPath}\{targetClass}\shell\{PreviousCompressVerbName}", throwOnMissingSubKey: false);
         }
     }
 

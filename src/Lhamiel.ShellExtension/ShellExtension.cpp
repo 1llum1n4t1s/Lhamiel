@@ -268,7 +268,7 @@ namespace
         return S_OK;
     }
 
-    class ExplorerCommand final : public IExplorerCommand
+    class ExplorerCommand final : public IExplorerCommand, public IExecuteCommand, public IObjectWithSelection
     {
     public:
         explicit ExplorerCommand(OperationMode mode) noexcept : mode_(mode)
@@ -284,6 +284,10 @@ namespace
             *object = nullptr;
             if (IsEqualIID(interfaceId, IID_IUnknown) || IsEqualIID(interfaceId, __uuidof(IExplorerCommand)))
                 *object = static_cast<IExplorerCommand*>(this);
+            else if (IsEqualIID(interfaceId, __uuidof(IExecuteCommand)))
+                *object = static_cast<IExecuteCommand*>(this);
+            else if (IsEqualIID(interfaceId, __uuidof(IObjectWithSelection)))
+                *object = static_cast<IObjectWithSelection*>(this);
             else
                 return E_NOINTERFACE;
 
@@ -383,6 +387,35 @@ namespace
             }
         }
 
+        // 従来メニューでも Shell が渡す選択集合を一度の起動で処理する。
+        IFACEMETHODIMP SetSelection(IShellItemArray* selectedItems) override
+        {
+            winrt::com_ptr<IShellItemArray> selection;
+            selection.copy_from(selectedItems);
+            selectedItems_ = std::move(selection);
+            return S_OK;
+        }
+
+        IFACEMETHODIMP GetSelection(REFIID interfaceId, void** selection) override
+        {
+            if (selection == nullptr)
+                return E_POINTER;
+            *selection = nullptr;
+            return selectedItems_ ? selectedItems_->QueryInterface(interfaceId, selection) : E_FAIL;
+        }
+
+        IFACEMETHODIMP SetKeyState(DWORD) override { return S_OK; }
+        IFACEMETHODIMP SetParameters(LPCWSTR) override { return S_OK; }
+        IFACEMETHODIMP SetPosition(POINT) override { return S_OK; }
+        IFACEMETHODIMP SetShowWindow(int) override { return S_OK; }
+        IFACEMETHODIMP SetNoShowUI(BOOL) override { return S_OK; }
+        IFACEMETHODIMP SetDirectory(LPCWSTR) override { return S_OK; }
+
+        IFACEMETHODIMP Execute() override
+        {
+            return Invoke(selectedItems_.get(), nullptr);
+        }
+
         IFACEMETHODIMP GetFlags(EXPCMDFLAGS* flags) override
         {
             if (flags == nullptr)
@@ -406,6 +439,7 @@ namespace
 
         long referenceCount_ = 1;
         OperationMode mode_;
+        winrt::com_ptr<IShellItemArray> selectedItems_;
     };
 
     class ClassFactory final : public IClassFactory
@@ -591,6 +625,42 @@ extern "C" __declspec(dllexport) HRESULT WINAPI LhamielIsSparsePackageCurrent(
             }
             return S_FALSE;
         });
+    }
+    catch (...)
+    {
+        return E_FAIL;
+    }
+}
+
+extern "C" __declspec(dllexport) HRESULT WINAPI LhamielCheckSelectionCommandActivation(PCWSTR classId)
+{
+    if (classId == nullptr || *classId == L'\0')
+        return E_INVALIDARG;
+
+    try
+    {
+        const std::wstring classIdCopy(classId);
+        return RunPackageOperationOnMta([classIdCopy]() -> HRESULT
+        {
+            CLSID commandClassId{};
+            HRESULT result = CLSIDFromString(classIdCopy.c_str(), &commandClassId);
+            if (FAILED(result))
+                return result;
+
+            // 配置が保留されて旧サーバーが残っている間は、新しい verb を公開しない。
+            winrt::com_ptr<IExecuteCommand> command;
+            result = CoCreateInstance(commandClassId, nullptr, CLSCTX_LOCAL_SERVER,
+                __uuidof(IExecuteCommand), command.put_void());
+            if (FAILED(result))
+                return result;
+
+            winrt::com_ptr<IObjectWithSelection> selection;
+            return command->QueryInterface(__uuidof(IObjectWithSelection), selection.put_void());
+        });
+    }
+    catch (const std::bad_alloc&)
+    {
+        return E_OUTOFMEMORY;
     }
     catch (...)
     {

@@ -674,7 +674,8 @@ public static class ArchiveCompressor
                 {
                     Logger.Log($"ディレクトリをスキャン中: {sourcePath}");
 
-                    var directories = new List<string>();
+                    // Flat は空ディレクトリを出力しないため、訪問・祖先の記録を作らない。
+                    var directories = dirMode == DirectoryStructureMode.Flat ? null : new List<string>();
                     var files = EnumerateSourceFiles(sourcePath, baseMatcher, includeHiddenAndSystemEntries,
                         respectNestedGitignore, normalizedIgnoreNames, directories, ReportScanProgress, scan.Initial, outputIdentity);
                     var parentDir = dirMode == DirectoryStructureMode.IncludeRoot
@@ -682,7 +683,8 @@ public static class ArchiveCompressor
                         : sourcePath;
 
                     // ファイルが存在するディレクトリを記録（空ディレクトリ検出用）
-                    var directoriesWithFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    var directoriesWithFiles = directories is null
+                        ? null : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                     var fileCount = 0;
                     foreach (var file in files)
@@ -699,11 +701,14 @@ public static class ArchiveCompressor
                         // このファイルの全祖先ディレクトリを記録。
                         // 既に登録済みの祖先に到達したら break（他のファイルで登録済みの場合は上位まで登録済み）。
                         // これにより O(N × D) から平均 O(N) に近づく。
-                        var fileDir = Path.GetDirectoryName(file);
-                        while (fileDir != null && fileDir.Length >= sourcePath.Length)
+                        if (directoriesWithFiles is not null)
                         {
-                            if (!directoriesWithFiles.Add(fileDir)) break;
-                            fileDir = Path.GetDirectoryName(fileDir);
+                            var fileDir = Path.GetDirectoryName(file);
+                            while (fileDir != null && fileDir.Length >= sourcePath.Length)
+                            {
+                                if (!directoriesWithFiles.Add(fileDir)) break;
+                                fileDir = Path.GetDirectoryName(fileDir);
+                            }
                         }
 
                         fileCount++;
@@ -711,7 +716,7 @@ public static class ArchiveCompressor
 
                     // Flatモードでなければ空ディレクトリを収集してエントリに追加
                     var emptyDirCount = 0;
-                    if (dirMode != DirectoryStructureMode.Flat)
+                    if (directories is not null && directoriesWithFiles is not null)
                     {
                         foreach (var emptyDir in directories)
                         {
@@ -1252,7 +1257,7 @@ public static class ArchiveCompressor
     private static IEnumerable<string> EnumerateSourceFiles(
         string root, GitignoreMatcher baseMatcher, bool includeHiddenAndSystemEntries,
         bool respectNestedGitignore, IReadOnlyList<string> sourceIgnoreFileNames,
-        List<string> directories, Action<bool> reportProgress, CompressionOutputRegistry.Exclusions outputExclusions,
+        List<string>? directories, Action<bool> reportProgress, CompressionOutputRegistry.Exclusions outputExclusions,
         OutputPathIdentity.Resolver outputIdentity)
     {
         var enumOpts = CreateNonRecursiveEnumerationOptions(includeHiddenAndSystemEntries);
@@ -1325,7 +1330,7 @@ public static class ArchiveCompressor
                     continue;
                 if (isDirectory)
                 {
-                    directories.Add(entry.FullName);
+                    directories?.Add(entry.FullName);
                     stack.Push((entry.FullName, matcher, priority));
                 }
                 else

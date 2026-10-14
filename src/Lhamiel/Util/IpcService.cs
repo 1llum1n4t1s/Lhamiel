@@ -285,6 +285,9 @@ public static class IpcService
                             var args = JsonSerializer.Deserialize(buffer.AsSpan(0, totalRead), AppJsonContext.Default.StringArray);
                             if (args != null)
                             {
+                                // JSON の配列要素は null を許すが、CLI 引数の契約では受け付けない。
+                                if (Array.Exists(args, static argument => argument is null))
+                                    throw new InvalidDataException("IPC 引数に null 要素が含まれています。");
                                 onArgsReceived(args);
                             }
                         }

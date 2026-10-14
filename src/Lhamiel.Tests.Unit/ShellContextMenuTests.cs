@@ -15,6 +15,9 @@ public sealed class ShellContextMenuTests : IDisposable
     public void Register_BothEnabled_AddsExtractionForFilesAndCompressionForFilesAndDirectories()
     {
         const string appPath = @"C:\Program Files\Lhamiel\Lhamiel.exe";
+        using (Registry.CurrentUser.CreateSubKey($@"{_testRootPath}\*\shell\Lhamiel.Extract")) { }
+        using (Registry.CurrentUser.CreateSubKey($@"{_testRootPath}\*\shell\Lhamiel.Compress")) { }
+        using (Registry.CurrentUser.CreateSubKey($@"{_testRootPath}\Directory\shell\Lhamiel.Compress")) { }
 
         ShellContextMenu.Register(
             Registry.CurrentUser, _testRootPath, appPath, extractEnabled: true, compressEnabled: true);
@@ -22,6 +25,9 @@ public sealed class ShellContextMenuTests : IDisposable
         AssertVerb("*", appPath, ContextMenuOperation.Extract);
         AssertVerb("*", appPath, ContextMenuOperation.Compress);
         AssertVerb("Directory", appPath, ContextMenuOperation.Compress);
+        Assert.Null(Registry.CurrentUser.OpenSubKey($@"{_testRootPath}\*\shell\Lhamiel.Extract"));
+        Assert.Null(Registry.CurrentUser.OpenSubKey($@"{_testRootPath}\*\shell\Lhamiel.Compress"));
+        Assert.Null(Registry.CurrentUser.OpenSubKey($@"{_testRootPath}\Directory\shell\Lhamiel.Compress"));
         Assert.Null(Registry.CurrentUser.OpenSubKey(
             ShellContextMenu.BuildVerbPath(_testRootPath, "Directory", ContextMenuOperation.Extract)));
     }
@@ -65,6 +71,10 @@ public sealed class ShellContextMenuTests : IDisposable
         {
             var appPath = Path.Combine(applicationDirectory, "Lhamiel.exe");
             (string ExtensionPath, string PackageUri, string ExternalLocationUri)? invocation = null;
+            ShellContextMenu.Register(
+                Registry.CurrentUser, _testRootPath, appPath, extractEnabled: true, compressEnabled: true);
+            using (Registry.CurrentUser.CreateSubKey(ShellContextMenu.BuildLegacyVerbPath(_testRootPath, "*"))) { }
+            using (Registry.CurrentUser.CreateSubKey(ShellContextMenu.BuildLegacyVerbPath(_testRootPath, "Directory"))) { }
 
             ShellContextMenu.ApplyRegistration(
                 Registry.CurrentUser,
@@ -83,8 +93,11 @@ public sealed class ShellContextMenuTests : IDisposable
             Assert.Equal(Path.Combine(applicationDirectory, ShellContextMenu.ShellExtensionFileName), invocation!.Value.ExtensionPath);
             Assert.Equal(new Uri(Path.Combine(applicationDirectory, ShellContextMenu.ModernPackageFileName)).AbsoluteUri, invocation.Value.PackageUri);
             Assert.Equal(new Uri(applicationDirectory + Path.DirectorySeparatorChar).AbsoluteUri, invocation.Value.ExternalLocationUri);
-            AssertVerb("*", appPath, ContextMenuOperation.Extract);
+            AssertVerb("*", appPath, ContextMenuOperation.Extract, useSelectionHandler: true);
             Assert.False(VerbExists("*", ContextMenuOperation.Compress));
+            Assert.False(VerbExists("Directory", ContextMenuOperation.Compress));
+            Assert.Null(Registry.CurrentUser.OpenSubKey(ShellContextMenu.BuildLegacyVerbPath(_testRootPath, "*")));
+            Assert.Null(Registry.CurrentUser.OpenSubKey(ShellContextMenu.BuildLegacyVerbPath(_testRootPath, "Directory")));
             AssertState(extractEnabled: true, compressEnabled: false);
         }
         finally
@@ -154,7 +167,7 @@ public sealed class ShellContextMenuTests : IDisposable
     }
 
     [Fact]
-    public void ApplyRegistration_WhenModernPackageUpdateIsPending_PublishesStateAndClassicVerbs()
+    public void ApplyRegistration_WhenPackageRemovalIsPending_PreservesPreviousPublishedState()
     {
         var applicationDirectory = CreateModernArtifacts();
         try
@@ -164,18 +177,21 @@ public sealed class ShellContextMenuTests : IDisposable
                 Registry.CurrentUser, _testRootPath, appPath, extractEnabled: true, compressEnabled: true);
             ShellContextMenu.WriteState(Registry.CurrentUser, _testRootPath, true, true);
 
-            ShellContextMenu.ApplyRegistration(
+            var exception = Assert.Throws<System.Runtime.InteropServices.COMException>(() => ShellContextMenu.ApplyRegistration(
                 Registry.CurrentUser,
                 _testRootPath,
                 appPath,
                 extractEnabled: true,
                 compressEnabled: false,
                 preferModernMenu: true,
-                (_, _, _) => ShellContextMenu.PackagePendingRemovalHResult);
+                (_, _, _) => ShellContextMenu.PackagePendingRemovalHResult));
+
+            Assert.Equal(ShellContextMenu.PackagePendingRemovalHResult, exception.HResult);
 
             AssertVerb("*", appPath, ContextMenuOperation.Extract);
-            Assert.False(VerbExists("*", ContextMenuOperation.Compress));
-            AssertState(extractEnabled: true, compressEnabled: false);
+            AssertVerb("*", appPath, ContextMenuOperation.Compress);
+            AssertVerb("Directory", appPath, ContextMenuOperation.Compress);
+            AssertState(extractEnabled: true, compressEnabled: true);
         }
         finally
         {
@@ -256,6 +272,8 @@ public sealed class ShellContextMenuTests : IDisposable
             using (var writer = new StreamWriter(zip.CreateEntry("AppxManifest.xml").Open()))
                 writer.Write("<Package xmlns=\"http://schemas.microsoft.com/appx/manifest/foundation/windows10\"><Identity Version=\"1.2.3.4\" /></Package>");
             var deployed = 0;
+            ShellContextMenu.Register(Registry.CurrentUser, _testRootPath,
+                Path.Combine(directory, "Lhamiel.exe"), extractEnabled: true, compressEnabled: true);
             ShellContextMenu.ApplyRegistration(Registry.CurrentUser, _testRootPath,
                 Path.Combine(directory, "Lhamiel.exe"), true, false, true,
                 (_, _, _) => { deployed++; return 0; },
@@ -267,6 +285,9 @@ public sealed class ShellContextMenuTests : IDisposable
                     return current;
                 });
             Assert.Equal(current ? 0 : 1, deployed);
+            AssertVerb("*", Path.Combine(directory, "Lhamiel.exe"), ContextMenuOperation.Extract, useSelectionHandler: true);
+            Assert.False(VerbExists("*", ContextMenuOperation.Compress));
+            Assert.False(VerbExists("Directory", ContextMenuOperation.Compress));
             AssertState(true, false);
         }
         finally { Directory.Delete(directory, recursive: true); }
@@ -279,9 +300,13 @@ public sealed class ShellContextMenuTests : IDisposable
         return key != null;
     }
 
-    private void AssertVerb(string targetClass, string appPath, ContextMenuOperation operation)
+    private void AssertVerb(string targetClass, string appPath, ContextMenuOperation operation, bool useSelectionHandler = false)
     {
         var verbPath = ShellContextMenu.BuildVerbPath(_testRootPath, targetClass, operation);
+        var clsid = operation == ContextMenuOperation.Extract
+            ? ShellContextMenu.ExtractCommandClsid
+            : ShellContextMenu.CompressCommandClsid;
+        Assert.Equal($@"{_testRootPath}\{targetClass}\shell\{clsid}", verbPath);
         using var verbKey = Registry.CurrentUser.OpenSubKey(verbPath);
         Assert.NotNull(verbKey);
         Assert.Equal(
@@ -291,10 +316,12 @@ public sealed class ShellContextMenuTests : IDisposable
             verbKey!.GetValue(""));
         Assert.Equal($"\"{appPath}\",0", verbKey.GetValue("Icon"));
         Assert.Equal("Player", verbKey.GetValue("MultiSelectModel"));
+        Assert.Null(verbKey.GetValue("ExplorerCommandHandler"));
 
         using var commandKey = Registry.CurrentUser.OpenSubKey($@"{verbPath}\command");
         Assert.NotNull(commandKey);
         Assert.Equal(ShellContextMenu.BuildCommand(appPath, operation), commandKey!.GetValue(""));
+        Assert.Equal(useSelectionHandler ? clsid : null, commandKey.GetValue("DelegateExecute"));
     }
 
     private void AssertState(bool extractEnabled, bool compressEnabled)

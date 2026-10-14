@@ -374,7 +374,14 @@ public sealed partial class MainWindowViewModel : ObservableObject
         try
         {
             await Task.Delay(300, token).ConfigureAwait(false);
-            ApplySettingsToManager();
+            // VM の設定は UI スレッドでまとめて読み、待機中に取り消された保存は実行しない。
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                token.ThrowIfCancellationRequested();
+                ApplySettingsToManager();
+            }, DispatcherPriority.Default, token).GetTask().ConfigureAwait(false);
+            // ディスク保存は背景で続け、設定変更や終了時フラッシュによる取消を再確認する。
+            token.ThrowIfCancellationRequested();
             _settingsManager.Save();
         }
         catch (OperationCanceledException) { }
