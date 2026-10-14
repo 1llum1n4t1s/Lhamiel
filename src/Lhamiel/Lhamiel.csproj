@@ -31,8 +31,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <OutputPath>$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</OutputPath>
-    <IntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</IntermediateOutputPath>
+    <OutputPath Condition="'$(UseArtifactsOutput)' != 'true'">$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</OutputPath>
+    <IntermediateOutputPath Condition="'$(UseArtifactsOutput)' != 'true'">$(MSBuildThisFileDirectory)obj\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</IntermediateOutputPath>
     <KagayoiSupportClientVersion>1.0.6</KagayoiSupportClientVersion>
     <UnLhaReVersion>1.0.4</UnLhaReVersion>
   </PropertyGroup>
@@ -76,7 +76,7 @@
       GeneratePathProperty="true"
       PrivateAssets="all" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.91" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.91" GeneratePathProperty="true" />
     <PackageReference Include="Kagayoi.UnLhaRe" Version="$(UnLhaReVersion)" />
     <PackageReference Include="SuperLightLogger" Version="1.0.17" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.1" />
@@ -85,6 +85,14 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
     <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.19" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 同梱する 7z.dll の告知は NuGet の原本を build/publish の両方へ含める。 -->
+    <Content Include="$(Pkg1llum1n4t1s_Sevenzip)\licenses\7-Zip\License.txt"
+             Link="licenses\7-Zip\License.txt"
+             CopyToOutputDirectory="PreserveNewest"
+             CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">

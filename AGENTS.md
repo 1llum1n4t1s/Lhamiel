@@ -249,7 +249,7 @@ Tests in `src/Lhamiel.Tests.Unit/` using **xUnit 4** + Moq. The test project ref
 
 - `DESIGN.md` — current system design and data-flow source of truth
 - `docs/SETTINGS_SCHEMA.md` — complete settings.json reference
-- `docs/PARALLEL_IMPLEMENTATION_REPORT.md` — parallel processing research
+- `docs/PARALLEL_IMPLEMENTATION_REPORT.md` — historical research; read relevant sections only when past rationale matters to the current task. Use `DESIGN.md` for current contracts.
 
 ## ドメイン移行（2026-07 開始・期限 2027/05/31）
 

@@ -140,6 +140,11 @@ function Wait-Until([scriptblock]$Condition, [string]$Failure) {
     }
 }
 
+function Test-CompressionCompleted([string]$LogPath, [string]$OutputPath) {
+    # 圧縮内部の完了ログは private staging を指すため、最終出力への公開完了で判定する。
+    return [regex]::IsMatch((Read-Log $LogPath), ('(?m)圧縮処理が完了: [^\r\n]* -> ' + [regex]::Escape($OutputPath) + '\r?$'))
+}
+
 function Read-Log([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path)) { return '' }
     $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
@@ -178,16 +183,16 @@ try {
     $result.concurrentProcessIds = @($firstEvidence.ProcessId, $secondEvidence.ProcessId)
     $result.compressionOverlapObserved = -not $firstEvidence.Process.HasExited -and
         -not $secondEvidence.Process.HasExited -and
-        -not (Read-Log $firstEvidence.LogPath).Contains("圧縮完了: $firstOutput")
+        -not (Test-CompressionCompleted $firstEvidence.LogPath $firstOutput)
     $result.overlapObservedAt = (Get-Date).ToString('o')
     if (-not $result.compressionOverlapObserved) { throw '実際の圧縮処理の重なりを観測できませんでした。' }
     Wait-Until {
-        (Read-Log $secondEvidence.LogPath).Contains("圧縮完了: $secondOutput")
+        Test-CompressionCompleted $secondEvidence.LogPath $secondOutput
     } '2件目の圧縮完了を観測できませんでした。'
     $result.secondCompletionObservedAt = (Get-Date).ToString('o')
     $result.firstCompressorAliveWhenSecondCompleted = -not $firstEvidence.Process.HasExited
     $result.secondCompletedBeforeFirst = $result.firstCompressorAliveWhenSecondCompleted -and
-        -not (Read-Log $firstEvidence.LogPath).Contains("圧縮完了: $firstOutput")
+        -not (Test-CompressionCompleted $firstEvidence.LogPath $firstOutput)
     if (-not $result.secondCompletedBeforeFirst) { throw '先行処理の終了後まで2件目が待機していました。' }
 
     $notification = Start-Request @('--saved-compression-password-changed')
@@ -218,7 +223,7 @@ try {
     })
     $result.allProcessesSelfExited = $true
     if ($result.processExitCodes | Where-Object exitCode -ne 0) { throw '異常終了しました。' }
-    if (-not (Read-Log $firstEvidence.LogPath).Contains("圧縮完了: $firstOutput")) { throw '先行圧縮の完了ログがありません。' }
+    if (-not (Test-CompressionCompleted $firstEvidence.LogPath $firstOutput)) { throw '先行圧縮の公開完了ログがありません。' }
 
     $zipNames = @('first.zip', 'second.zip', 'selection-a.zip')
     if (-not $settings.CompressMultipleAsOne) { $zipNames += 'selection-b.zip' }

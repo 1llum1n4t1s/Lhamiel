@@ -12,9 +12,37 @@ param(
 
     [string]$CertificateSubjectName = 'Open Source Developer Yuichiro Shinozaki',
 
-    [switch]$SkipSigning
+    [switch]$SkipSigning,
+
+    [string]$WorkDirectory
 )
 
+
+
+# 指定した作業出力は絶対パスの外部ディレクトリに限定し、リンク経由の書込みも拒否する。
+function Resolve-ExternalWorkDirectory {
+    param([string]$Path, [string]$RepositoryRoot)
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not [IO.Path]::IsPathFullyQualified($Path)) { throw 'WorkDirectory は絶対パスで指定してください。' }
+    $resolved = [IO.Path]::GetFullPath($Path).TrimEnd('\','/')
+    $forbiddenRoots = @($RepositoryRoot, (Join-Path ([Environment]::GetFolderPath('UserProfile')) '.codex'))
+    if ($env:CODEX_HOME) { $forbiddenRoots += $env:CODEX_HOME }
+    foreach ($root in $forbiddenRoots) {
+        $boundary = [IO.Path]::GetFullPath($root).TrimEnd('\','/')
+        if ($resolved.Equals($boundary, [StringComparison]::OrdinalIgnoreCase) -or $resolved.StartsWith($boundary + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw "WorkDirectory はリポジトリ / Codex ディレクトリの外に指定してください: $resolved" }
+    }
+    $ancestor = $resolved
+    while ($ancestor) {
+        if (Test-Path -LiteralPath $ancestor) {
+            $item = Get-Item -LiteralPath $ancestor -Force -ErrorAction Stop
+            if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "WorkDirectory の祖先は通常のディレクトリに限定します: $ancestor" }
+        }
+        $ancestor = Split-Path $ancestor -Parent
+    }
+    if (Test-Path -LiteralPath $resolved) {
+        if (@(Get-ChildItem -LiteralPath $resolved -Recurse -Force -ErrorAction Stop | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }).Count) { throw "WorkDirectory 内のリンクを除いてください: $resolved" }
+    }
+    return $resolved
+}
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -31,6 +59,22 @@ $packageSource = Join-Path $repoRoot 'src\Lhamiel.ShellExtension\Package'
 $nativeOutput = Join-Path $repoRoot "src\Lhamiel.ShellExtension\bin\$platform\Release"
 $packageWorkDirectory = Join-Path $repoRoot "src\Lhamiel.ShellExtension\obj\$platform\Release\Package"
 $packageOutput = Join-Path $repoRoot "src\Lhamiel.ShellExtension\obj\$platform\Release\Lhamiel.ContextMenu.msix"
+
+$nativeIntermediate = Join-Path $repoRoot "src\Lhamiel.ShellExtension\obj\$platform\Release"
+if ($WorkDirectory) {
+    $shellWork = Resolve-ExternalWorkDirectory -Path $WorkDirectory -RepositoryRoot $repoRoot
+    if ((Test-Path -LiteralPath $shellWork) -and @(Get-ChildItem -LiteralPath $shellWork -Force).Count) {
+        throw "Shell WorkDirectory が空ではありません: $shellWork。PRUNLET.md に従い Prunlet CLI を直接 CMD から実行して清掃するか、新しいディレクトリを指定してください。"
+    }
+    $publishPath = Resolve-ExternalWorkDirectory -Path $publishPath -RepositoryRoot $repoRoot
+    $nativeOutput = Join-Path $shellWork 'bin'
+    $nativeIntermediate = Join-Path $shellWork 'obj'
+    $packageWorkDirectory = Join-Path $shellWork 'Package'
+    $packageOutput = Join-Path $shellWork 'Lhamiel.ContextMenu.msix'
+}
+if (Test-Path -LiteralPath $packageOutput) {
+    throw "既存の MSIX は自動削除しません: $packageOutput。PRUNLET.md に従い Prunlet CLI を直接 CMD から実行して清掃してください。"
+}
 
 $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
 if (-not (Test-Path -LiteralPath $vswhere)) { throw "vswhere.exe が見つかりません: $vswhere" }
@@ -61,7 +105,9 @@ Write-Host "== Shell 拡張ビルド: $Runtime ==" -ForegroundColor Cyan
 $vsRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $msbuild)))
 $toolsetPath = Join-Path $vsRoot "MSBuild\Microsoft\VC\v180\Platforms\$platform\PlatformToolsets\v145"
 if (Test-Path -LiteralPath $toolsetPath) {
-    & $msbuild $projectPath /t:Build /p:Configuration=Release /p:Platform=$platform /nologo /verbosity:minimal
+    $buildArguments = @($projectPath, '/t:Build', '/p:Configuration=Release', "/p:Platform=$platform", '/nologo', '/verbosity:minimal')
+    if ($WorkDirectory) { $buildArguments += "/p:OutDir=$nativeOutput\", "/p:IntDir=$nativeIntermediate\" }
+    & $msbuild @buildArguments
     if ($LASTEXITCODE -ne 0) { throw "Shell 拡張のビルドに失敗しました (exit $LASTEXITCODE)" }
 } else {
     # VS のプラットフォーム定義だけが欠けている場合、同じ既存 MSVC で直接ビルドする。
@@ -70,14 +116,14 @@ if (Test-Path -LiteralPath $toolsetPath) {
     Import-Module $devShellModule -ErrorAction Stop
     Enter-VsDevShell -VsInstallPath $vsRoot -SkipAutomaticLocation -DevCmdArguments "-arch=$($platform.ToLowerInvariant()) -host_arch=x64"
     $compiler = (Get-Command cl.exe -ErrorAction Stop).Source
-    New-Item -ItemType Directory -Path $nativeOutput -Force | Out-Null
+    New-Item -ItemType Directory -Path $nativeOutput, $nativeIntermediate -Force | Out-Null
     $sourcePath = Join-Path $repoRoot 'src\Lhamiel.ShellExtension\ShellExtension.cpp'
     $definitionPath = Join-Path $repoRoot 'src\Lhamiel.ShellExtension\dll.def'
     & $compiler /nologo /LD /O2 /GL /Gy /W4 /WX /std:c++20 /permissive- /EHsc /MT /utf-8 `
         /DUNICODE /D_UNICODE /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DNDEBUG `
-        "/Fo$(Join-Path $nativeOutput 'ShellExtension.obj')" $sourcePath `
+        "/Fo$(Join-Path $nativeIntermediate 'ShellExtension.obj')" "/Fd$(Join-Path $nativeIntermediate 'ShellExtension.pdb')" $sourcePath `
         /link "/IMPLIB:$(Join-Path $nativeOutput 'Lhamiel.ShellExtension.lib')" "/OUT:$(Join-Path $nativeOutput 'Lhamiel.ShellExtension.dll')" "/DEF:$definitionPath" `
-        /SUBSYSTEM:WINDOWS "/MACHINE:$platform" /LTCG /OPT:REF /OPT:ICF /DEBUG shell32.lib ole32.lib user32.lib uuid.lib
+        /SUBSYSTEM:WINDOWS "/MACHINE:$platform" /LTCG /OPT:REF /OPT:ICF /DEBUG "/PDB:$(Join-Path $nativeOutput 'Lhamiel.ShellExtension.pdb')" "/MANIFESTFILE:$(Join-Path $nativeIntermediate 'Lhamiel.ShellExtension.dll.intermediate.manifest')" shell32.lib ole32.lib user32.lib uuid.lib
     if ($LASTEXITCODE -ne 0) { throw "Shell 拡張の直接ビルドに失敗しました (exit $LASTEXITCODE)" }
 }
 
@@ -110,9 +156,8 @@ $writerSettings.Indent = $true
 $writer = [System.Xml.XmlWriter]::Create($manifestPath, $writerSettings)
 try { $packageManifest.Save($writer) } finally { $writer.Dispose() }
 
-if (Test-Path -LiteralPath $packageOutput) { Import-Module (Join-Path $env:USERPROFILE '.codex/scripts/CodexCleanup.psm1') -ErrorAction Stop; Remove-CodexItem -LiteralPath $packageOutput -AllowedRoot (Join-Path $repoRoot "src\Lhamiel.ShellExtension\obj") }
 # sparse package は実体を外部配置先から解決するため、MakeAppx のファイル存在検証を無効化する。
-& $makeAppx pack /d $packageWorkDirectory /p $packageOutput /o /nv
+& $makeAppx pack /d $packageWorkDirectory /p $packageOutput /nv
 if ($LASTEXITCODE -ne 0) { throw "sparse MSIX の生成に失敗しました (exit $LASTEXITCODE)" }
 
 if (-not $SkipSigning) {

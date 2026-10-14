@@ -99,18 +99,12 @@ public class LocaleTests
 
     /// <summary>
     /// ロケールファイルのディレクトリを取得する。
-    /// テストプロジェクトから相対パスで src/Lhamiel/Resources/Locales/ を探す。
+    /// テスト出力へコピーした製品のロケールファイルを読む。
     /// </summary>
     private static string GetLocalesDirectory()
     {
-        // テスト実行ディレクトリから遡って src/Lhamiel/Resources/Locales/ を探す
-        var dir = AppContext.BaseDirectory;
-        while (dir != null)
-        {
-            var candidate = Path.Combine(dir, "src", "Lhamiel", "Resources", "Locales");
-            if (Directory.Exists(candidate)) return candidate;
-            dir = Path.GetDirectoryName(dir);
-        }
+        var dir = Path.Combine(AppContext.BaseDirectory, "Locales");
+        if (Directory.Exists(dir)) return dir;
         throw new DirectoryNotFoundException("Locales ディレクトリが見つかりません");
     }
 

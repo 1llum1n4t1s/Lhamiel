@@ -12,8 +12,8 @@
 # 使い方:
 #   pwsh scripts/release-local.ps1                # フルリリース (build + sign + upload + cleanup)
 #   pwsh scripts/release-local.ps1 -SkipUpload    # ビルド + 署名のみ (アップロードしない動作確認用)
-#   pwsh scripts/release-local.ps1 -UploadOnly  # 同じ版の完成済みpackageを検証して配信から再開
-#   pwsh scripts/release-local.ps1 -ReusePublish  # 同じ版の署名済みpublishを検証して再利用し、未完了RIDをビルド
+#   pwsh scripts/release-local.ps1 -UploadOnly -WorkDirectory <絶対Tempパス>  # 同じ版の完成済みpackageを検証して配信から再開
+#   pwsh scripts/release-local.ps1 -ReusePublish -WorkDirectory <絶対Tempパス>  # 同じ版の署名済みpublishを検証して再利用し、未完了RIDをビルド
 #   pwsh scripts/release-local.ps1 -Runtimes win-x64   # 対象 RID を絞る (テスト用)
 
 [CmdletBinding()]
@@ -21,9 +21,38 @@ param(
     [switch]$SkipUpload,
     [switch]$ReusePublish,
     [switch]$UploadOnly,
-    [string[]]$Runtimes = @('win-x64', 'win-arm64')
+    [string[]]$Runtimes = @('win-x64', 'win-arm64'),
+    [string]$WorkDirectory
 )
 
+
+
+# 作業出力は絶対パスの外部 Temp に限定し、リンク経由の書込みも拒否する。
+function Resolve-ExternalWorkDirectory {
+    param([string]$Path, [string]$RepositoryRoot)
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not [IO.Path]::IsPathFullyQualified($Path)) { throw 'WorkDirectory は絶対パスで指定してください。' }
+    $resolved = [IO.Path]::GetFullPath($Path).TrimEnd('\','/')
+    $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\','/')
+    if (-not $resolved.StartsWith($tempRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'WorkDirectory はユーザーの Temp 配下に指定してください。' }
+    $forbiddenRoots = @($RepositoryRoot, (Join-Path ([Environment]::GetFolderPath('UserProfile')) '.codex'))
+    if ($env:CODEX_HOME) { $forbiddenRoots += $env:CODEX_HOME }
+    foreach ($root in $forbiddenRoots) {
+        $boundary = [IO.Path]::GetFullPath($root).TrimEnd('\','/')
+        if ($resolved.Equals($boundary, [StringComparison]::OrdinalIgnoreCase) -or $resolved.StartsWith($boundary + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw "WorkDirectory はリポジトリ / Codex ディレクトリの外に指定してください: $resolved" }
+    }
+    $ancestor = $resolved
+    while ($ancestor) {
+        if (Test-Path -LiteralPath $ancestor) {
+            $item = Get-Item -LiteralPath $ancestor -Force -ErrorAction Stop
+            if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "WorkDirectory の祖先は通常のディレクトリに限定します: $ancestor" }
+        }
+        $ancestor = Split-Path $ancestor -Parent
+    }
+    if (Test-Path -LiteralPath $resolved) {
+        if (@(Get-ChildItem -LiteralPath $resolved -Recurse -Force -ErrorAction Stop | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }).Count) { throw "WorkDirectory 内のリンクを除いてください: $resolved" }
+    }
+    return $resolved
+}
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -31,11 +60,7 @@ Set-StrictMode -Version Latest
 # ---- 定数 ----
 # Velopack (vpk) は常に最新安定版を使う (ゆろ君ルール): NuGet から実行時に最新を解決して pin する
 # (NuGet 側 Velopack も VelopackUpdateDialog.Avalonia 経由の transitive で常に最新へ追従する)
-$VpkVersion = (Invoke-RestMethod 'https://api.nuget.org/v3-flatcontainer/vpk/index.json' -TimeoutSec 30).versions |
-    Where-Object { $_ -notmatch '-' } | Select-Object -Last 1
-if (-not $VpkVersion) { throw 'vpk の最新安定版バージョンの取得に失敗しました (NuGet API)' }
-Write-Host "vpk 最新安定版: $VpkVersion"
-$WranglerVersion = '4.136.3'        # サプライチェーン対策でバージョン固定 (要 Node.js >=22)
+$WranglerVersion = '4.148.0'        # サプライチェーン対策でバージョン固定 (要 Node.js >=22)
 $Bucket = 'lhamiel-updates'
 $BaseUrl = 'https://lhamiel.kagayoi.com'
 $ZoneName = 'kagayoi.com'           # Cloudflare zone (apex)。$BaseUrl の Host から正規表現で推測すると
@@ -53,8 +78,32 @@ $RuntimeMatrix = @{
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $RepoRoot
-$WorkDir = Join-Path $RepoRoot 'local-release'
+$versionNode = ([xml](Get-Content (Join-Path $RepoRoot 'Directory.Build.props') -Raw)).SelectSingleNode('/Project/PropertyGroup/Version')
+$version = if ($versionNode) { $versionNode.InnerText.Trim() } else { $null }
+if (-not $version -or $version -notmatch '^\d+\.\d+\.\d+(\.\d+)?$') { throw 'Directory.Build.props の <Version> が不正です' }
+if (-not $WorkDirectory) {
+    if ($ReusePublish -or $UploadOnly) { throw '再開時は既存の絶対 Temp パスを -WorkDirectory に指定してください。' }
+    $WorkDirectory = Join-Path ([IO.Path]::GetTempPath()) "Codex\Lhamiel\release-$version-$([guid]::NewGuid().ToString('N'))"
+}
+$WorkDir = Resolve-ExternalWorkDirectory -Path $WorkDirectory -RepositoryRoot $RepoRoot
+if (-not $UploadOnly -and -not $ReusePublish -and (Test-Path -LiteralPath $WorkDir) -and @(Get-ChildItem -LiteralPath $WorkDir -Force).Count) {
+    throw "WorkDirectory が空ではありません: $WorkDir。PRUNLET.md に従い Prunlet CLI を直接 CMD から実行して清掃するか、新しいディレクトリを指定してください。"
+}
 $ArtifactsDir = Join-Path $WorkDir 'artifacts'
+Write-Host "作業ディレクトリ: $WorkDir"
+# vpk / AOT / 署名ツールの一時出力も同じ作業ルートに置く。
+$previousTemp = $env:TEMP
+$previousTmp = $env:TMP
+$toolTemp = Join-Path $WorkDir 'temp'
+New-Item -ItemType Directory -Path $toolTemp -Force | Out-Null
+$env:TEMP = $toolTemp
+$env:TMP = $toolTemp
+try {
+$VpkVersion = (Invoke-RestMethod 'https://api.nuget.org/v3-flatcontainer/vpk/index.json' -TimeoutSec 30).versions |
+    Where-Object { $_ -notmatch '-' } | Select-Object -Last 1
+if (-not $VpkVersion) { throw 'vpk の最新安定版バージョンの取得に失敗しました (NuGet API)' }
+Write-Host "vpk 最新安定版: $VpkVersion"
+
 
 function Invoke-Native {
     param([string]$Description, [scriptblock]$Block)
@@ -87,10 +136,6 @@ $developerShell = Join-Path $visualStudioPath 'Common7\Tools\Microsoft.VisualStu
 if (-not (Test-Path -LiteralPath $developerShell)) { throw "Developer Shell が見つかりません: $developerShell" }
 Import-Module $developerShell -ErrorAction Stop
 
-# XPath で取得 (member enumeration は Version を持たない PropertyGroup 混在時に StrictMode で throw する)
-$versionNode = ([xml](Get-Content 'Directory.Build.props' -Raw)).SelectSingleNode('/Project/PropertyGroup/Version')
-$version = if ($versionNode) { $versionNode.InnerText.Trim() } else { $null }
-if (-not $version) { throw 'Directory.Build.props から <Version> を取得できませんでした' }
 Write-Host "バージョン: $version"
 
 # SimplySign 接続確認 (証明書が見えなければ署名できないので最初に落とす)
@@ -126,7 +171,6 @@ if (-not $SkipUpload) {
     Write-Host "Cloudflare zone: $ZoneName ($zoneId)"
 }
 
-if (-not $UploadOnly -and -not $ReusePublish -and (Test-Path -LiteralPath $WorkDir)) { Import-Module (Join-Path $env:USERPROFILE '.codex/scripts/CodexCleanup.psm1') -ErrorAction Stop; Remove-CodexItem -LiteralPath $WorkDir -AllowedRoot $RepoRoot }
 New-Item -ItemType Directory -Path $ArtifactsDir -Force | Out-Null
 
 # ---- 1. ビルド + 署名付きパッケージング (RID ごと) ----
@@ -161,6 +205,7 @@ foreach ($runtime in $Runtimes) {
             pwsh scripts/build-shell-integration.ps1 `
                 -Runtime $runtime `
                 -PublishDir $publishDir `
+                -WorkDirectory (Join-Path $WorkDir "shell-$runtime") `
                 -CertificateSubjectName $CertSubjectName
         }
 
@@ -396,15 +441,20 @@ if (-not $toDelete) {
 Write-Host '== packages.lock.json クリーンアップ ==' -ForegroundColor Cyan
 try {
     Invoke-Native 'dotnet restore --force-evaluate' {
-        dotnet restore Lhamiel.slnx --force-evaluate
+        dotnet restore Lhamiel.slnx --force-evaluate --artifacts-path (Join-Path $WorkDir 'restore')
     }
     # clean lock の検証: locked-mode 復元が NU1004 ゼロで通れば RID なし clean 状態
     Invoke-Native 'dotnet restore --locked-mode (clean lock 検証)' {
-        dotnet restore Lhamiel.slnx --locked-mode
+        dotnet restore Lhamiel.slnx --locked-mode --artifacts-path (Join-Path $WorkDir 'restore')
     }
     Write-Host '  ✅ packages.lock.json は RID なし clean 状態 (locked-mode 検証 OK)'
 } catch {
-    Write-Warning "  packages.lock.json のクリーンアップに失敗しました (アップロード済みリリースには影響なし)。手動で 'dotnet restore Lhamiel.slnx --force-evaluate' を実行してください — $($_.Exception.Message)"
+    Write-Warning "  packages.lock.json のクリーンアップに失敗しました (アップロード済みリリースには影響なし)。外部作業ディレクトリを --artifacts-path に指定して手動 restore してください — $($_.Exception.Message)"
 }
 
 Write-Host "`n🎉 リリース完了: v$version → $BaseUrl" -ForegroundColor Green
+
+} finally {
+    $env:TEMP = $previousTemp
+    $env:TMP = $previousTmp
+}
