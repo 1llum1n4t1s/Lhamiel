@@ -37,6 +37,7 @@ internal static class ShellContextMenu
     internal const string ExtractEnabledValueName = "ExtractEnabled";
     internal const string CompressEnabledValueName = "CompressEnabled";
     internal const int PackagePendingRemovalHResult = unchecked((int)0x80073D3C);
+    private const int NoInterfaceHResult = unchecked((int)0x80004002);
     private const string ClassesRootPath = @"Software\Classes";
 
     private static readonly string[] FileTargetClasses = ["*"];
@@ -135,18 +136,40 @@ internal static class ShellContextMenu
 
         if (useSelectionHandler && checkSelectionCommandActivation != null)
         {
-            // 配置成功だけでは旧 COM サーバーの終了を保証しない。実際の起動能力を先に確認する。
+            // 配置成功だけでは旧 COM サーバーの終了を保証しない。未対応時は従来コマンドを使う。
             var extensionPath = GetModernArtifacts(appPath).ExtensionPath;
             if (extractEnabled)
-                Marshal.ThrowExceptionForHR(checkSelectionCommandActivation(extensionPath, ExtractCommandClsid));
+                useSelectionHandler &= CanUseSelectionHandler(extensionPath, ExtractCommandClsid, checkSelectionCommandActivation);
             if (compressEnabled)
-                Marshal.ThrowExceptionForHR(checkSelectionCommandActivation(extensionPath, CompressCommandClsid));
+                useSelectionHandler &= CanUseSelectionHandler(extensionPath, CompressCommandClsid, checkSelectionCommandActivation);
         }
 
         // 従来型の verb 名もネイティブ拡張の canonical GUID に揃え、旧名から移行する。
         // 生の command は COM 非対応のファイルマネージャーや未登録環境向けに維持する。
         Register(root, classesRootPath, appPath, extractEnabled, compressEnabled, useSelectionHandler);
         WriteState(root, classesRootPath, extractEnabled, compressEnabled);
+    }
+
+    private static bool CanUseSelectionHandler(
+        string extensionPath, string classId, Func<string, string, int> checkSelectionCommandActivation)
+    {
+        var result = checkSelectionCommandActivation(extensionPath, classId);
+        if (result == NoInterfaceHResult)
+        {
+            Logger.Log(
+                $"右クリックの複数選択用 COM インターフェースを利用できません: CLSID={classId}, HRESULT=0x{unchecked((uint)result):X8}。従来のコマンドでメニュー設定を反映します。",
+                LogLevel.Warning);
+            return false;
+        }
+
+        if (result < 0)
+        {
+            Logger.Log(
+                $"右クリックの複数選択用 COM の確認に失敗しました: CLSID={classId}, HRESULT=0x{unchecked((uint)result):X8}。既存のメニュー設定を維持します。",
+                LogLevel.Warning);
+        }
+        Marshal.ThrowExceptionForHR(result);
+        return true;
     }
 
     /// <summary>製品アンインストール専用。通常の設定OFFでは呼び出さない。</summary>
