@@ -62,7 +62,7 @@ jobs:
                 && normalize(line).replace(/\s+#.*$/, '') === normalize(after[i]).replace(/\s+#.*$/, ''));
             }
             
-            function dependencyFile(file) {
+            async function dependencyFile(file, baseSha, sha) {
               const name = file.filename;
               if (/^\.github\/workflows\/[^/]+\.ya?ml$/.test(name)) {
                 return versionOnlyPatch(file);
@@ -72,8 +72,25 @@ jobs:
                 const changed = file.patch.split('\n').filter(line => /^[+-]/.test(line) && !/^\+\+\+|^---/.test(line));
                 return changed.length > 0 && changed.every(line => /^[+-]\s*(?:FROM\s|image:\s)/i.test(line));
               }
-              return /(^|\/)(?:Package\.swift|Package\.resolved|vcpkg\.json|vcpkg-configuration\.json|rust-toolchain(?:\.toml)?|Directory\.Build\.props|package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|yarn\.lock|bun\.lockb?|Cargo\.toml|Cargo\.lock|Gemfile|Gemfile\.lock|pubspec\.yaml|pubspec\.lock|global\.json|packages\.config|packages\.lock\.json|Directory\.Packages\.props|requirements[^/]*\.txt|pyproject\.toml|poetry\.lock|uv\.lock|Pipfile(?:\.lock)?|build\.gradle(?:\.kts)?|settings\.gradle(?:\.kts)?|gradle\.properties|libs\.versions\.toml|gradle-wrapper\.properties)$/.test(name)
-                || /\.(?:csproj|fsproj|vbproj)$/.test(name);
+              const manifest = /(^|\/)(?:Package\.swift|Package\.resolved|vcpkg\.json|vcpkg-configuration\.json|rust-toolchain(?:\.toml)?|Directory\.Build\.props|package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|yarn\.lock|bun\.lockb?|Cargo\.toml|Cargo\.lock|Gemfile|Gemfile\.lock|pubspec\.yaml|pubspec\.lock|global\.json|packages\.config|packages\.lock\.json|Directory\.Packages\.props|requirements[^/]*\.txt|pyproject\.toml|poetry\.lock|uv\.lock|Pipfile(?:\.lock)?|build\.gradle(?:\.kts)?|settings\.gradle(?:\.kts)?|gradle\.properties|libs\.versions\.toml|gradle-wrapper\.properties)$/.test(name)
+                || /\.(?:csproj|fsproj|vbproj|tf)$/.test(name);
+              if (manifest) return true;
+              // 既存submoduleのcommit差分だけを許可し、URL変更や通常コードは許可しない。
+              if (file.status !== 'modified' || !file.patch) return false;
+              const lines = file.patch.split('\n').filter(line => /^[+-]/.test(line) && !/^\+\+\+|^---/.test(line));
+              if (lines.length !== 2) return false;
+              const before = lines.find(line => line.startsWith('-'))?.match(/^-Subproject commit ([0-9a-f]{40})$/);
+              const after = lines.find(line => line.startsWith('+'))?.match(/^\+Subproject commit ([0-9a-f]{40})$/);
+              if (!before || !after) return false;
+              try {
+                const oldModule = (await github.rest.repos.getContent({owner, repo, path: name, ref: baseSha})).data;
+                const newModule = (await github.rest.repos.getContent({owner, repo, path: name, ref: sha})).data;
+                return Boolean(oldModule.submodule_git_url && oldModule.submodule_git_url === newModule.submodule_git_url
+                  && oldModule.sha === before[1] && newModule.sha === after[1] && file.sha === newModule.sha);
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                return false;
+              }
             }
             
             let prs;
@@ -97,8 +114,14 @@ jobs:
               let pr = (await github.rest.pulls.get({owner, repo, pull_number: item.number})).data;
               if (pr.state !== 'open' || pr.draft || pr.user?.id !== botId || pr.head.repo?.id !== repository.id || pr.base.ref !== branch) continue;
               const sha = pr.head.sha;
+              // PRのbase.shaは作成時点の値を返すことがあるため、既定ブランチを直接取得する。
+              const baseSha = (await github.rest.repos.getBranch({owner, repo, branch})).data.commit.sha;
               const files = await github.paginate(github.rest.pulls.listFiles, {owner, repo, pull_number: pr.number, per_page: 100});
-              if (!files.length || files.length !== pr.changed_files || !files.every(dependencyFile)) {
+              let dependencyOnly = true;
+              for (const file of files) {
+                if (!(await dependencyFile(file, baseSha, sha))) { dependencyOnly = false; break; }
+              }
+              if (!files.length || files.length !== pr.changed_files || !dependencyOnly) {
                 held(pr, '依存更新以外、または自動確認できない差分があるため保留');
                 continue;
               }
@@ -112,8 +135,6 @@ jobs:
                 held(pr, '競合があるため保留');
                 continue;
               }
-              // PRのbase.shaは作成時点の値を返すことがあるため、既定ブランチを直接取得する。
-              const baseSha = (await github.rest.repos.getBranch({owner, repo, branch})).data.commit.sha;
               let verified = true;
               for (const workflow of workflows) {
                 const runs = (await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id: workflow.id, head_sha: sha, per_page: 100})).data.workflow_runs;
