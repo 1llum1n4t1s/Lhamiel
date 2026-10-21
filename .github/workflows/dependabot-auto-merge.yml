@@ -1,0 +1,181 @@
+name: Dependabot auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_run:
+    workflows: [".NET ビルド", "CodeQL 解析"]
+    types: [completed]
+  check_run:
+    types: [completed]
+  status:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+  checks: read
+  statuses: read
+
+concurrency:
+  group: dependabot-auto-merge-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  auto-merge:
+    if: >-
+      github.repository_owner == '1llum1n4t1s' &&
+      (github.event_name != 'pull_request_target' || github.event.pull_request.user.id == 49699333) &&
+      (github.event_name != 'status' || github.event.state == 'success') &&
+      (github.event_name != 'check_run' || github.event.check_run.app.slug != 'github-actions')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Verify CI and merge Dependabot updates
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        env:
+          REQUIRED_WORKFLOWS: '[".github/workflows/dotnet-build.yml"]'
+        with:
+          script: |
+            // GitHub Actions の信頼済み既定ブランチ上で実行する。PR のコードは実行しない。
+            const {owner, repo} = context.repo;
+            const required = JSON.parse(process.env.REQUIRED_WORKFLOWS);
+            const repository = (await github.rest.repos.get({owner, repo})).data;
+            const branch = repository.default_branch;
+            const botId = 49699333;
+            const report = [];
+            const held = (pr, reason) => {
+              core.info(`#${pr.number}: ${reason}`);
+              report.push(`- #${pr.number}: ${reason}`);
+            };
+            
+            function versionOnlyPatch(file) {
+              if (!file.patch || file.status !== 'modified') return false;
+              const lines = file.patch.split('\n').filter(line => /^[+-]/.test(line) && !/^\+\+\+|^---/.test(line));
+              const before = lines.filter(line => line[0] === '-').map(line => line.slice(1));
+              const after = lines.filter(line => line[0] === '+').map(line => line.slice(1));
+              if (!before.length || before.length !== after.length) return false;
+              const normalize = line => line.replace(/(uses:\s*[^\s@]+@)[A-Za-z0-9._/-]+/g, '$1<VERSION>');
+              return before.every((line, i) => /^\s*(?:-\s*)?uses:\s*[^\s@]+@[A-Za-z0-9._/-]+(?:\s*#.*)?$/.test(line)
+                && /^\s*(?:-\s*)?uses:\s*[^\s@]+@[A-Za-z0-9._/-]+(?:\s*#.*)?$/.test(after[i])
+                && normalize(line).replace(/\s+#.*$/, '') === normalize(after[i]).replace(/\s+#.*$/, ''));
+            }
+            
+            function dependencyFile(file) {
+              const name = file.filename;
+              if (/^\.github\/workflows\/[^/]+\.ya?ml$/.test(name)) {
+                return versionOnlyPatch(file);
+              }
+              if (/(^|\/)Dockerfile(?:\.[^/]+)?$/.test(name) || /(^|\/)(?:docker-)?compose(?:\.[^/]+)?\.ya?ml$/.test(name)) {
+                if (!file.patch || file.status !== 'modified') return false;
+                const changed = file.patch.split('\n').filter(line => /^[+-]/.test(line) && !/^\+\+\+|^---/.test(line));
+                return changed.length > 0 && changed.every(line => /^[+-]\s*(?:FROM\s|image:\s)/i.test(line));
+              }
+              return /(^|\/)(?:package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|yarn\.lock|bun\.lockb?|Cargo\.toml|Cargo\.lock|Gemfile|Gemfile\.lock|pubspec\.yaml|pubspec\.lock|global\.json|packages\.config|packages\.lock\.json|Directory\.Packages\.props|requirements[^/]*\.txt|pyproject\.toml|poetry\.lock|uv\.lock|Pipfile(?:\.lock)?|build\.gradle(?:\.kts)?|settings\.gradle(?:\.kts)?|gradle\.properties|libs\.versions\.toml|gradle-wrapper\.properties)$/.test(name)
+                || /\.(?:csproj|fsproj|vbproj)$/.test(name);
+            }
+            
+            let prs;
+            if (context.eventName === 'pull_request_target') {
+              prs = [context.payload.pull_request];
+            } else {
+              prs = await github.paginate(github.rest.pulls.list, {owner, repo, state: 'open', base: branch, per_page: 100});
+            }
+            prs = prs.filter(pr => pr.user?.login === 'dependabot[bot]' && pr.user.id === botId && !pr.draft
+              && pr.base.ref === branch && pr.head.repo?.id === repository.id);
+            if (!required.length) {
+              core.warning('検証 workflow が未設定のためマージを保留します。');
+              return;
+            }
+            const workflows = [];
+            for (const path of required) {
+              workflows.push((await github.rest.actions.getWorkflow({owner, repo, workflow_id: path.split('/').pop()})).data);
+            }
+            
+            async function dispatchValidation(pr) {
+              for (const workflow of workflows) {
+                await github.rest.actions.createWorkflowDispatch({owner, repo, workflow_id: workflow.id, ref: pr.head.ref});
+              }
+            }
+            
+            for (const item of prs) {
+              let pr = (await github.rest.pulls.get({owner, repo, pull_number: item.number})).data;
+              if (pr.state !== 'open' || pr.draft || pr.user?.id !== botId || pr.head.repo?.id !== repository.id || pr.base.ref !== branch) continue;
+              const sha = pr.head.sha;
+              const files = await github.paginate(github.rest.pulls.listFiles, {owner, repo, pull_number: pr.number, per_page: 100});
+              if (!files.length || files.length !== pr.changed_files || !files.every(dependencyFile)) {
+                held(pr, '依存更新以外、または自動確認できない差分があるため保留');
+                continue;
+              }
+              const commits = await github.paginate(github.rest.pulls.listCommits, {owner, repo, pull_number: pr.number, per_page: 100});
+              if (!commits.length || commits.length !== pr.commits || commits.some(commit => !commit.commit.verification?.verified
+                || (commit.author?.id !== botId && !(commit.parents.length === 2 && ['github-actions[bot]', owner].includes(commit.author?.login))))) {
+                held(pr, 'Dependabotの署名付き更新または既定ブランチの統合として確認できないコミットがあるため保留');
+                continue;
+              }
+              if (pr.mergeable === false || pr.mergeable_state === 'dirty') {
+                held(pr, '競合があるため保留');
+                continue;
+              }
+              // PRのbase.shaは作成時点の値を返すことがあるため、既定ブランチを直接取得する。
+              const baseSha = (await github.rest.repos.getBranch({owner, repo, branch})).data.commit.sha;
+              const comparison = (await github.rest.repos.compareCommitsWithBasehead({owner, repo, basehead: `${baseSha}...${sha}`, per_page: 1})).data;
+              if (comparison.merge_base_commit.sha !== baseSha) {
+                try {
+                  await github.rest.pulls.updateBranch({owner, repo, pull_number: pr.number, expected_head_sha: sha});
+                  // GITHUB_TOKEN由来の更新はPRイベントを発火しないため、CIを明示実行する。
+                  let refreshed = pr;
+                  for (let attempt = 0; attempt < 10 && refreshed.head.sha === sha; attempt++) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    refreshed = (await github.rest.pulls.get({owner, repo, pull_number: pr.number})).data;
+                  }
+                  if (refreshed.state === 'open' && refreshed.head.sha !== sha) await dispatchValidation(refreshed);
+                  held(pr, '既定ブランチを取り込み、更新後のCIを待機');
+                } catch (error) {
+                  held(pr, `既定ブランチ取込み待ち (${error.status ?? 'error'})`);
+                }
+                continue;
+              }
+              let verified = true;
+              for (const workflow of workflows) {
+                const runs = (await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id: workflow.id, head_sha: sha, per_page: 100})).data.workflow_runs;
+                const latest = runs.filter(run => ['pull_request', 'workflow_dispatch'].includes(run.event))
+                  .sort((a, b) => b.id - a.id || b.run_attempt - a.run_attempt)[0];
+                if (!latest || latest.status !== 'completed' || latest.conclusion !== 'success') {
+                  held(pr, `${workflow.name}: ${latest ? latest.conclusion ?? latest.status : '当該headのCI未実行'} のため待機`);
+                  if (!latest) await github.rest.actions.createWorkflowDispatch({owner, repo, workflow_id: workflow.id, ref: pr.head.ref});
+                  verified = false;
+                  break;
+                }
+              }
+              if (!verified) continue;
+              const checks = await github.paginate(github.rest.checks.listForRef, {owner, repo, ref: sha, filter: 'latest', per_page: 100});
+              // 同じ自動マージ処理の実行中checkだけを除き、他のcheckの失敗・未完了は保留する。
+              const selfRun = `/actions/runs/${context.runId}`;
+              const others = checks.filter(check => !check.details_url?.includes(selfRun));
+              if (others.some(check => check.status !== 'completed' || !['success', 'neutral', 'skipped'].includes(check.conclusion))) {
+                held(pr, '他のcheckが未完了または失敗しているため保留');
+                continue;
+              }
+              const statuses = (await github.rest.repos.getCombinedStatusForRef({owner, repo, ref: sha, per_page: 100})).data;
+              if (statuses.total_count > 0 && statuses.state !== 'success') {
+                held(pr, `commit statusが${statuses.state}のため保留`);
+                continue;
+              }
+              const currentBase = (await github.rest.repos.getBranch({owner, repo, branch})).data.commit.sha;
+              pr = (await github.rest.pulls.get({owner, repo, pull_number: pr.number})).data;
+              if (pr.state !== 'open' || pr.head.sha !== sha || currentBase !== baseSha || comparison.merge_base_commit.sha !== currentBase || pr.mergeable !== true) {
+                held(pr, 'head/baseまたはマージ可能状態が変化したため再検証を待機');
+                continue;
+              }
+              const mergeMethod = repository.allow_squash_merge ? 'squash' : repository.allow_merge_commit ? 'merge' : 'rebase';
+              try {
+                const result = (await github.rest.pulls.merge({owner, repo, pull_number: pr.number, sha, merge_method: mergeMethod})).data;
+                held(pr, result.merged ? `CI成功後にマージ済み (${result.sha})` : 'GitHubのマージ要件を満たすまで保留');
+              } catch (error) {
+                if (![403, 405, 409, 422].includes(error.status)) throw error;
+                held(pr, `GitHubのマージ要件により保留 (${error.status})`);
+              }
+            }
+            await core.summary.addHeading('Dependabot auto-merge').addRaw(report.join('\n') || '対象PRなし').write();

@@ -1,6 +1,7 @@
 name: .NET ビルド
 
 on:
+  workflow_dispatch:
   pull_request:
 
 permissions:
