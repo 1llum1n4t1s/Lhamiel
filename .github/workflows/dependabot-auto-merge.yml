@@ -72,7 +72,7 @@ jobs:
                 const changed = file.patch.split('\n').filter(line => /^[+-]/.test(line) && !/^\+\+\+|^---/.test(line));
                 return changed.length > 0 && changed.every(line => /^[+-]\s*(?:FROM\s|image:\s)/i.test(line));
               }
-              return /(^|\/)(?:package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|yarn\.lock|bun\.lockb?|Cargo\.toml|Cargo\.lock|Gemfile|Gemfile\.lock|pubspec\.yaml|pubspec\.lock|global\.json|packages\.config|packages\.lock\.json|Directory\.Packages\.props|requirements[^/]*\.txt|pyproject\.toml|poetry\.lock|uv\.lock|Pipfile(?:\.lock)?|build\.gradle(?:\.kts)?|settings\.gradle(?:\.kts)?|gradle\.properties|libs\.versions\.toml|gradle-wrapper\.properties)$/.test(name)
+              return /(^|\/)(?:Package\.swift|Package\.resolved|vcpkg\.json|vcpkg-configuration\.json|rust-toolchain(?:\.toml)?|Directory\.Build\.props|package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|yarn\.lock|bun\.lockb?|Cargo\.toml|Cargo\.lock|Gemfile|Gemfile\.lock|pubspec\.yaml|pubspec\.lock|global\.json|packages\.config|packages\.lock\.json|Directory\.Packages\.props|requirements[^/]*\.txt|pyproject\.toml|poetry\.lock|uv\.lock|Pipfile(?:\.lock)?|build\.gradle(?:\.kts)?|settings\.gradle(?:\.kts)?|gradle\.properties|libs\.versions\.toml|gradle-wrapper\.properties)$/.test(name)
                 || /\.(?:csproj|fsproj|vbproj)$/.test(name);
             }
             

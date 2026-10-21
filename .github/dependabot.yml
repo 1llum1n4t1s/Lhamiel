@@ -1,26 +1,55 @@
+# 更新方針: 毎週月曜09:00（日本時間）、minor/patchを集約、majorは個別PR。
+# マージ可否は既定ブランチのDependabot auto-mergeが最新CIで判定します。
 version: 2
 updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Tokyo"
-    groups:
-      actions:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
-
-  - package-ecosystem: "nuget"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-      timezone: "Asia/Tokyo"
-    open-pull-requests-limit: 5
-    groups:
-      nuget-minor-patch:
-        patterns: ["*"]
-        update-types: ["minor", "patch"]
+- package-ecosystem: github-actions
+  directory: /
+  schedule:
+    interval: weekly
+    day: monday
+    time: 09:00
+    timezone: Asia/Tokyo
+  open-pull-requests-limit: 5
+  groups:
+    minor-and-patch:
+      patterns:
+      - '*'
+      update-types:
+      - minor
+      - patch
+  commit-message:
+    prefix: deps
+- package-ecosystem: nuget
+  directories:
+  - /scripts/CompressionInputE2E
+  - /scripts/CompressionRegistryE2E
+  - /scripts/CompressionRegistryScaleE2E
+  - /scripts/ConflictUiE2E
+  - /scripts/DiagnosticsE2E
+  - /scripts/ExtractionE2E
+  - /scripts/MotwE2E
+  - /scripts/OutputGateE2E
+  - /scripts/OutputLeafGuardE2E
+  - /scripts/PathIdentityE2E
+  - /scripts/ProgressFocusE2E
+  - /scripts/SafetyE2E/BoundaryProbe
+  - /scripts/WorkerOutcomeE2E
+  - /src/Lhamiel
+  - /src/Lhamiel.Tests.Unit
+  schedule:
+    interval: weekly
+    day: monday
+    time: 09:00
+    timezone: Asia/Tokyo
+  open-pull-requests-limit: 5
+  groups:
+    minor-and-patch:
+      patterns:
+      - '*'
+      update-types:
+      - minor
+      - patch
+  commit-message:
+    prefix: deps
+  allow:
+  - dependency-type: all
