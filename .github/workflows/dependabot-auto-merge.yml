@@ -14,7 +14,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  actions: write
+  actions: read
   checks: read
   statuses: read
 
@@ -93,12 +93,6 @@ jobs:
               workflows.push((await github.rest.actions.getWorkflow({owner, repo, workflow_id: path.split('/').pop()})).data);
             }
             
-            async function dispatchValidation(pr) {
-              for (const workflow of workflows) {
-                await github.rest.actions.createWorkflowDispatch({owner, repo, workflow_id: workflow.id, ref: pr.head.ref});
-              }
-            }
-            
             for (const item of prs) {
               let pr = (await github.rest.pulls.get({owner, repo, pull_number: item.number})).data;
               if (pr.state !== 'open' || pr.draft || pr.user?.id !== botId || pr.head.repo?.id !== repository.id || pr.base.ref !== branch) continue;
@@ -120,23 +114,6 @@ jobs:
               }
               // PRのbase.shaは作成時点の値を返すことがあるため、既定ブランチを直接取得する。
               const baseSha = (await github.rest.repos.getBranch({owner, repo, branch})).data.commit.sha;
-              const comparison = (await github.rest.repos.compareCommitsWithBasehead({owner, repo, basehead: `${baseSha}...${sha}`, per_page: 1})).data;
-              if (comparison.merge_base_commit.sha !== baseSha) {
-                try {
-                  await github.rest.pulls.updateBranch({owner, repo, pull_number: pr.number, expected_head_sha: sha});
-                  // GITHUB_TOKEN由来の更新はPRイベントを発火しないため、CIを明示実行する。
-                  let refreshed = pr;
-                  for (let attempt = 0; attempt < 10 && refreshed.head.sha === sha; attempt++) {
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    refreshed = (await github.rest.pulls.get({owner, repo, pull_number: pr.number})).data;
-                  }
-                  if (refreshed.state === 'open' && refreshed.head.sha !== sha) await dispatchValidation(refreshed);
-                  held(pr, '既定ブランチを取り込み、更新後のCIを待機');
-                } catch (error) {
-                  held(pr, `既定ブランチ取込み待ち (${error.status ?? 'error'})`);
-                }
-                continue;
-              }
               let verified = true;
               for (const workflow of workflows) {
                 const runs = (await github.rest.actions.listWorkflowRuns({owner, repo, workflow_id: workflow.id, head_sha: sha, per_page: 100})).data.workflow_runs;
@@ -144,7 +121,6 @@ jobs:
                   .sort((a, b) => b.id - a.id || b.run_attempt - a.run_attempt)[0];
                 if (!latest || latest.status !== 'completed' || latest.conclusion !== 'success') {
                   held(pr, `${workflow.name}: ${latest ? latest.conclusion ?? latest.status : '当該headのCI未実行'} のため待機`);
-                  if (!latest) await github.rest.actions.createWorkflowDispatch({owner, repo, workflow_id: workflow.id, ref: pr.head.ref});
                   verified = false;
                   break;
                 }
@@ -165,7 +141,7 @@ jobs:
               }
               const currentBase = (await github.rest.repos.getBranch({owner, repo, branch})).data.commit.sha;
               pr = (await github.rest.pulls.get({owner, repo, pull_number: pr.number})).data;
-              if (pr.state !== 'open' || pr.head.sha !== sha || currentBase !== baseSha || comparison.merge_base_commit.sha !== currentBase || pr.mergeable !== true) {
+              if (pr.state !== 'open' || pr.head.sha !== sha || currentBase !== baseSha || pr.mergeable !== true) {
                 held(pr, 'head/baseまたはマージ可能状態が変化したため再検証を待機');
                 continue;
               }
