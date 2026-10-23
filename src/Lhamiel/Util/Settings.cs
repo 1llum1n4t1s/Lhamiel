@@ -795,26 +795,6 @@ public class Settings
     }
 
     /// <summary>
-    /// 旧 API 互換用の入力正規化（Trim + 空除去 + 大小無視重複排除）。
-    /// 新しい仕組みでは <see cref="LhaignoreFile"/> 経由でファイルへ書き出すため通常は不要。
-    /// </summary>
-    internal static List<string> NormalizeExcludedFilePatterns(IEnumerable<string> patterns)
-    {
-        var result = new List<string>();
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var pattern in patterns)
-        {
-            var normalized = pattern.Trim();
-            if (normalized.Length == 0)
-                continue;
-            if (seen.Add(normalized))
-                result.Add(normalized);
-        }
-
-        return result;
-    }
-
-    /// <summary>
     /// 圧縮元内で探す除外ルールファイル名の既定候補を返す。
     /// 配列を呼び出し毎に作成し、Settings インスタンス間の参照共有を避ける。
     /// </summary>

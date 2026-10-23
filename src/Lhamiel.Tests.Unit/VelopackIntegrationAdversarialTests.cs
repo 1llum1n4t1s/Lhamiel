@@ -529,27 +529,6 @@ public class VelopackIntegrationAdversarialSequentialTests
     }
 
     /// <summary>
-    /// ExcludedFilePatterns に 10000 件 (半分重複) を詰めても NormalizeExcludedFilePatterns が現実時間で完了。
-    /// </summary>
-    [Fact]
-    public void Settings_NormalizeExcludedFilePatterns_With10000Items_DedupesUnderOneSecond()
-    {
-        // Arrange
-        var input = new List<string>(10000);
-        for (int i = 0; i < 5000; i++) input.Add($"pattern_{i}.tmp");
-        for (int i = 0; i < 5000; i++) input.Add($"PATTERN_{i % 5000}.TMP"); // ケース違い重複
-
-        // Act
-        var sw = Stopwatch.StartNew();
-        var result = Settings.NormalizeExcludedFilePatterns(input);
-        sw.Stop();
-
-        // Assert
-        Assert.Equal(5000, result.Count);
-        Assert.True(sw.Elapsed < TimeSpan.FromSeconds(1));
-    }
-
-    /// <summary>
     /// MutateAndSave を 500 回連続呼び出ししても全て完走 (ファイル handle 枯渇しない)。
     /// </summary>
     [Fact(Timeout = 60000)]

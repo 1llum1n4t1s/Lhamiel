@@ -35,3 +35,5 @@ dotnet run --project scripts/CompressionRegistryScaleE2E/Probe.csproj -c Release
 ```
 
 この追加 fixture は leaf の junction、parent の junction、file の symlink/hardlink を作ります。junction/symlink を含むため、共通清掃ヘルパーで扱えない範囲を直接削除せず、fixture の絶対パスを保持して親へ引き継ぎます。
+
+依存 DLL・アイコン・ネイティブ資産の一覧は [E2E.Assets.props](../E2E.Assets.props) で共通管理します。既定は本体の Release / win-x64 出力です。別のビルド出力は `-p:Assets=<絶対パス>` で指定でき、従来の `-p:AssetDir=<絶対パス>` も使用できます。両方の指定時は `Assets` を優先します。

@@ -20,3 +20,5 @@ $env:LHAMIEL_OUTCOME_TEST_ROOT = 'C:\absolute\fresh-artifacts-directory'
 `failure-cases.json`、worker ごとの開始・表示画面・退出記録、`result.json` を保持する。
 合格条件は全子の退出、成功データ一致、失敗/取消の非ゼロ終了、成功だけの進捗計上、全体取消の OCE。
 `--ui` は VM 受付経路の結果検証であり、実 Drag routed event・右クリック・ショートカットの全入口試験は既存の並列 E2E を使う。
+
+依存 DLL・アイコン・ネイティブ資産の一覧は [E2E.Assets.props](../E2E.Assets.props) で共通管理します。既定は本体の Release / win-x64 出力です。別のビルド出力は `-p:Assets=<絶対パス>` で指定でき、従来の `-p:AssetDir=<絶対パス>` も使用できます。両方の指定時は `Assets` を優先します。

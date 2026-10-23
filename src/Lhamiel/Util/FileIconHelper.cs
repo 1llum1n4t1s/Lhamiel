@@ -30,7 +30,7 @@ file static class ThumbnailExtensions
 /// <summary>
 /// Windows Shell API を使用してファイルの関連付けアイコンを取得するヘルパー
 /// </summary>
-public static class FileIconHelper
+public static partial class FileIconHelper
 {
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct SHFILEINFO
@@ -89,9 +89,6 @@ public static class FileIconHelper
         public uint biClrImportant;
     }
 
-    // IShellItemImageFactory GUID
-    private static readonly Guid CLSID_ShellItem = new("43826d1e-e718-42ee-bc55-a1e261c37bfe");
-
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
     private static extern void SHCreateItemFromParsingName(
         string pszPath, IntPtr pbc, ref Guid riid, out IntPtr ppv);
@@ -113,9 +110,9 @@ public static class FileIconHelper
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
 
-    [DllImport("user32.dll", SetLastError = true)]
+    [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DestroyIcon(IntPtr hIcon);
+    private static partial bool DestroyIcon(IntPtr hIcon);
 
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern IntPtr LoadImage(IntPtr hInst, string name, uint type, int cx, int cy, uint fuLoad);
@@ -136,11 +133,11 @@ public static class FileIconHelper
     [DllImport("gdi32.dll")]
     private static extern int GetDIBits(IntPtr hdc, IntPtr hbmp, uint start, uint cLines, byte[] lpvBits, ref BITMAPINFOHEADER lpbmi, uint usage);
 
-    [DllImport("user32.dll")]
-    private static extern IntPtr GetDC(IntPtr hWnd);
+    [LibraryImport("user32.dll")]
+    private static partial IntPtr GetDC(IntPtr hWnd);
 
-    [DllImport("user32.dll")]
-    private static extern int ReleaseDC(IntPtr hWnd, IntPtr hdc);
+    [LibraryImport("user32.dll")]
+    private static partial int ReleaseDC(IntPtr hWnd, IntPtr hdc);
 
     /// <summary>無圧縮 RGB を示す biCompression 値</summary>
     private const uint BI_RGB = 0;
@@ -148,9 +145,9 @@ public static class FileIconHelper
     /// <summary>GetDIBits の usage: カラーテーブルを実 RGB 値で返す</summary>
     private const uint DIB_RGB_COLORS = 0;
 
-    [DllImport("gdi32.dll")]
+    [LibraryImport("gdi32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DeleteObject(IntPtr hObject);
+    private static partial bool DeleteObject(IntPtr hObject);
 
     /// <summary>
     /// 画像・動画ファイルのサムネイルを取得する。

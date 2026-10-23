@@ -233,7 +233,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 
 ## Testing
 
-Tests in `src/Lhamiel.Tests.Unit/` using **xUnit 4** + Moq. The test project references the main project directly via `InternalsVisibleTo`.
+Tests in `src/Lhamiel.Tests.Unit/` using **xUnit 4**. The test project references the main project directly via `InternalsVisibleTo`.
 
 - 通常テスト: `*Tests.cs`
 - 嫌がらせテスト (adversarial): `*AdversarialTests.cs` — 境界値、異常入力、状態遷移の矛盾

@@ -7,7 +7,7 @@
 # 前提:
 #   - SimplySign Desktop が接続済み (証明書が CurrentUser\My に見えていること)
 #   - Directory.Build.props の <Version> がリリースしたいバージョンになっていること (/vava 済み)
-#   - C:\Users\IMT\dev\Secret\secrets.json に cloudflare.api_token があること
+#   - D:\Dev\Secret\secrets.json に cloudflare.api_token があること
 #
 # 使い方:
 #   pwsh scripts/release-local.ps1                # フルリリース (build + sign + upload + cleanup)
@@ -60,13 +60,13 @@ Set-StrictMode -Version Latest
 # ---- 定数 ----
 # Velopack (vpk) は常に最新安定版を使う (ゆろ君ルール): NuGet から実行時に最新を解決して pin する
 # (NuGet 側 Velopack も VelopackUpdateDialog.Avalonia 経由の transitive で常に最新へ追従する)
-$WranglerVersion = '4.148.0'        # サプライチェーン対策でバージョン固定 (要 Node.js >=22)
+$WranglerVersion = '4.152.0'        # サプライチェーン対策でバージョン固定 (要 Node.js >=22)
 $Bucket = 'lhamiel-updates'
 $BaseUrl = 'https://lhamiel.kagayoi.com'
 $ZoneName = 'kagayoi.com'           # Cloudflare zone (apex)。$BaseUrl の Host から正規表現で推測すると
                                      # apex / co.jp 等の複合 TLD で誤判定するため定数で固定する
 $AccountId = '10901bfadbf1005164774a7350082985'
-$SecretsPath = 'C:\Users\IMT\dev\Secret\secrets.json'
+$SecretsPath = 'D:\Dev\Secret\secrets.json'
 $CertSubjectName = 'Open Source Developer Yuichiro Shinozaki'
 # /n (Subject 名) で選択: 証明書の年次更新で thumbprint が変わっても動く
 $SignParams = "/n `"$CertSubjectName`" /fd SHA256 /td SHA256 /tr http://time.certum.pl"

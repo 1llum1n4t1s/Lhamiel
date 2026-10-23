@@ -79,14 +79,6 @@ public class SettingsEdgeCaseTests
     }
 
     [Fact]
-    public void ExcludedFilePatterns_NormalizeTrimsAndDeduplicates()
-    {
-        var result = Settings.NormalizeExcludedFilePatterns([" .git ", ".GIT", "", "node_modules"]);
-
-        Assert.Equal([".git", "node_modules"], result);
-    }
-
-    [Fact]
     public void SupportedCompressionFormats_IsSubsetOfExtractionFormats()
     {
         foreach (var format in Settings.SupportedCompressionFormats)

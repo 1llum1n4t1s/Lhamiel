@@ -29,3 +29,5 @@ $env:LHAMIEL_PROGRESS_TEST_ROOT = 'C:\Users\IMT\dev\Lhamiel\.codex\gogo-rere-par
 - 新しい出力リンクのエラー key は全 17 locale に一度だけ存在し、全訳が `{0}` を保持すること。
 
 追加成果物: 各 locale の `*-roots.json`（C/D/UNC の Title・取消名・本文・bounds）と `*-large-group.json` / `*-large-group.png`（5,000 target、Show 前準備時間、観測時間、target高さ、取消ボタンの画面内配置）。`displayObservationMs` は意図的な 300ms 待機を含む観測時間であり、描画所要時間そのものではない。追加変更の復元元は `.codex/gogo-rere-parallel-20261007/backups/ui/additional-boundaries`（locale17+probe source+README、19ファイル）。
+
+依存 DLL・アイコン・ネイティブ資産の一覧は [E2E.Assets.props](../E2E.Assets.props) で共通管理します。既定は本体の Release / win-x64 出力です。別のビルド出力は `-p:Assets=<絶対パス>` で指定でき、従来の `-p:AssetDir=<絶対パス>` も使用できます。両方の指定時は `Assets` を優先します。

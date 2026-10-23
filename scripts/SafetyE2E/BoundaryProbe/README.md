@@ -20,3 +20,5 @@ dotnet run --project scripts/SafetyE2E/BoundaryProbe/BoundaryProbe.csproj -- aft
 - 外部プロセスによる検査後のリンク差替えへの原子的保護は検証しない。
 
 確認範囲: merge の新規/上書き/空dir、合法 root/上位link、通常上書き/skip、深い overwriteCheckPaths の退避、部分展開コピー、祖先linkがある復元/退避破棄。
+
+依存 DLL・アイコン・ネイティブ資産は [E2E.Assets.props](../../E2E.Assets.props) で共通管理します。既定の本体 Release / win-x64 出力は維持し、別の出力は `-p:Assets=<絶対パス>` で指定できます。`AssetDir` も互換名として使用でき、両方の指定時は `Assets` を優先します。

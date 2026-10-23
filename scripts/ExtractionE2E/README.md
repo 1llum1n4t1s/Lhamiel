@@ -39,3 +39,5 @@ batch-cancel-ready.json は実 worker 2 つの開始後に生成する。指定�
 
 再検証だけ行う場合は `-VerifyOnly` を指定できる。過去 artifact の製品 hash は当時の result.json を正本とし、再検証前に保存しておく。
 今回の成果物と `.bak` は削除しない。`.bak` は対応する元ファイルに Copy-Item で戻せる初版・修正前バックアップ。
+
+依存 DLL・アイコン・ネイティブ資産の一覧は [E2E.Assets.props](../E2E.Assets.props) で共通管理します。既定は本体の Release / win-x64 出力です。別のビルド出力は `-p:Assets=<絶対パス>` で指定でき、従来の `-p:AssetDir=<絶対パス>` も使用できます。両方の指定時は `Assets` を優先します。

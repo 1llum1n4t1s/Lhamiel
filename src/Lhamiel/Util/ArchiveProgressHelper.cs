@@ -1,9 +1,8 @@
-using Avalonia.Threading;
 using Lhamiel.View;
 namespace Lhamiel.Util;
 
 /// <summary>
-/// 展開・圧縮処理から ProgressWindow への進捗ディスパッチを共通化するヘルパ。
+/// 展開・圧縮処理から ProgressWindow への進捗配送を共通化するヘルパ。
 /// </summary>
 internal static class ArchiveProgressHelper
 {
@@ -21,10 +20,11 @@ internal static class ArchiveProgressHelper
     /// </summary>
     internal static void DispatchProgress(ProgressWindow? progressWindow, ProgressInfo info)
     {
+        // UI スレッドへの配送は ProgressWindow の各更新メソッドに集約する。
         if (info.IsIndeterminate)
-            Dispatcher.UIThread.Post(() => progressWindow?.SetIndeterminate(info.Status));
+            progressWindow?.SetIndeterminate(info.Status);
         else
-            Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(info.Percentage));
+            progressWindow?.UpdateProgress(info.Percentage);
     }
 
     /// <summary>
@@ -48,7 +48,7 @@ internal static class ArchiveProgressHelper
                 // 並列バッチでは複数アイテムのフェーズ表示が交錯するため、バー
                 // (完了件数ベースの確定進捗) は維持し、フェーズテキストは通知行に流す
                 // (マーキー⇔確定のバー切替が点滅して見えるのを避ける)。
-                Dispatcher.UIThread.Post(() => progressWindow?.SetNotice(info.Status));
+                progressWindow?.SetNotice(info.Status);
                 return;
             }
             int baseline;
@@ -65,7 +65,7 @@ internal static class ArchiveProgressHelper
             // (完了件数ベースの UpdateProgress / SetCompleted) が駆動するため、ここでは 99 で頭打ちにする。
             var overallProgress = Math.Clamp((int)((baseline + info.Percentage / 100.0) / totalCount * 100), 0, 99);
             if (throttler.ShouldReport(overallProgress))
-                Dispatcher.UIThread.Post(() => progressWindow?.UpdateProgress(overallProgress));
+                progressWindow?.UpdateProgress(overallProgress);
         });
     }
 }

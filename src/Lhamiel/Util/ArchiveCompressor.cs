@@ -1,4 +1,5 @@
 using Cube.FileSystem.SevenZip;
+using System.IO.Enumeration;
 using System.Security;
 using CompressionMethod = Cube.FileSystem.SevenZip.CompressionMethod;
 using LzhArchiveProgress = Kagayoi.UnLhaRe.ArchiveProgress;
@@ -1287,10 +1288,12 @@ public static class ArchiveCompressor
             }
 
             // ToArray による全件確定を避け、列挙中も進捗通知とキャンセル確認を続ける。
-            IEnumerator<FileSystemInfo> enumerator;
+            IEnumerator<(string Path, bool IsDirectory)> enumerator;
             try
             {
-                enumerator = new DirectoryInfo(frame.path).EnumerateFileSystemInfos("*", enumOpts).GetEnumerator();
+                // FileSystemInfo を生成せず、相対入力でも従来の FullName と同じ絶対パスを返す。
+                enumerator = new FileSystemEnumerable<(string Path, bool IsDirectory)>(frame.path,
+                    static (ref FileSystemEntry entry) => (entry.ToFullPath(), entry.IsDirectory), enumOpts).GetEnumerator();
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -1306,7 +1309,7 @@ public static class ArchiveCompressor
             while (true)
             {
                 reportProgress(false);
-                FileSystemInfo entry;
+                (string Path, bool IsDirectory) entry;
                 try
                 {
                     if (!entries.MoveNext()) break;
@@ -1324,18 +1327,17 @@ public static class ArchiveCompressor
                 }
 
                 reportProgress(true);
-                var isDirectory = entry is DirectoryInfo;
-                if (outputExclusions.Contains(outputIdentity.GetKey(entry.FullName))) continue;
-                if (ShouldExcludeFile(entry.FullName, matcher, root, isDirectory, traversalMode: true))
+                if (outputExclusions.Contains(outputIdentity.GetKey(entry.Path))) continue;
+                if (ShouldExcludeFile(entry.Path, matcher, root, entry.IsDirectory, traversalMode: true))
                     continue;
-                if (isDirectory)
+                if (entry.IsDirectory)
                 {
-                    directories?.Add(entry.FullName);
-                    stack.Push((entry.FullName, matcher, priority));
+                    directories?.Add(entry.Path);
+                    stack.Push((entry.Path, matcher, priority));
                 }
                 else
                 {
-                    yield return entry.FullName;
+                    yield return entry.Path;
                 }
             }
         }

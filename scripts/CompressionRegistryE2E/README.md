@@ -15,3 +15,5 @@ dotnet run --project scripts/CompressionRegistryE2E/Probe.csproj -c Release -p:N
 修正前の結果は `.codex/gogo-grok-parallel-20261007/registry-count-before/result.json`、修正後は `registry-count-after/result.json` に保存しています。修正前の source は `.codex/gogo-grok-parallel-20261007/backups/inputs/registry-count/src/Lhamiel/Util/CompressionOutputRegistry.cs` に保持しています。
 
 before の実行時は同じ helper に `--expect-broken` を渡し、正常保存後の `BeginScan`・`Dispose`・`NextSmallRegister` が全て `InvalidDataException` となることを確認しました。検証成果物は保持し、不要になったときはグローバルのごみ箱対応 cleanup helper で今回の指定ディレクトリだけを清掃します。
+
+依存 DLL・アイコン・ネイティブ資産の一覧は [E2E.Assets.props](../E2E.Assets.props) で共通管理します。既定は本体の Release / win-x64 出力です。別のビルド出力は `-p:Assets=<絶対パス>` で指定でき、従来の `-p:AssetDir=<絶対パス>` も使用できます。両方の指定時は `Assets` を優先します。

@@ -33,7 +33,7 @@
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <OutputPath Condition="'$(UseArtifactsOutput)' != 'true'">$(MSBuildThisFileDirectory)bin\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</OutputPath>
     <IntermediateOutputPath Condition="'$(UseArtifactsOutput)' != 'true'">$(MSBuildThisFileDirectory)obj\$(Configuration)\$(TargetFramework)\$(RuntimeIdentifier)\</IntermediateOutputPath>
-    <KagayoiSupportClientVersion>1.0.6</KagayoiSupportClientVersion>
+    <KagayoiSupportClientVersion>1.0.8</KagayoiSupportClientVersion>
     <UnLhaReVersion>1.0.4</UnLhaReVersion>
   </PropertyGroup>
 
@@ -61,11 +61,11 @@
       SetConfiguration="Configuration=$(Configuration)"
       SetPlatform="Platform=AnyCPU" />
     <PackageReference Include="Kagayoi.Support.Client" Version="$(KagayoiSupportClientVersion)" Condition="'$(KagayoiSupportClientProject)' == ''" />
-    <PackageReference Include="Avalonia" Version="12.1.3" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />
-    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.3" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.3" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.3" />
+    <PackageReference Include="Avalonia" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.4" />
     <!-- CRDebugger.Avalonia は復元グラフを構成非依存に保ち、Debug 時だけ下の Reference で使用する。
          PackageReference を Configuration 条件付きにすると、共有 project.assets.json が Release 復元で
          上書きされた後の Debug Rebuild で CS0246 になるため、compile/runtime asset は常時除外する。 -->
@@ -76,15 +76,15 @@
       GeneratePathProperty="true"
       PrivateAssets="all" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.91" GeneratePathProperty="true" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.92" GeneratePathProperty="true" />
     <PackageReference Include="Kagayoi.UnLhaRe" Version="$(UnLhaReVersion)" />
-    <PackageReference Include="SuperLightLogger" Version="1.0.17" />
+    <PackageReference Include="SuperLightLogger" Version="1.0.18" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.1" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。
          Windows 専用 (Lhamiel 自体 Windows 専用なので問題なし)。Native AOT 対応 (10.x)。 -->
-    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.13" />
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
-    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.19" />
+    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.20" />
   </ItemGroup>
 
   <ItemGroup>
@@ -116,27 +116,17 @@
   </ItemGroup>
 
   <!-- アイコンを Publish 出力にコピー -->
+  <ItemGroup>
+    <ApplicationIconFile Include="icon\app.ico;icon\app_classic.ico;icon\app_crystal.ico;icon\app_legacy.ico;icon\file.ico;icon\file_folder.ico;icon\file_cute.ico;icon\file_ice.ico" />
+  </ItemGroup>
+
   <Target Name="CopyIcons" AfterTargets="Publish">
-    <Copy SourceFiles="icon\app.ico" DestinationFolder="$(PublishDir)" />
-    <Copy SourceFiles="icon\app_classic.ico" DestinationFolder="$(PublishDir)" />
-    <Copy SourceFiles="icon\app_crystal.ico" DestinationFolder="$(PublishDir)" />
-    <Copy SourceFiles="icon\app_legacy.ico" DestinationFolder="$(PublishDir)" />
-    <Copy SourceFiles="icon\file.ico" DestinationFolder="$(PublishDir)" />
-    <Copy SourceFiles="icon\file_folder.ico" DestinationFolder="$(PublishDir)" />
-    <Copy SourceFiles="icon\file_cute.ico" DestinationFolder="$(PublishDir)" />
-    <Copy SourceFiles="icon\file_ice.ico" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="@(ApplicationIconFile)" DestinationFolder="$(PublishDir)" />
   </Target>
 
   <!-- Build 出力にもコピー（dev 実行での関連付けアイコン解決・設定画面プレビュー用） -->
   <Target Name="CopyIconsBuild" AfterTargets="Build">
-    <Copy SourceFiles="icon\app.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="icon\app_classic.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="icon\app_crystal.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="icon\app_legacy.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="icon\file.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="icon\file_folder.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="icon\file_cute.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="icon\file_ice.ico" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ApplicationIconFile)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
 
 
