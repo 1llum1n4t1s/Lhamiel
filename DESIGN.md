@@ -173,6 +173,8 @@ Release preparation and distribution use a validated work directory under the us
 
 Sibling project references give fast coordinated local development, while a fixed public NuGet.org version keeps standalone clones and CI reproducible without repository-specific package credentials. Local sibling builds write `obj/packages.local.lock.json`, or `<ArtifactsPath>/obj/<ProjectName>/packages.local.lock.json` when an external artifacts path is supplied; tracked `packages.lock.json` files therefore remain the package-mode source of truth used by standalone clones and CI.
 
+The tracked application lockfile uses the default `win-x64` RID, matching `Lhamiel.csproj` and the default x64 platform in `Directory.Build.props`. An ARM64 build or publish can replace that RID-specific dependency graph; this does not change the baseline for the shared lockfile or remove ARM64 support. Release cleanup re-evaluates and validates the default restore graph, but in sibling-project mode that validation covers only the local lockfile. The tracked package-mode graph requires separate validation using the commands in [AGENTS.md](AGENTS.md#build--development-commands).
+
 ## 製品ページの配信先
 
 製品ページの配信HTMLは `../vps-web/lp/lhamiel/`（編集元は `../vps-web/tools/lp/templates/`）、公開実体はVPSの `/srv/www/lp/lhamiel/`。

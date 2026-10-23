@@ -23,7 +23,7 @@ dotnet build src/Lhamiel/Lhamiel.csproj -c Debug -p:RuntimeIdentifier=win-arm64 
 # Run tests (xUnit 4)
 dotnet test Lhamiel.slnx -c Release
 
-# 追跡対象 packages.lock.json を単独 clone / CI と同じ NuGet パッケージ構成で更新・検証
+# 追跡対象 packages.lock.json を既定の x64 / NuGet パッケージ構成で更新・検証
 dotnet restore Lhamiel.slnx -p:KagayoiSupportClientUsePackage=true --force-evaluate
 dotnet restore Lhamiel.slnx -p:KagayoiSupportClientUsePackage=true --locked-mode
 
@@ -51,6 +51,8 @@ pwsh scripts/release-local.ps1 -SkipUpload -Runtimes win-x64 -WorkDirectory <空
 > **Note**: Native AOT ビルド（`dotnet publish`）は VS の C++ ツールチェーン（`vswhere.exe`）が必要。ローカルテストでは `-p:PublishAot=false --self-contained` を使う。
 
 Solution file: `Lhamiel.slnx` (VS 2026 format). **x64 / ARM64** 両対応。`TreatWarningsAsErrors` が ON — 警告は全てビルドエラーになる。
+
+ARM64 の build / publish 後は、上記の `KagayoiSupportClientUsePackage=true` を指定した restore 2 コマンドで追跡対象 lockfile を更新・検証し、`git diff -- src/Lhamiel/packages.lock.json` で RID が既定の `win-x64` に戻ったことと意図しない依存変更がないことを確認する。`release-local.ps1` 終端の restore は、兄弟 SDK が存在する環境ではローカル用 lockfile だけを更新するため、追跡対象の検証を代替しない。復元モードと分離の理由は [DESIGN.md](DESIGN.md#shared-support-sdk-with-two-resolution-modes) を参照する。
 
 ## Architecture
 
