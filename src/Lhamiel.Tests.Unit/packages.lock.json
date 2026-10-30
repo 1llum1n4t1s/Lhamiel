@@ -214,8 +214,8 @@
       },
       "Kagayoi.Support.Client": {
         "type": "Transitive",
-        "resolved": "1.0.8",
-        "contentHash": "3e/jqLByOtAEOZC43E/qVK9CtXrm/vqnsVEb+l2ICz+Xj9tAD6dE8UQmIvB56KU0vw4OOkkb6yyMVzXxkdTJCw=="
+        "resolved": "1.0.9",
+        "contentHash": "ZvEZSiyWoCwc5//epRGZNf5bB35liaf3Lh7KbcExunUkbKzKRcPXl9Spd/R0uy5NfgJUH/T74bo7iRbXcNzlQQ=="
       },
       "Kagayoi.UnLhaRe": {
         "type": "Transitive",
@@ -428,7 +428,7 @@
           "Avalonia.Markup.Xaml.Loader": "[12.1.4, )",
           "Avalonia.Themes.Fluent": "[12.1.4, )",
           "CommunityToolkit.Mvvm": "[8.4.2, )",
-          "Kagayoi.Support.Client": "[1.0.8, )",
+          "Kagayoi.Support.Client": "[1.0.9, )",
           "Kagayoi.UnLhaRe": "[1.0.4, )",
           "SuperLightLogger": "[1.0.18, )",
           "System.Security.Cryptography.ProtectedData": "[10.0.13, )",
