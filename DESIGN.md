@@ -72,14 +72,14 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 1. The version tab opens `SupportDialog` with the active locale.
 2. The dialog validates the ticket and requests an email verification code through `SupportSubmissionSession`.
 3. A verified code and ticket payload are submitted to `support.kagayoi.com`; the returned reference is shown to the user.
-4. The SDK resolves as a sibling `ProjectReference` during local multi-repository development and as the fixed `Kagayoi.Support.Client` package for standalone clones and CI.
+4. SDK resolution and lockfile isolation follow the [shared support SDK design](#shared-support-sdk-with-two-resolution-modes).
 
 ### Update and release
 
 1. Installed clients obtain `releases.win.json` or `releases.win-arm64.json` from `https://lhamiel.kagayoi.com`.
 2. `scripts/release-local.ps1` builds both Native AOT RIDs in isolated artifact trees, builds the native shell integration, packages with Velopack, and Authenticode-signs all distributed executables through SimplySign/Certum. Per-RID isolation also applies to project references so x64 intermediates cannot be reused by ARM64 publishing.
 3. The same script uploads immutable versioned packages and fixed-name manifests/installers to R2. It downloads non-`.nupkg` artifacts from the exact public URLs without query parameters and compares their size and SHA256 with local outputs, purges only mismatching URLs, and rechecks those same URLs. A cache-busting query could select a different cache entry and miss stale content served to users. Download, purge, or recheck failure stops release completion even after upload. After public-manifest checks, cleanup preserves manifest-referenced files, fixed names, and the latest two versions of versioned artifacts.
-4. The landing page under `../vps-web/lp/lhamiel/` is deployed manually to the VPS through `vps-web/deploy/deploy-lp.ps1`, independently of desktop releases. The Cloudflare gateway preserves the existing update route.
+4. The [product landing page](#製品ページの配信先) is deployed to the VPS independently of desktop releases. The Cloudflare gateway preserves the existing update route.
 
 ## Critical invariants
 
@@ -179,4 +179,4 @@ The tracked application lockfile uses the default `win-x64` RID, matching `Lhami
 
 製品ページの配信HTMLは `../vps-web/lp/lhamiel/`（編集元は `../vps-web/tools/lp/templates/`）、公開実体はVPSの `/srv/www/lp/lhamiel/`。
 Cloudflare側の中継設定は `../vps-web/deploy/lp-gateways/lhamiel/` に置く。
-公開URLと既存のR2・ライセンス通信を維持し、配信は `vps-web/deploy/deploy-lp.ps1` へ統一する。
+公開URLと既存のR2・ライセンス通信を維持する中継構成で、配信経路は `vps-web/deploy/deploy-lp.ps1`。実行時の規約は [AGENTS.md](AGENTS.md#cicd) を参照する。

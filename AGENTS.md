@@ -74,7 +74,7 @@ Drag-and-drop drives the app:
 4. Post-extraction: MotW propagation (`MotwPropagator`)。CRC は展開中に照合し、通常形式は 7z.dll の `SetOperationResult(CRCError)` → Cancel → `reader.Save` 例外、LHA / LZH は UnLhaRe が CRC 検証後だけ一時出力を確定する。展開後の二度読み `reader.Test()` パスは v1.0.183 で廃止し、`Settings.VerifyAfterExtraction` は legacy no-op
 5. `ProgressWindow` shows real-time progress via `IProgress<T>`
 
-**SevenZip 圧縮の進捗表示契約** (528,450 ファイル / 60GB の実測で「100% のまま 9 分超」になった問題への対応): バイト % が動かない区間はマーキー (IsIndeterminate) + 経過テキストで埋める — (1) 容量見積り `Progress.CheckingDiskSpace`、(2) スキャン `Progress.ScanningFiles` (除外対象・フォルダーを含む確認件数、`ScanSourceFiles` の `progress` 引数)、(3) `writer.Add` ループ (実測 93 秒/528k 件) と Save 冒頭の Prepare 列挙は `Progress.PreparingCompression` (i/N、`ProgressTextIntervalMs`=200ms スロットル。ライブラリの Prepare 報告は素通しで数十万件届くためここで間引く)、(4) バイト進捗 100% 到達後〜`writer.Dispose` 完了 (セントラルディレクトリ書出し + 数十万ストリーム一括 close) は `Progress.Finalizing` — `finalizing` フラグで以後の確定 % を抑止、(5) 完了直前に確定 100% を 1 回報告 (テスト契約: `CompressFilesAsync_ReportsFinalizingBeforeFinal100`)。pct=0 は `ProgressThrottler` の boundary 扱いで素通りするため 1 回に抑える。並列バッチ (`CreateMappedProgress` totalCount>1) では indeterminate を `SetNotice` に降格してバーの marquee 点滅を防ぐ。**主因はライブラリ ≤1.0.78 の `UpdateCallback.SetCompleted` 過剰計上**（completeValue はグローバル累積値なのに「ファイル毎リセット検出」で二重加算 → データ処理の 58% 時点で表示 100% 到達）— ライブラリ側で単調最大値方式に修正済み (要 1.0.79+ への PackageReference 更新)。なおライブラリは圧縮中、入力ファイルを `FileShare.Read` で writer Dispose まで保持するため、**圧縮中の対象ファイルは書き込みロックされる**（上流設計妥協、ライブラリ AGENTS.md 参照）。
+**SevenZip 圧縮の進捗表示契約** (528,450 ファイル / 60GB の実測で「100% のまま 9 分超」になった問題への対応): バイト % が動かない区間はマーキー (IsIndeterminate) + 経過テキストで埋める — (1) 容量見積り `Progress.CheckingDiskSpace`、(2) スキャン `Progress.ScanningFiles` (除外対象・フォルダーを含む確認件数、`ScanSourceFiles` の `progress` 引数)、(3) `writer.Add` ループ (実測 93 秒/528k 件) と Save 冒頭の Prepare 列挙は `Progress.PreparingCompression` (i/N、`ProgressTextIntervalMs`=200ms スロットル。ライブラリの Prepare 報告は素通しで数十万件届くためここで間引く)、(4) バイト進捗 100% 到達後〜`writer.Dispose` 完了 (セントラルディレクトリ書出し + 数十万ストリーム一括 close) は `Progress.Finalizing` — `finalizing` フラグで以後の確定 % を抑止、(5) 完了直前に確定 100% を 1 回報告 (テスト契約: `CompressFilesAsync_ReportsFinalizingBeforeFinal100`)。pct=0 は `ProgressThrottler` の boundary 扱いで素通りするため 1 回に抑える。並列バッチ (`CreateMappedProgress` totalCount>1) では indeterminate を `SetNotice` に降格してバーの marquee 点滅を防ぐ。**主因はライブラリ ≤1.0.78 の `UpdateCallback.SetCompleted` 過剰計上**（completeValue はグローバル累積値なのに「ファイル毎リセット検出」で二重加算 → データ処理の 58% 時点で表示 100% 到達）— ライブラリ 1.0.79 以降は単調最大値方式に修正済み。依存更新時も累積値を二重加算しない進捗契約を維持する。なおライブラリは圧縮中、入力ファイルを `FileShare.Read` で writer Dispose まで保持するため、**圧縮中の対象ファイルは書き込みロックされる**（上流設計妥協、ライブラリ AGENTS.md 参照）。
 
 **展開時の出力先決定** (`ArchiveProcessor`):
 - `CreateArchiveNameFolder=ON` + ルートフォルダがアーカイブ名と一致 → フォルダ作成スキップ（`ShouldSkipFolderCreation`）
@@ -233,6 +233,15 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - **CodeQL**: `.github/workflows/codeql.yml` — C# security analysis on PR + weekly
 - **Dependabot**: `.github/dependabot.yml` — NuGet weekly + github-actions weekly
 
+### ローカルリリースの実行
+
+公開依頼時は、リポジトリルートで有効な署名証明書を事前確認し、成功した場合だけリリースを実行する。失敗時は SimplySign Desktop へのログインを案内し、署名を省略して続行しない。配信しない検証と再開の引数は、上記のコマンドを参照する。
+
+```powershell
+pwsh -NoProfile -Command 'if (-not (Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -like "CN=Open Source Developer Yuichiro Shinozaki*" -and $_.NotAfter -gt (Get-Date) })) { exit 1 }'
+if ($LASTEXITCODE -eq 0) { pwsh -NoProfile -File scripts/release-local.ps1 } else { throw '署名証明書が見つからないよ。SimplySign Desktop を起動してトークンでログインしてから /vava を再実行してね' }
+```
+
 ## Testing
 
 Tests in `src/Lhamiel.Tests.Unit/` using **xUnit 4**. The test project references the main project directly via `InternalsVisibleTo`.
@@ -261,12 +270,3 @@ Tests in `src/Lhamiel.Tests.Unit/` using **xUnit 4**. The test project reference
 - `nephilim.jp` の Redirect Rules は `/` だけを 301 する。`releases.*.json` / `*.nupkg` / `*-Setup.exe` は転送せず R2 が配信を続ける。
 - 配信は `lhamiel.kagayoi.com`（R2 `lhamiel-updates`）。旧 `lhamiel.nephilim.jp` は route に併記して残してある。
 - sparse MSIX のパッケージ名 `Nephilim.Lhamiel.ContextMenu` は**改名しない**。Publisher が Certum 証明書の Subject と一致している必要があり、変えると Windows 11 の右クリックメニュー登録が壊れる。
-
-### ローカルリリースの実行
-
-リポジトリルートで事前確認を行い、失敗時は「署名証明書が見つからないよ。SimplySign Desktop を起動してトークンでログインしてから /vava を再実行してね」。公開依頼時に成功を確認してから実行する。
-
-```powershell
-pwsh -NoProfile -Command 'if (-not (Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -like "CN=Open Source Developer Yuichiro Shinozaki*" -and $_.NotAfter -gt (Get-Date) })) { exit 1 }'
-if ($LASTEXITCODE -eq 0) { pwsh -NoProfile -File scripts/release-local.ps1 } else { throw '署名証明書が見つからないよ。SimplySign Desktop を起動してトークンでログインしてから /vava を再実行してね' }
-```
