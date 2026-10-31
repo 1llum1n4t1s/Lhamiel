@@ -228,7 +228,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - 製品ページの配信は `vps-web/deploy/deploy-lp.ps1` を使う。公開ホスト・更新ファイルの既存経路を維持する。
 - **RID 別リリース出力**: `release-local.ps1` の x64 / ARM64 `dotnet publish` は RID ごとの `--artifacts-path` を必須とし、ProjectReference 先を含む共通 `bin/obj` の再利用による異アーキテクチャ参照（CS8012）を防ぐ。
 - **リリースの再開**: リポジトリルートで `pwsh scripts/release-local.ps1 -ReusePublish -WorkDirectory <既存の絶対Tempパス>` を使うと、指定作業ルートの `publish-<RID>/` を検証して再パッケージし、exe がない RID はビルドする。配信だけ再開する場合は同じ作業ルートを `pwsh scripts/release-local.ps1 -UploadOnly -WorkDirectory <既存の絶対Tempパス>` に渡す。通常実行は空の作業ルートを要求し、省略時は作成先を表示する。再開時に `-WorkDirectory` は必須。`-Runtimes win-x64` / `win-arm64` で対象を限定し、`-SkipUpload` は配信前で終了する。保存場所・検証条件・再開の境界は [DESIGN.md](DESIGN.md#local-signed-releases-to-r2) を参照する。
-- **ネイティブ配布物**: `.github/workflows/build.yml` と `scripts/release-local.ps1` の両 RID の publish 検査では、`Lhamiel.exe`、`7z.dll`、`unlhare.dll`、`licenses/Kagayoi.UnLhaRe/LICENSE`、`licenses/Kagayoi.UnLhaRe/THIRD_PARTY_NOTICES.md` の存在確認を維持する。UnLhaRe 更新時は `src/Lhamiel/Lhamiel.csproj` の `UnLhaReVersion` とパッケージ構成の lockfile を揃え、DLL の手動コピー経路を作らない。上流 `../UnLhaRe/vava.config.json` の consumer update も同じ参照・lockfile を更新して locked restore と Release テストを行うため、通常の依存更新でもこの検証を維持する。
+- **ネイティブ配布物**: `.github/workflows/build.yml` と `scripts/release-local.ps1` の両 RID の publish 検査では、`Lhamiel.exe`、`7z.dll`、`unlhare.dll`、`licenses/Kagayoi.UnLhaRe/LICENSE`、`licenses/Kagayoi.UnLhaRe/THIRD_PARTY_NOTICES.md` の存在確認を維持する。UnLhaRe 更新時は `src/Lhamiel/Lhamiel.csproj` の `UnLhaReVersion` とパッケージ構成の lockfile を揃え、DLL の手動コピー経路を作らない。通常の依存更新でも locked restore と Release テストを維持する。
 - **配信完了判定**: `Test-PublishedArtifact` は [DESIGN.md の配信フロー](DESIGN.md#update-and-release) に従い、利用者が取得する固定 URL で照合する。キャッシュ回避クエリへ戻さず、ダウンロード・不一致 URL のパージ・再照合の失敗を成功扱いにしない。
 - **CodeQL**: `.github/workflows/codeql.yml` — C# security analysis on PR + weekly
 - **Dependabot**: `.github/dependabot.yml` — NuGet weekly + github-actions weekly
@@ -261,3 +261,12 @@ Tests in `src/Lhamiel.Tests.Unit/` using **xUnit 4**. The test project reference
 - `nephilim.jp` の Redirect Rules は `/` だけを 301 する。`releases.*.json` / `*.nupkg` / `*-Setup.exe` は転送せず R2 が配信を続ける。
 - 配信は `lhamiel.kagayoi.com`（R2 `lhamiel-updates`）。旧 `lhamiel.nephilim.jp` は route に併記して残してある。
 - sparse MSIX のパッケージ名 `Nephilim.Lhamiel.ContextMenu` は**改名しない**。Publisher が Certum 証明書の Subject と一致している必要があり、変えると Windows 11 の右クリックメニュー登録が壊れる。
+
+### ローカルリリースの実行
+
+リポジトリルートで事前確認を行い、失敗時は「署名証明書が見つからないよ。SimplySign Desktop を起動してトークンでログインしてから /vava を再実行してね」。公開依頼時に成功を確認してから実行する。
+
+```powershell
+pwsh -NoProfile -Command 'if (-not (Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -like "CN=Open Source Developer Yuichiro Shinozaki*" -and $_.NotAfter -gt (Get-Date) })) { exit 1 }'
+if ($LASTEXITCODE -eq 0) { pwsh -NoProfile -File scripts/release-local.ps1 } else { throw '署名証明書が見つからないよ。SimplySign Desktop を起動してトークンでログインしてから /vava を再実行してね' }
+```
