@@ -78,7 +78,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.92" GeneratePathProperty="true" />
     <PackageReference Include="Kagayoi.UnLhaRe" Version="$(UnLhaReVersion)" />
-    <PackageReference Include="SuperLightLogger" Version="1.0.18" />
+    <PackageReference Include="SuperLightLogger" Version="1.0.19" />
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.95.1" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。
          Windows 専用 (Lhamiel 自体 Windows 専用なので問題なし)。Native AOT 対応 (10.x)。 -->
