@@ -54,7 +54,7 @@ Lhamiel is a Japanese-language desktop application for compressing and extractin
 ### Compression
 
 1. `ArchiveCompressor.ScanSourceFiles` builds the complete input list before capacity checks and archive creation. Compression output plans are registered before scanning; each scan filters active plans at entry and removes any outputs registered during the scan from its resolved list at completion. This excludes siblings and their staging/backup paths without serializing overlapping source selections. Explicit file inputs and archives completed before a later scan are retained.
-2. Global `.lhaignore`, optional source-local ignore files, Hidden/System settings, and reparse-point pruning are applied during one DFS scan. Each branch inherits only its ancestor matchers and selected ignore-file priority; local rules are read on entry and prune children immediately. The visited-directory list is reused for empty-folder detection without another filesystem traversal. Progress counts inspected entries (including excluded entries and folders), with cancellation checks throughout enumeration.
+2. Global `.lhaignore`, optional source-local ignore files, Hidden/System settings, and reparse-point pruning are applied during one DFS scan. Each branch inherits only its ancestor matchers and selected ignore-file priority; local rules are read on entry and prune children immediately. The visited-directory list is reused for empty-folder detection without another filesystem traversal. Progress counts inspected entries (including excluded entries and folders), with cancellation checks throughout enumeration. Archive creation reuses the resolved list without rereading ignore rules, keeping capacity estimation and archive inputs consistent.
 3. SevenZip receives individual files and synthetic empty-directory markers; real directories are not passed for recursive library traversal because that would bypass the filter contract. LZH receives the same resolved list as explicit source entries with `/`-normalized archive names and directory entries.
 4. Every format writes into a tracked private `Lhamiel_Temp_<GUID>` directory on the output volume, containing unpredictable TAR/LZH backend sidecars. Successful output is moved into its final location; existing output retains the established backup/rollback contract. The public LZH creation API continues to reject an existing destination. SevenZip writer work is serialized by `NativeArchiveGate`; LZH creation uses the independent UnLhaRe backend. Progress adapts scanning, preparation, byte processing, and finalization into distinct user-visible phases.
 5. Inaccessible files may be skipped according to the documented resilience contract; password-protected partial skips are surfaced because skipped plaintext sources remain outside the archive.
@@ -152,6 +152,14 @@ Password protection is supported only for ZIP and 7z. The view model disables pa
 ### Acrylic contrast layering
 
 Each window layers theme color between the acrylic material and interactive content. This preserves acrylic appearance while bounding contrast variation from bright desktop backgrounds; fallback detection still owns replacement of the acrylic layer when blur is unavailable. The trade-off is that window roots must preserve the shared acrylic, scrim, and content ordering.
+
+### Settings navigation assets
+
+Settings tab headers and their body headings share Microsoft Fluent UI System Icons color PNGs from `Resources/FluentSystemIcons`, embedded as Avalonia resources. SVG sources are kept alongside the displayed PNGs. The icon license is embedded separately as `Lhamiel.FluentSystemIcons.LICENSE` and appended to the application's license text by `MainWindowViewModel.LoadVersionInfo`, so the version screen carries the third-party notice with the application license.
+
+### Diagnostic log retention
+
+`Logger` separates worker log files by operation and PID while retaining the common application prefix. Retention uses the date in standard application and extraction/compression worker filenames, including numeric rotation suffixes; it does not interpret the worker PID as a date. Files dated before the local-date cutoff are deleted, while the cutoff day is retained. Emergency logs and unrecognized filename forms are excluded to avoid deleting unrelated diagnostics. Validation belongs in [AGENTS.md](AGENTS.md#testing).
 
 ### Shared dialog chrome
 

@@ -266,3 +266,5 @@ Lhamiel は MIT License の下で公開されています。
 Copyright (c) 2025-2026 ゆろち
 
 詳細は [LICENSE](LICENSE) ファイルをご参照ください。
+
+設定画面には Microsoft Fluent UI System Icons（MIT License）を使用しています。著作権表示と許諾文は、アプリの「バージョン」タブのライセンス表示、または[アイコンのライセンス](src/Lhamiel/Resources/FluentSystemIcons/LICENSE.txt)で確認できます。

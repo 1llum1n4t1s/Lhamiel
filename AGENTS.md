@@ -98,7 +98,7 @@ Drag-and-drop drives the app:
 - 除外パターンは `%LocalAppData%\Lhamiel\.lhaignore` に保存され、**`.gitignore` 互換のグロブ・否定・ディレクトリ限定構文に対応**（例: `*.log`, `node_modules/`, `/build`, `**/cache`, `!keep.txt`）。
 - `ArchiveCompressor.EnumerateSourceFiles` は分岐ごとの matcher と候補順位を引き継ぐ単一 DFS で、除外ルールの読込・ファイル列挙・空フォルダー用の訪問記録をまとめる。各フォルダーのルールを読んだ直後から枝刈りし、兄弟フォルダーのルールは評価に持ち込まない。除外済みエントリ・空フォルダーの確認中も 200ms 間隔で件数を通知し、各列挙ステップでキャンセルを確認する。
 - **SevenZip へ渡す空ディレクトリエントリは「空マーカーディレクトリ」経由で追加する**（`CreateEmptyDirectoryMarker`）。`writer.Add(realDir, "rel/")` のように**実ディレクトリ**を渡すと、ライブラリ（`1llum1n4t1s.Sevenzip`）の `AddRecursive` が `Io.GetFiles`/`Io.GetDirectories` で**フィルタなしに再走査**し、スキャンで除外したはず（Hidden/System 属性・`.lhaignore` 該当）のファイルを復活させてしまう（中身ゼロ判定のディレクトリでも実体には除外ファイルが残るため）。ライブラリ側はフィルタを一切持たない前提なので、**除外はすべて呼び出し側（Lhamiel）が担保する**。個別ファイルは `ScanSourceFiles` の結果リストから 1 件ずつ `writer.Add` するため再走査は起きない。
-- 圧縮実行ごとに `LhaignoreFile.ReadLines()` と `GitignoreMatcher.Compile` で最新内容を読み直すため、設定 UI を介さない外部編集も反映される。
+- 圧縮のスキャンごとに `LhaignoreFile.ReadLines()` と `GitignoreMatcher.Compile` で最新内容を読み直すため、設定 UI を介さない外部編集も反映される。解決済み一覧を `CompressFilesAsync` へ渡す場合は再読込せず、容量確認と同じ一覧を使う。
 - 設定 UI の「共通の除外ルール」（追加・削除・既定値リセット・「共通除外ファイルを開く」）は `.lhaignore` を直接編集する。`FileSystemWatcher` が外部編集を検知して `ObservableCollection<string>` を再ロードする。画面内の設定はすべてグローバルであり、「フォルダー別ルールの読み込み」は各圧縮元で探すファイル名と優先順位を全圧縮共通で設定する。
 
 ### Key Util Classes
@@ -197,6 +197,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 
 - **Avalonia 12, not WPF** — compiled bindings (`x:CompileBindings="True"`), FluentTheme. `ExtendClientAreaChromeHints` は削除済み → `WindowDecorations` を使う
 - **Native AOT** (`PublishAot=true`) — avoid reflection-heavy patterns
+- **設定画面のカラーアイコン** — [DESIGN.md](DESIGN.md#settings-navigation-assets) のリソース構成に従い、サイドバーと本文見出しで同じ画像を使う。画像を更新するときは Avalonia リソース登録とライセンスの埋込み・表示も維持する。
 - **対応形式の追加・変更** — 展開拡張子は `ArchiveFormatConstants.SupportedArchiveFormats` を更新し、展開判定・関連付け UI の共通カタログを維持する。圧縮形式は `Settings.SupportedCompressionFormats`、`ArchiveCompressor.WritableFormats` / `ParseFormat`、CLI の形式許可リストとパスワード可否を併せて照合する。
 - **右クリックメニュー** — 登録・解除は [DESIGN.md のシェル契約](DESIGN.md#shell-command-visibility-separate-from-package-lifetime)に従う。Windows 10 build 19041 以降は sparse MSIX の COM 登録を使うため、Windows 10 全体を静的 verb のみとして扱わない。展開／圧縮の CLSID・canonical GUID・静的 verb 名を C++、manifest、`ShellContextMenu` で一致させ、`DelegateExecute` 公開前の `IExecuteCommand` / `IObjectWithSelection` 起動確認を維持する。両設定 OFF でパッケージを解除せず、アンインストールだけ `RemoveAll` を使う。COM 能力確認の `E_NOINTERFACE` は登録失敗と区別し、同契約の互換経路を維持する。それ以外の COM 起動失敗とパッケージ登録失敗（`0x80073D3C` を含む）を成功として表示状態へ反映しない。`scripts/build-shell-integration.ps1` が x64/ARM64 DLL と sparse MSIX を生成し、`scripts/release-local.ps1` が署名後に配布する。Publisher は Certum 証明書 Subject と完全一致させる。
 - **Kagayoi.Support の復元グラフ** — 兄弟リポジトリがあるローカル開発は `ProjectReference` と `obj/packages.local.lock.json`（`--artifacts-path` 指定時は `<ArtifactsPath>/obj/<ProjectName>/packages.local.lock.json`）、単独 clone / CI は固定版 `PackageReference` と追跡対象 `packages.lock.json` を使う。`.slnx` はソリューション外の条件付き／推移参照から親構成を除去して Release 出力へ Debug DLL を混入させるため、`Directory.Build.props` の `ShouldUnsetParentConfigurationAndPlatform=false` と、直接参照の `SetConfiguration="Configuration=$(Configuration)"` / `SetPlatform="Platform=AnyCPU"` を維持する。依存更新時は上記 `KagayoiSupportClientUsePackage=true` の restore 2 コマンドで追跡対象 lockfile を更新・検証する
@@ -250,6 +251,7 @@ Tests in `src/Lhamiel.Tests.Unit/` using **xUnit 4**. The test project reference
 - 嫌がらせテスト (adversarial): `*AdversarialTests.cs` — 境界値、異常入力、状態遷移の矛盾
 - `[Collection("ArchiveProcessor")]` — `ArchiveProcessor` の static プロパティを差し替えるテストは排他実行が必要
 - ADS テスト (`MotwPropagatorTests`): Windows 限定、`Assert.SkipWhen(!OperatingSystem.IsWindows())` でスキップ
+- ログの保持期限・命名規則を変更するときは `LoggerRetentionTests` を実行し、通常ログと worker ログのローテートを含む期限判定、境界日の保持、緊急ログ・未知の命名形式の除外を確認する。設計は [DESIGN.md](DESIGN.md#diagnostic-log-retention) を参照する。
 - IPC 圧縮の分岐・設定保存・プロセス間ゲートを変更するときは、既存の Lhamiel を閉じ、「元と同じ場所に保存」ON・パスワード保護 OFF にした環境で `pwsh -NoProfile -File scripts/Test-ParallelShellCompression.ps1 -AppPath <検証するLhamiel.exeの絶対パス> -ArtifactDirectory <未使用の成果物ディレクトリの絶対パス>` を実行する。並行 PID・後発処理の先行完了・ZIP 内容の SHA256 を `result.json` とログで確認する。スクリプトは設定を変更せず、入力とログを成果物として保持する。同一出力への直列化とパスワード保存の競合は別途確認する。
 - 展開公開・MotW を変更するときは、通常展開と衝突解決の両経路で一時ルートと配下のリンクが公開前に拒否されること、MotW がリンクのルート・ファイルへ書き込まないことを確認する。属性検査後のリンク差し替えまで防げるとは扱わない（[設計の不変条件](DESIGN.md#critical-invariants)）。
 - 上書き準備を変更するときは `ExtractionOverwriteAtomicityTests`、右クリックメニューの登録・解除を変更するときは `ShellContextMenuTests` と `ProgramLifecycleTests` を実行し、[DESIGN.md](DESIGN.md#adopted-design-decisions-and-trade-offs) の復元・パッケージ寿命の契約を確認する。シェル変更時は上記ネイティブテストも実行し、実際の Explorer（Windows 11 の新メニュー／「その他のオプション」）と対象ファイルマネージャーで複数選択の一括引渡し・重複表示・OFF/ON 切替を確認する。COM 能力確認を変更するときは、片方／両方の有効コマンドでの `E_NOINTERFACE`、他の負の HRESULT、再適用後の能力回復を確認し、静的 verb・表示状態・UI と保存設定の整合を検証する。`Marshal.ThrowExceptionForHR` の例外型を `COMException` に固定せず HRESULT で照合する。GUID の一致だけで重複表示の解消を保証しない。
