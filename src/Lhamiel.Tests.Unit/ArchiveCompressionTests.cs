@@ -107,135 +107,13 @@ public class ArchiveCompressionTests
     }
 
     /// <summary>
-    /// ZIP形式で圧縮・展開できるか確認
-    /// </summary>
-    [Fact]
-    public async Task CompressAndExtract_WithZipFormat_SucceedsAndPreservesContent()
-    {
-        // Arrange
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var sourceDir = CreateTestFileStructure(testDir);
-            var archivePath = Path.Combine(testDir, "archive.zip");
-            var extractDir = Path.Combine(testDir, "extracted_zip");
-            Directory.CreateDirectory(extractDir);
-
-            // Act - 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, Format.Zip, null, TestContext.Current.CancellationToken);
-
-            // Assert - 圧縮ファイルが作成されたか
-            Assert.True(File.Exists(archivePath), "Zip archive should be created");
-
-            // Act - 展開
-            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
-
-            // Assert - 内容を検証（展開後のディレクトリ構造に対応）
-            var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
-            Assert.True(extractedFiles.Length > 0, $"No files extracted. Directory: {GetDirectoryStructure(extractDir)}");
-
-            // readme.txtが展開されたか確認
-            var readmeFile = extractedFiles.FirstOrDefault(f => f.EndsWith("readme.txt"));
-            Assert.NotNull(readmeFile);
-            Assert.Equal("This is a readme file", File.ReadAllText(readmeFile));
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-                Directory.Delete(testDir, true);
-        }
-    }
-
-    /// <summary>
-    /// 7z形式で圧縮・展開できるか確認
-    /// </summary>
-    [Fact]
-    public async Task CompressAndExtract_With7zFormat_SucceedsAndPreservesContent()
-    {
-        // Arrange
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var sourceDir = CreateTestFileStructure(testDir);
-            var archivePath = Path.Combine(testDir, "archive.7z");
-            var extractDir = Path.Combine(testDir, "extracted_7z");
-            Directory.CreateDirectory(extractDir);
-
-            // Act - 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, Format.SevenZip, null, TestContext.Current.CancellationToken);
-
-            // Assert - 圧縮ファイルが作成されたか
-            Assert.True(File.Exists(archivePath), "7z archive should be created");
-
-            // Act - 展開
-            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
-
-            // Assert - 内容を検証（展開後のディレクトリ構造に対応）
-            var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
-            Assert.True(extractedFiles.Length > 0, $"No files extracted. Directory: {GetDirectoryStructure(extractDir)}");
-
-            // readme.txtが展開されたか確認
-            var readmeFile = extractedFiles.FirstOrDefault(f => f.EndsWith("readme.txt"));
-            Assert.NotNull(readmeFile);
-            Assert.Equal("This is a readme file", File.ReadAllText(readmeFile));
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-                Directory.Delete(testDir, true);
-        }
-    }
-
-    /// <summary>
-    /// TAR形式で圧縮・展開できるか確認
-    /// </summary>
-    [Fact]
-    public async Task CompressAndExtract_WithTarFormat_SucceedsAndPreservesContent()
-    {
-        // Arrange
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var sourceDir = CreateTestFileStructure(testDir);
-            var archivePath = Path.Combine(testDir, "archive.tar");
-            var extractDir = Path.Combine(testDir, "extracted_tar");
-            Directory.CreateDirectory(extractDir);
-
-            // Act - 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, Format.Tar, null, TestContext.Current.CancellationToken);
-
-            // Assert - 圧縮ファイルが作成されたか
-            Assert.True(File.Exists(archivePath), "Tar archive should be created");
-
-            // Act - 展開
-            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
-
-            // Assert - 内容を検証（展開後のディレクトリ構造に対応）
-            var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
-            Assert.True(extractedFiles.Length > 0, $"No files extracted. Directory: {GetDirectoryStructure(extractDir)}");
-
-            // readme.txtが展開されたか確認
-            var readmeFile = extractedFiles.FirstOrDefault(f => f.EndsWith("readme.txt"));
-            Assert.NotNull(readmeFile);
-            Assert.Equal("This is a readme file", File.ReadAllText(readmeFile));
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-                Directory.Delete(testDir, true);
-        }
-    }
-
-    /// <summary>
-    /// 複数の形式を一度にテストする
+    /// ZIP・7z・TAR形式で圧縮・展開し、内容が保持されるか確認
     /// </summary>
     [Theory]
-    [InlineData(".zip")]
-    [InlineData(".7z")]
-    public async Task CompressAndExtract_WithMultipleFormats_AllSucceed(string extension)
+    [InlineData(".zip", Format.Zip)]
+    [InlineData(".7z", Format.SevenZip)]
+    [InlineData(".tar", Format.Tar)]
+    public async Task CompressAndExtract_WithMultipleFormats_SucceedsAndPreservesContent(string extension, Format expectedFormat)
     {
         // Arrange
         var testDir = CreateTemporaryTestDirectory();
@@ -248,6 +126,7 @@ public class ArchiveCompressionTests
 
             // Act - 圧縮
             var format = ArchiveCompressor.ParseFormat(extension.TrimStart('.'));
+            Assert.Equal(expectedFormat, format);
             await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, format, null, TestContext.Current.CancellationToken);
 
             // Assert - 圧縮ファイルが作成されたか
@@ -355,27 +234,31 @@ public class ArchiveCompressionTests
     }
 
     /// <summary>
-    /// 日本語ファイル名がZIP形式で正しく圧縮・展開できるか確認（UTF-8テスト）
+    /// 日本語ファイル名がZIP・7z・TAR形式で正しく圧縮・展開できるか確認（UTF-8テスト）
     /// </summary>
-    [Fact]
-    public async Task CompressAndExtract_WithJapaneseFilenames_ZipFormat_PreservesEncoding()
+    [Theory]
+    [InlineData(".zip", Format.Zip, "ZIP")]
+    [InlineData(".7z", Format.SevenZip, "7z")]
+    [InlineData(".tar", Format.Tar, "TAR")]
+    public async Task CompressAndExtract_WithJapaneseFilenames_PreservesEncoding(
+        string extension, Format format, string formatName)
     {
         // Arrange
         var testDir = CreateTemporaryTestDirectory();
         try
         {
             var sourceDir = CreateJapaneseFileStructure(testDir);
-            var archivePath = Path.Combine(testDir, "日本語テスト.zip");
-            var extractDir = Path.Combine(testDir, "extracted_zip");
+            var archivePath = Path.Combine(testDir, $"日本語テスト{extension}");
+            var extractDir = Path.Combine(testDir, $"extracted_{extension.TrimStart('.')}");
 
-            Console.WriteLine("=== ZIP形式 日本語ファイル名テスト ===");
+            Console.WriteLine($"=== {formatName}形式 日本語ファイル名テスト ===");
             Console.WriteLine($"元のディレクトリ: {sourceDir}");
-            Console.WriteLine($"ZIPファイル: {archivePath}");
+            Console.WriteLine($"{formatName}ファイル: {archivePath}");
 
             // Act: 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, Format.Zip, null, TestContext.Current.CancellationToken);
+            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, format, null, TestContext.Current.CancellationToken);
 
-            Assert.True(File.Exists(archivePath), "ZIP archive should be created");
+            Assert.True(File.Exists(archivePath), $"{formatName} archive should be created");
             Console.WriteLine("✓ 圧縮成功");
 
             // Act: 展開
@@ -401,119 +284,7 @@ public class ArchiveCompressionTests
             var extractedDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories);
             Assert.True(extractedDirs.Any(d => d.Contains("日本語フォルダ") || d.Contains("サブフォルダ")), "日本語フォルダ名が保持されているべき");
 
-            Console.WriteLine("\n✅ ZIP形式: 日本語ファイル名のエンコーディングが正しく保持されました");
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-                Directory.Delete(testDir, true);
-        }
-    }
-
-    /// <summary>
-    /// 日本語ファイル名が7z形式で正しく圧縮・展開できるか確認（UTF-8テスト）
-    /// </summary>
-    [Fact]
-    public async Task CompressAndExtract_WithJapaneseFilenames_7zFormat_PreservesEncoding()
-    {
-        // Arrange
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var sourceDir = CreateJapaneseFileStructure(testDir);
-            var archivePath = Path.Combine(testDir, "日本語テスト.7z");
-            var extractDir = Path.Combine(testDir, "extracted_7z");
-
-            Console.WriteLine("=== 7z形式 日本語ファイル名テスト ===");
-            Console.WriteLine($"元のディレクトリ: {sourceDir}");
-            Console.WriteLine($"7zファイル: {archivePath}");
-
-            // Act: 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, Format.SevenZip, null, TestContext.Current.CancellationToken);
-
-            Assert.True(File.Exists(archivePath), "7z archive should be created");
-            Console.WriteLine("✓ 圧縮成功");
-
-            // Act: 展開
-            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
-
-            // Assert: ファイルとフォルダ名が正しく保持されているか確認
-            var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
-            Console.WriteLine($"\n展開されたファイル ({extractedFiles.Length}個):");
-            foreach (var file in extractedFiles)
-            {
-                var relativePath = Path.GetRelativePath(extractDir, file);
-                Console.WriteLine($"  - {relativePath}");
-            }
-
-            // 日本語ファイル名が正しく保持されているか確認
-            Assert.True(extractedFiles.Any(f => f.Contains("読んでください.txt")), "日本語ファイル名 '読んでください.txt' が保持されているべき");
-            Assert.True(extractedFiles.Any(f => f.Contains("設定ファイル.txt")), "日本語ファイル名 '設定ファイル.txt' が保持されているべき");
-            Assert.True(extractedFiles.Any(f => f.Contains("データ.json")), "日本語ファイル名 'データ.json' が保持されているべき");
-            Assert.True(extractedFiles.Any(f => f.Contains("メモ帳.txt")), "日本語ファイル名 'メモ帳.txt' が保持されているべき");
-
-            // フォルダ名も確認
-            var extractedDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories);
-            Assert.True(extractedDirs.Any(d => d.Contains("日本語フォルダ") || d.Contains("サブフォルダ")), "日本語フォルダ名が保持されているべき");
-
-            Console.WriteLine("\n✅ 7z形式: 日本語ファイル名のエンコーディングが正しく保持されました");
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-                Directory.Delete(testDir, true);
-        }
-    }
-
-    /// <summary>
-    /// 日本語ファイル名がTAR形式で正しく圧縮・展開できるか確認（UTF-8テスト）
-    /// </summary>
-    [Fact]
-    public async Task CompressAndExtract_WithJapaneseFilenames_TarFormat_PreservesEncoding()
-    {
-        // Arrange
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var sourceDir = CreateJapaneseFileStructure(testDir);
-            var archivePath = Path.Combine(testDir, "日本語テスト.tar");
-            var extractDir = Path.Combine(testDir, "extracted_tar");
-
-            Console.WriteLine("=== TAR形式 日本語ファイル名テスト ===");
-            Console.WriteLine($"元のディレクトリ: {sourceDir}");
-            Console.WriteLine($"TARファイル: {archivePath}");
-
-            // Act: 圧縮
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, Format.Tar, null, TestContext.Current.CancellationToken);
-
-            Assert.True(File.Exists(archivePath), "TAR archive should be created");
-            Console.WriteLine("✓ 圧縮成功");
-
-            // Act: 展開
-            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
-
-            // Assert: ファイルとフォルダ名が正しく保持されているか確認
-            var extractedFiles = Directory.GetFiles(extractDir, "*.*", SearchOption.AllDirectories);
-            Console.WriteLine($"\n展開されたファイル ({extractedFiles.Length}個):");
-            foreach (var file in extractedFiles)
-            {
-                var relativePath = Path.GetRelativePath(extractDir, file);
-                Console.WriteLine($"  - {relativePath}");
-            }
-
-            // 日本語ファイル名が正しく保持されているか確認
-            Assert.True(extractedFiles.Any(f => f.Contains("読んでください.txt")), "日本語ファイル名 '読んでください.txt' が保持されているべき");
-            Assert.True(extractedFiles.Any(f => f.Contains("設定ファイル.txt")), "日本語ファイル名 '設定ファイル.txt' が保持されているべき");
-            Assert.True(extractedFiles.Any(f => f.Contains("データ.json")), "日本語ファイル名 'データ.json' が保持されているべき");
-            Assert.True(extractedFiles.Any(f => f.Contains("メモ帳.txt")), "日本語ファイル名 'メモ帳.txt' が保持されているべき");
-
-            // フォルダ名も確認
-            var extractedDirs = Directory.GetDirectories(extractDir, "*", SearchOption.AllDirectories);
-            Assert.True(extractedDirs.Any(d => d.Contains("日本語フォルダ") || d.Contains("サブフォルダ")), "日本語フォルダ名が保持されているべき");
-
-            Console.WriteLine("\n✅ TAR形式: 日本語ファイル名のエンコーディングが正しく保持されました");
+            Console.WriteLine($"\n✅ {formatName}形式: 日本語ファイル名のエンコーディングが正しく保持されました");
         }
         finally
         {

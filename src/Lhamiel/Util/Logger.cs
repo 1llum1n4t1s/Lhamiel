@@ -282,17 +282,10 @@ public static class Logger
             {
                 try
                 {
-                    // ファイル名から日付部分を抽出（例: Lhamiel_20260206.log or Lhamiel_20260206_000.log）
-                    var fileName = Path.GetFileNameWithoutExtension(file);
-                    var parts = fileName.Split('_');
-                    if (parts.Length >= 2 && parts[1].Length == 8 &&
-                        DateTime.TryParseExact(parts[1], "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out var fileDate))
+                    if (ShouldDeleteLogFile(Path.GetFileName(file), filePrefix, cutoffDate))
                     {
-                        if (fileDate < cutoffDate)
-                        {
-                            File.Delete(file);
-                            Log($"古いログファイルを削除しました: {Path.GetFileName(file)}", LogLevel.Debug);
-                        }
+                        File.Delete(file);
+                        Log($"古いログファイルを削除しました: {Path.GetFileName(file)}", LogLevel.Debug);
                     }
                 }
                 catch (Exception ex)
@@ -306,6 +299,43 @@ public static class Logger
         {
             Log($"ログファイルのクリーンアップ中にエラーが発生しました: {ex.Message}", LogLevel.Warning);
         }
+    }
+
+    /// <summary>
+    /// 通常ログと番号付きローテートだけを対象に、ファイル名の日付で保持期限を判定する。
+    /// worker の PID は日付と区別し、緊急ログや未知の命名形式は削除対象にしない。
+    /// </summary>
+    internal static bool ShouldDeleteLogFile(string fileName, string filePrefix, DateTime cutoffDate)
+    {
+        var prefix = filePrefix + "_";
+        if (!fileName.StartsWith(prefix, StringComparison.Ordinal) ||
+            !fileName.EndsWith(".log", StringComparison.Ordinal))
+            return false;
+
+        var parts = fileName[prefix.Length..^4].Split('_');
+        var dateIndex = 0;
+        if (parts[0] is "extraction" or "compression")
+        {
+            if (parts.Length is not (3 or 4) ||
+                !int.TryParse(parts[1], System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture, out var processId) || processId <= 0)
+                return false;
+
+            dateIndex = 2;
+        }
+        else if (parts.Length is not (1 or 2))
+        {
+            return false;
+        }
+
+        // ローテート番号は数値だけを許可し、任意の suffix を持つ別ファイルを巻き込まない。
+        if (parts.Length == dateIndex + 2 &&
+            (parts[^1].Length == 0 || !parts[^1].All(char.IsAsciiDigit)))
+            return false;
+
+        return parts[dateIndex].Length == 8 &&
+            DateTime.TryParseExact(parts[dateIndex], "yyyyMMdd", System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var fileDate) && fileDate < cutoffDate;
     }
 
     /// <summary>

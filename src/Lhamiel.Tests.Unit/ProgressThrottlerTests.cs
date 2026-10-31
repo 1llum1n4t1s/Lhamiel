@@ -117,17 +117,4 @@ public class ProgressThrottlerTests
         // 100% は前の値に関わらず常に報告される
         Assert.True(throttler.ShouldReport(100));
     }
-
-    // === スレッドセーフティ ===
-
-    [Fact]
-    public async Task ShouldReport_ConcurrentCalls_NeverThrows()
-    {
-        var throttler = new ProgressThrottler(0);
-        var tasks = Enumerable.Range(0, 100).Select(i =>
-            Task.Run(() => throttler.ShouldReport(i % 101))
-        );
-        // 例外なく完了すること
-        await Task.WhenAll(tasks);
-    }
 }

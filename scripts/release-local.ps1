@@ -59,8 +59,8 @@ Set-StrictMode -Version Latest
 
 # ---- 定数 ----
 # Velopack (vpk) は常に最新安定版を使う (ゆろ君ルール): NuGet から実行時に最新を解決して pin する
-# (NuGet 側 Velopack も VelopackUpdateDialog.Avalonia 経由の transitive で常に最新へ追従する)
-$WranglerVersion = '4.152.0'        # サプライチェーン対策でバージョン固定 (要 Node.js >=22)
+# 製品側 Velopack は固定版 VelopackUpdateDialog.Avalonia の推移依存で、解決版は packages.lock.json に従う
+$WranglerVersion = '4.156.0'        # サプライチェーン対策でバージョン固定 (要 Node.js >=22)
 $Bucket = 'lhamiel-updates'
 $BaseUrl = 'https://lhamiel.kagayoi.com'
 $ZoneName = 'kagayoi.com'           # Cloudflare zone (apex)。$BaseUrl の Host から正規表現で推測すると
@@ -217,8 +217,8 @@ foreach ($runtime in $Runtimes) {
         $content = $content -replace '(?m)^#{1,6}\s+', ''
         $content = $content -replace '\*\*([^*]+)\*\*', '$1'
         $content = $content -replace '`([^`]+)`', '$1'
-        $content = $content -replace '(?m)^\| .+\|$', ''
-        $content = $content -replace '(?m)^\|[-: ]+\|$', ''
+        $content = $content -replace '(?m)^\|(?:[ \t]*:?-+:?[ \t]*\|)+[ \t]*\r?\n?', ''
+        $content = $content -replace '(?m)^\|[ \t]*(.*?)[ \t]*\|[ \t]*\r?$', '$1'
         $content = $content -replace '(?m)^>\s*', ''
         $content = $content -replace '\r?\n{3,}', "`n`n"
         [System.IO.File]::WriteAllText((Join-Path $publishDir 'README.txt'), $content.Trim(), [System.Text.Encoding]::UTF8)

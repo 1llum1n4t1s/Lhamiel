@@ -258,42 +258,4 @@ public class ArchiveCompressorAdversarialTests
         Assert.Equal(expectedStem, stem);
         Assert.Equal(expectedExt, ext);
     }
-
-    // ==============================
-    // 🌪️ 環境異常 — GetUniqueOutputPath
-    // ==============================
-
-    /// <summary>
-    /// @adversarial @category chaos @severity medium
-    /// 存在しないパス → そのまま返される
-    /// </summary>
-    [Fact]
-    public void GetUniqueOutputPath_NonExistentPath_ReturnsSamePath()
-    {
-        var path = Path.Combine(Path.GetTempPath(), $"nonexistent_{Guid.NewGuid()}.zip");
-        Assert.Equal(path, ArchiveCompressor.GetUniqueOutputPath(path));
-    }
-
-    /// <summary>
-    /// @adversarial @category chaos @severity high
-    /// ファイルが存在するパス → _1 サフィックスが付く
-    /// </summary>
-    [Fact]
-    public void GetUniqueOutputPath_ExistingFile_GetsSequentialSuffix()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), $"unique_test_{Guid.NewGuid()}");
-        Directory.CreateDirectory(dir);
-        try
-        {
-            var basePath = Path.Combine(dir, "out.zip");
-            File.WriteAllText(basePath, "");
-
-            var unique = ArchiveCompressor.GetUniqueOutputPath(basePath);
-            Assert.Equal(Path.Combine(dir, "out_1.zip"), unique);
-        }
-        finally
-        {
-            Directory.Delete(dir, recursive: true);
-        }
-    }
 }

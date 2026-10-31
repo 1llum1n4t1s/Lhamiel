@@ -1364,7 +1364,11 @@ public static class ArchiveExtractor
         if (!Directory.Exists(destDir))
             return conflicts;
 
-        var (_, sourceFiles) = EnumerateExtractionTreeSafely(sourceDir);
+        // 比較前に全エントリの安全性を検証し、比較に使うファイルだけ保持する。
+        var sourceFiles = new List<string>();
+        foreach (var entry in EnumerateExtractionEntriesSafely(sourceDir, CancellationToken.None))
+            if (!entry.IsDirectory)
+                sourceFiles.Add(entry.Path);
         foreach (var sourceFile in sourceFiles)
         {
             var relativePath = Path.GetRelativePath(sourceDir, sourceFile).Replace('\\', '/');

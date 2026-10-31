@@ -1478,6 +1478,12 @@ public sealed partial class MainWindowViewModel : ObservableObject
             {
                 using var reader = new StreamReader(stream);
                 LicenseText = reader.ReadToEnd().TrimEnd();
+                using var iconStream = assembly.GetManifestResourceStream("Lhamiel.FluentSystemIcons.LICENSE");
+                if (iconStream is not null)
+                {
+                    using var iconReader = new StreamReader(iconStream);
+                    LicenseText += "\n\nMicrosoft Fluent UI System Icons\n" + iconReader.ReadToEnd().Trim();
+                }
             }
             else
             {

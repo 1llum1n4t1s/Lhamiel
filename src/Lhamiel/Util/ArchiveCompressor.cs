@@ -162,11 +162,16 @@ public static class ArchiveCompressor
 
         // 設定スナップショットを取得（race を避けるため処理開始時点で1回だけ）
         var settings = settingsOverride ?? SettingsManager.Instance.CreateSnapshot();
-        // 除外パターンは .lhaignore（gitignore 互換）から圧縮実行毎に読み直す。
+        // 未解決リストをスキャンする場合だけ .lhaignore（gitignore 互換）を読み直す。
         // RespectNestedGitignore=true なら各サブツリーで優先候補から選んだ除外ルールファイルも
         // layered matcher として合成する。
-        var lhaignoreLines = LhaignoreFile.ReadLines();
-        var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
+        string[] lhaignoreLines = [];
+        var ignoreMatcher = GitignoreMatcher.Empty;
+        if (resolvedFiles is null)
+        {
+            lhaignoreLines = LhaignoreFile.ReadLines();
+            ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
+        }
 
         var outputCreated = false;
         // アクセス不能でスキップしたファイル数 (戻り値)。Task.Run ラムダ内で加算するため

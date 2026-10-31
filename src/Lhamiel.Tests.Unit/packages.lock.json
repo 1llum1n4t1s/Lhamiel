@@ -20,9 +20,9 @@
       },
       "Tmds.DBus.Protocol": {
         "type": "Direct",
-        "requested": "[0.95.1, )",
-        "resolved": "0.95.1",
-        "contentHash": "IbGhqZAqqgB/DkT70+lAk4MNv95tZtsTMFQ+S3uGy0aTfOkGVeFjeNJsX8dBI/3+CPnO5XW6lRQKGeFEgHElKw=="
+        "requested": "[0.95.2, )",
+        "resolved": "0.95.2",
+        "contentHash": "4zlJSYYZGCKnF5xE1L5VEm5YsfjLTz5jlWBgvBxHA7yk8Lnys/6WWpeD+CWmNm4QmawR+x0xIbGGZNcMxcy8nQ=="
       },
       "xunit.runner.visualstudio": {
         "type": "Direct",
@@ -346,8 +346,8 @@
       },
       "System.Security.Cryptography.ProtectedData": {
         "type": "Transitive",
-        "resolved": "10.0.13",
-        "contentHash": "aUSmC6cPjFLSE0rDTsmkR3wvUOnscqewebOaaELEToh12sNmoltZqT3f0C81mJ1zhxKjWco25soHTvYwsXCsUw=="
+        "resolved": "10.0.14",
+        "contentHash": "UuaBUHgmtc9h6CMxaQqFDDJxkS5JVy7XEB+DbtCvD68GFcVM9/AccuNwFpARx8nwCnvjaxzoOBjG3gPz32P1Eg=="
       },
       "Velopack": {
         "type": "Transitive",
@@ -356,8 +356,8 @@
       },
       "VelopackUpdateDialog.Avalonia": {
         "type": "Transitive",
-        "resolved": "1.0.20",
-        "contentHash": "JwUdg47IowAll1TaD8L8e9aBGGGgwjXT4fXBmxyHMYCPrhFrTKF+eV9sim9ETsgPgvAkyfB9S2ta93/OIE6Pwg==",
+        "resolved": "1.0.21",
+        "contentHash": "/uN8WhaiEAc2l7MQzNDowNyY8KvvAm2Rc+94RomYdsKV3YzUmpwXKcjJfMLvqljPoUg3CTuCDAPULw/fOJka4A==",
         "dependencies": {
           "Avalonia": "12.1.4",
           "CommunityToolkit.Mvvm": "8.4.2",
@@ -431,9 +431,9 @@
           "Kagayoi.Support.Client": "[1.0.9, )",
           "Kagayoi.UnLhaRe": "[1.0.4, )",
           "SuperLightLogger": "[1.0.19, )",
-          "System.Security.Cryptography.ProtectedData": "[10.0.13, )",
-          "Tmds.DBus.Protocol": "[0.95.1, )",
-          "VelopackUpdateDialog.Avalonia": "[1.0.20, )"
+          "System.Security.Cryptography.ProtectedData": "[10.0.14, )",
+          "Tmds.DBus.Protocol": "[0.95.2, )",
+          "VelopackUpdateDialog.Avalonia": "[1.0.21, )"
         }
       }
     }

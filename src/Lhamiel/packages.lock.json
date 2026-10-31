@@ -91,15 +91,15 @@
       },
       "Microsoft.DotNet.ILCompiler": {
         "type": "Direct",
-        "requested": "[10.0.13, )",
-        "resolved": "10.0.13",
-        "contentHash": "MnT222WlxhelguLZTQx9soBHKW7TeY6A9YUwVaprjUd+ARlhLAkfsXGFNX9w6kRq89/yxUcAQ/lzvmgndSFfOw=="
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "CDQ/+XRT1JT/0u87j9exR1AociehKUzxae4KCOWxCQ1PIKbYS0F8ovxaCrqRlkylGmbhywKxV/zbbrEhWa5NXg=="
       },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
-        "requested": "[10.0.13, )",
-        "resolved": "10.0.13",
-        "contentHash": "40yrBMsLEcjixBR4G+FiUaBPvxXIPSKJ2OgSrbOZcmSDBda4Sb0k7BWrfDpIvn3IvvDzwOL/tEPa6gDQfh6aRw=="
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "YlTamXppEQls6DYWt7RdUuwWDb0lyw/vXCaGeQpLCpsLmfwGuCkOz/vIGgMTV7ECsJcavkCOkxZXv9s8rdAHkQ=="
       },
       "SuperLightLogger": {
         "type": "Direct",
@@ -114,21 +114,21 @@
       },
       "System.Security.Cryptography.ProtectedData": {
         "type": "Direct",
-        "requested": "[10.0.13, )",
-        "resolved": "10.0.13",
-        "contentHash": "aUSmC6cPjFLSE0rDTsmkR3wvUOnscqewebOaaELEToh12sNmoltZqT3f0C81mJ1zhxKjWco25soHTvYwsXCsUw=="
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "UuaBUHgmtc9h6CMxaQqFDDJxkS5JVy7XEB+DbtCvD68GFcVM9/AccuNwFpARx8nwCnvjaxzoOBjG3gPz32P1Eg=="
       },
       "Tmds.DBus.Protocol": {
         "type": "Direct",
-        "requested": "[0.95.1, )",
-        "resolved": "0.95.1",
-        "contentHash": "IbGhqZAqqgB/DkT70+lAk4MNv95tZtsTMFQ+S3uGy0aTfOkGVeFjeNJsX8dBI/3+CPnO5XW6lRQKGeFEgHElKw=="
+        "requested": "[0.95.2, )",
+        "resolved": "0.95.2",
+        "contentHash": "4zlJSYYZGCKnF5xE1L5VEm5YsfjLTz5jlWBgvBxHA7yk8Lnys/6WWpeD+CWmNm4QmawR+x0xIbGGZNcMxcy8nQ=="
       },
       "VelopackUpdateDialog.Avalonia": {
         "type": "Direct",
-        "requested": "[1.0.20, )",
-        "resolved": "1.0.20",
-        "contentHash": "JwUdg47IowAll1TaD8L8e9aBGGGgwjXT4fXBmxyHMYCPrhFrTKF+eV9sim9ETsgPgvAkyfB9S2ta93/OIE6Pwg==",
+        "requested": "[1.0.21, )",
+        "resolved": "1.0.21",
+        "contentHash": "/uN8WhaiEAc2l7MQzNDowNyY8KvvAm2Rc+94RomYdsKV3YzUmpwXKcjJfMLvqljPoUg3CTuCDAPULw/fOJka4A==",
         "dependencies": {
           "Avalonia": "12.1.4",
           "CommunityToolkit.Mvvm": "8.4.2",
@@ -349,11 +349,11 @@
       },
       "Microsoft.DotNet.ILCompiler": {
         "type": "Direct",
-        "requested": "[10.0.13, )",
-        "resolved": "10.0.13",
-        "contentHash": "MnT222WlxhelguLZTQx9soBHKW7TeY6A9YUwVaprjUd+ARlhLAkfsXGFNX9w6kRq89/yxUcAQ/lzvmgndSFfOw==",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "CDQ/+XRT1JT/0u87j9exR1AociehKUzxae4KCOWxCQ1PIKbYS0F8ovxaCrqRlkylGmbhywKxV/zbbrEhWa5NXg==",
         "dependencies": {
-          "runtime.win-x64.Microsoft.DotNet.ILCompiler": "10.0.13"
+          "runtime.win-x64.Microsoft.DotNet.ILCompiler": "10.0.14"
         }
       },
       "Avalonia.Angle.Windows.Natives": {
@@ -386,8 +386,8 @@
       },
       "runtime.win-x64.Microsoft.DotNet.ILCompiler": {
         "type": "Transitive",
-        "resolved": "10.0.13",
-        "contentHash": "L85cXCLA3BMnFyf6xtFczYVstkmMqlJk4pP8cpsvz86V6Gqn885K9rg+aJdoYGCEF7I01ptCYcwujtMmqkezsA=="
+        "resolved": "10.0.14",
+        "contentHash": "B28xsyrO3PRFGL9yd1lLWdX3/wATFkaxPFM3VmGOFG8pfx7jDeb1Yz09v6n+z0jNEPAlQLqOx2noOXw8aytYNw=="
       },
       "SkiaSharp.NativeAssets.Linux": {
         "type": "Transitive",
