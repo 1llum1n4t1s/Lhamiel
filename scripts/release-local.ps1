@@ -56,11 +56,11 @@ function Resolve-ExternalWorkDirectory {
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'R2Distribution.Common.ps1')
 
 # ---- 定数 ----
 # Velopack (vpk) は常に最新安定版を使う (ゆろ君ルール): NuGet から実行時に最新を解決して pin する
 # 製品側 Velopack は固定版 VelopackUpdateDialog.Avalonia の推移依存で、解決版は packages.lock.json に従う
-$WranglerVersion = '4.156.0'        # サプライチェーン対策でバージョン固定 (要 Node.js >=22)
 $Bucket = 'lhamiel-updates'
 $BaseUrl = 'https://lhamiel.kagayoi.com'
 $ZoneName = 'kagayoi.com'           # Cloudflare zone (apex)。$BaseUrl の Host から正規表現で推測すると
@@ -290,11 +290,15 @@ if ($SkipUpload) {
 # - *.nupkg は put のみ (過去版は cleanup ステップが manifest 基準で削除)
 Write-Host '== R2 アップロード ==' -ForegroundColor Cyan
 $uploaded = 0
-foreach ($f in Get-ChildItem $ArtifactsDir -File) {
+$uploadFiles = @(Get-ChildItem $ArtifactsDir -File)
+$ordered = @($uploadFiles | Where-Object { $_.Name -notmatch '^(?:releases\..*\.json|assets\..*\.json|RELEASES(?:-.*)?)$' }) +
+    @($uploadFiles | Where-Object { $_.Name -match '^(?:releases\..*\.json|assets\..*\.json|RELEASES(?:-.*)?)$' })
+foreach ($f in $ordered) {
     Write-Host "  ↑ $($f.Name)"
-    Invoke-Native "R2 put ($($f.Name))" {
-        pnpm dlx "wrangler@$WranglerVersion" r2 object put "$Bucket/$($f.Name)" --file $f.FullName --remote
-    }
+    $immutable = $f.Name -match '(?:\.nupkg$|[-_.]\d+\.\d+\.\d+(?:[-_.]|$))'
+    $cacheControl = if ($immutable) { 'public, max-age=31536000, immutable' } else { 'no-cache, must-revalidate' }
+    $contentType = switch -Regex ($f.Name) { '\.json$' { 'application/json'; break }; '^RELEASES' { 'text/plain'; break }; '\.(zip|nupkg)$' { 'application/zip'; break }; default { 'application/octet-stream' } }
+    Publish-R2Object -AccountId $AccountId -Bucket $Bucket -FilePath $f.FullName -Immutable:$immutable -CacheControl $cacheControl -ContentType $contentType | Out-Null
     $uploaded++
 }
 Write-Host "✅ R2 アップロード完了: $uploaded ファイル"

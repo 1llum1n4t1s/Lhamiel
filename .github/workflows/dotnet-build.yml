@@ -22,6 +22,10 @@ jobs:
         # actions/checkout@v7.0.1
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
+      - name: Verify R2 transfer fixtures
+        shell: pwsh
+        run: |
+          & (Join-Path $env:GITHUB_WORKSPACE 'tests/R2Transfer/Run.ps1') -WorkRoot (Join-Path $env:RUNNER_TEMP 'r2-transfer-check')
       - name: .NET SDK をセットアップ
         # actions/setup-dotnet@v6.0.0
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68

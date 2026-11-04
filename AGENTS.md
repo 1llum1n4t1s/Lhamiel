@@ -236,6 +236,8 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 
 ### ローカルリリースの実行
 
+R2 配布は PowerShell 7.2 以降と同梱の `scripts/R2Distribution.Common.ps1` を使う。配布に Node.js・pnpm・Wrangler は不要（製品の JS ビルド要件は別途維持）。署名・転送・検証の正本は同梱の `scripts/R2Transfer.Core.cs` とし、PS helper は公開関数の互換入口とする。更新時は中核と使用する入口を同じディレクトリへ同梱する。固定名は `no-cache, must-revalidate`、バージョン付き成果物は不変として 1 年キャッシュし、payload を先、assets・RELEASES・releases を最後に送信する。
+
 公開依頼時は、リポジトリルートで有効な署名証明書を事前確認し、成功した場合だけリリースを実行する。失敗時は SimplySign Desktop へのログインを案内し、署名を省略して続行しない。配信しない検証と再開の引数は、上記のコマンドを参照する。
 
 ```powershell
