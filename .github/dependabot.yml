@@ -1,5 +1,4 @@
 # 更新方針: 毎週月曜09:00（日本時間）、minor/patchを集約、majorは個別PR。
-# マージ可否は既定ブランチのDependabot auto-mergeが最新CIで判定します。
 version: 2
 updates:
 - package-ecosystem: github-actions
