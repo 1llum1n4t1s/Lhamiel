@@ -23,13 +23,13 @@ jobs:
 
       - name: .NET SDK をセットアップ
         # actions/setup-dotnet@v6.0.0
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
         with:
           dotnet-version: '10.0.x'
 
       - name: CodeQL を初期化
         # github/codeql-action/init@v4.39.1
-        uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/init@1fc58d04a4d4374f921bdac573c3811c240f9c26 # v4.39.2
         with:
           languages: csharp
           build-mode: manual
@@ -39,6 +39,6 @@ jobs:
 
       - name: CodeQL 解析を実行
         # github/codeql-action/analyze@v4.39.1
-        uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/analyze@1fc58d04a4d4374f921bdac573c3811c240f9c26 # v4.39.2
         with:
           category: /language:csharp
