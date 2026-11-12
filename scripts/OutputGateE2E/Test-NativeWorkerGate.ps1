@@ -18,7 +18,7 @@ function Wait-File([string]$Path){
  $deadline=(Get-Date).AddSeconds(12)
  while(!(Test-Path -LiteralPath $Path)){if((Get-Date) -gt $deadline){throw 'Marker timeout'};Start-Sleep -Milliseconds 40}
 }
-$gateDll=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'bin/Release/net10.0/OutputGateE2E.dll'))
+$gateDll=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'bin/Release/net11.0/OutputGateE2E.dll'))
 $settings=@{CompressionFormat='ZIP';CompressionOutputToSameDirectory=$false;ExtractionOutputToSameDirectory=$false;CreateArchiveNameFolder=$false;OpenCompressionOutputFolder=$false;OpenExtractionOutputFolder=$false;Check4UpdatesOnStartup=$false;IsPasswordProtectionEnabled=$false;ShowOverwriteConfirm=$false}
 try{
  foreach($mode in @('compression','extraction')){

@@ -27,17 +27,25 @@ jobs:
         run: |
           & (Join-Path $env:GITHUB_WORKSPACE 'tests/R2Transfer/Run.ps1') -WorkRoot (Join-Path $env:RUNNER_TEMP 'r2-transfer-check')
       - name: .NET SDK をセットアップ
-        # actions/setup-dotnet@v6.0.0
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        # actions/setup-dotnet@v6.1.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
         with:
-          dotnet-version: '10.0.x'
+          # ビルドに使う SDK はリポジトリ直下の global.json で固定し、ローカルと CI の暗黙 ILCompiler 版を揃える。
+          global-json-file: global.json
 
       # 7z.dll は 1llum1n4t1s.Sevenzip NuGet パッケージに同梱済み。
       # dotnet test が実行時に NuGet キャッシュから解決する。
 
+      # 追跡対象 packages.lock.json は Kagayoi.Support をパッケージ参照する構成の正本。
+      # CI は兄弟リポジトリを持たないが、ローカルと同じ復元グラフを明示して lockfile との不一致を失敗にする。
+      # RID 付き publish（build.yml）は ARM64 で lock の RID セクションを書き換えるため locked-mode を掛けない。
+      - name: 依存関係を復元（lockfile 固定）
+        run: dotnet restore Lhamiel.slnx -p:KagayoiSupportClientUsePackage=true --locked-mode
+
       - name: テスト実行（カバレッジ付き）
         run: >-
           dotnet test Lhamiel.slnx
+          --no-restore
           --configuration Release
           --verbosity normal
           --logger "trx;LogFileName=test-results.trx"

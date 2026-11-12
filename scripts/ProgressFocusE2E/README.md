@@ -15,7 +15,9 @@
 ```powershell
 dotnet build scripts/ProgressFocusE2E/Probe.csproj -c Release
 $env:LHAMIEL_PROGRESS_TEST_ROOT = 'C:\Users\IMT\dev\Lhamiel\.codex\gogo-rere-parallel-20261007\progress-after-ui'
-& scripts/ProgressFocusE2E/bin/Release/net10.0-windows8.0/win-x64/Lhamiel.Tests.Unit.exe
+# TargetFramework はルート Directory.Build.props から継承するため、出力先も評価結果から得る
+$tfm = dotnet msbuild scripts/ProgressFocusE2E/Probe.csproj -getProperty:TargetFramework
+& "scripts/ProgressFocusE2E/bin/Release/$tfm/win-x64/Lhamiel.Tests.Unit.exe"
 ```
 同じ root の再利用は拒否する。`--ipc-only` では GUI を開かず、同名 decoy を起動して専用パイプの実 PID / callback 先 / 受信前 callback / 既存 overload を検証する。`--before` は対象表示の欠落を記録して失敗条件を残す。before を新規ビルドするときは `-p:AssetDir=C:/Users/IMT/dev/Lhamiel/.codex/gogo-rere-parallel-20261007/baseline` を指定し、after build に戻す。
 

@@ -52,3 +52,21 @@ updates:
     prefix: deps
   allow:
   - dependency-type: all
+- package-ecosystem: dotnet-sdk
+  # global.json の SDK pin。SDK 更新は暗黙 ILCompiler 版を変えるため、PR では lockfile の再生成が必要になる。
+  directory: /
+  schedule:
+    interval: weekly
+    day: monday
+    time: '09:00'
+    timezone: Asia/Tokyo
+  open-pull-requests-limit: 5
+  groups:
+    minor-and-patch:
+      patterns:
+      - '*'
+      update-types:
+      - minor
+      - patch
+  commit-message:
+    prefix: deps
