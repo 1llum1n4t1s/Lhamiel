@@ -6,7 +6,7 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 
 ## 技術スタック
 
-- **フレームワーク**: .NET 10.0
+- **フレームワーク**: .NET 11.0
 - **UIフレームワーク**: Avalonia 12（AXAML、compiled bindings）
 - **圧縮ライブラリ**: 1llum1n4t1s.Sevenzip（7z.dll ラッパー）
 - **MVVM**: CommunityToolkit.Mvvm（`[ObservableProperty]` ソースジェネレーター）
@@ -94,13 +94,13 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 | `IpcService` | Named Pipe による二重起動引数の引き継ぎ。`PipeOptions.CurrentUserOnly` |
 | `MotwPropagator` | 展開後ファイルへ Zone.Identifier ADS 伝播 |
 | `CrashHandler` | 未処理例外時の MiniDump 生成 |
-| `DiagnosticsCollector` | サポート用 ZIP（masked settings / logs / dumps / env info） |
+| `DiagnosticsCollector` | サポート用 ZIP（masked settings / logs / env info。ダンプ（MiniDump）とシークレットは除外する） |
 | `TempCleanup` | 起動時に `%TEMP%\Lhamiel_Temp_*` の残骸を MinAge=30 分超で削除 |
 | `App.Check4Update` | Velopack 自動更新の UI 経路。`Settings.Check4UpdatesOnStartup=true` で起動時 + 「アップデート確認」ボタンから手動起動。`VelopackUpdateDialog.UpdateDialogWindow` 経由 |
 | `LhamielUpdateStrings` | `VelopackUpdateDialog.IUpdateDialogStrings` の Lhamiel 実装（シングルトン、`App.Text` 動的解決） |
 | `UpdateChecker` | Velopack 自動更新のサイレント CLI 経路 (`--update-check`)。`StartupRegistration` の HKCU\Run 経由で Windows ログイン時に起動 |
 
-詳細なクラス責務は [CLAUDE.md](../CLAUDE.md) の Key Util Classes 表を参照（こちらが single source of truth）。
+詳細なクラス責務は [DESIGN.md](../DESIGN.md#major-components-and-responsibilities) を参照（こちらが single source of truth）。
 
 ## データフロー
 
@@ -156,14 +156,16 @@ D&D → MainWindowViewModel.ProcessDroppedPathsAsync
 
 ## CI/CD
 
+リリース手順（ローカル署名・R2 配信・再開）は [DESIGN.md の Local signed releases to R2](../DESIGN.md#local-signed-releases-to-r2) と [Update and release](../DESIGN.md#update-and-release) を正本とする。ここには DESIGN.md にない補足だけを置く。
+
 - **PRビルド**: `.github/workflows/dotnet-build.yml`
-- **リリース**: `.github/workflows/velopack-release.yml`（`release/*` ブランチ → Native AOT → Velopack → Cloudflare R2 `lhamiel-updates` バケット）
 - **バージョン**: `Directory.Build.props` の `<Version>` タグで一元管理
 
 ## Velopack 自動更新 (配信戦略)
 
-- **配信元**: Cloudflare R2 単独 (`https://lhamiel.kagayoi.com`)。`SimpleWebSource` 経由で取得。中立ドメイン `kagayoi.com` に移行済み（旧 `lhamiel.1llum1n4t1.com` はクラウド/企業 egress の SNI フィルタで false positive を起こすため）。
-- **旧クライアント救済**: GitHub Releases には `kagayoi.com` 版を **踏み台** として publish。旧 GithubSource クライアント (v1.0.167 以下) 救済のため永続保持。通常リリースは R2 のみへ配信。
+配信元・配信フロー・旧クライアント向け踏み台の扱いは [DESIGN.md の Update and release](../DESIGN.md#update-and-release) と [Local signed releases to R2](../DESIGN.md#local-signed-releases-to-r2) を Single Source of Truth として参照する。以下は DESIGN.md にない実装上の補足。
+
+- **配信バケット**: Cloudflare R2 の `lhamiel-updates` バケットを `https://lhamiel.kagayoi.com` で公開している。
+- **旧ドメインからの移行理由**: 旧 `lhamiel.1llum1n4t1.com` はクラウド/企業 egress の SNI フィルタで false positive を起こすため、中立ドメイン `kagayoi.com` に移行した。旧 GithubSource クライアントは v1.0.167 以下。
 - **2 系統経路**: (1) `Program.cs --update-check` サイレント CLI 経路（`StartupRegistration` HKCU\Run から発火、UI 無し）、(2) `App.Check4Update` UI 経路（`VelopackUpdateDialog.Avalonia` 経由、`Check4UpdatesOnStartup=true` で起動時自動 + メニューから手動）。
 - **配信元固定の根拠**: `Settings.UpdateBaseUrl` は `[JsonIgnore]` + getter-only でハードコード固定 (`CanonicalUpdateBaseUrl`)、settings.json 改竄経由の悪意ある第三者ホスト誘導を防ぐ。
-- 詳細は CLAUDE.md の Velopack セクションを Single Source of Truth として参照。

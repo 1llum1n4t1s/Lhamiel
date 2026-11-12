@@ -14,6 +14,9 @@
   "Locale": "",
   "CompressionFormat": "ZIP",
   "FileIconVariant": "Classic",
+  "AppIconVariant": "Classic",
+  "AddExtractToContextMenu": false,
+  "AddCompressToContextMenu": false,
   "ExtractionOutputDirectory": "C:\\Users\\YourName\\Desktop",
   "CompressionOutputDirectory": "C:\\Users\\YourName\\Desktop",
   "ExtractionOutputToSameDirectory": false,
@@ -61,6 +64,11 @@
 | プロパティ | 型 | デフォルト | 説明 |
 |-----------|------|----------|------|
 | `FileIconVariant` | string | `"Classic"` | 関連付けファイルのアイコン。`"Classic"`, `"Folder"`, `"Cute"`, `"Ice"`。大文字・小文字は読み込み時に正規化され、不明な値は `"Classic"` に戻る |
+| `AppIconVariant` | string | `"Classic"` | ウィンドウとショートカットに表示するアプリアイコン。`"Classic"`, `"Crystal"`, `"Legacy"`。大文字・小文字は読み込み時に正規化され、不明な値は `"Classic"` に戻る。設定画面で実際に値が変わったときだけ、開いているウィンドウと既知のショートカットのアイコンを更新する |
+| `AddExtractToContextMenu` | bool | `false` | ファイルの右クリックメニューに「Lhamielで展開」を表示するか。設定画面での変更時に登録を適用し、失敗時は UI と保存値を変更前へ戻す |
+| `AddCompressToContextMenu` | bool | `false` | ファイルとフォルダーの右クリックメニューに「Lhamielで圧縮」を表示するか。適用と失敗時の扱いは `AddExtractToContextMenu` と同じ |
+
+> **🔁 旧設定からの移行**: 旧バージョンの単一キー `AddToContextMenu` (bool) が `settings.json` にある場合、読み込み時に `Settings.MigrateLegacyContextMenuSettings` が `AddExtractToContextMenu` / `AddCompressToContextMenu` のうち**キーが存在しない側だけ**へ旧値をコピーする（明示済みの新キーの値は維持）。移行が起きた場合はその場で保存し、`Settings` に旧プロパティが無いため保存後の JSON から `AddToContextMenu` は消える。保存に失敗しても移行済みの値で起動を続け、次回の通常保存で再試行する。他プロパティの型不整合で `JsonDocument` による個別回収経路に入った場合も、旧値は同じ規則で移行される。
 
 ### 展開設定
 
@@ -214,7 +222,7 @@ C:\Users\IMT\dev\
 `settings.json` が JSON として解析不能になった場合、Lhamiel は以下の順で処理する：
 
 1. 破損ファイルを `settings.json.corrupt_<YYYYMMDDHHmmss>.bak` に **`File.Move`** で退避（次回起動で同じパースエラーが再発しないようパスから取り除く）
-2. Move が失敗した場合（OneDrive 同期中・ウイルス対策ロック中等）は `File.Delete` → 空 JSON `{}` 上書きの順でフォールバック
+2. Move が失敗した場合（OneDrive 同期中・ウイルス対策ロック中等）は、まず `File.Copy` で同名の退避を試みてから `File.Delete` → 空 JSON `{}` 上書きの順でフォールバック（ログは実際に成功した段に合わせて出し分ける）
 3. デフォルト設定を使用して起動
 4. `Lhamiel_yyyyMMdd.log` に警告ログを出力
 

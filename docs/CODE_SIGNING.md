@@ -10,7 +10,7 @@ Lhamiel の Setup.exe / Update.exe / 同梱バイナリに Authenticode 署名�
 |------|------|------|
 | 証明書ベンダー | **Certum (Open Source Code Signing)** | 個人開発者・OSS プロジェクト向け最安帯 (€49/年) |
 | 配信形態 | **SimplySign Cloud** | USB トークン不要、IDnow オンライン本人確認で即日〜翌営業日開始可能 |
-| 署名方式 | **ローカル署名 + CI は R2 配信のみ** | 鍵が手元から動かず最安全、運用負荷も最小 |
+| 署名方式 | **ローカル署名・ローカル R2 配信** (`scripts/release-local.ps1`、CI は署名・配信しない) | 鍵が手元から動かず最安全、運用負荷も最小 |
 | 署名ツール | **signtool.exe** (Windows SDK 同梱) | SimplySign Desktop 経由で Windows Cert Store に登録された証明書を直接利用 |
 | 対象バイナリ | Setup.exe / Update.exe / Lhamiel.exe / 同梱 DLL | `vpk pack` が自動で全 PE を署名 |
 | タイムスタンプ | `http://time.certum.pl` (RFC 3161) | Certum 公式 TSA |
@@ -36,13 +36,13 @@ Lhamiel の Setup.exe / Update.exe / 同梱バイナリに Authenticode 署名�
 │  │  version bump      │───→│  └─ signtool が透過利用            │  │
 │  │  publish + pack    │    │     (PIN は事前ログオン解錠)      │  │
 │  │  vpk --signParams │    └──────────┬───────────────────────┘  │
-│  │  wrangler R2 put   │               │                          │
+│  │  R2 API upload     │               │                          │
 │  └───────────────────┘    ┌──────────▼──────────────────────┐  │
 │                           │ ゆろさんのスマホ (SimplySign mobile) │  │
 │                           │  └─ プッシュ通知で署名承認 (1 タップ) │  │
 │                           └──────────────────────────────────┘  │
 └────────────┬───────────────────────────────────────────────────┘
-             │ wrangler r2 object put
+             │ R2Transfer.Core.cs (S3 互換 API)
              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │ Cloudflare R2 bucket: lhamiel-updates                           │
@@ -128,11 +128,11 @@ Set-Content -Path "$env:USERPROFILE/.lhamiel_sign_thumbprint" -Value "<取得し
 1. **SimplySign Desktop を起動** (タスクトレイに常駐)
    - 初回起動時のみ PIN 入力 (Windows ログオン中はキャッシュ)
 2. **`/vava` 実行**
-   - version bump → publish → vpk pack (署名込み) → wrangler R2 upload → release ブランチ push まで自動
+   - version bump → publish → vpk pack (署名込み) → R2 upload (`scripts/release-local.ps1`) → release ブランチ push まで自動
 3. **スマホ通知承認** (1〜数回)
    - vpk pack 中、署名 1 回ごとにスマホにプッシュ通知が来る
    - `--signParallel 1` 設定なら都度承認、まとめ承認モード設定すれば 1 回で済む
-4. **検証**: 配信後に R2 から DL したインストーラの署名状態を確認 (手順は後述)
+4. **署名検証**: リリーススクリプトがアップロード前にローカル成果物の署名を検証する。手動で確認する場合の手順は後述。
 
 ### 手動署名コマンド (`/vava` を使わない場合)
 
@@ -161,14 +161,10 @@ vpk pack `
   --signParams $signParams `
   --signParallel 1   # HSM 経路は逐次署名が安全
 
-# R2 アップロード
-$cfToken = (Get-Content "$env:USERPROFILE/.cf_token" -Raw).Trim()
-$env:CLOUDFLARE_API_TOKEN = $cfToken
-$env:CLOUDFLARE_ACCOUNT_ID = "10901bfadbf1005164774a7350082985"
-Get-ChildItem releases/win | ForEach-Object {
-  wrangler r2 object put "lhamiel-updates/$($_.Name)" --file="$($_.FullName)" --remote
-}
 ```
+
+R2 への配信は Wrangler を使わず、`scripts/release-local.ps1`（`R2Distribution.Common.ps1` / `R2Transfer.Core.cs`）で行う。
+手動で署名・パッケージした成果物を配信する場合も、同スクリプトの作業ルートの `packages/` に配置して `-UploadOnly -WorkDirectory <作業ルート>` で送信し、送信順・キャッシュ設定・パージを統一する。
 
 ### 署名検証
 
@@ -177,31 +173,25 @@ Get-ChildItem releases/win | ForEach-Object {
 Get-AuthenticodeSignature releases/win/Lhamiel-win-Setup.exe | Format-List
 # Status='Valid'、SignerCertificate.Subject に Open Source Developer + ゆろさん氏名が入っていれば OK
 
-# 配信後 R2 経由でも検証
-$url = "https://lhamiel.kagayoi.com/Lhamiel-win-Setup.exe"
-Invoke-WebRequest $url -OutFile $env:TEMP/Lhamiel-Setup.exe
-Get-AuthenticodeSignature $env:TEMP/Lhamiel-Setup.exe | Format-List
 ```
 
 ---
 
 ## CI/CD への影響
 
-### 現状 (`velopack-release.yml`)
-
-```text
-build → velopack (vpk pack on windows-latest) → r2-upload (wrangler)
-```
-
-### 移行後
+### 現状
 
 `vpk pack` 時点で署名する必要があるが、SimplySign Desktop は GUI アプリで GitHub Actions の `windows-latest` runner では動かない。
-したがって以下の **どちらか** を採用 (採用後に `velopack-release.yml` を改修):
+そのため旧 CI リリース workflow (`velopack-release.yml`) は廃止済みで、公式リリースは `scripts/release-local.ps1` をローカル実行して作る。
 
-- **(B1) CI から velopack-release.yml を完全廃止**: `/vava` がローカルで全工程を実行 (publish + pack + sign + R2 upload + tag push)。CI は build.yml の PR ビルド検証のみに縮退。
-- **(B2) CI workflow を「未署名 PR ビルド検証」に縮退**: `velopack-release.yml` は release/ ブランチ push 時の **未署名ビルド成果物テスト** に用途変更。公式リリースは `/vava` 経由の手元署名版を R2 に置く。
+```text
+release-local.ps1 (ローカル):
+  Native AOT publish (win-x64 / win-arm64) → vpk pack (--signParams で署名)
+  → 署名検証 → R2 アップロード (R2Distribution.Common.ps1) → 固定名 URL のキャッシュパージ → 旧版クリーンアップ
+```
 
-→ **採用方針: (B1)** が運用としてシンプル。`/vava` 完了後に `velopack-release.yml` を `build.yml` に統合し削除。
+- CI (`.github/workflows/dotnet-build.yml` / `build.yml`) は PR の未署名ビルド・テスト検証だけを行い、署名・配信はしない。
+- 実行コマンドと再開手順は [AGENTS.md](../AGENTS.md#cicd)、作業ディレクトリ・検証・保持方針は [DESIGN.md](../DESIGN.md#local-signed-releases-to-r2) を参照する。
 
 ---
 

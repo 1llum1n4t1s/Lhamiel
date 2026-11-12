@@ -6,7 +6,7 @@ System structure, boundaries, data flows, and design decisions are documented in
 
 ## Project Overview
 
-Lhamiel is a Windows archive compression/decompression desktop app built with **Avalonia 12** (not WPF) and **.NET 10.0**. The UI language is Japanese.
+Lhamiel is a Windows archive compression/decompression desktop app built with **Avalonia 12** (not WPF) and **.NET 11.0**. The UI language is Japanese.
 
 > **⚠️ Windows Only**: `FolderOpener` (explorer.exe)、`NativeLibraryManager` (LoadLibraryW)、`IpcService` (Named Pipe)、`FileIconHelper` (`SHGetFileInfo`)、`ShellLinkNative` (COM) など Windows 固有 API に広範に依存。Linux / macOS 対応は想定していない。
 
@@ -45,134 +45,31 @@ dotnet run --project src/Lhamiel/Lhamiel.csproj
 
 # 署名付きローカルインストーラー作成（配信なし。SimplySign 接続が必要）
 pwsh scripts/release-local.ps1 -SkipUpload -Runtimes win-x64 -WorkDirectory <空の絶対Tempパス>
-# → 指定作業ルートの artifacts/Lhamiel-win-Setup.exe が生成される
+# → 指定作業ルートの packages/Lhamiel-win-Setup.exe が生成される
 ```
 
 > **Note**: Native AOT ビルド（`dotnet publish`）は VS の C++ ツールチェーン（`vswhere.exe`）が必要。ローカルテストでは `-p:PublishAot=false --self-contained` を使う。
 
 Solution file: `Lhamiel.slnx` (VS 2026 format). **x64 / ARM64** 両対応。`TreatWarningsAsErrors` が ON — 警告は全てビルドエラーになる。
 
+**SDK の固定**: リポジトリ直下の `global.json` が .NET SDK を `rollForward: disable` で厳密に固定し、CI も `setup-dotnet` の `global-json-file` で同じ SDK を使う。SDK の patch は Native AOT の暗黙 `Microsoft.DotNet.ILCompiler` 版を変え、追跡対象 lockfile の locked restore を NU1004 で失敗させるため、SDK を上げるときは同時に上記の package-mode restore 2 コマンドで lockfile を再生成する。製品の TargetFramework（`net11.0-windows8.0`）は SDK と同じメジャーなので、テストホスト用の追加ランタイムは不要。CI のテスト job は locked restore を独立ステップで実行してから `--no-restore` でテストする（RID 付き publish には locked-mode を掛けない）。
+
 ARM64 の build / publish 後は、上記の `KagayoiSupportClientUsePackage=true` を指定した restore 2 コマンドで追跡対象 lockfile を更新・検証し、`git diff -- src/Lhamiel/packages.lock.json` で RID が既定の `win-x64` に戻ったことと意図しない依存変更がないことを確認する。`release-local.ps1` 終端の restore は、兄弟 SDK が存在する環境ではローカル用 lockfile だけを更新するため、追跡対象の検証を代替しない。復元モードと分離の理由は [DESIGN.md](DESIGN.md#shared-support-sdk-with-two-resolution-modes) を参照する。
 
 ## Architecture
 
-**MVVM with CommunityToolkit.Mvvm** — no DI container; dependencies are wired manually.
+MVVM with CommunityToolkit.Mvvm, manually wired without a DI container. Read [DESIGN.md](DESIGN.md#major-components-and-responsibilities) and its [runtime flows](DESIGN.md#runtime-data-flows) before changing a flow; its [critical invariants](DESIGN.md#critical-invariants) are mandatory. `ArchiveProcessor` coordinates `ArchiveExtractor` / `ArchiveCompressor`; SevenZip handles other formats and `LzhArchiveBackendProvider` uses UnLhaRe for LHA/LZH. Preserve CRC verification during extraction: LHA/LZH file output is committed from staging only after CRC verification; do not add a post-extraction second read. Error classification uses SevenZip exception types, UnLhaRe `Kind`, then I/O HRESULT and message fallback; never retry LZH with a different decoder.
 
-### Layers
-
-- **View/** — Avalonia AXAML + code-behind (MainWindow, ProgressWindow, FileConflictDialog, ErrorRecoveryDialog, DiskSpaceDialog, ConfirmDialog, MessageDialog)
-- **ViewModels/** — MainWindowViewModel with `[ObservableProperty]` source generators
-- **Util/** — All business logic (archive operations, settings, logging, file association, updates, crash handling, diagnostics)
-- **Models/** — Data models
-
-### Core Processing Flow
-
-Drag-and-drop drives the app:
-1. `MainWindow.DropZone_Drop` → `MainWindowViewModel.ProcessDroppedPathsAsync`
-2. ViewModel delegates compression and extraction to `CompressionWorkerLauncher`; each independent worker uses `ArchiveProcessor`
-3. `ArchiveExtractor` / `ArchiveCompressor` wrap `1llum1n4t1s.Sevenzip`。LHA / LZH のペイロード処理だけは `Kagayoi.UnLhaRe` を使い、一覧・展開・LH0/LH5/LH6/LH7 圧縮を `LzhArchiveBackendProvider` 境界から呼ぶ
-4. Post-extraction: MotW propagation (`MotwPropagator`)。CRC は展開中に照合し、通常形式は 7z.dll の `SetOperationResult(CRCError)` → Cancel → `reader.Save` 例外、LHA / LZH は UnLhaRe が CRC 検証後だけ一時出力を確定する。展開後の二度読み `reader.Test()` パスは v1.0.183 で廃止し、`Settings.VerifyAfterExtraction` は legacy no-op
-5. `ProgressWindow` shows real-time progress via `IProgress<T>`
-
-**SevenZip 圧縮の進捗表示契約** (528,450 ファイル / 60GB の実測で「100% のまま 9 分超」になった問題への対応): バイト % が動かない区間はマーキー (IsIndeterminate) + 経過テキストで埋める — (1) 容量見積り `Progress.CheckingDiskSpace`、(2) スキャン `Progress.ScanningFiles` (除外対象・フォルダーを含む確認件数、`ScanSourceFiles` の `progress` 引数)、(3) `writer.Add` ループ (実測 93 秒/528k 件) と Save 冒頭の Prepare 列挙は `Progress.PreparingCompression` (i/N、`ProgressTextIntervalMs`=200ms スロットル。ライブラリの Prepare 報告は素通しで数十万件届くためここで間引く)、(4) バイト進捗 100% 到達後〜`writer.Dispose` 完了 (セントラルディレクトリ書出し + 数十万ストリーム一括 close) は `Progress.Finalizing` — `finalizing` フラグで以後の確定 % を抑止、(5) 完了直前に確定 100% を 1 回報告 (テスト契約: `CompressFilesAsync_ReportsFinalizingBeforeFinal100`)。pct=0 は `ProgressThrottler` の boundary 扱いで素通りするため 1 回に抑える。並列バッチ (`CreateMappedProgress` totalCount>1) では indeterminate を `SetNotice` に降格してバーの marquee 点滅を防ぐ。**主因はライブラリ ≤1.0.78 の `UpdateCallback.SetCompleted` 過剰計上**（completeValue はグローバル累積値なのに「ファイル毎リセット検出」で二重加算 → データ処理の 58% 時点で表示 100% 到達）— ライブラリ 1.0.79 以降は単調最大値方式に修正済み。依存更新時も累積値を二重加算しない進捗契約を維持する。なおライブラリは圧縮中、入力ファイルを `FileShare.Read` で writer Dispose まで保持するため、**圧縮中の対象ファイルは書き込みロックされる**（上流設計妥協、ライブラリ AGENTS.md 参照）。
-
-**展開時の出力先決定** (`ArchiveProcessor`):
-- `CreateArchiveNameFolder=ON` + ルートフォルダがアーカイブ名と一致 → フォルダ作成スキップ（`ShouldSkipFolderCreation`）
-- `CreateArchiveNameFolder=ON` + それ以外 → `baseDir/アーカイブ名/` フォルダを作成
-- `CreateArchiveNameFolder=OFF` → `baseDir` に直接展開
-- 複合拡張子（`.tar.gz` 等）は `GetArchiveBaseName()` で正しく処理
-
-**展開後にフォルダを開く**: フォルダ決定ロジックは `FolderOpener.GetExtractionFolderToOpen` に集約。呼び出し側は展開時の `createArchiveNameFolder` 設定値を渡す（展開中の設定変更による不整合を防止）。実際にフォルダを開くのは `ShellOpener.OpenFolderWithDefaultHandlerAsync` で、フォルダパスを `UseShellExecute=true` のままシェルへ渡し `ShellExecuteEx` に既定 verb を解決させる（`explorer.exe` を直接起動すると、`Directory\shell` の既定 verb を Kiriha / Files 等のサードパーティ製ファイルマネージャーへ変更しているユーザーでも常に Windows 標準エクスプローラーが開いてしまうため。標準構成では `Directory\shell\open\command` が explorer を指すので従来どおり）。既定ハンドラの起動に失敗したときだけ `explorer.exe` へフォールバックする。起動経路は **2 系統**: (1) 常駐インスタンス（ドラッグ&ドロップ / `FileConflictDialog`）は `FolderOpener.OpenFolder` / `OpenExtractionResult`（fire-and-forget、`ShellOpener` の `Task.Run` で UI スレッド非ブロック、Issue #54 対策）。(2) **処理後に自己終了する CLI / ファイル関連付け / アイコンドロップ経路は `OpenFolderAsync` / `OpenExtractionResultAsync` を `await`** してから `desktop.Shutdown()` する（`App.axaml.cs` の `ProcessFileExtraction` / `ProcessMultipleExtractions` / `ProcessCompression` / `ProcessMergedCompression`）。await しないとファイルマネージャー起動 `Task` がバックグラウンドで走り切る前にプロセスが落ち「展開先を開く」が効かない競合になる（fire-and-forget 化した v1.0.171 で混入した回帰）。**ただし await 化（#61）だけでは不十分だった**: App.axaml に `ShutdownMode` 指定が無く既定が `OnLastWindowClose` のため、`ProgressWindow` のクローズ（`ArchiveProcessor` が `closeWindowOnCompletion` 経由で `CloseSafe` → Dispatcher に Post）が `await OpenExtractionResultAsync`（別スレッドの `Process.Start`）の最中に処理されると、「最後のウィンドウクローズ → 自動シャットダウン」がファイルマネージャー起動と競合し、起動し切る前にプロセスが落ちてフォルダが開かない（#61 の await は明示 `ShutdownIfNeeded` 経路しか守れず暗黙の自動シャットダウンが残っていた）。現在は `ProcessCommandLineFiles` が CLI / IPC の受付要求数を保持し、最初の受付で `ShutdownMode.OnExplicitShutdown` に切り替えて、ゲート待機・worker 待ち・フォルダー起動を含む全要求の自動シャットダウンを抑止する。配下の `RunWithProgressWindowAsync` 等は `shouldShutdown:false` で呼び、要求ごとの終了は行わない。`ScheduleCommandLineCompletion` が全要求と受付済み IPC dispatch の完了を確認して `ShutdownIfNeeded` を呼び、`finally` で元の `ShutdownMode` に戻す。常駐 MainWindow があれば終了せず、進捗画面のクローズだけで待機要求を打ち切らない。ドロップ経路の設定スナップショットは `ProcessDroppedPathsAsync` が `ApplySettingsToManager()` で VM 全設定を確定してから `CreateSnapshot()` する（300ms デバウンス中の設定切替で `OpenExtractionOutputFolder` 等が陳腐化するのを防止）
-
-**関連付け設定の適用タイミング** (`MainWindowViewModel.ApplyAssociationSettings`): 関連付けの実適用（レジストリ書込 + `FileAssociation.NotifyExplorer` の `SHChangeNotify`）はチェックボックス操作・全選択/解除・アイコンバリアント変更時の **3 経路のみ**で、起動時・終了時には行わない。アイコンバリアント変更（`OnSelectedFileIconVariantChanged` → `ApplyAssociationSettings(refreshAssociatedIcons:true)` で関連付け済み全拡張子のアイコンを再登録）は、関連付けタブの `ComboBox`（`SelectedValue` + `SelectedValueBinding`）が起動/タブ初表示時に `SelectedFileIconVariant` を「現在値 → null/空 → 現在値」と書き戻して `OnSelectedFileIconVariantChanged` を多重発火させるため、`_appliedFileIconVariant`（`LoadFromSettings` で初期化する正規化済みの適用済み値）と照合し **実際にバリアントが変わったときだけ** 再適用する（空値・同値は無視）。このガードが無いと起動のたびに全対象拡張子を再登録 + `SHChangeNotify` する『常時関連付け』スパムになる（ログが関連付け成功で埋まる回帰）。
-
-**圧縮後にフォルダを開く** (`OpenCompressionOutputFolder`): 圧縮 worker の `App.ProcessCompression` / `ProcessMergedCompression` / `ProcessBatchCompression` が開く出力フォルダを決定。「元と同じ場所に保存」(`CompressionOutputToSameDirectory`) ON のときはソースのあるディレクトリ（＝アーカイブが作られる場所、`Path.GetDirectoryName(firstSource)`）、OFF のときは `CompressionOutputDirectory` を開く。**ドラッグ&ドロップ経路も SameDirectory ON で開く**（以前は `&& !CompressionOutputToSameDirectory` ガードで開かず、CLI 経路だけ開く非対称があった。CLI の `App.ProcessCompression` / `ProcessMergedCompression` と挙動統一）
-
-**SevenZip 圧縮時のロック中ファイル対応**: ソースファイルは元パスのまま `ArchiveWriter.Add()` に渡す。ロック中のファイルはライブラリ（`1llum1n4t1s.Sevenzip`）の `UpdateCallback` が自動的に一時コピーして処理する。スキャン後に削除されたファイルは `File.Exists()` チェックでスキップし、残りのファイルで圧縮を続行する。**`writer.Add()` が `AccessException` を投げた場合（VS の `.vsidx` のように `FileShare.None` で握られていてライブラリの 2 段試行（`FileShare.Read` → `FileShare.ReadWrite|Delete`）で両方失敗するケース）は、当該ファイルのみログに warning を出してスキップし、残りで圧縮を続行する**（1 ファイルアクセス不能で全体を死なせない）。スキップ件数は完了直前に集約ログを残し、`CompressFilesAsync` の戻り値（`Task<int>`）として呼び出し側へ返す。**パスワード保護圧縮でスキップ > 0 のときは `ArchiveProcessor` が `Notify.PartialSkipWithPassword` を UI 通知する**（スキップされたファイルは暗号化アーカイブに含まれず平文のまま残るため。非保護圧縮は従来どおりログのみで resilience を維持、Codex P2 #3386876544）。
-
-**圧縮時のファイル列挙・除外設定**:
-- `ArchiveCompressor.ScanSourceFiles` は `Settings` スナップショットと `GitignoreMatcher` を元に対象一覧を構築する。除外設定は、全圧縮へ適用する `%LocalAppData%\Lhamiel\.lhaignore`（共通ルール）と、圧縮元内から読むフォルダー別ルールの 2 系統。
-- 単体圧縮も容量確認より先に `ScanSourceFiles` を 1 回だけ実行し、空ディレクトリマーカーを除いた実ファイル一覧の合計サイズで必要容量を判定する。同じ解決済み一覧を `CompressFilesAsync` へ渡すため、除外済みツリーの二重走査や reparse point 配下の過大見積りを起こさない。まとめ圧縮も同じく解決済み一覧を合計する。
-- `IncludeHiddenAndSystemEntries=true`（デフォルト）では `EnumerationOptions.AttributesToSkip = 0` とし、Hidden/System 属性のファイル・フォルダも含める（例: `.git`）。
-- `IncludeHiddenAndSystemEntries=false` では Hidden/System 属性をスキップする。
-- 除外パターンは `%LocalAppData%\Lhamiel\.lhaignore` に保存され、**`.gitignore` 互換のグロブ・否定・ディレクトリ限定構文に対応**（例: `*.log`, `node_modules/`, `/build`, `**/cache`, `!keep.txt`）。
-- `ArchiveCompressor.EnumerateSourceFiles` は分岐ごとの matcher と候補順位を引き継ぐ単一 DFS で、除外ルールの読込・ファイル列挙・空フォルダー用の訪問記録をまとめる。各フォルダーのルールを読んだ直後から枝刈りし、兄弟フォルダーのルールは評価に持ち込まない。除外済みエントリ・空フォルダーの確認中も 200ms 間隔で件数を通知し、各列挙ステップでキャンセルを確認する。
-- **SevenZip へ渡す空ディレクトリエントリは「空マーカーディレクトリ」経由で追加する**（`CreateEmptyDirectoryMarker`）。`writer.Add(realDir, "rel/")` のように**実ディレクトリ**を渡すと、ライブラリ（`1llum1n4t1s.Sevenzip`）の `AddRecursive` が `Io.GetFiles`/`Io.GetDirectories` で**フィルタなしに再走査**し、スキャンで除外したはず（Hidden/System 属性・`.lhaignore` 該当）のファイルを復活させてしまう（中身ゼロ判定のディレクトリでも実体には除外ファイルが残るため）。ライブラリ側はフィルタを一切持たない前提なので、**除外はすべて呼び出し側（Lhamiel）が担保する**。個別ファイルは `ScanSourceFiles` の結果リストから 1 件ずつ `writer.Add` するため再走査は起きない。
-- 圧縮のスキャンごとに `LhaignoreFile.ReadLines()` と `GitignoreMatcher.Compile` で最新内容を読み直すため、設定 UI を介さない外部編集も反映される。解決済み一覧を `CompressFilesAsync` へ渡す場合は再読込せず、容量確認と同じ一覧を使う。
-- 設定 UI の「共通の除外ルール」（追加・削除・既定値リセット・「共通除外ファイルを開く」）は `.lhaignore` を直接編集する。`FileSystemWatcher` が外部編集を検知して `ObservableCollection<string>` を再ロードする。画面内の設定はすべてグローバルであり、「フォルダー別ルールの読み込み」は各圧縮元で探すファイル名と優先順位を全圧縮共通で設定する。
-
-### Key Util Classes
-
-| Class | Responsibility |
-|-------|---------------|
-| `ArchiveProcessor` | Orchestrator — decides extract vs compress, manages workflow |
-| `ArchiveExtractor` | Extraction with `ShouldSkipFolderCreation`, `TryExtractEntryAsync` (retry with exponential backoff)。構造解析の共有違反は再試行し、`.7z` / `.rar` 以外で構造を取得できない場合は空のルート情報で展開へ進まず fail closed。展開後処理の生 Unicode パス fallback も同じ出力境界を再検証する |
-| `ArchiveCompressor` | Compression with Unicode NFC normalization, Hidden/System enumeration control, and `.gitignore` 互換除外マッチ (`GitignoreMatcher` + ディレクトリ枝刈り DFS) |
-| `LzhArchiveBackendProvider` | LHA/LZH の差し替え可能な同期 API 境界。上限・visitor 完了・出力確定・キャンセルの契約は [DESIGN.md](DESIGN.md#versioned-unlhare-integration)、変更時の検証は [Testing](#testing) を参照する |
-| `GitignoreMatcher` | `.gitignore` 互換のパターンコンパイラ／マッチャ（`*` / `?` / `**` / `[abc]` / 否定 `!` / アンカー `/` / ディレクトリ限定 `/` 末尾）。`IsExcluded(..., traversalMode)` の 2 経路: **traversal**（DFS 枝刈り併用・各エントリを自身レベルだけで照合し、除外の推移性は DFS が担保）と **flat**（単発ファイル判定用・推移マッチ）。traversal では非 globstar ルールに末尾 `$` の `ExactPathRegex` を使い、git 同様に**ディレクトリ否定再包含**（`*.xcodeproj/*` + `!*.xcodeproj/xcshareddata/` 等で配下を救う）を正しく扱う。globstar（`foo/**`）は `/` を跨ぐので通常 `Regex` を使う |
-| `LhaignoreFile` | `%LocalAppData%\Lhamiel\.lhaignore` の I/O（読込・追記・削除・既定値リセット・移行）。`LoadMatcher()` で `GitignoreMatcher` を返す |
-| `ArchiveErrorHandler` | SevenZip の例外コード／HResult とメッセージ fallback、UnLhaRe の安定した `Kind` を操作別のエラーへ分類する |
-| `DiskSpaceChecker` | 展開・圧縮前と処理中の空き容量監視。Windows の `GetDiskFreeSpaceExW` を直接使い、空パス・ルート解決不能・API 失敗は容量不明として `0` を返す fail-closed 契約（取得失敗を十分な空き容量として扱わない） |
-| `LockedFileRetryPolicy` | Generic exponential backoff retry for SHARING_VIOLATION / LOCK_VIOLATION |
-| `MotwPropagator` | Zone.Identifier ADS propagation from source archive to extracted files。非再帰DFSの各ディレクトリは `FileSystemEnumerable` で1回列挙し、ReparsePointを除外しつつHidden/Systemも含める |
-| `CrashHandler` | 終了する未処理例外だけ MiniDump を出力しローテーションする。未観察タスク例外は起動時に登録するハンドラで要約ログ + `SetObserved` とし、付随テキストと遅延例外ログは型・HResult・内部例外を含むスタックだけを保存する |
-| `DiagnosticsCollector` | Export support ZIP (logs, masked settings, environment info)。圧縮パスワード等の平文を含み得る MiniDump は ZIP へ含めない |
-| `MessageService` / `MessageDialog` | 共通メッセージを UI スレッド上の Lhamiel デザインへ集約する。進捗処理のエラーは `ProgressWindow.CloseSafeAsync` の完了後にダイアログを表示し、自己終了する CLI / シェル経路はダイアログが閉じるまで await してから終了する |
-| `SupportDialog` | `Kagayoi.Support.Client` を使うメール認証付き問い合わせフォーム。製品IDは `lhamiel`、送信先は `support.kagayoi.com`。SDKは兄弟 `Kagayoi.Support` があればProjectReference、単独cloneとCIでは固定版を公開NuGet.orgから取得する |
-| `PartialExtractionHandler` | **[Obsolete]** — delegates to `ArchiveExtractor.TryExtractEntryAsync`. Types still used by ErrorRecoveryDialog |
-| `Settings` / `SettingsManager` | JSON config at `%LocalAppData%\Lhamiel\settings.json` with JsonDocument fallback recovery, compression scan settings, and exclusion patterns。`UpdateBaseUrl` は `[JsonIgnore]` + getter-only でハードコード固定（`CanonicalUpdateBaseUrl`）、悪意ある第三者ホストへの誘導防御 |
-| `PathValidator` | Path safety checks + `EnsureLongPathPrefix` for paths > 260 chars |
-| `NativeLibraryManager` | 7z.dll lifecycle management |
-| `NativeArchiveGate` | ネイティブ 7z.dll (`1llum1n4t1s.Sevenzip`) 接触をプロセス全体で 1 スロットに直列化する `SemaphoreSlim(1,1)` ゲート。ライブラリの共有シングルトン `SevenZipLibrary` (refcount + COM 追跡) は `ArchiveReader`/`ArchiveWriter` の並行動作をサポートしない (ライブラリ doc 参照) ため、各 reader/writer の「生成→使用→Dispose」全体を `Enter`/`EnterAsync` で囲む。バッチ展開・圧縮の `IoBoundParallelism` (2〜4) 並列時もネイティブ接触が重ならない。非リエントラント (全ネイティブ接触点は逐次の兄弟で入れ子なし) |
-| `ExtractionDestinationGate` | 展開先ディレクトリと圧縮出力ファイルの重なりをプロセス間でも保護するゲート。ルートから親まで共有、末端だけ排他の安定名file handleで、展開は衝突判定・最終移動・MotWまで、圧縮は出力 mutex より先に取得して確定・復元まで保護する。同じ親の別圧縮ファイルと異なる展開先は並行。ロックファイルは削除せず識別子を維持する |
-| `ArchiveOperationGate` | worker 内の操作をキュー化する非リエントラントゲート。取得点は `App.ProcessCommandLineFilesCore` のみ。全入口の圧縮・展開は取得前に独立 worker へ渡す。各ゲートの責務は [DESIGN.md](DESIGN.md#launch-and-operation-dispatch) を参照する |
-| `CompressionWorkerLauncher` | 既存token契約を共有し全入口の圧縮・展開を独立 worker へ渡す。圧縮は要求単位、展開は書庫単位（1要求内は最大2〜4件）。受付時設定と全入力を保持。終了コード0=成功、10=表示済み論理失敗、11=取消を型付き集計し、展開進捗は成功件数だけ進める。UI圧縮バッチは `ProcessAsBatch`、複数展開の共通取消はnamed eventで伝え全子退出後に取消を戻す。worker dialogも共通取消で閉じる |
-| `CompressionOutputRegistry` | 最終出力・private staging・backupをプロセス間で登録し、重なる走査が終了するまで履歴を保持する。走査開始時に枝刈りし、走査中に追加した出力も終了時に解決済み一覧から除く。明示ファイルと後発走査の完成済み書庫は保持。TAR/LZHの不定一時出力は追跡対象 `Lhamiel_Temp_<GUID>` 配下に隔離し、成功後に最終出力へ確定する |
-| `OutputPathIdentity` | 明示ルート・祖先リンクをハンドル由来の実体キーへ解決し、未作成末端を保持する。走査はsource rootの解決結果を再利用し、ファイルごとのnative handle取得を避ける。圧縮の生成末端が既存directory reparseの場合だけ拒否する |
-| `CrossProcessResourceGate` | 圧縮出力は実体キーと旧表記キーを全順序で保護し、固定設定・台帳・一時物・パスワードpromptは `EnterMetadata` / `EnterMetadataAsync` で旧mutex identityを保持する。詳細は [DESIGN.md](DESIGN.md#layered-concurrency-gates) |
-| `UpdateChecker` | Velopack 自動更新の **`--update-check` サイレント CLI 経路** (Program.cs から `StartupRegistration` の HKCU\Run 登録経由で発火、UI 不要なバックグラウンド自動更新)。配信元は `Settings.UpdateBaseUrl` (= Cloudflare R2 カスタムドメイン) を **`Velopack.Sources.SimpleWebSource`** で取得 (v1.0.168 で `GithubSource` から切替) |
-| `App.Check4Update` | Velopack 自動更新の **UI 経路**。`Settings.Check4UpdatesOnStartup=true` のときメイン画面起動直後 + 「アップデート確認」ボタンから手動起動。`VelopackUpdateDialog.UpdateDialogWindow` をオーナー付きで表示し、30 秒タイムアウトで動作。製品側 Velopack は固定版 `VelopackUpdateDialog.Avalonia` 経由の transitive 参照で、解決版は `packages.lock.json` に従う。依存更新時に復元・lockfile の更新と検証を行う。`release-local.ps1` の vpk はこれとは別に実行時に NuGet の最新安定版を取得・固定する。`SimpleWebSource` 経由 R2 取得 |
-| `App.UpdateCheckStateChanged` 静的イベント | `_isCheckingUpdate` フラグ遷移を `TryBeginUpdateCheck` / `EndUpdateCheck` ヘルパーで発火。`MainWindowViewModel.IsCheckingUpdate` を駆動し、起動時自動チェック中も「アップデート確認」ボタンが自動 disabled (並走実行防止) |
-| `LhamielUpdateStrings` | `VelopackUpdateDialog.IUpdateDialogStrings` の Lhamiel 実装 (Models/)。`Text.SelfUpdate.*` / `Text.Close` を `App.Text()` 経由で動的解決 (シングルトン、`NotifyLocaleChanged()` でロケール切替即時反映) |
-| `AcrylicFallbackHelper` | アクリルブラーが実際には効かない環境（Windows 透過効果 OFF・リモートデスクトップ・非対応プラットフォーム）を検出し、`ExperimentalAcrylicBorder` を隠してテーマ色 (`Brush.Window`) の不透明背景に差し替える（透過 OFF だとアクリル背後が不透明黒になり、ライトの薄い tint が黒と混ざって灰色化するため）。Windows は透過 OFF でも `ActualTransparencyLevel`=AcrylicBlur を返すため、レジストリ `EnableTransparency` + `GetSystemMetrics(SM_REMOTESESSION)` で補正。全ウィンドウの ctor から `Attach(this)` で取付（Opened / Activated / 透過レベル変化で再評価、テーマ切替は共有ブラシ `Brush.Window` で自動追従） |
-| `IpcService` | Single-instance enforcement via Named Pipe (`PipeOptions.CurrentUserOnly`)。接続の再試行と接続後の送信／flushに各2秒の期限を設ける。テストでは内部overloadへ専用パイプ名を渡し、稼働中の実アプリと分離する |
-| `FolderOpener` | Opens explorer to extraction/compression output folder |
-| `CompressionPasswordSession` | 圧縮パスワード平文を DPAPI (`DataProtectionScope.CurrentUser`) で暗号化/復号する短寿命ヘルパ。`Protect(string)`→`byte[]` を `Settings.EncryptedCompressionPassword` に永続化、`TryUnprotect(byte[])`→`string?` で復号 (失敗時 null、Settings 側は自動 wipe しない)。中間 `byte[]` は `CryptographicOperations.ZeroMemory` で best-effort 0 埋め。最大平文長 1024 chars。`v1.0.181+` |
-| `IPasswordDialogService` / `DefaultPasswordDialogService` | `PasswordDialog.ShowFromBackgroundAsync` を `ArchiveProcessor.PasswordDialogImpl` 経由で差し替え可能化したファサード。展開時 (`PasswordDialogMode.Extract`) と新規圧縮時 (`PasswordDialogMode.CompressNew` — 確認入力欄あり) を mode 引数で切替。テストではスタブで置換 |
-
+- Compression progress must show indeterminate checking, scanning, preparation and finalization phases; report final 100% only after writer disposal, and avoid marquee flicker in parallel batches. SevenZip progress is cumulative, not per-file. Its writer retains read locks until disposal. Files missing after scanning are logged and skipped. `writer.Add` access failures are logged and counted; when password protection is enabled, report those counted skips to the user. All inaccessible inputs must fail rather than publish an empty archive.
+- For extraction output selection, preserve `CreateArchiveNameFolder` and compound-extension behavior. Use `FolderOpener.GetExtractionFolderToOpen` with the operation's settings snapshot and `ShellOpener.OpenFolderWithDefaultHandlerAsync` so the default file manager is respected; fallback to Explorer only on failure. Self-terminating CLI/shell flows await folder launch and dialogs. `ProcessCommandLineFiles` suppresses automatic shutdown until all accepted requests and IPC dispatch finish; progress-window closure must not terminate waiting work. Compression opens the actual output folder, including same-directory mode.
+- Apply file association changes only on checkbox/select-all changes or an actual icon variant change, not startup or exit; ignore empty/equal variant changes. Preserve registered extensions and notify Explorer only when applying.
+- Compression filtering, empty-directory markers and safety rules are in [DESIGN.md](DESIGN.md#caller-owned-compression-filtering). `ScanSourceFiles` runs once before capacity checking; use the same filtered list for compression. Common `.lhaignore` and optional folder-local rules are reloaded for each scan. Hidden/System inclusion follows `IncludeHiddenAndSystemEntries`.
+- Keep the [layered concurrency gates](DESIGN.md#layered-concurrency-gates), including native reader/writer lifetime and cross-process output protection. Do not recursively acquire the native gate. Settings and operation snapshots must preserve pending UI changes and remembered-password updates.
 ### Testability Pattern
 
-**ダイアログの外観**: [DESIGN.md の共通ダイアログ設計](DESIGN.md#shared-dialog-chrome)に従い、各 AXAML の `DialogBody` は本文 Grid、最終行の `DialogActions`（進捗画面は `CancelButton`）は操作専用にし、ロード直後に `DialogChrome.Attach` を呼ぶ。背景のアクリル・色・濃さ・不透明フォールバックは MainWindow と揃える。SDK 更新時は `UpdateDialogAppearance` が参照する要素と状態別の本文・ボタン構造、バインディングを確認する。パスワード画面の終了経路を変更するときは、タイトルバー・Alt+F4・外部キャンセルでも入力欄が消去され、確定結果は取得後に `ClearPassword` で解放されることを確認する。
-
-DI コンテナ不導入の方針に従い、`ArchiveProcessor` の外部依存は `internal static` プロパティで差し替え可能にしている:
-
-```csharp
-// プロダクションコード
-internal static IMessageService MessageServiceImpl { get; set; } = new DefaultMessageService();
-internal static IUiDispatcher UiDispatcherImpl { get; set; } = new DefaultUiDispatcher();
-internal static IConflictDialogService ConflictDialogImpl { get; set; } = new DefaultConflictDialogService();
-
-// テストコード
-ArchiveProcessor.MessageServiceImpl = new StubMessageService();
-// ... テスト実行 ...
-// IDisposable.Dispose() で元に戻す
-```
-
-インターフェース定義: `ServiceContracts.cs` (`IMessageService`, `IUiDispatcher`, `IConflictDialogService`)
-
-### Error Handling Strategy
-
-1. **型・コード優先の分類** (`ArchiveErrorHandler`): SevenZip の専用例外、UnLhaRe の安定した `Kind` を先に扱い、一般 I/O は `HResult` → メッセージ走査の順で判定する。LZH の展開・作成で分類を混同せず、別デコーダーで再試行しない（[設計](DESIGN.md#versioned-unlhare-integration)）。
-2. **LockedFileRetryPolicy**: SHARING_VIOLATION (`0x80070020`) / LOCK_VIOLATION (`0x80070021`) を指数バックオフでリトライ（同期 6 回 / 非同期 3 回）
-3. **Settings.Load 3 段フォールバック**: `JsonSerializer.Deserialize` → `JsonDocument` 個別プロパティ回収 → 破損ファイル退避（Move → Delete → 空 JSON 上書き）
-
-### File Conflict Resolution System
-
-ファイル衝突解決は `FileConflictDialog` に統合。
-- **展開時**: 2ペイン比較（現在の場所 vs 宛先の場所）
-- **圧縮時**: 縦1列リストでグループ表示
-- モデル: `FileConflictEntry` / `FileConflictGroup` / `FileConflictResult`（`Models/FileConflictInfo.cs`）
-
+- ArchiveProcessor uses interface-backed static seams (see `ServiceContracts.cs`) for tests; tests replacing them must restore them and run in `[Collection("ArchiveProcessor")]`.
+- Dialogs follow [shared dialog chrome](DESIGN.md#shared-dialog-chrome): `DialogBody` holds content, `DialogActions` holds actions (progress uses `CancelButton`), and `DialogChrome.Attach` follows loading. Preserve background fallback and bindings; password controls clear on every close route and the accepted result is cleared after retrieval. Verify SDK update-dialog controls and state when updating the SDK.
+- `DiskSpaceChecker` fails closed when space cannot be determined. `DiagnosticsCollector` excludes dumps and secrets. Do not log `Environment.UserName`; path masking uses the cached USERNAME/profile patterns. `IpcService` uses a current-user-only named pipe with bounded connect and send/flush; tests use a distinct pipe name.
 ## Localization System
 
 **17 languages** via Avalonia ResourceDictionary (XAML-based, not .resx).
@@ -187,27 +84,27 @@ var msg = App.Text("Error.DuringExtraction", ex.Message);  // looks up "Text.Err
 <TextBlock Text="{DynamicResource Text.DropZone.Message}" />
 ```
 
-Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceInclude` in `App.axaml` → add to `App.SupportedLocales` + `App.LocaleDisplayNames` → add to `MainWindowViewModel.LocaleOptions`
+Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceInclude` in `App.axaml` → add to `App.SupportedLocales` + `App.LocaleDisplayNames` (`MainWindowViewModel.LocaleOptions` derives from these)
 
 **Pitfall**: `ResourceInclude` implements `IResourceProvider`, NOT `ResourceDictionary` — type casts must use `IResourceProvider`.
 
 ## Key Technical Details
 
-- **タスクバーのアプリ識別子** — `TaskbarIdentity` をプロセスとショートカットの共通解決元にする。右クリック起動のパッケージ AUMID を尊重し、通常起動も OS が返す外部配置先と現在の `Lhamiel.exe` の場所が一致すれば同じ ID を使う。別配置の開発ビルド・登録のない環境は `velopack.Lhamiel`。既存リンクは現在の exe を指し、ID が異なるものだけ起動時に移行する。変更時は `TaskbarIdentityTests` / `AppIconVariantTests` / `ProgramLifecycleTests` で、両経路の一致・別配置の隔離・リンクの引数維持・再書込抑止を確認する。
+- **タスクバーのアプリ識別子** — 未パッケージの通常起動は、ショートカット経由に限らず実行ファイルの配置先から識別子を解決する。変更時は [TaskbarIdentity の不変条件](DESIGN.md#critical-invariants)に従い、`TaskbarIdentityTests` / `AppIconVariantTests` / `ProgramLifecycleTests` で両経路の一致・別配置の隔離・リンクの引数維持・再書込抑止を確認する。
 
 - **Avalonia 12, not WPF** — compiled bindings (`x:CompileBindings="True"`), FluentTheme. `ExtendClientAreaChromeHints` は削除済み → `WindowDecorations` を使う
 - **Native AOT** (`PublishAot=true`) — avoid reflection-heavy patterns
 - **設定画面のカラーアイコン** — [DESIGN.md](DESIGN.md#settings-navigation-assets) のリソース構成に従い、サイドバーと本文見出しで同じ画像を使う。画像を更新するときは Avalonia リソース登録とライセンスの埋込み・表示も維持する。
 - **対応形式の追加・変更** — 展開拡張子は `ArchiveFormatConstants.SupportedArchiveFormats` を更新し、展開判定・関連付け UI の共通カタログを維持する。圧縮形式は `Settings.SupportedCompressionFormats`、`ArchiveCompressor.WritableFormats` / `ParseFormat`、CLI の形式許可リストとパスワード可否を併せて照合する。
-- **右クリックメニュー** — 登録・解除は [DESIGN.md のシェル契約](DESIGN.md#shell-command-visibility-separate-from-package-lifetime)に従う。Windows 10 build 19041 以降は sparse MSIX の COM 登録を使うため、Windows 10 全体を静的 verb のみとして扱わない。展開／圧縮の CLSID・canonical GUID・静的 verb 名を C++、manifest、`ShellContextMenu` で一致させ、`DelegateExecute` 公開前の `IExecuteCommand` / `IObjectWithSelection` 起動確認を維持する。両設定 OFF でパッケージを解除せず、アンインストールだけ `RemoveAll` を使う。COM 能力確認の `E_NOINTERFACE` は登録失敗と区別し、同契約の互換経路を維持する。それ以外の COM 起動失敗とパッケージ登録失敗（`0x80073D3C` を含む）を成功として表示状態へ反映しない。`scripts/build-shell-integration.ps1` が x64/ARM64 DLL と sparse MSIX を生成し、`scripts/release-local.ps1` が署名後に配布する。Publisher は Certum 証明書 Subject と完全一致させる。
-- **Kagayoi.Support の復元グラフ** — 兄弟リポジトリがあるローカル開発は `ProjectReference` と `obj/packages.local.lock.json`（`--artifacts-path` 指定時は `<ArtifactsPath>/obj/<ProjectName>/packages.local.lock.json`）、単独 clone / CI は固定版 `PackageReference` と追跡対象 `packages.lock.json` を使う。`.slnx` はソリューション外の条件付き／推移参照から親構成を除去して Release 出力へ Debug DLL を混入させるため、`Directory.Build.props` の `ShouldUnsetParentConfigurationAndPlatform=false` と、直接参照の `SetConfiguration="Configuration=$(Configuration)"` / `SetPlatform="Platform=AnyCPU"` を維持する。依存更新時は上記 `KagayoiSupportClientUsePackage=true` の restore 2 コマンドで追跡対象 lockfile を更新・検証する
+- **右クリックメニュー** — 登録・解除を変更するときは [シェル契約](DESIGN.md#shell-command-visibility-separate-from-package-lifetime)を読み、失敗時の表示維持・COM 互換経路・パッケージ寿命を守る。Windows 10 build 19041 以降は sparse MSIX の COM 登録を使う。展開／圧縮の CLSID・canonical GUID・静的 verb 名を C++、manifest、`ShellContextMenu` で一致させる。`scripts/build-shell-integration.ps1` が x64/ARM64 DLL と sparse MSIX を生成し、`scripts/release-local.ps1` が署名後に配布する。Publisher は Certum 証明書 Subject と完全一致させる。
+- **Kagayoi.Support の復元グラフ** — [2つの復元モード](DESIGN.md#shared-support-sdk-with-two-resolution-modes)を維持する。Release に Debug DLL が混入しないよう `Directory.Build.props` の `ShouldUnsetParentConfigurationAndPlatform=false` と、直接参照の `SetConfiguration="Configuration=$(Configuration)"` / `SetPlatform="Platform=AnyCPU"` を維持する。依存更新時は上記の package-mode restore 2 コマンドで追跡対象 lockfile を更新・検証する。
 - **CRDebugger の Debug 限定参照** — `PackageReference` は構成非依存のまま `ExcludeAssets="compile;runtime"` + `GeneratePathProperty="true"` を維持し、Debug 用の `<Reference>` だけを構成条件付きにする。`PackageReference` 自体を Debug 条件付きにすると、Release restore 後の Debug Rebuild が共有 `project.assets.json` から参照を解決できず CS0246 になる
 - **7z.dll** — `1llum1n4t1s.Sevenzip` NuGet が同梱。`NativeLibraryManager` が起動時に `LoadLibrary` で固定。`GeneratePathProperty` と `licenses/7-Zip/License.txt` の build/publish コピーを維持し、同梱 DLL のライセンス告知を配布出力から欠落させない
-- **ネイティブ操作の直列化** — `1llum1n4t1s.Sevenzip` の共有シングルトン `SevenZipLibrary` は `ArchiveReader`/`ArchiveWriter` の並行動作をサポートしない (refcount + COM 追跡が直列前提)。Lhamiel はバッチ展開・圧縮で `ArchiveProgressHelper.IoBoundParallelism` (2〜4) の並列度を使うため、**SevenZip の全接触点 (reader/writer の生成→使用→Dispose) を `NativeArchiveGate` (`SemaphoreSlim(1,1)`) で 1 スロットに直列化**する。純 I/O 後処理 (最終移動・MotW 伝播) はゲート外で並行するが、同じ最終展開先に対する後処理だけは `ExtractionDestinationGate` で直列化する。全入口の圧縮・展開の並行性は別プロセスで確保し、プロセス内のネイティブゲートを外さない。単体・まとめ圧縮とも `CrossProcessResourceGate` を上書き判定前に取得し、出力確定・復元まで保持する。設定保存も同ゲートを使い、worker は最新の保存設定へ変更を適用する。詳細は [DESIGN.md](DESIGN.md#launch-and-operation-dispatch) を参照する。SevenZip の接触点を追加するときは既存ゲートスコープの内側で取得しない (非リエントラントなので入れ子はデッドロック)。UnLhaRe との境界は [DESIGN.md](DESIGN.md#versioned-unlhare-integration) を参照する
+- **ネイティブ操作の直列化** — [並行ゲート契約](DESIGN.md#layered-concurrency-gates)に従い、SevenZip の reader/writer 生成から Dispose まで `NativeArchiveGate` で保護し、再入させない。全入口の worker 分離、展開先・圧縮出力のプロセス間保護、出力確定・復元までの保持と設定保存の整合を維持する。UnLhaRe は[別契約](DESIGN.md#versioned-unlhare-integration)に従う。
 - **展開パスの安全境界** — `ArchiveReader.Save` を追加・移動するときは、書き込み開始前に必ず全 `item.FullName` を `ArchiveExtractor.ValidateArchiveEntryPaths` へ通す。出力パスには `RawName` を使わず、予約デバイス名・末尾空白/ピリオド・境界外パスを拒否する。展開先や一時/退避フォルダーの属性走査では `ReparsePoint` を辿らない（詳細は `DESIGN.md` の不変条件を参照）
-- **Logger** — `SuperLightLogger` File Target。通常・worker のログ保存先は [README.md](README.md#トラブルシューティング) を参照する。**ログ経路では `Environment.UserName` を呼ばない** — 内部の GetUserNameExW (secur32 → LSA RPC) が RDP セッション等で無期限ブロックし、ログ 1 行で全スレッドが凍結する (実機 dump で確認済み、テストの断続的ハングの原因だった)。`MaskUserPath` は環境変数 USERNAME + プロファイルフォルダ名の事前コンパイル済みパターン (`_userNameMaskPatterns`、起動後 1 回構築) を使う
-- **Velopack** 自動更新 — 配信元は **Cloudflare R2 単独** (`https://lhamiel.kagayoi.com`、`SimpleWebSource` 経由)。通常リリース (`/vava`) は R2 のみに配信する。配信ドメインは中立ドメイン `lhamiel.kagayoi.com` に移行済み (旧 `lhamiel.1llum1n4t1.com` はクラウド/企業 egress の SNI フィルタで false positive を起こすため)。**旧 `lhamiel.1llum1n4t1.com` は配信期間が短かったためクリーンに廃止** (R2 踏み台として残さない)。旧 `GithubSource` クライアント (v1.0.167 以下) 救済のため、**GitHub Releases には `kagayoi.com` 版を「踏み台」として publish する** (`GithubSource` は最新版を選ぶので、それ経由で更新 → 再起動後に `kagayoi.com` を見るようになる。踏み台は削除せず永続保持)。継続的な GitHub Releases 併用配信はしない。2 系統: (1) `Program.cs --update-check` サイレント CLI 経路 (Windows ログイン時 `StartupRegistration` から発火、UI 無し)、(2) `App.Check4Update` UI 経路 (`VelopackUpdateDialog.Avalonia` 経由のダイアログ表示、`Settings.Check4UpdatesOnStartup=true` で起動時自動 + メニューから手動)
-- **Code signing (Authenticode)** — `v1.0.183+` 全リリースバイナリ (Lhamiel.exe / Setup.exe / Portable 内含む) を Certum **Open Source Code Signing in the cloud** 証明書で署名する。CN=`Open Source Developer Yuichiro Shinozaki` (個人 OSS 開発者向け、年次更新で thumbprint が変わるため signtool は `/n` の Subject 名選択を使う)。鍵は SimplySign クラウド (DPAPI 不可・エクスポート不可)、署名には **SimplySign Desktop のトークンログイン中セッションが必須** → リリースは `scripts/release-local.ps1` でローカル実行 (CI 署名不可、§CI/CD 参照)。タイムスタンプは `http://time.certum.pl` (RFC3161) — 証明書期限 (1 年) 切れ後も署名済みバイナリは有効。単発署名: `signtool sign /n "Open Source Developer Yuichiro Shinozaki" /fd SHA256 /td SHA256 /tr http://time.certum.pl <file>` (bash から叩く場合は `MSYS2_ARG_CONV_EXCL='*'` 必須)
+- **Logger** — `SuperLightLogger` File Target。ログ保存先は [README.md](README.md#トラブルシューティング)。ログ経路で `Environment.UserName` を呼ばない（RDP 等で無期限ブロックする）。`MaskUserPath` は USERNAME とプロファイルフォルダ名の事前コンパイル済みパターンを使う。
+- **Velopack** — `SimpleWebSource` で `https://lhamiel.kagayoi.com`（R2）から更新し、通常リリースは R2 のみに配信する。廃止済み `lhamiel.1llum1n4t1.com` は残さない。旧 `GithubSource` クライント用の Kagayoi 版 GitHub Releases 踏み台は削除せず永続保持し、継続併用配信はしない。`Program.cs --update-check` はログイン時のサイレント経路、`App.Check4Update` は起動時設定と手動操作に使う UI 経路。
+- **Code signing (Authenticode)** — 全リリースバイナリ（exe・Setup・Portable を含む）を Certum Open Source Code Signing in the cloud で署名する。SimplySign Desktop のログインセッションが必要なため `scripts/release-local.ps1` をローカル実行する。証明書更新で thumbprint が変わるため Subject 名を使う。単発署名: `signtool sign /n "Open Source Developer Yuichiro Shinozaki" /fd SHA256 /td SHA256 /tr http://time.certum.pl <file>`（bash では `MSYS2_ARG_CONV_EXCL='*'`）。
 - **AllowUnsafeBlocks** for P/Invoke (COM interop in `ShortcutCreator`, `FileIconHelper`, `CrashHandler`)
 - **Acrylic blur / 可読性レイヤー** — 全ダイアログで `ExperimentalAcrylicBorder` + `ExtendClientAreaToDecorationsHint`。白いデスクトップ背景が透けても文字コントラストを保つため、root `Panel` の子は「アクリル境界 → `Brush.Window` / `Opacity=0.5` / `IsHitTestVisible=false` のスクリム → コンテンツ」の順を維持する（`AcrylicFallbackHelper` が直接のアクリル子を探索する契約も守る）。補助文字はテーマ別 `FG2` を使い、個別ウィンドウで薄い `TintOpacity` を再導入しない
 - Async/await + CancellationToken throughout all I/O operations
@@ -216,8 +113,8 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - **Long path support**: `app.manifest` で `longPathAware` + `PathValidator.EnsureLongPathPrefix`
 - **Mark of the Web**: 元アーカイブの Zone.Identifier ADS を展開ファイルに伝播（`Settings.PropagateMarkOfTheWeb`）
 - **Support intake**: バージョンタブの問い合わせ導線は `SupportDialog` を開き、メール確認コードの検証後に `Kagayoi.Support` へ送信する。公開GitHub Issuesは開発者向け技術課題に限定し、利用者の問い合わせとメールアドレスは載せない
-- **Password-protected compression** (`v1.0.181+`): `Settings.IsPasswordProtectionEnabled`=true で ZIP=AES-256 (WinZip AE-2)、7z=AES-256 を強制 (`ArchiveCompressor.CreateArchiveWriter` で `EncryptionMethod.Aes256` + `CustomParameters["he"]="on"`)。TAR / LZH は非対応。[形式別の保護契約](DESIGN.md#format-specific-password-support)に従い、UI・設定保存/読込・CLI/シェル・直接圧縮の各経路で可否を揃える。パスワード入力は `Settings.PasswordMode` で 2 モード: `"PromptEachTime"` (ドロップ毎に確認) と `"Remember"` (DPAPI 暗号化済バイト列を `Settings.EncryptedCompressionPassword` に保存)。`ArchiveProcessor.TryResolveCompressionPasswordAsync` がモード分岐を集約し、復号失敗 (別 PC/Win パスワードリセット) は通知 + 再プロンプトで対応 (Settings 側は自動 wipe しない、サイレント wipe による失念事故を防ぐ)。**復号できても `MinCompressPasswordLength` (4 文字) 未満の保存値は使用しない** — redaction 不能なまま圧縮スコープに入るのを防ぐため、`Notify.SavedPasswordTooShort` を通知して CompressNew 再プロンプト → 新しい値を保存して移行する (4 文字フロア導入前ビルドの legacy 保存値対策、Codex P2 #3390183195)。`EncryptFileNames` は `[JsonIgnore]` で永続化対象外 — VM の `ObservableProperty` が真の源、`IsPasswordProtectionEnabled` OFF→ON 遷移で毎回 `true` に強制リセット (`OnIsPasswordProtectionEnabledChanged`)。**in-memory の `Settings` へは 2 経路で同期**: ドロップ経路は snapshot 直前の `Mutate`、シェル/IPC 経路は `FlushPendingAutoSave` → `ApplySettingsToManager`（`Snapshot()` は `MemberwiseClone` なので `[JsonIgnore]` 値も snapshot に乗る。同期しないと UI でチェックを外しても snapshot がデフォルト `true` を引きずり he=on で圧縮される）。ZIP は仕様上ヘッダ暗号化不可なので `EncryptFileNames` は 7z 限定 (UI で disable + 警告)。**ZIP パスワードは ASCII 限定** — 同梱 7-Zip 26.00 が ZIP 作成時に非 ASCII パスワードを `E_INVALIDARG` で拒否する upstream regression のため (7z は非 ASCII OK、実機確認済み)。2 層対応: (1) `TryResolveCompressionPasswordAsync` が formatHint=ZIP で入力検証 + `Error.ZipPasswordAsciiOnly` 通知 + 再プロンプト (上限 5 回、`PromptCompressionPasswordAsync`)。Remember の保存済みパスワードが非 ASCII + ZIP のときは `Notify.SavedPasswordZipAsciiOnly` を出して**今回限りの一時パスワード**を再プロンプト (7z 用に有効な保存値は上書きしない)、(2) `ArchiveCompressor.CreateArchiveWriter` の fail-fast guard (`ContainsNonAscii`、バッチ override 等の迂回経路の防御線)。本家修正で 26.00 regression が解消されたら `SevenZipFormat_WithNonAsciiPassword_Succeeds` sentinel テストを参考に制約解除を検討。空アーカイブ防止: `addedCount==0` で `InvalidOperationException`、`Error.AllSourcesInaccessible` を表示 (スキャン後の全ファイル消失・全件アクセス不能が対象)。空ディレクトリ単体のドロップは `IncludeRoot` モードなら root 自身を空ディレクトリエントリとして追加し有効なアーカイブを作る (`ScanSourceFiles` の root マーカー、ExcludeRoot/Flat は相対パスが `.` になるため対象外)。パスワード平文は `Logger.RegisterRedactionToken` で全ログ自動マスク (defense-in-depth、4 文字以上の token のみ)、`DiagnosticsCollector` の `_sensitiveKeys` に `EncryptedCompressionPassword` を追加して support ZIP からも除外 (dumps は `v1.0.181+` で常時除外)。**新規圧縮パスワードは 4 文字以上を強制** — `PasswordDialog.MinCompressPasswordLength` (CompressNew モードのみ、Extract は既存書庫互換のため制限なし)。redaction の 4 文字下限と連動し「マスクされない圧縮パスワード」の存在をなくす (連動契約は `MinCompressPasswordLength_PasswordIsAlwaysRedactable` テストが担保)。設定パネルの「パスワード変更」(`ChangeSavedPasswordAsync`) も `ArchiveProcessor.PromptCompressionPasswordAsync` (internal) を共用し、ZIP 選択中は同じ ASCII 検証 + 再プロンプトを通す。
-- **Header-encrypted (he=on) 7z の展開**: 同梱 7-Zip 26.00 はヘッダ暗号化アーカイブをパスワード無しで開くと **ctor 時点で `SevenZipException` (IsNotArc) を投げ「破損」と区別できない**（実機確認済み）。このため `GetArchiveStructureInfo` は開けなかったとき `ArchiveStructureInfo.OpenFailed=true` を返し、`ArchiveProcessor.ExtractArchiveAsync` が **拡張子 .7z/.rar に限り**パスワード確認 → password 付き再解析（最大 3 回）を行う。成功したパスワードは `knownPassword` として `ExtractArchiveAsync` → `ExtractArchive` の AsyncPasswordQuery 初回応答・`DetectExtractionConflicts` に引き回し、展開中の再ダイアログを防ぐ + ヘッダ暗号化でもフォルダ二重ネスト防止 (`ShouldSkipFolderCreation`) が機能する（CRC は展開中に 7z.dll が照合、v1.0.183 で展開後の二度読み検証は廃止）。全試行失敗時は従来経路（パスワード無し）に合流するが、**`suppressPasswordPrompt` フラグで展開中の AsyncPasswordQuery の再プロンプトを抑止**する（「構造解析 3 回 + 展開段 3 回」の二重プロンプト防止。本当に破損したアーカイブはパスワードコールバック自体が呼ばれずエラー表示経路に進むため UX 不変）。**明示キャンセルは展開経路と同じ `OperationCanceledException` でこのアーカイブの展開ごと中止する**（バッチ側は OCE を失敗ではなくスキップ扱い）。**open 時のパスワード中止は `CryptoGetTextPassword` が `SevenZipCode.Cancel` を返すだけで `SevenZipException` (IsNotArc) になる**（EncryptionException ではない）ため、`ExtractArchive` は `passwordAcquisitionCancelled` フラグ + 種別 (EncryptionException or SevenZipException) で OCE に変換する。**プロンプトループ全体は `ArchiveProcessor.StructurePasswordPromptGate` (`SemaphoreSlim(1,1)`) で直列化** — バッチ展開の `IoBoundParallelism` 並列でモーダルダイアログが積み重なるのを防ぐ（`NativeArchiveGate` は `GetArchiveStructureInfo` 内部で取得される非リエントラント構造のため流用不可）。さらに**ダイアログ表示そのものは `ArchiveProcessor.ExtractionPasswordDialogGate`（葉ゲート、保持中に他ゲートを取得しない）で構造解析プロンプトと展開中プロンプトを横断直列化** — he=on と通常暗号化の混在バッチでもモーダルが積み重ならない。取得順は「StructurePasswordPromptGate → NativeArchiveGate → ExtractionPasswordDialogGate」の一貫階層でデッドロックなし。redaction はパスワードを渡す再解析の**前**に試行ごと登録（解析例外メッセージ経由の平文混入防止）+ 確定後は `Logger.RegisterRedactionToken(knownPassword)` がメソッド終端まで引き継ぐ。redaction 対象外の 1〜3 文字パスワード（Extract は既存書庫互換で受理）は、**パスワードが scope にある全ログサイトで例外詳細を生ログしない契約**（`Logger.CanRedactToken` で判定し、型名 + HResult の要約に置換）で全長カバーする — 対象: `GetArchiveStructureInfo` / `DetectExtractionConflicts` / `ExtractArchive` の汎用 catch と非キャンセル OCE 昇格 catch（判定は共通ローカル関数 `HasUnredactablePasswordInScope`、Codex P2 #3390292697）/ `ArchiveProcessor.ExtractArchiveAsync` の catch（LogException を要約ログに切替 + **ダイアログ本文の Details も要約に置換** — `MessageService.ShowError` が本文を `Logger.Log` で永続化するため、Codex P2 #3389751077）。`PasswordDialog.MinCompressPasswordLength` は `Logger.MinRedactionTokenLength` を直接参照し連動を構造的に固定。**ヘッダ可視の暗号化アーカイブ（パスワード ZIP / he=off 7z）は構造解析プロンプトを通らず `knownPassword` が null のまま**のため、展開中の AsyncPasswordQuery で入力されたパスワードを `onPasswordPrompted` コールバック（`ExtractArchiveAsync` → `ExtractArchive` に引き回し、7z.dll 由来スレッドから発火）で `ArchiveProcessor` に通知する（Codex P2 #3386876537）: `ExtractArchive` ローカルと `ArchiveProcessor` の両層で全試行を redaction 登録（refcount 式なので二重登録安全、各層の catch ログ完了後に finally で解放）、1〜3 文字入力は両層の catch 詳細抑止フラグに反映。なおパスワード付きアーカイブの CRC も展開中に 7z.dll が照合する（展開後の二度読み `reader.Test()` 検証は v1.0.183 で廃止）。
+- **Password-protected compression** — Follow [format-specific password support](DESIGN.md#format-specific-password-support) in UI, settings, CLI/shell and direct calls. ZIP and 7z use AES-256; TAR/LZH reject passwords. ZIP passwords are ASCII-only with the bundled 7-Zip; validate prompts and direct writer calls. A remembered non-ASCII password remains saved for 7z and gets a temporary ZIP prompt. New compression passwords require at least 4 characters to match redaction; remembered shorter or undecryptable values trigger notification and re-prompt, never silent deletion. Remember uses DPAPI; `EncryptFileNames` is runtime-only, defaults on when protection is enabled, applies only to 7z, and must reach snapshots from both UI and shell/IPC. Register password redaction before logging, exclude password data and dumps from support bundles, and preserve `MinCompressPasswordLength_PasswordIsAlwaysRedactable`.
+- **Encrypted extraction** — Header-encrypted 7z structure inspection can require a password before opening; retry and cancellation must retain their distinct outcomes. For failed .7z/.rar structure inspection, allow at most three password attempts and suppress further extraction prompts after all attempts fail. Serialize structure prompts and extraction password dialogs using the order `StructurePasswordPromptGate` → `NativeArchiveGate` → `ExtractionPasswordDialogGate` when nested. The structure prompt releases `ExtractionPasswordDialogGate` before reinspection acquires `NativeArchiveGate`; extraction may acquire the dialog gate while holding the native gate. The dialog gate also encloses `CrossProcessResourceGate.EnterMetadataAsync`. Never recursively acquire the native gate. Register every attempted password for redaction before inspection and through extraction, including passwords requested after structure inspection. Existing archives may use passwords shorter than the redaction minimum: suppress exception details in logs and user-facing error details while such passwords are in scope. Consult `ArchiveProcessor` and `ArchiveExtractor` before changing these paths.
 - **VM 設定の即時フラッシュ**: `MainWindowViewModel` の AutoSave は 300ms デバウンスのため、永続層 (`SettingsManager`) スナップショットを取る直前の UI 変更が未反映のことがある。対策として `MainWindowViewModel.Current` (static、ctor で設定) + `FlushPendingAutoSave()` を、(1) `ArchiveProcessor` の Remember パスワード保存直前 (`MutateAndSave` の live 再チェックが古い値を見ないように)、(2) `App.TryRunArchiveWorkersAsync` と画面ドロップの受付 (全入口のスナップショット鮮度) に加え、圧縮・展開 worker 起動前と worker からの保存パスワード更新通知受信時にも呼ぶ。いずれも UI スレッドから呼ぶこと。テストは VM を構築しないので `Current` は null → no-op。
 - **Compression scan attributes**: `Settings.IncludeHiddenAndSystemEntries` が圧縮スキャン時の `EnumerationOptions.AttributesToSkip` を制御する。
 - **Compression exclusions**: `%LocalAppData%\Lhamiel\.lhaignore` に `.gitignore` 互換構文で記述。`GitignoreMatcher` が compile して `ArchiveCompressor` 側でディレクトリ枝刈り付きマッチを行う。UI 追加・削除・既定値リセット + 「除外設定ファイルを開く」（既定エディタで開く）の 4 操作で管理し、`FileSystemWatcher` が外部編集を検知して UI を再同期する。
@@ -226,11 +123,11 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 ## CI/CD
 
 - **PR builds**: `.github/workflows/dotnet-build.yml` — restore, build, test + code coverage on every PR
-- 製品ページの配信は `vps-web/deploy/deploy-lp.ps1` を使う。公開ホスト・更新ファイルの既存経路を維持する。
+- 製品ページの配信は兄弟リポジトリの `../Web/deploy/deploy-lp.ps1` を使う。公開ホスト・更新ファイルの既存経路を維持する。
 - **RID 別リリース出力**: `release-local.ps1` の x64 / ARM64 `dotnet publish` は RID ごとの `--artifacts-path` を必須とし、ProjectReference 先を含む共通 `bin/obj` の再利用による異アーキテクチャ参照（CS8012）を防ぐ。
 - **リリースの再開**: リポジトリルートで `pwsh scripts/release-local.ps1 -ReusePublish -WorkDirectory <既存の絶対Tempパス>` を使うと、指定作業ルートの `publish-<RID>/` を検証して再パッケージし、exe がない RID はビルドする。配信だけ再開する場合は同じ作業ルートを `pwsh scripts/release-local.ps1 -UploadOnly -WorkDirectory <既存の絶対Tempパス>` に渡す。通常実行は空の作業ルートを要求し、省略時は作成先を表示する。再開時に `-WorkDirectory` は必須。`-Runtimes win-x64` / `win-arm64` で対象を限定し、`-SkipUpload` は配信前で終了する。保存場所・検証条件・再開の境界は [DESIGN.md](DESIGN.md#local-signed-releases-to-r2) を参照する。
 - **ネイティブ配布物**: `.github/workflows/build.yml` と `scripts/release-local.ps1` の両 RID の publish 検査では、`Lhamiel.exe`、`7z.dll`、`unlhare.dll`、`licenses/Kagayoi.UnLhaRe/LICENSE`、`licenses/Kagayoi.UnLhaRe/THIRD_PARTY_NOTICES.md` の存在確認を維持する。UnLhaRe 更新時は `src/Lhamiel/Lhamiel.csproj` の `UnLhaReVersion` とパッケージ構成の lockfile を揃え、DLL の手動コピー経路を作らない。通常の依存更新でも locked restore と Release テストを維持する。
-- **配信完了判定**: `Test-PublishedArtifact` は [DESIGN.md の配信フロー](DESIGN.md#update-and-release) に従い、利用者が取得する固定 URL で照合する。キャッシュ回避クエリへ戻さず、ダウンロード・不一致 URL のパージ・再照合の失敗を成功扱いにしない。
+- **公開完了判定**: [DESIGN.md の配信フロー](DESIGN.md#update-and-release) に従い、公開前検証と R2 書込み・固定 URL 全件のパージ API の受付成功を確認する。公開後の配信内容取得・ハッシュ照合・CDN 伝播待ちは行わない。
 - **CodeQL**: `.github/workflows/codeql.yml` — C# security analysis on PR + weekly
 - **Dependabot**: `.github/dependabot.yml` — NuGet weekly + github-actions weekly
 
@@ -263,6 +160,8 @@ Tests in `src/Lhamiel.Tests.Unit/` using **xUnit 4**. The test project reference
 
 - `DESIGN.md` — current system design and data-flow source of truth
 - `docs/SETTINGS_SCHEMA.md` — complete settings.json reference
+- `docs/ARCHITECTURE.md` — `FileConflictDialog` integration for extraction/compression conflicts; `DESIGN.md` wins on conflicts.
+- `docs/DOUBLE_FOLDER_PREVENTION.md` — `ShouldSkipFolderCreation` double-folder prevention rules.
 - `docs/PARALLEL_IMPLEMENTATION_REPORT.md` — historical research; read relevant sections only when past rationale matters to the current task. Use `DESIGN.md` for current contracts.
 
 ## ドメイン移行（2026-07 開始・期限 2027/05/31）

@@ -123,7 +123,9 @@ if (-not ${env:ProgramFiles(x86)}) { ${env:ProgramFiles(x86)} = 'C:\Program File
 $vsInstallerDir = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer'
 if ($env:PATH -notlike "*$vsInstallerDir*") { $env:PATH = "$env:PATH;$vsInstallerDir" }
 
-# vpk (dotnet tool) は .NET 9 ランタイム要求だがローカルは 8/10 のみ → 10 にロールフォワード
+# vpk (dotnet tool) は 1.2.161 時点で net8/9/10 向けビルドを同梱し、通常は導入済みランタイムで
+# そのまま動く。将来の vpk が未導入のメジャーだけを要求した場合に備え、保険として上位メジャーへの
+# ロールフォワードを許可しておく。
 $env:DOTNET_ROLL_FORWARD = 'Major'
 
 # コンポーネント登録の照合が失敗する環境でも、実在する既存の VS ツールを利用する。
@@ -305,27 +307,10 @@ Write-Host "✅ R2 アップロード完了: $uploaded ファイル"
 
 # ---- 2.5 Cloudflare エッジキャッシュのパージ ----
 # 固定名ファイル (Setup.exe / Portable.zip / RELEASES / releases.*.json / assets.*.json) は
-# 毎リリースで中身が変わるため、公開される固定 URL 自体を GET して SHA256 で配信実体を照合する。
-# 不一致を確認した URL だけをパージし、再照合が通るまで公開完了とは扱わない。
-function Test-PublishedArtifact([System.IO.FileInfo]$File) {
-    $client = [System.Net.Http.HttpClient]::new()
-    $client.Timeout = [TimeSpan]::FromSeconds(60)
-    try {
-        # クエリ付き URL は Cloudflare の別キャッシュキーになり得るため、固定 URL の
-        # 古いキャッシュを検出できない。利用者が取得する URL をそのまま照合する。
-        $url = "$BaseUrl/$($File.Name)"
-        $bytes = $client.GetByteArrayAsync($url).GetAwaiter().GetResult()
-        $remoteHash = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes))
-        return $bytes.LongLength -eq $File.Length -and $remoteHash -eq (Get-FileHash -LiteralPath $File.FullName -Algorithm SHA256).Hash
-    } finally {
-        $client.Dispose()
-    }
-}
-
+# 毎リリースで中身が変わるため、配信内容を取得せず固定 URL を全件パージする。
 Write-Host '== Cloudflare キャッシュパージ ==' -ForegroundColor Cyan
 # $zoneId / $cfHeaders はプリフライト (Cloudflare トークン取得時) で解決・検証済み
-$staleFiles = @(Get-ChildItem $ArtifactsDir -File | Where-Object { $_.Name -notlike '*.nupkg' } | Where-Object { -not (Test-PublishedArtifact $_) })
-$purgeUrls = @($staleFiles | ForEach-Object { "$BaseUrl/$($_.Name)" })
+$purgeUrls = @(Get-ChildItem $ArtifactsDir -File | Where-Object { $_.Name -notlike '*.nupkg' } | ForEach-Object { "$BaseUrl/$($_.Name)" })
 if ($purgeUrls.Count -gt 0) {
     try {
         # purge_cache は 1 リクエストあたり最大 30 URL までのため分割送信する
@@ -338,39 +323,31 @@ if ($purgeUrls.Count -gt 0) {
         }
         Write-Host "  ✅ パージ: $($purgeUrls.Count) URL"
         $purgeUrls | ForEach-Object { Write-Host "     $_" }
-        foreach ($file in $staleFiles) {
-            if (-not (Test-PublishedArtifact $file)) { throw "配信内容が一致しません: $($file.Name)" }
-        }
     } catch {
-        throw "アップロード済みですが、配信確認が完了していません: $($_.Exception.Message)"
+        throw "アップロード済みですが、キャッシュパージの受付を確認できません: $($_.Exception.Message)"
     }
 } else {
     Write-Host '  パージ対象なし'
 }
 
-# ---- 3. 配信確認 (CDN/edge 伝播チェック) ----
-Write-Host '== 配信確認 ==' -ForegroundColor Cyan
-foreach ($runtime in $Runtimes) {
-    $channel = $RuntimeMatrix[$runtime].Channel
-    $url = "$BaseUrl/releases.$channel.json"
-    $resp = Invoke-WebRequest -Uri $url -TimeoutSec 30 -MaximumRetryCount 3 -RetryIntervalSec 5
-    Write-Host "  $url → HTTP $($resp.StatusCode) ($($resp.RawContentLength) bytes)"
-}
-
 # ---- 4. 旧バージョン nupkg のクリーンアップ (Aggressive 戦略) ----
-# ローカル artifacts の manifest (= 今アップロードしたものと同一) から keep set を作り、
-# R2 上の「.nupkg かつ manifest 外」だけを削除する。固定ファイル名 (Setup.exe /
-# Portable.zip / RELEASES* / assets.*.json / releases.*.json) は対象外なので安全。
+# keep set は「ローカル packages の manifest (= 今アップロードしたもの)」と
+# 「R2 バケット上の全 releases.*.json」が参照するファイルの和集合で作る。
+# -Runtimes で一部 RID だけをリリースした場合でも、今回対象外の RID の manifest が
+# 参照する nupkg を消さないため (消すとその RID の自動更新が壊れる)。
+# バケット上の manifest はいずれか 1 つでも取得・解析できなければ、保持集合が不完全なまま
+# 削除する危険があるのでクリーンアップ全体を中止する (アップロード済みのリリースは成功扱い)。
+# 固定ファイル名 (Setup.exe / Portable.zip / RELEASES* / assets.*.json / releases.*.json) は
+# バージョン文字列を含まないため削除対象外。
 Write-Host '== 旧 nupkg クリーンアップ ==' -ForegroundColor Cyan
 $keep = @{}
 $manifests = Get-ChildItem $ArtifactsDir -Filter 'releases.*.json'
-if (-not $manifests) { throw 'artifacts に releases.*.json が見つかりません' }
+if (-not $manifests) { throw 'packages に releases.*.json が見つかりません' }
 foreach ($m in $manifests) {
     foreach ($asset in (Get-Content $m.FullName -Raw | ConvertFrom-Json).Assets) {
         if ($asset.FileName) { $keep[$asset.FileName] = $true }
     }
 }
-Write-Host "  保持対象 nupkg: $($keep.Count) 件"
 
 $api = "https://api.cloudflare.com/client/v4/accounts/$AccountId/r2/buckets/$Bucket"
 $headers = @{ Authorization = "Bearer $($env:CLOUDFLARE_API_TOKEN)" }
@@ -390,6 +367,54 @@ while ($true) {
     $cursor = if ($cursorProp) { $cursorProp.Value } else { '' }
     if (-not $cursor) { break }
 }
+
+# バケット上の全 channel の manifest を、公開 CDN ではなく認証付き R2 API (既存の
+# R2Transfer.Core.cs の GetArtifactObject) で取得し、参照ファイルを保持集合へ加える。
+# 公開 URL からの取得は CDN キャッシュの影響を受けるうえ、公開後の配信内容取得を行わない
+# 運用方針 (AGENTS.md の公開完了判定) にも反するため使わない。
+$cleanupAborted = $false
+$remoteManifestKeys = @($allKeys | Where-Object { $_ -match '^releases\.[^/]+\.json$' })
+$manifestClient = $null
+try {
+    $manifestClient = New-R2DistributionClient
+    # 直前にアップロードした manifest が一覧に無い場合は、一覧が不完全 (取得失敗・反映遅延) とみなして
+    # 削除を中止する。不完全な一覧から作った保持集合で削除すると、他 RID の参照ファイルを消しうるため。
+    foreach ($localManifest in $manifests) {
+        if ($remoteManifestKeys -notcontains $localManifest.Name) {
+            throw "アップロード済みの $($localManifest.Name) がバケット一覧にありません"
+        }
+    }
+    $manifestCredentials = Get-R2DistributionCredentials -Client $manifestClient -AccountId $AccountId -ApiToken $env:CLOUDFLARE_API_TOKEN
+    foreach ($manifestKey in $remoteManifestKeys) {
+        $manifestBuffer = [IO.MemoryStream]::new()
+        try {
+            # manifest は数十 KB 程度。異常に大きい応答は 16 MiB で打ち切って失敗扱いにする。
+            [Kagayoi.R2.Transfer]::GetArtifactObject($manifestClient, $manifestCredentials, $AccountId, $Bucket, $manifestKey,
+                $manifestBuffer, 16MB, -1, $null)
+            $manifestBuffer.Position = 0
+            # BOM 付きでも解析できるよう StreamReader の BOM 検出を使う。
+            $reader = [IO.StreamReader]::new($manifestBuffer, [Text.UTF8Encoding]::new($false), $true)
+            try { $manifestJson = $reader.ReadToEnd() } finally { $reader.Dispose() }
+        } finally {
+            $manifestBuffer.Dispose()
+        }
+        # StrictMode 下では Assets / FileName が欠けた manifest は例外になり、下の catch で中止扱いになる。
+        $remoteManifest = $manifestJson | ConvertFrom-Json
+        if ($null -eq $remoteManifest.Assets) { throw "Assets がありません: $manifestKey" }
+        foreach ($asset in @($remoteManifest.Assets)) {
+            if ([string]::IsNullOrWhiteSpace([string]$asset.FileName)) { throw "FileName が空の asset があります: $manifestKey" }
+            $keep[[string]$asset.FileName] = $true
+        }
+    }
+} catch {
+    $cleanupAborted = $true
+    Write-Warning "  R2 上の manifest を取得・解析できないため、旧版クリーンアップを中止します (リリース自体は完了しています) — $($_.Exception.Message)"
+} finally {
+    if ($manifestClient) { $manifestClient.Dispose() }
+}
+
+if (-not $cleanupAborted) {
+Write-Host "  保持対象 (manifest 参照): $($keep.Count) 件 (R2 上の manifest: $($remoteManifestKeys.Count) 件)"
 
 # 全プロジェクト共通の保持ポリシー: 直近 2 バージョン。
 # 旧実装は '*.nupkg' だけを削除対象にしていたため、バージョン付きの配布物
@@ -432,12 +457,14 @@ if (-not $toDelete) {
     # 全件失敗は token 権限等の異常なので fail (一部失敗は次回リリースで再試行される)
     if ($failed -gt 0 -and $deleted -eq 0) { throw '旧 nupkg の削除がすべて失敗しました。API token の権限を確認してください。' }
 }
+} # if (-not $cleanupAborted)
 
 # ---- 5. packages.lock.json のクリーンアップ (リリース後の working tree clean 化) ----
 # RID 付き publish (dotnet publish -r <rid>) は packages.lock.json を汚染する:
-# RID 固有セクション (net10.0/win-arm64 等) や Native AOT 用の依存
+# RID 固有セクション (net11.0/win-arm64 等) や Native AOT 用の依存
 # (Microsoft.DotNet.ILCompiler / Microsoft.NET.ILLink.Tasks) が書き足され、Debug 専用
-# パッケージが落ちることがある。この汚染 lock は CI の RestoreLockedMode で NU1004 になり、
+# パッケージが落ちることがある。この汚染 lock は RID なしの locked-mode 復元
+# (dotnet restore --locked-mode) で NU1004 になり、
 # lockfile の supply-chain diff 検知も publish churn で無意味化する。
 # --force-evaluate で RID なし clean 状態に戻し、毎回 working tree が clean な状態でリリースを終える
 # (/vava のリリース後 lock drift 手動 commit/revert が不要になる)。
