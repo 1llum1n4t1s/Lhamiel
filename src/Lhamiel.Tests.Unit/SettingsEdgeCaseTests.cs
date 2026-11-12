@@ -78,33 +78,8 @@ public class SettingsEdgeCaseTests
             Assert.Contains(dir + "/", content, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void SupportedCompressionFormats_IsSubsetOfExtractionFormats()
-    {
-        foreach (var format in Settings.SupportedCompressionFormats)
-            Assert.Contains(format, Settings.SupportedExtractionFormats);
-    }
-
-    [Fact]
-    public void ExtractOnlyFormats_NotInSupportedCompressionFormats()
-    {
-        foreach (var format in Settings.ExtractOnlyFormats)
-            Assert.DoesNotContain(format, Settings.SupportedCompressionFormats);
-    }
-
-    [Fact]
-    public void ExtractOnlyFormats_AreInSupportedExtractionFormats()
-    {
-        foreach (var format in Settings.ExtractOnlyFormats)
-            Assert.Contains(format, Settings.SupportedExtractionFormats);
-    }
-
-    [Fact]
-    public void DefaultCompressionFormat_IsInSupportedCompressionFormats()
-    {
-        var settings = new Settings();
-        Assert.Contains(settings.CompressionFormat, Settings.SupportedCompressionFormats);
-    }
+    // 対応形式カタログ間の集合関係と既定圧縮形式の所属は
+    // SettingsTests.SupportedFormatCatalogs_SetRelationsAreConsistent に集約。
 
     // === SanitizeAfterLoad（v1.0.160 で追加 → 同 ver 取り下げ → 再リリースで再導入） ===
 

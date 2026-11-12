@@ -51,7 +51,7 @@ public class FolderOpenerAsyncTests : IDisposable
     public async Task OpenExtractionResultAsync_WithNonExistentPath_CompletesWithoutThrow()
     {
         var nonExistentPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-        await FolderOpener.OpenExtractionResultAsync(nonExistentPath);
+        await FolderOpener.OpenExtractionResultAsync(nonExistentPath, structureInfo: null, createArchiveNameFolder: true);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class FolderOpenerAsyncTests : IDisposable
         try
         {
             // DryRun のため実起動はせず、決定したフォルダの解決 + await 完了のみを確認する。
-            await FolderOpener.OpenExtractionResultAsync(tempDir);
+            await FolderOpener.OpenExtractionResultAsync(tempDir, structureInfo: null, createArchiveNameFolder: true);
         }
         finally
         {

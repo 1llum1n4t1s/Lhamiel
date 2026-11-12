@@ -10,104 +10,51 @@ namespace Lhamiel.Tests.Unit;
 public class ArchiveCompressorAdversarialTests
 {
     // ==============================
-    // 🗡️ 境界値 — SplitStemAndExtension
+    // 🗡️ 境界値・型パンチ — SplitStemAndExtension
     // ==============================
 
     /// <summary>
     /// @adversarial @category boundary @severity high
-    /// 空文字列 → ("", "") でクラッシュしない
-    /// </summary>
-    [Fact]
-    public void SplitStemAndExtension_EmptyString_ReturnsEmptyPair()
-    {
-        var (stem, ext) = ArchiveCompressor.SplitStemAndExtension("");
-        Assert.Equal("", stem);
-        Assert.Equal("", ext);
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// ドットのみ → ("", ".") でクラッシュしない
-    /// </summary>
-    [Fact]
-    public void SplitStemAndExtension_DotOnly_ReturnsEmptyWithDot()
-    {
-        var (stem, ext) = ArchiveCompressor.SplitStemAndExtension(".");
-        // Path.GetExtension(".") = "" なので両方空
-        Assert.Equal(".", stem);
-        Assert.Equal("", ext);
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// 複合拡張子が正しく分割される
+    /// SplitStemAndExtension が通常拡張子・複合拡張子・境界的なファイル名を期待どおり分割すること。
+    /// 旧 ArchiveCompressorAdversarialTests の SplitStemAndExtension_* 8 件と
+    /// SplitStemAndExtension の各入力パターンをこの 1 つの Theory で検証する。
     /// </summary>
     [Theory]
+    // 空文字列 → ("", "") でクラッシュしない
+    [InlineData("", "", "")]
+    // ドットのみ → Path.GetExtension(".") = "" なので stem に残る
+    [InlineData(".", ".", "")]
+    // 複合拡張子が正しく分割される
     [InlineData("archive.tar.gz", "archive", ".tar.gz")]
     [InlineData("archive.tar.bz2", "archive", ".tar.bz2")]
     [InlineData("archive.tar.xz", "archive", ".tar.xz")]
     [InlineData("archive.tar.lz", "archive", ".tar.lz")]
     [InlineData("archive.tar.zst", "archive", ".tar.zst")]
-    public void SplitStemAndExtension_CompoundExtensions_SplitCorrectly(
-        string fileName, string expectedStem, string expectedExt)
-    {
-        var (stem, ext) = ArchiveCompressor.SplitStemAndExtension(fileName);
-        Assert.Equal(expectedStem, stem);
-        Assert.Equal(expectedExt, ext);
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// ファイル名が複合拡張子と完全一致（ステムなし）→ 通常拡張子として扱う
-    /// </summary>
-    [Fact]
-    public void SplitStemAndExtension_FilenameIsCompoundExtension_TreatedAsNormal()
-    {
-        // ".tar.gz" そのものがファイル名 → stem=".tar", ext=".gz"（通常分割）
-        var (stem, ext) = ArchiveCompressor.SplitStemAndExtension(".tar.gz");
-        // fileName.Length (7) > compoundExt.Length (7) は false なので複合扱いにならない
-        Assert.Equal(".tar", stem);
-        Assert.Equal(".gz", ext);
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// 日本語ファイル名の分割
-    /// </summary>
-    [Theory]
+    [InlineData("backup.tar.bz2", "backup", ".tar.bz2")]
+    [InlineData("data.tar.xz", "data", ".tar.xz")]
+    [InlineData("a.tar.gz", "a", ".tar.gz")]  // 1 文字の stem でも複合扱い
+    // ファイル名が複合拡張子と完全一致（stem なし）→ 通常分割（fileName.Length > compoundExt.Length が false）
+    [InlineData(".tar.gz", ".tar", ".gz")]
+    // 日本語ファイル名
     [InlineData("日本語.tar.gz", "日本語", ".tar.gz")]
     [InlineData("テスト.zip", "テスト", ".zip")]
     [InlineData("ファイル", "ファイル", "")]
-    public void SplitStemAndExtension_JapaneseFilenames_SplitCorrectly(
+    // 通常拡張子・拡張子なし・多重ドット
+    [InlineData("photo.jpg", "photo", ".jpg")]
+    [InlineData("Makefile", "Makefile", "")]
+    [InlineData("my.file.txt", "my.file", ".txt")]
+    [InlineData("file...zip", "file..", ".zip")]  // 連続ドットは最後のドットが拡張子
+    // ドットファイル（.gitignore）→ stem は空
+    [InlineData(".gitignore", "", ".gitignore")]
+    // 複合拡張子の大文字小文字混在 → OrdinalIgnoreCase で検出し、元の表記を保つ
+    [InlineData("archive.TAR.GZ", "archive", ".TAR.GZ")]
+    [InlineData("archive.Tar.Gz", "archive", ".Tar.Gz")]
+    public void SplitStemAndExtension_SplitsAsExpected(
         string fileName, string expectedStem, string expectedExt)
     {
         var (stem, ext) = ArchiveCompressor.SplitStemAndExtension(fileName);
         Assert.Equal(expectedStem, stem);
         Assert.Equal(expectedExt, ext);
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// 拡張子が連続するドット（file...zip）
-    /// </summary>
-    [Fact]
-    public void SplitStemAndExtension_MultipleDots_LastDotIsExtension()
-    {
-        var (stem, ext) = ArchiveCompressor.SplitStemAndExtension("file...zip");
-        Assert.Equal("file..", stem);
-        Assert.Equal(".zip", ext);
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity low
-    /// ドットファイル（.gitignore）
-    /// </summary>
-    [Fact]
-    public void SplitStemAndExtension_DotFile_ReturnsEmptyStem()
-    {
-        var (stem, ext) = ArchiveCompressor.SplitStemAndExtension(".gitignore");
-        Assert.Equal("", stem);
-        Assert.Equal(".gitignore", ext);
     }
 
     // ==============================
@@ -238,24 +185,5 @@ public class ArchiveCompressorAdversarialTests
         Assert.Single(groups);
         Assert.Equal(1000, groups[0].Entries.Count);
         Assert.True(sw.ElapsedMilliseconds < 5000, $"1000件の衝突検出に {sw.ElapsedMilliseconds}ms かかった");
-    }
-
-    // ==============================
-    // 🎭 型パンチ — SplitStemAndExtension
-    // ==============================
-
-    /// <summary>
-    /// @adversarial @category type @severity medium
-    /// 複合拡張子の大文字小文字混在（.TAR.GZ）→ OrdinalIgnoreCase で検出
-    /// </summary>
-    [Theory]
-    [InlineData("archive.TAR.GZ", "archive", ".TAR.GZ")]
-    [InlineData("archive.Tar.Gz", "archive", ".Tar.Gz")]
-    public void SplitStemAndExtension_CompoundCaseInsensitive_SplitCorrectly(
-        string fileName, string expectedStem, string expectedExt)
-    {
-        var (stem, ext) = ArchiveCompressor.SplitStemAndExtension(fileName);
-        Assert.Equal(expectedStem, stem);
-        Assert.Equal(expectedExt, ext);
     }
 }

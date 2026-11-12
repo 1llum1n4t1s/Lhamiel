@@ -38,22 +38,7 @@ public class ArchiveProcessorPasswordTests : IDisposable
 
     // --- スタブ ---
 
-    private sealed class StubMsg : IMessageService
-    {
-        public List<string> Errors { get; } = [];
-        public Task ShowError(string message, string? title = null)
-        {
-            Errors.Add(message);
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class StubUi : IUiDispatcher
-    {
-        public void Post(Action action) => action();
-        public Task InvokeAsync(Func<Task> callback) => callback();
-        public Task<T> InvokeAsync<T>(Func<Task<T>> callback) => callback();
-    }
+    // メッセージサービス・UI ディスパッチャのスタブは TestDoubles.cs の共有実装を使う。
 
     private sealed class StubPasswordDialog : IPasswordDialogService
     {
@@ -89,8 +74,8 @@ public class ArchiveProcessorPasswordTests : IDisposable
     {
         var pwdStub = new StubPasswordDialog { Plaintext = "should-not-be-asked" };
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
-        ArchiveProcessor.MessageServiceImpl = new StubMsg();
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.MessageServiceImpl = new RecordingMessageService();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings { IsPasswordProtectionEnabled = false };
         var result = await ArchiveProcessor.TryResolveCompressionPasswordAsync(
@@ -117,8 +102,8 @@ public class ArchiveProcessorPasswordTests : IDisposable
         // ArchiveCompressor の fail-loud guard が検知する。
         var pwdStub = new StubPasswordDialog { Plaintext = "should-not-be-asked" };
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
-        ArchiveProcessor.MessageServiceImpl = new StubMsg();
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.MessageServiceImpl = new RecordingMessageService();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {
@@ -140,8 +125,8 @@ public class ArchiveProcessorPasswordTests : IDisposable
     {
         var pwdStub = new StubPasswordDialog { Plaintext = "mypassword" };
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
-        ArchiveProcessor.MessageServiceImpl = new StubMsg();
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.MessageServiceImpl = new RecordingMessageService();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {
@@ -164,8 +149,8 @@ public class ArchiveProcessorPasswordTests : IDisposable
     {
         var pwdStub = new StubPasswordDialog { Plaintext = null };
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
-        ArchiveProcessor.MessageServiceImpl = new StubMsg();
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.MessageServiceImpl = new RecordingMessageService();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {
@@ -190,8 +175,8 @@ public class ArchiveProcessorPasswordTests : IDisposable
 
         var pwdStub = new StubPasswordDialog { Plaintext = "SHOULD-NOT-BE-CALLED" };
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
-        ArchiveProcessor.MessageServiceImpl = new StubMsg();
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.MessageServiceImpl = new RecordingMessageService();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {
@@ -220,11 +205,11 @@ public class ArchiveProcessorPasswordTests : IDisposable
         var garbage = new byte[64];
         for (var i = 0; i < garbage.Length; i++) garbage[i] = (byte)(i * 11 + 5);
 
-        var msgStub = new StubMsg();
+        var msgStub = new RecordingMessageService();
         var pwdStub = new StubPasswordDialog { Plaintext = null }; // ユーザーキャンセル
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
         ArchiveProcessor.MessageServiceImpl = msgStub;
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {
@@ -252,11 +237,11 @@ public class ArchiveProcessorPasswordTests : IDisposable
 
         var legacyShort = CompressionPasswordSession.Protect("ab1"); // 3 文字 (redaction 下限未満)
 
-        var msgStub = new StubMsg();
+        var msgStub = new RecordingMessageService();
         var pwdStub = new StubPasswordDialog { Plaintext = null }; // ユーザーキャンセル
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
         ArchiveProcessor.MessageServiceImpl = msgStub;
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {
@@ -278,10 +263,10 @@ public class ArchiveProcessorPasswordTests : IDisposable
     {
         // ciphertext 未保存 (初回 Remember 利用) なので、復号失敗の通知 (SavedPasswordDecryptFailed) は出さない。
         var pwdStub = new StubPasswordDialog { Plaintext = null }; // ユーザーキャンセル
-        var msgStub = new StubMsg();
+        var msgStub = new RecordingMessageService();
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
         ArchiveProcessor.MessageServiceImpl = msgStub;
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {
@@ -303,11 +288,11 @@ public class ArchiveProcessorPasswordTests : IDisposable
     public async Task PromptEachTime_ZipHint_NonAsciiPassword_RepromptedThenAccepted()
     {
         // 1 回目に日本語パスワード → エラー通知 + isRetry=true で再プロンプト → 2 回目の ASCII を採用。
-        var msgStub = new StubMsg();
+        var msgStub = new RecordingMessageService();
         var pwdStub = new StubPasswordDialog { Sequence = new Queue<string?>(["にほんごパスワード", "ascii-pass"]) };
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
         ArchiveProcessor.MessageServiceImpl = msgStub;
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {
@@ -328,11 +313,11 @@ public class ArchiveProcessorPasswordTests : IDisposable
     public async Task PromptEachTime_ZipHint_PersistentNonAscii_AbortsAfterMaxAttempts()
     {
         // 非 ASCII 入力が続く場合は上限 (5 回) でキャンセル扱いにして無限ループを防ぐ。
-        var msgStub = new StubMsg();
+        var msgStub = new RecordingMessageService();
         var pwdStub = new StubPasswordDialog { Plaintext = "ずっと日本語" };
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
         ArchiveProcessor.MessageServiceImpl = msgStub;
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {
@@ -351,11 +336,11 @@ public class ArchiveProcessorPasswordTests : IDisposable
     public async Task PromptEachTime_SevenZipHint_NonAsciiPassword_AcceptedWithoutValidation()
     {
         // 7z は非 ASCII パスワードで正常動作するため検証しない (ライブラリ実機確認済み)。
-        var msgStub = new StubMsg();
+        var msgStub = new RecordingMessageService();
         var pwdStub = new StubPasswordDialog { Plaintext = "にほんごパスワード" };
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
         ArchiveProcessor.MessageServiceImpl = msgStub;
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {
@@ -381,11 +366,11 @@ public class ArchiveProcessorPasswordTests : IDisposable
         var ciphertext = CompressionPasswordSession.Protect("にほんごパスワード");
         Assert.NotNull(ciphertext);
 
-        var msgStub = new StubMsg();
+        var msgStub = new RecordingMessageService();
         var pwdStub = new StubPasswordDialog { Plaintext = "temp-ascii" };
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
         ArchiveProcessor.MessageServiceImpl = msgStub;
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {
@@ -411,11 +396,11 @@ public class ArchiveProcessorPasswordTests : IDisposable
         var ciphertext = CompressionPasswordSession.Protect("にほんごパスワード");
         Assert.NotNull(ciphertext);
 
-        var msgStub = new StubMsg();
+        var msgStub = new RecordingMessageService();
         var pwdStub = new StubPasswordDialog { Plaintext = "SHOULD-NOT-BE-CALLED" };
         ArchiveProcessor.PasswordDialogImpl = pwdStub;
         ArchiveProcessor.MessageServiceImpl = msgStub;
-        ArchiveProcessor.UiDispatcherImpl = new StubUi();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
         var settings = new Settings
         {

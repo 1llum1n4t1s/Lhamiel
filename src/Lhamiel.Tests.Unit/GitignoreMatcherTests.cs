@@ -395,6 +395,100 @@ public class GitignoreMatcherTests
         Assert.True(m.IsExcluded("C:/foo/node_modules/a.js", isDirectory: false, singleFileMode: true));
     }
 
+    // === CompileLayered: 同一規則の二重積み解消 (旧 GitignoreMatcherLayeringAndTimeoutLogTests) ===
+
+    /// <summary>否定・ディレクトリ限定・アンカー・globstar を混ぜた .lhaignore 相当の規則。</summary>
+    private static readonly string[] MixedRules =
+    [
+        "*.log",
+        "!keep.log",
+        "build/",
+        "/root-only.txt",
+        "docs/**/draft*.md",
+        "*.tmp",
+        "!important.tmp",
+        "important.tmp",
+    ];
+
+    /// <summary>判定に使うパス（ディレクトリかどうか付き）。</summary>
+    private static readonly (string path, bool isDirectory)[] Probes =
+    [
+        ("a.log", false), ("keep.log", false), ("sub/keep.log", false),
+        ("build", true), ("build/out.bin", false), ("src/build", true),
+        ("root-only.txt", false), ("sub/root-only.txt", false),
+        ("docs/x/y/draft1.md", false), ("docs/final.md", false),
+        ("important.tmp", false), ("other.tmp", false), ("plain.txt", false),
+    ];
+
+    [Fact]
+    public void DuplicatedRootLayer_GivesSameResultAsSingleLayer()
+    {
+        // 旧 ScanSourceFiles は Compile(lines) に同じ lines を "" スコープで再追加していた。
+        // gitignore は「最後に一致した規則が勝つ」ので、同じ規則列を 2 回並べても結果は 1 回分と同じであることを示す
+        // （= 二重積みをやめても判定は変わらない）。
+        var single = GitignoreMatcher.Compile(MixedRules);
+        var doubled = GitignoreMatcher.CompileLayered(single, [(string.Empty, MixedRules)]);
+
+        foreach (var traversal in new[] { false, true })
+        {
+            foreach (var (path, isDirectory) in Probes)
+            {
+                Assert.Equal(
+                    doubled.IsExcluded(path, isDirectory, traversalMode: traversal),
+                    single.IsExcluded(path, isDirectory, traversalMode: traversal));
+            }
+        }
+    }
+
+    [Fact]
+    public async Task ScanSourceFiles_WithGlobalIgnoreLines_MatchesMatcherOnlyScan()
+    {
+        // respectNestedGitignore=true で globalIgnoreLines を渡した経路（本番の呼び出し方）と、
+        // matcher だけを渡した経路が同じ一覧を返すことを確認する（二重積み解消で結果が変わらない）。
+        var root = Path.Combine(Path.GetTempPath(), $"lhamiel_layer_{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "build"));
+            Directory.CreateDirectory(Path.Combine(root, "docs", "x"));
+            Directory.CreateDirectory(Path.Combine(root, "sub"));
+            foreach (var file in new[]
+                     {
+                         "a.log", "keep.log", "sub/keep.log", "build/out.bin", "root-only.txt",
+                         "sub/root-only.txt", "docs/x/draft1.md", "docs/final.md", "important.tmp", "other.tmp", "plain.txt",
+                     })
+            {
+                File.WriteAllText(Path.Combine(root, file.Replace('/', Path.DirectorySeparatorChar)), "x");
+            }
+            // ネストした .gitignore も 1 つ置き、layer 合成の経路を通す。
+            File.WriteAllText(Path.Combine(root, "sub", ".gitignore"), "!root-only.txt\n");
+
+            var matcher = GitignoreMatcher.Compile(MixedRules);
+            var withLines = await ArchiveCompressor.ScanSourceFiles(
+                [root], matcher, TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true,
+                globalIgnoreLines: MixedRules);
+            var matcherOnly = await ArchiveCompressor.ScanSourceFiles(
+                [root], matcher, TestContext.Current.CancellationToken,
+                dirModeOverride: DirectoryStructureMode.IncludeRoot,
+                respectNestedGitignore: true,
+                globalIgnoreLines: null);
+
+            Assert.Equal(
+                matcherOnly.Select(e => e.relativePath).Order(StringComparer.Ordinal),
+                withLines.Select(e => e.relativePath).Order(StringComparer.Ordinal));
+            // サニティ: 除外と否定再包含が効いている。
+            Assert.DoesNotContain(withLines, e => e.relativePath.EndsWith("a.log", StringComparison.Ordinal));
+            Assert.Contains(withLines, e => e.relativePath.EndsWith("keep.log", StringComparison.Ordinal));
+            Assert.DoesNotContain(withLines, e => e.relativePath.Contains("out.bin", StringComparison.Ordinal));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, true);
+        }
+    }
+
     // === Codex P2 #3 回帰テスト: ** は gitignore 仕様の境界形式のみ globstar として扱う ===
 
     [Fact]

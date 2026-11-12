@@ -8,31 +8,26 @@ namespace Lhamiel.Tests.Unit;
 [Collection("FolderOpener")]
 public class FolderOpenerAdversarialTests : IDisposable
 {
-    private readonly List<string> _tempDirs = [];
+    // 作成した一時ディレクトリ。削除は共通ヘルパー TestDirectory の Dispose（best-effort）に任せる。
+    private readonly List<TestDirectory> _tempDirs = [];
 
     public FolderOpenerAdversarialTests()
     {
         FolderOpener.DryRun = true;
     }
 
-    private string CreateTempDir(string? subName = null)
+    private string CreateTempDir()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "Lhamiel_test_" + Guid.NewGuid());
-        if (subName != null)
-            dir = Path.Combine(dir, subName);
-        Directory.CreateDirectory(dir);
-        _tempDirs.Add(dir);
-        return dir;
+        var temp = TestDirectory.Create("Lhamiel_test");
+        _tempDirs.Add(temp);
+        return temp.Path;
     }
 
     public void Dispose()
     {
         FolderOpener.DryRun = false;
-        foreach (var dir in _tempDirs)
-        {
-            try { if (Directory.Exists(dir)) Directory.Delete(dir, true); }
-            catch { /* テスト用一時ディレクトリの削除失敗は無視 */ }
-        }
+        foreach (var temp in _tempDirs)
+            temp.Dispose();
     }
 
     // =====================================================================
@@ -159,15 +154,15 @@ public class FolderOpenerAdversarialTests : IDisposable
     /// ファイル（ディレクトリではない）のパスを渡した場合、開かないこと
     /// </summary>
     [Fact]
-    public void OpenExtractionResult_WithFilePath_DoesNotOpenOrThrow()
+    public async Task OpenExtractionResultAsync_WithFilePath_DoesNotOpenOrThrow()
     {
         var tempFile = Path.GetTempFileName();
         try
         {
             // ファイルは存在するがディレクトリではない → Directory.Exists = false
             Assert.True(File.Exists(tempFile));
-            var exception = Record.Exception(() =>
-                FolderOpener.OpenExtractionResult(tempFile));
+            var exception = await Record.ExceptionAsync(() =>
+                FolderOpener.OpenExtractionResultAsync(tempFile, structureInfo: null, createArchiveNameFolder: true));
             Assert.Null(exception);
         }
         finally
@@ -178,39 +173,39 @@ public class FolderOpenerAdversarialTests : IDisposable
 
     /// <summary>
     /// @adversarial @category state @severity medium
-    /// OpenExtractionResult に null を渡してもクラッシュしないこと
+    /// OpenExtractionResultAsync に null を渡してもクラッシュしないこと
     /// </summary>
     [Fact]
-    public void OpenExtractionResult_WithNull_DoesNotThrow()
+    public async Task OpenExtractionResultAsync_WithNull_DoesNotThrow()
     {
-        var exception = Record.Exception(() =>
-            FolderOpener.OpenExtractionResult(null!));
+        var exception = await Record.ExceptionAsync(() =>
+            FolderOpener.OpenExtractionResultAsync(null!, structureInfo: null, createArchiveNameFolder: true));
         Assert.Null(exception);
     }
 
     /// <summary>
     /// @adversarial @category state @severity medium
-    /// OpenExtractionResult に空文字列を渡してもクラッシュしないこと
+    /// OpenExtractionResultAsync に空文字列を渡してもクラッシュしないこと
     /// </summary>
     [Fact]
-    public void OpenExtractionResult_WithEmptyString_DoesNotThrow()
+    public async Task OpenExtractionResultAsync_WithEmptyString_DoesNotThrow()
     {
-        var exception = Record.Exception(() =>
-            FolderOpener.OpenExtractionResult(""));
+        var exception = await Record.ExceptionAsync(() =>
+            FolderOpener.OpenExtractionResultAsync("", structureInfo: null, createArchiveNameFolder: true));
         Assert.Null(exception);
     }
 
     /// <summary>
     /// @adversarial @category boundary @severity medium
-    /// OpenExtractionResultが実在するフォルダに対してクラッシュしないこと
-    /// （Process.Startが呼ばれるパスの検証 — CIでは実際にExplorerが開く可能性に注意）
+    /// OpenExtractionResultAsync が実在するフォルダに対してクラッシュしないこと
+    /// （DryRun のため実起動はせず、フォルダ決定と事前チェックの経路だけを通す）
     /// </summary>
     [Fact]
-    public void OpenExtractionResult_WithExistingTempDir_DoesNotThrow()
+    public async Task OpenExtractionResultAsync_WithExistingTempDir_DoesNotThrow()
     {
         var tempDir = CreateTempDir();
-        var exception = Record.Exception(() =>
-            FolderOpener.OpenExtractionResult(tempDir));
+        var exception = await Record.ExceptionAsync(() =>
+            FolderOpener.OpenExtractionResultAsync(tempDir, structureInfo: null, createArchiveNameFolder: true));
         Assert.Null(exception);
     }
 

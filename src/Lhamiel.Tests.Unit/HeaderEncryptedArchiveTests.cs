@@ -130,26 +130,7 @@ public class HeaderEncryptedArchiveTests : IDisposable
         }
     }
 
-    /// <summary>エラー通知を記録するメッセージサービスのスタブ。</summary>
-    private sealed class RecordingMessageService : IMessageService
-    {
-        public List<string> Errors { get; } = [];
-
-        public Task ShowError(string message, string? title = null)
-        {
-            lock (Errors)
-                Errors.Add(message);
-            return Task.CompletedTask;
-        }
-    }
-
-    /// <summary>UI ディスパッチを同期実行するスタブ (headless テスト用)。</summary>
-    private sealed class SyncUiDispatcher : IUiDispatcher
-    {
-        public void Post(Action action) => action();
-        public Task InvokeAsync(Func<Task> callback) => callback();
-        public Task<T> InvokeAsync<T>(Func<Task<T>> callback) => callback();
-    }
+    // RecordingMessageService / SyncUiDispatcher は TestDoubles.cs の共有実装を使う。
 
     /// <summary>
     /// アーカイブ名と同名のルートフォルダ 1 つ (中にファイル 1 つ) を持つ

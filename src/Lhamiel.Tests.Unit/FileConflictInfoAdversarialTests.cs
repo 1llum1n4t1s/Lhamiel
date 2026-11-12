@@ -36,39 +36,25 @@ public class FileConflictInfoAdversarialTests
     }
 
     // ═══════════════════════════════════════════════════
-    // FileSizeDisplay 境界値テスト
+    // FileSizeDisplay の受け渡し
     // ═══════════════════════════════════════════════════
 
+    /// <summary>
+    /// FileSizeDisplay は FileSize を <see cref="Lhamiel.Util.DiskSpaceChecker.FormatSize"/> へそのまま渡した結果であること。
+    /// 書式そのものの境界値（0 / 1023 / 1024 / MB-GB 境界 / long.MaxValue）は
+    /// DiskSpaceCheckerAdversarialTests の FormatSize_* で検証する。ここでは代表サイズで受け渡しだけを確認する。
+    /// </summary>
     [Fact]
-    public void FileSizeDisplay_ゼロバイト()
+    public void FileSizeDisplay_FileSizeをFormatSizeへ受け渡す()
     {
-        var entry = new FileConflictEntry("test.txt", "test.txt", 0, DateTime.Now);
-        Assert.Equal("0.0 KB", entry.FileSizeDisplay);
-    }
+        foreach (var size in new[] { 0L, 1023L, 1024L, 1024L * 1024 * 1024 - 1, 1024L * 1024 * 1024, long.MaxValue })
+        {
+            var entry = new FileConflictEntry("a", "a", size, DateTime.Now);
+            Assert.Equal(Lhamiel.Util.DiskSpaceChecker.FormatSize(size), entry.FileSizeDisplay);
+        }
 
-    [Fact]
-    public void FileSizeDisplay_KB境界()
-    {
-        var entry1023 = new FileConflictEntry("a", "a", 1023, DateTime.Now);
-        var entry1024 = new FileConflictEntry("a", "a", 1024, DateTime.Now);
-        Assert.Equal("1.0 KB", entry1023.FileSizeDisplay);
-        Assert.Equal("1.0 KB", entry1024.FileSizeDisplay);
-    }
-
-    [Fact]
-    public void FileSizeDisplay_GB境界()
-    {
-        var entryMB = new FileConflictEntry("a", "a", 1024L * 1024 * 1024 - 1, DateTime.Now);
-        var entryGB = new FileConflictEntry("a", "a", 1024L * 1024 * 1024, DateTime.Now);
-        Assert.Contains("MB", entryMB.FileSizeDisplay);
-        Assert.Contains("GB", entryGB.FileSizeDisplay);
-    }
-
-    [Fact]
-    public void FileSizeDisplay_MaxValue_GBで表示()
-    {
-        var entry = new FileConflictEntry("a", "a", long.MaxValue, DateTime.Now);
-        Assert.Contains("GB", entry.FileSizeDisplay);
+        // 受け渡し先が実際に書式化していること（恒等変換や空文字ではないこと）も固定する
+        Assert.Equal("1.0 KB", new FileConflictEntry("a", "a", 1023, DateTime.Now).FileSizeDisplay);
     }
 
     // ═══════════════════════════════════════════════════

@@ -23,6 +23,57 @@ public class SettingsTests
         Assert.False(settings.AddCompressToContextMenu);
     }
 
+    // === InitializeLhaignore（旧 ExcludedFilePatterns の .lhaignore 移行）===
+    // 実ユーザーの .lhaignore に触れないよう、必ず一時ディレクトリのパスを渡す。
+
+    [Fact]
+    public void InitializeLhaignore_WhenCreated_ClearsLegacyPatterns()
+    {
+        using var temp = TestDirectory.Create("Lhamiel_settings_lhaignore");
+        var path = Path.Combine(temp.Path, ".lhaignore");
+        var settings = new Settings { ExcludedFilePatternsLegacy = ["legacy.txt"] };
+
+        Settings.InitializeLhaignore(settings, path);
+
+        Assert.True(File.Exists(path));
+        Assert.Contains("legacy.txt", File.ReadAllLines(path));
+        Assert.Null(settings.ExcludedFilePatternsLegacy);
+    }
+
+    [Fact]
+    public void InitializeLhaignore_WhenCreationFails_KeepsLegacyPatterns()
+    {
+        // 親パスがファイルで .lhaignore を作れない失敗経路。次回 Save で旧値が消えて復元不能に
+        // ならないよう、レガシー値を温存すること。
+        using var temp = TestDirectory.Create("Lhamiel_settings_lhaignore");
+        var blocker = Path.Combine(temp.Path, "blocker");
+        File.WriteAllText(blocker, "x");
+        var path = Path.Combine(blocker, ".lhaignore");
+        List<string> legacy = ["keep-me.txt"];
+        var settings = new Settings { ExcludedFilePatternsLegacy = legacy };
+
+        Settings.InitializeLhaignore(settings, path);
+
+        Assert.False(File.Exists(path));
+        Assert.Same(legacy, settings.ExcludedFilePatternsLegacy);
+    }
+
+    [Fact]
+    public void InitializeLhaignore_WhenFileAlreadyExists_DoesNotTouchFileOrLegacy()
+    {
+        // 既存の .lhaignore があれば何もしない（従来どおり）。内容は上書きされない。
+        using var temp = TestDirectory.Create("Lhamiel_settings_lhaignore");
+        var path = Path.Combine(temp.Path, ".lhaignore");
+        File.WriteAllText(path, "user-rule/");
+        List<string> legacy = ["legacy.txt"];
+        var settings = new Settings { ExcludedFilePatternsLegacy = legacy };
+
+        Settings.InitializeLhaignore(settings, path);
+
+        Assert.Equal("user-rule/", File.ReadAllText(path));
+        Assert.Same(legacy, settings.ExcludedFilePatternsLegacy);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -207,52 +258,58 @@ public class SettingsTests
         Assert.Equal(7, settings.LogRetentionDays);
     }
 
-    [Theory]
-    [InlineData("ZIP", true)]
-    [InlineData("7z", true)]
-    [InlineData("TAR", true)]
-    [InlineData("LZH", true)]
-    [InlineData("LHA", false)]
-    [InlineData("RAR", false)]
-    [InlineData("GZ", false)]
-    [InlineData("unknown", false)]
-    public void SupportedCompressionFormats_ContainsExpectedFormats(string format, bool shouldBeSupported)
-    {
-        // Act
-        var isSupported = Settings.SupportedCompressionFormats.Contains(format);
+    // ═══════════════════════════════════════════════════
+    // 対応形式カタログ（圧縮 / 展開 / 展開専用）の分類
+    // ═══════════════════════════════════════════════════
 
-        // Assert
-        Assert.Equal(shouldBeSupported, isSupported);
+    /// <summary>
+    /// 代表的な形式名が、圧縮・展開・展開専用の各カタログに期待どおり含まれる（含まれない）こと。
+    /// 旧 SupportedCompressionFormats_ / SupportedExtractionFormats_ / ExtractOnlyFormats_ContainsExpectedFormats の
+    /// 3 Theory の全入力をこの 1 つに統合した。照合は大文字小文字を区別する（カタログは canonical 表記を持つ）。
+    /// </summary>
+    [Theory]
+    // 引数: 形式名, 圧縮カタログに含まれるか, 展開カタログに含まれるか, 展開専用カタログに含まれるか
+    [InlineData("ZIP", true, true, false)]
+    [InlineData("7z", true, true, false)]
+    [InlineData("TAR", true, true, false)]
+    [InlineData("LZH", true, true, false)]
+    [InlineData("LHA", false, true, false)]  // LHA は展開のみ（圧縮は LZH 表記に統一）
+    [InlineData("GZ", false, true, false)]  // 単体圧縮形式は展開のみだが展開専用カタログには載せない
+    [InlineData("RAR", false, true, true)]
+    [InlineData("ARJ", false, true, true)]
+    [InlineData("Z", false, true, true)]
+    [InlineData("unknown", false, false, false)]
+    public void SupportedFormatCatalogs_ClassifyFormatAsExpected(
+        string format, bool compressible, bool extractable, bool extractOnly)
+    {
+        Assert.Equal(compressible, Settings.SupportedCompressionFormats.Contains(format));
+        Assert.Equal(extractable, Settings.SupportedExtractionFormats.Contains(format));
+        Assert.Equal(extractOnly, Settings.ExtractOnlyFormats.Contains(format));
     }
 
-    [Theory]
-    [InlineData("ZIP", true)]
-    [InlineData("7z", true)]
-    [InlineData("LZH", true)]
-    [InlineData("LHA", true)]
-    [InlineData("RAR", true)]
-    [InlineData("unknown", false)]
-    public void SupportedExtractionFormats_ContainsExpectedFormats(string format, bool shouldBeSupported)
+    /// <summary>
+    /// カタログ間の集合関係と既定圧縮形式の整合性。
+    /// 上の代表値 Theory では検出できない「カタログへの形式追加時の分類漏れ」を全要素で検出する。
+    /// （旧 SettingsEdgeCaseTests の SupportedCompressionFormats_IsSubsetOfExtractionFormats /
+    /// ExtractOnlyFormats_NotInSupportedCompressionFormats / ExtractOnlyFormats_AreInSupportedExtractionFormats /
+    /// DefaultCompressionFormat_IsInSupportedCompressionFormats を統合）
+    /// </summary>
+    [Fact]
+    public void SupportedFormatCatalogs_SetRelationsAreConsistent()
     {
-        // Act
-        var isSupported = Settings.SupportedExtractionFormats.Contains(format);
+        // 圧縮できる形式はすべて展開もできる
+        foreach (var format in Settings.SupportedCompressionFormats)
+            Assert.Contains(format, Settings.SupportedExtractionFormats);
 
-        // Assert
-        Assert.Equal(shouldBeSupported, isSupported);
-    }
+        // 展開専用形式は圧縮カタログに含まれず、展開カタログには含まれる
+        foreach (var format in Settings.ExtractOnlyFormats)
+        {
+            Assert.DoesNotContain(format, Settings.SupportedCompressionFormats);
+            Assert.Contains(format, Settings.SupportedExtractionFormats);
+        }
 
-    [Theory]
-    [InlineData("RAR", true)]
-    [InlineData("ARJ", true)]
-    [InlineData("Z", true)]
-    [InlineData("ZIP", false)]
-    [InlineData("7z", false)]
-    public void ExtractOnlyFormats_ContainsExpectedFormats(string format, bool shouldBeExtractOnly)
-    {
-        // Act
-        var isExtractOnly = Settings.ExtractOnlyFormats.Contains(format);
-
-        // Assert
-        Assert.Equal(shouldBeExtractOnly, isExtractOnly);
+        // 既定の圧縮形式は圧縮カタログ内の値である
+        var settings = new Settings();
+        Assert.Contains(settings.CompressionFormat, Settings.SupportedCompressionFormats);
     }
 }

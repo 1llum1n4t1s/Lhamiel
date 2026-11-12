@@ -30,6 +30,17 @@ public class DiskSpaceCheckerAdversarialTests
         Assert.Equal("0.0 KB", DiskSpaceChecker.FormatSize(0));
     }
 
+    /// <summary>
+    /// 1 KB 未満は切り上げ表示され、1023 と 1024 はともに "1.0 KB" になる。
+    /// （旧 FileConflictInfoAdversarialTests.FileSizeDisplay_KB境界 の入力をここへ集約）
+    /// </summary>
+    [Fact]
+    public void FormatSize_KB境界_1023と1024はともに1KB()
+    {
+        Assert.Equal("1.0 KB", DiskSpaceChecker.FormatSize(1023));
+        Assert.Equal("1.0 KB", DiskSpaceChecker.FormatSize(1024));
+    }
+
     [Fact]
     public void FormatSize_LongMaxValue_GBで表示()
     {

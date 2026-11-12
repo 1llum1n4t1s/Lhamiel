@@ -4,10 +4,44 @@ using Xunit;
 namespace Lhamiel.Tests.Unit;
 
 /// <summary>
-/// ProgressThrottler に対する嫌がらせテスト — 境界値・並行性・状態遷移
+/// ProgressThrottler のテスト — 通常の単調増加・スロットリング間隔の基本動作に加え、
+/// 境界値・並行性・状態遷移の嫌がらせケースを 1 ファイルに集約している。
+/// <para>
+/// 旧 ProgressThrottlerTests の「同じ値の 2 回目は報告しない」は
+/// <see cref="ShouldReport_DecreasedPercentage_NotReported"/>、「0〜100% の連続報告」は
+/// <see cref="ShouldReport_ZeroIntervalMs_AllIntermediateValuesReported"/> が同じ入力を検証する。
+/// </para>
 /// </summary>
 public class ProgressThrottlerAdversarialTests
 {
+    // ==============================
+    // ✅ 通常動作（単調増加・スロットリング）
+    // ==============================
+
+    /// <summary>
+    /// スロットリング無効時、前回より大きい値は報告される
+    /// </summary>
+    [Fact]
+    public void ShouldReport_IncreasingPercentage_ReturnsTrue()
+    {
+        var throttler = new ProgressThrottler(0); // スロットリング無効
+        throttler.ShouldReport(10);
+        Assert.True(throttler.ShouldReport(20));
+    }
+
+    /// <summary>
+    /// 報告間隔内の連続更新は、初回だけ報告して以降を抑止する
+    /// </summary>
+    [Fact]
+    public void ShouldReport_RapidUpdates_ThrottlesCorrectly()
+    {
+        var throttler = new ProgressThrottler(500); // 500ms間隔
+        Assert.True(throttler.ShouldReport(10)); // 最初は常にtrue
+
+        // すぐに次の値を送る → スロットリングされるべき
+        Assert.False(throttler.ShouldReport(11));
+    }
+
     // ==============================
     // 🗡️ 境界値・極端入力
     // ==============================
@@ -71,7 +105,7 @@ public class ProgressThrottlerAdversarialTests
 
     /// <summary>
     /// @adversarial @category boundary @severity medium
-    /// コンストラクタに 0ms を渡す → 全ての中間値が報告される（スロットリングなし）
+    /// コンストラクタに 0ms を渡す → 0% から 100% までの全値が報告される（スロットリングなし）
     /// </summary>
     [Fact]
     public void ShouldReport_ZeroIntervalMs_AllIntermediateValuesReported()
@@ -84,6 +118,17 @@ public class ProgressThrottlerAdversarialTests
         {
             Assert.True(throttler.ShouldReport(i), $"{i}% が報告されなかった");
         }
+
+        // 連続報告の終端として 100% も報告される
+        // （旧 ProgressThrottlerTests.ShouldReport_FullProgressSequence_MonotonicIncrease の検証範囲）
+        Assert.True(throttler.ShouldReport(100));
+
+        // 初回に 0% を経由しない場合も、最初の中間値から連続で報告される
+        // （旧 ProgressThrottlerTests.ShouldReport_ZeroInterval_NoThrottling の入力）
+        var withoutZero = new ProgressThrottler(reportIntervalMs: 0);
+        Assert.True(withoutZero.ShouldReport(1));
+        Assert.True(withoutZero.ShouldReport(2));
+        Assert.True(withoutZero.ShouldReport(3));
     }
 
     /// <summary>
@@ -113,6 +158,7 @@ public class ProgressThrottlerAdversarialTests
         var throttler = new ProgressThrottler(reportIntervalMs: 0);
         Assert.True(throttler.ShouldReport(50));
         Assert.False(throttler.ShouldReport(30));
+        Assert.False(throttler.ShouldReport(40));
         Assert.False(throttler.ShouldReport(49));
         // 元の値と同じも拒否
         Assert.False(throttler.ShouldReport(50));

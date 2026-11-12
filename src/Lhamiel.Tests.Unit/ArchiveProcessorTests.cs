@@ -37,22 +37,7 @@ public class ArchiveProcessorTests : IDisposable
 
     // --- スタブ実装 ---
 
-    private sealed class StubMessageService : IMessageService
-    {
-        public List<string> Errors { get; } = [];
-        public Task ShowError(string message, string? title = null)
-        {
-            Errors.Add(message);
-            return Task.CompletedTask;
-        }
-    }
-
-    private sealed class StubUiDispatcher : IUiDispatcher
-    {
-        public void Post(Action action) => action();
-        public Task InvokeAsync(Func<Task> callback) => callback();
-        public Task<T> InvokeAsync<T>(Func<Task<T>> callback) => callback();
-    }
+    // メッセージサービス・UI ディスパッチャのスタブは TestDoubles.cs の共有実装を使う。
 
     private sealed class StubConflictDialogService : IConflictDialogService
     {
@@ -73,7 +58,7 @@ public class ArchiveProcessorTests : IDisposable
     [Fact]
     public async Task ExtractArchiveAsync_NonExistentFile_ShowsError()
     {
-        var stub = new StubMessageService();
+        var stub = new RecordingMessageService();
         ArchiveProcessor.MessageServiceImpl = stub;
 
         var (path, info) = await ArchiveProcessor.ExtractArchiveAsync(
@@ -92,8 +77,8 @@ public class ArchiveProcessorTests : IDisposable
         Directory.CreateDirectory(testDir);
         try
         {
-            ArchiveProcessor.UiDispatcherImpl = new StubUiDispatcher();
-            ArchiveProcessor.MessageServiceImpl = new StubMessageService();
+            ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
+            ArchiveProcessor.MessageServiceImpl = new RecordingMessageService();
 
             var archivePath = Path.Combine(testDir, "nfd.zip");
             var nfdRootName = "é".Normalize(NormalizationForm.FormD);
@@ -142,9 +127,9 @@ public class ArchiveProcessorTests : IDisposable
         Directory.CreateDirectory(testDir);
         try
         {
-            var stub = new StubMessageService();
+            var stub = new RecordingMessageService();
             ArchiveProcessor.MessageServiceImpl = stub;
-            ArchiveProcessor.UiDispatcherImpl = new StubUiDispatcher();
+            ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
 
             var archivePath = Path.Combine(testDir, "locked.zip");
             using (var zip = ZipFile.Open(archivePath, ZipArchiveMode.Create))
@@ -203,7 +188,7 @@ public class ArchiveProcessorTests : IDisposable
     [Fact]
     public async Task CompressItemAsync_NonExistentSource_ShowsError()
     {
-        var stub = new StubMessageService();
+        var stub = new RecordingMessageService();
         ArchiveProcessor.MessageServiceImpl = stub;
 
         var result = await ArchiveProcessor.CompressItemAsync(
@@ -222,7 +207,7 @@ public class ArchiveProcessorTests : IDisposable
 
         try
         {
-            var stub = new StubMessageService();
+            var stub = new RecordingMessageService();
             ArchiveProcessor.MessageServiceImpl = stub;
 
             var result = await ArchiveProcessor.CompressItemAsync(
@@ -242,7 +227,7 @@ public class ArchiveProcessorTests : IDisposable
     [Fact]
     public async Task CompressMergedAsync_UnsupportedFormat_ShowsError()
     {
-        var stub = new StubMessageService();
+        var stub = new RecordingMessageService();
         ArchiveProcessor.MessageServiceImpl = stub;
 
         var testFile = Path.GetTempFileName();

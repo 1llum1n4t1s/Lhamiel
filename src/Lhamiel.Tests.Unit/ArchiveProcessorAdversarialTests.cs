@@ -20,8 +20,8 @@ public class ArchiveProcessorAdversarialTests : IDisposable
         _originalDispatcher = ArchiveProcessor.UiDispatcherImpl;
         _originalConflict = ArchiveProcessor.ConflictDialogImpl;
 
-        ArchiveProcessor.MessageServiceImpl = new StubMessageService();
-        ArchiveProcessor.UiDispatcherImpl = new StubUiDispatcher();
+        ArchiveProcessor.MessageServiceImpl = new RecordingMessageService();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
         ArchiveProcessor.ConflictDialogImpl = new StubConflictDialogService();
     }
 
@@ -32,18 +32,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
         ArchiveProcessor.ConflictDialogImpl = _originalConflict;
     }
 
-    private sealed class StubMessageService : IMessageService
-    {
-        public List<string> Errors { get; } = [];
-        public Task ShowError(string message, string? title = null) { Errors.Add(message); return Task.CompletedTask; }
-    }
-
-    private sealed class StubUiDispatcher : IUiDispatcher
-    {
-        public void Post(Action action) => action();
-        public Task InvokeAsync(Func<Task> callback) => callback();
-        public Task<T> InvokeAsync<T>(Func<Task<T>> callback) => callback();
-    }
+    // メッセージサービス・UI ディスパッチャのスタブは TestDoubles.cs の共有実装を使う。
 
     private sealed class StubConflictDialogService : IConflictDialogService
     {
@@ -59,7 +48,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
     [Fact]
     public async Task ExtractArchiveAsync_NullPath_ShowsError()
     {
-        var stub = (StubMessageService)ArchiveProcessor.MessageServiceImpl;
+        var stub = (RecordingMessageService)ArchiveProcessor.MessageServiceImpl;
         var (path, info) = await ArchiveProcessor.ExtractArchiveAsync(
             null!, @"C:\temp", false, null,
             cancellationToken: TestContext.Current.CancellationToken);
@@ -71,7 +60,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
     [Fact]
     public async Task ExtractArchiveAsync_EmptyPath_ShowsError()
     {
-        var stub = (StubMessageService)ArchiveProcessor.MessageServiceImpl;
+        var stub = (RecordingMessageService)ArchiveProcessor.MessageServiceImpl;
         var (path, info) = await ArchiveProcessor.ExtractArchiveAsync(
             "", @"C:\temp", false, null,
             cancellationToken: TestContext.Current.CancellationToken);
@@ -104,7 +93,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
     [Fact]
     public async Task ExtractArchivesAsync_AllNonExistent_ShowsErrorForEachFile()
     {
-        var stub = (StubMessageService)ArchiveProcessor.MessageServiceImpl;
+        var stub = (RecordingMessageService)ArchiveProcessor.MessageServiceImpl;
         var files = new[] { @"C:\fake1.zip", @"C:\fake2.7z", @"C:\fake3.tar" };
 
         await ArchiveProcessor.ExtractArchivesAsync(
@@ -119,7 +108,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
     [Fact]
     public async Task CompressItemAsync_NullSource_ShowsError()
     {
-        var stub = (StubMessageService)ArchiveProcessor.MessageServiceImpl;
+        var stub = (RecordingMessageService)ArchiveProcessor.MessageServiceImpl;
         var result = await ArchiveProcessor.CompressItemAsync(
             null!, @"C:\temp", false, "zip", null,
             cancellationToken: TestContext.Current.CancellationToken);
@@ -135,7 +124,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
         Directory.CreateDirectory(testDir);
         try
         {
-            var stub = (StubMessageService)ArchiveProcessor.MessageServiceImpl;
+            var stub = (RecordingMessageService)ArchiveProcessor.MessageServiceImpl;
             var result = await ArchiveProcessor.CompressItemAsync(
                 testDir, @"C:\temp", false, "", null,
                 cancellationToken: TestContext.Current.CancellationToken);
@@ -156,7 +145,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
         Directory.CreateDirectory(testDir);
         try
         {
-            var stub = (StubMessageService)ArchiveProcessor.MessageServiceImpl;
+            var stub = (RecordingMessageService)ArchiveProcessor.MessageServiceImpl;
             var result = await ArchiveProcessor.CompressItemAsync(
                 testDir, @"C:\temp", false, "   ", null,
                 cancellationToken: TestContext.Current.CancellationToken);
@@ -185,7 +174,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
     [Fact]
     public async Task CompressMergedAsync_NullFormat_ShowsError()
     {
-        var stub = (StubMessageService)ArchiveProcessor.MessageServiceImpl;
+        var stub = (RecordingMessageService)ArchiveProcessor.MessageServiceImpl;
         var testFile = Path.GetTempFileName();
         try
         {
@@ -215,7 +204,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
     [Fact]
     public async Task CompressItemsAsync_AllNonExistent_ShowsErrorForEachPath()
     {
-        var stub = (StubMessageService)ArchiveProcessor.MessageServiceImpl;
+        var stub = (RecordingMessageService)ArchiveProcessor.MessageServiceImpl;
         var paths = new[] { @"C:\nonexist_a", @"C:\nonexist_b" };
 
         await ArchiveProcessor.CompressItemsAsync(

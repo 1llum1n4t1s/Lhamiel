@@ -34,23 +34,8 @@ public class ArchiveExtractorEdgeCaseTests
         Assert.True(ArchiveExtractor.IsSupportedArchiveType($"archive{ext}"));
     }
 
-    [Fact]
-    public void IsSupportedArchiveType_WithUpperCaseExtension_ReturnsTrue()
-    {
-        Assert.True(ArchiveExtractor.IsSupportedArchiveType("file.ZIP"));
-    }
-
-    [Fact]
-    public void IsSupportedArchiveType_WithMixedCaseExtension_ReturnsTrue()
-    {
-        Assert.True(ArchiveExtractor.IsSupportedArchiveType("file.ZiP"));
-    }
-
-    [Fact]
-    public void IsSupportedArchiveType_WithNoExtension_ReturnsFalse()
-    {
-        Assert.False(ArchiveExtractor.IsSupportedArchiveType("archive"));
-    }
+    // 大文字小文字の無視・拡張子なしの判定は ArchiveExtractorAdversarialTests の
+    // IsSupportedArchiveType_CaseInsensitive_ReturnsTrue / IsSupportedArchiveType_NoExtension_ReturnsFalse に集約。
 
     [Fact]
     public void IsSupportedArchiveType_WithDocx_ReturnsFalse()
@@ -164,21 +149,14 @@ public class ArchiveExtractorEdgeCaseTests
         Assert.Contains("__MACOSX", ArchiveExtractor.IgnoredSystemDirectories);
     }
 
-    [Fact]
-    public void IgnoredSystemFiles_ContainsExpectedItems()
-    {
-        Assert.Contains("desktop.ini", ArchiveExtractor.IgnoredSystemFiles);
-        Assert.Contains("Thumbs.db", ArchiveExtractor.IgnoredSystemFiles);
-        Assert.Contains(".DS_Store", ArchiveExtractor.IgnoredSystemFiles);
-    }
+    // IgnoredSystemFiles の内容と大文字小文字の無視は
+    // ArchiveExtractorAdversarialTests.IgnoredSystemFiles_CaseInsensitive（集合の照合）と
+    // ArchiveExtractorTests.ExtractArchive_WithIgnoredSystemFiles_ExcludesDesktopIniThumbsDbAndDS_StoreFromOutput
+    // （実際の展開結果から除外されること）に集約。
 
-    [Fact]
-    public void IgnoredSystemFiles_IsCaseInsensitive()
-    {
-        Assert.Contains("DESKTOP.INI", ArchiveExtractor.IgnoredSystemFiles);
-        Assert.Contains("thumbs.DB", ArchiveExtractor.IgnoredSystemFiles);
-    }
-
+    // SupportedExtensions の全要素の書式（先頭ドット・小文字）は、既知形式の包含だけを見る
+    // ArchiveExtractorAdversarialTests.SupportedExtensions_ContainsAllDocumentedFormats では
+    // 検出できない追加要素の誤りを捕まえるため、ここで維持する。
 
     [Fact]
     public void SupportedExtensions_AllStartWithDot()

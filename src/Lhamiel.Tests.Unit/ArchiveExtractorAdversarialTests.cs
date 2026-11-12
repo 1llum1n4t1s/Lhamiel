@@ -72,6 +72,8 @@ public class ArchiveExtractorAdversarialTests
     {
         Assert.False(ArchiveExtractor.IsSupportedArchiveType("Makefile"));
         Assert.False(ArchiveExtractor.IsSupportedArchiveType(@"C:\path\to\LICENSE"));
+        // 形式名と紛らわしい拡張子なしの名前も false（旧 EdgeCase テストの入力）
+        Assert.False(ArchiveExtractor.IsSupportedArchiveType("archive"));
     }
 
     /// <summary>
@@ -95,6 +97,8 @@ public class ArchiveExtractorAdversarialTests
     [InlineData("archive.Tar")]
     [InlineData("archive.RAR")]
     [InlineData("archive.LZH")]
+    [InlineData("file.ZIP")]  // 旧 EdgeCase: 全大文字
+    [InlineData("file.ZiP")]  // 旧 EdgeCase: 大文字小文字の混在
     public void IsSupportedArchiveType_CaseInsensitive_ReturnsTrue(string path)
     {
         Assert.True(ArchiveExtractor.IsSupportedArchiveType(path));
@@ -334,6 +338,7 @@ public class ArchiveExtractorAdversarialTests
     [InlineData("Desktop.INI")]
     [InlineData("Thumbs.db")]
     [InlineData("THUMBS.DB")]
+    [InlineData("thumbs.DB")]  // 旧 EdgeCase: 拡張子だけ大文字
     [InlineData(".DS_Store")]
     [InlineData(".ds_store")]
     public void IgnoredSystemFiles_CaseInsensitive(string fileName)
@@ -357,42 +362,16 @@ public class ArchiveExtractorAdversarialTests
 
     /// <summary>
     /// @adversarial @category boundary @severity high
-    /// .tar.gz 複合拡張子 → 両方除去
+    /// .tar.gz / .tar.xz / .tar.bz2 / .tar.lzma の複合拡張子 → 両方除去
     /// </summary>
-    [Fact]
-    public void GetArchiveBaseName_TarGz_RemovesBothExtensions()
+    [Theory]
+    [InlineData("data.tar.gz", "data")]
+    [InlineData("backup.tar.xz", "backup")]
+    [InlineData("archive.tar.bz2", "archive")]
+    [InlineData("files.tar.lzma", "files")]
+    public void GetArchiveBaseName_TarCompound_RemovesBothExtensions(string fileName, string expected)
     {
-        Assert.Equal("data", ArchiveExtractor.GetArchiveBaseName("data.tar.gz"));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// .tar.xz 複合拡張子 → 両方除去
-    /// </summary>
-    [Fact]
-    public void GetArchiveBaseName_TarXz_RemovesBothExtensions()
-    {
-        Assert.Equal("backup", ArchiveExtractor.GetArchiveBaseName("backup.tar.xz"));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// .tar.bz2 複合拡張子 → 両方除去
-    /// </summary>
-    [Fact]
-    public void GetArchiveBaseName_TarBz2_RemovesBothExtensions()
-    {
-        Assert.Equal("archive", ArchiveExtractor.GetArchiveBaseName("archive.tar.bz2"));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// .tar.lzma 複合拡張子 → 両方除去
-    /// </summary>
-    [Fact]
-    public void GetArchiveBaseName_TarLzma_RemovesBothExtensions()
-    {
-        Assert.Equal("files", ArchiveExtractor.GetArchiveBaseName("files.tar.lzma"));
+        Assert.Equal(expected, ArchiveExtractor.GetArchiveBaseName(fileName));
     }
 
     /// <summary>
