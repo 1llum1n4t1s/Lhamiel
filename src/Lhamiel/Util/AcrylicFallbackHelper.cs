@@ -11,7 +11,7 @@ namespace Lhamiel.Util;
 /// くすんだ灰色に見えてしまう。Windows は透過効果 OFF でも AcrylicBlur を「適用済み」と
 /// 報告するため、ActualTransparencyLevel だけでなく OS 側の状態（レジストリ・リモート判定）も見る。
 /// </summary>
-internal static class AcrylicFallbackHelper
+internal static partial class AcrylicFallbackHelper
 {
     private const string FallbackBorderName = "AcrylicOpaqueFallback";
     private const int SmRemoteSession = 0x1000;
@@ -105,6 +105,7 @@ internal static class AcrylicFallbackHelper
         }
     }
 
-    [DllImport("user32.dll")]
-    private static extern int GetSystemMetrics(int nIndex);
+    // 引数・戻り値とも blittable な int のみ。旧 DllImport と同じく SetLastError なし。
+    [LibraryImport("user32.dll")]
+    private static partial int GetSystemMetrics(int nIndex);
 }

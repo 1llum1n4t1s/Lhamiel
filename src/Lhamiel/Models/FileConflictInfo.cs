@@ -10,11 +10,6 @@ public record FileConflictEntry(
     DateTime LastModified)
 {
     /// <summary>
-    /// サムネイル取得用に一時展開されたファイルのパス（存在しない場合は null）
-    /// </summary>
-    public string? TempThumbnailPath { get; init; }
-
-    /// <summary>
     /// 親フォルダ名（表示用）。
     /// ルートパス（C:\）やUNCルート（\\server\share\）の場合は
     /// Path.GetFileName が空を返すため、ディレクトリパスそのものをフォールバックとして使う。

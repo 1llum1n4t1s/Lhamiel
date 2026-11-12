@@ -196,7 +196,6 @@
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Kesalahan</x:String>
   <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Informasi</x:String>
-  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Peringatan</x:String>
   <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Selesai</x:String>
   <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Detail: </x:String>
 
@@ -352,22 +351,11 @@
   <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Gagal memindahkan konten ke tujuan. Konten asli tetap berada di lokasi cadangan.</x:String>
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Tidak ada berkas yang ditentukan untuk dikompresi.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Jalur yang ditentukan tidak ditemukan: {0}</x:String>
-  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Tidak dapat menghasilkan nama berkas unik: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Gagal menyimpan pengaturan: {0}</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Berkas yang diekstrak tidak ditemukan.</x:String>
 
   <!-- Path validation messages -->
-  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Jalur berkas kosong.</x:String>
-  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Jalur terlalu panjang. Maksimum {0} karakter diperbolehkan. (Saat ini: {1} karakter)</x:String>
-  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Jalur direktori terlalu panjang. Maksimum {0} karakter diperbolehkan.</x:String>
-  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Nama berkas terlalu panjang. Maksimum {0} karakter diperbolehkan.</x:String>
-  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Gagal mengurai jalur: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Jalur mengandung karakter tidak valid: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">Nama berkas mengandung karakter tidak valid: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Terjadi kesalahan saat memvalidasi nama berkas: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Format jalur tidak valid terdeteksi</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Validasi jalur gagal: {0}</x:String>
-  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Nama perangkat yang dicadangkan sedang digunakan: {0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' dilindungi oleh sistem dan tidak dapat ditimpa. Pilih lokasi lain.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Mengompresi...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">Arsip berisi entri tidak aman yang menunjuk keluar dari target ekstraksi: {0}</x:String>

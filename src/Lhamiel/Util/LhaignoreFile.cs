@@ -44,11 +44,30 @@ internal static class LhaignoreFile
     /// </summary>
     /// <returns>ファイルを新規作成した場合 true。</returns>
     public static bool EnsureExists(IEnumerable<string>? legacyPatterns = null)
+        => EnsureExistsAt(FilePath, legacyPatterns);
+
+    /// <summary>
+    /// <see cref="EnsureExists"/> の本体。テストから実ユーザーの .lhaignore に触れずに検証できるよう、
+    /// 作成先パスを引数で受け取る（製品コードは常に <see cref="FilePath"/> を渡す）。
+    /// </summary>
+    /// <remarks>
+    /// 作成は <see cref="AtomicFileWriter.TryCreateNew"/> で「一時ファイル → フラッシュ → 上書きしない Move」の
+    /// 原子的な初回作成にする。途中で失敗しても中途半端な .lhaignore が残らず、存在確認から作成までの間に
+    /// 別プロセス・外部エディタが先に作った場合はその内容を上書きせず false を返す（作成済み扱い）。
+    /// それ以外の失敗は従来どおりログを残して false を返し、呼び出し側（<see cref="Settings"/> の Load）は
+    /// ファイルが存在しないことを見て旧 ExcludedFilePatterns を温存する。
+    /// </remarks>
+    /// <param name="filePath">作成先の .lhaignore の絶対パス。</param>
+    /// <param name="legacyPatterns">旧 settings.json の ExcludedFilePatterns（移行時のみ）。</param>
+    /// <returns>このメソッドがファイルを新規作成した場合 true。</returns>
+    internal static bool EnsureExistsAt(string filePath, IEnumerable<string>? legacyPatterns)
     {
         try
         {
-            Directory.CreateDirectory(Settings.AppDataDirectory);
-            if (File.Exists(FilePath))
+            var directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
+            if (File.Exists(filePath))
                 return false;
 
             string content;
@@ -73,8 +92,9 @@ internal static class LhaignoreFile
                 }
                 content = sb.ToString();
             }
-            File.WriteAllText(FilePath, content, Encoding.UTF8);
-            return true;
+            // BOM 付き UTF-8（Encoding.UTF8 のプリアンブル）は従来の File.WriteAllText と同じ。
+            // 既存ファイルがあれば上書きせず false（作成競合に負けた = 作成済み）。
+            return AtomicFileWriter.TryCreateNew(filePath, content, Encoding.UTF8);
         }
         catch (Exception ex)
         {
@@ -157,11 +177,6 @@ internal static class LhaignoreFile
         }
         return result;
     }
-
-    /// <summary>
-    /// 現在の .lhaignore から <see cref="GitignoreMatcher"/> を組み立てる。
-    /// </summary>
-    public static GitignoreMatcher LoadMatcher() => GitignoreMatcher.Compile(ReadLines());
 
     /// <summary>
     /// パターンをファイル末尾に追記する。既に同じパターンが（コメント以外で）あれば追記しない。
@@ -253,24 +268,19 @@ internal static class LhaignoreFile
     }
 
     /// <summary>
-    /// 文字列をそのまま <c>.lhaignore</c> へ原子的に書き込む（tmp + rename）。
+    /// 文字列をそのまま <c>.lhaignore</c> へ原子的に書き込む（tmp + flush + rename）。
+    /// <para>
+    /// 実体は settings.json と共通の <see cref="AtomicFileWriter"/>。一時ファイル名は従来どおり
+    /// <c>.lhaignore.{GUID}.tmp</c> の一意名（固定 `.tmp` だと、別の UI 操作や外部エディタの保存と
+    /// temp ファイルが衝突して片方の更新を潰すリスクがある）。上書き Move には settings.json と同じ
+    /// LockedFileRetryPolicy を適用し、外部エディタ・AV が一瞬掴んだ程度の一時ロックでは失敗させない。
+    /// エンコーディングは旧実装の <c>File.WriteAllText(..., Encoding.UTF8)</c> と同じ BOM 付き UTF-8 を維持する。
+    /// </para>
     /// </summary>
     private static void WriteAtomically(string content)
     {
         Directory.CreateDirectory(Settings.AppDataDirectory);
-        // 並行更新の安全性のため一意な temp 名を使う。固定 `.tmp` だと、別の UI 操作や
-        // 外部エディタの保存と temp ファイルが衝突して片方の更新を潰すリスクがある。
-        var tmpPath = $"{FilePath}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            File.WriteAllText(tmpPath, content, Encoding.UTF8);
-            File.Move(tmpPath, FilePath, overwrite: true);
-        }
-        catch
-        {
-            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); } catch { /* best-effort */ }
-            throw;
-        }
+        AtomicFileWriter.WriteAllText(FilePath, content, Encoding.UTF8);
     }
 
     /// <summary>

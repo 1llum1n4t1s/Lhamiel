@@ -311,8 +311,15 @@ internal static class CompressionOutputRegistry
         // v1 が正本の移行は、前回の中途終了で残った payload も毎回再確定する。
         // state より先に原子的に確定し、partial payload を v2 から参照させない。
         var next = path + ".next";
-        using (var writer = new BinaryWriter(new FileStream(next, FileMode.Create, FileAccess.Write, FileShare.None)))
+        using (var fs = new FileStream(next, FileMode.Create, FileAccess.Write, FileShare.None))
+        using (var writer = new BinaryWriter(fs))
+        {
             WritePayload(writer, payload);
+            // rename（Commit）より先に実データをディスクへ確定させる。OS キャッシュに残ったまま
+            // rename だけが永続化されると、電源断後に 0 バイト・途中までの payload が正本になり得るため。
+            writer.Flush();
+            fs.Flush(flushToDisk: true);
+        }
         Commit(next, path, overwrite);
         payload.Persisted = true;
     }
@@ -346,7 +353,8 @@ internal static class CompressionOutputRegistry
             }
         // 更新途中に worker が終了しても、最後に確定した登録を破損させない。
         var next = path + ".next";
-        using (var writer = new BinaryWriter(new FileStream(next, FileMode.Create, FileAccess.Write, FileShare.None)))
+        using (var fs = new FileStream(next, FileMode.Create, FileAccess.Write, FileShare.None))
+        using (var writer = new BinaryWriter(fs))
         {
             writer.Write(state.Version); writer.Write(state.Scanners.Count);
             foreach (var id in state.Scanners) writer.Write(id);
@@ -358,6 +366,9 @@ internal static class CompressionOutputRegistry
                 writer.Write(output.Scanners.Count);
                 foreach (var scanner in output.Scanners) writer.Write(scanner);
             }
+            // payload と同じく、rename より先に登録本体の実データをディスクへ確定させる。
+            writer.Flush();
+            fs.Flush(flushToDisk: true);
         }
         Commit(next, path, overwrite: true);
         var retained = state.Outputs.Select(o => PayloadPath(path, o.Id)).ToHashSet(StringComparer.OrdinalIgnoreCase);

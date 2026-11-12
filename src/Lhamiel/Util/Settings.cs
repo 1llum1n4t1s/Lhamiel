@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 namespace Lhamiel.Util;
@@ -266,16 +267,6 @@ public class Settings
     public static readonly string[] ExtractOnlyFormats = ["RAR", "ARJ", "Z"];
 
     /// <summary>
-    /// 圧縮除外リストの既定値を作成する。
-    /// </summary>
-    /// <summary>
-    /// 旧 API 互換用。新しい仕組みでは <see cref="LhaignoreFile.CreateDefaultContent"/> を直接使う。
-    /// </summary>
-    [Obsolete("Use LhaignoreFile.ResetToDefaults() / ReadPatterns() instead.")]
-    public static List<string> CreateDefaultExcludedFilePatterns() =>
-        [.. ArchiveExtractor.IgnoredSystemFiles, .. ArchiveExtractor.IgnoredSystemDirectories];
-
-    /// <summary>
     /// ログファイルの最大サイズ (MB)
     /// </summary>
     public int LogMaxSizeMB { get; set; } = 10;
@@ -454,19 +445,35 @@ public class Settings
                     {
                         // JsonDocument でも回収不能 → 破損ファイル退避して全デフォルト化
                         var backupPath = $"{SettingsFilePath}.corrupt_{DateTime.Now:yyyyMMddHHmmss_fff}.bak";
-                        var sanitizationSucceeded = false;
+                        // 実際に起きた処理をログへ正しく出すため、どの段で片付いたかを記録する。
+                        // 順序（Move → Delete → 空 JSON で上書き）は DESIGN.md / docs/SETTINGS_SCHEMA.md の契約。
+                        string? statusMsg = null;
                         try
                         {
                             File.Move(SettingsFilePath, backupPath, overwrite: true);
-                            sanitizationSucceeded = true;
+                            statusMsg = $"破損ファイルは {backupPath} に退避済みです";
                         }
                         catch (Exception moveEx)
                         {
                             Debug.WriteLine($"破損 settings.json の Move に失敗: {moveEx.Message}");
+                            // Delete で内容を失う前に、コピーでの退避を試みる（Move はロック中でも読み取りは
+                            // できる場合がある: OneDrive 同期中・ウイルス対策の検査中など）。失敗しても続行する。
+                            var copiedToBackup = false;
+                            try
+                            {
+                                File.Copy(SettingsFilePath, backupPath, overwrite: true);
+                                copiedToBackup = true;
+                            }
+                            catch (Exception copyEx)
+                            {
+                                Debug.WriteLine($"破損 settings.json のコピー退避に失敗: {copyEx.Message}");
+                            }
                             try
                             {
                                 File.Delete(SettingsFilePath);
-                                sanitizationSucceeded = true;
+                                statusMsg = copiedToBackup
+                                    ? $"破損ファイルは {backupPath} にコピーで退避し、元ファイルを削除しました"
+                                    : "破損ファイルを退避できなかったため削除しました（内容は保存されていません）";
                             }
                             catch (Exception deleteEx)
                             {
@@ -476,7 +483,9 @@ public class Settings
                                     // 最終フォールバックの空 JSON 上書きも atomic 書込で部分破損を防ぐ。
                                     // RTK レビュー #B1-008 対応。
                                     WriteAtomically(SettingsFilePath, "{}");
-                                    sanitizationSucceeded = true;
+                                    statusMsg = copiedToBackup
+                                        ? $"破損ファイルは {backupPath} にコピーで退避し、元ファイルを空 JSON で上書きしました"
+                                        : "破損ファイルを退避・削除できなかったため空 JSON で上書きしました（内容は保存されていません）";
                                 }
                                 catch (Exception writeEx)
                                 {
@@ -492,9 +501,7 @@ public class Settings
                         Debug.WriteLine($"設定ファイルの解析に失敗しました（デフォルトに戻します）: {ex.Message}");
                         try
                         {
-                            var statusMsg = sanitizationSucceeded
-                                ? $"破損ファイルは {backupPath} に退避（または空 JSON 化）済みです"
-                                : $"破損ファイルの退避に失敗しました（次回起動時も同じエラーが再発する可能性があります）";
+                            statusMsg ??= "破損ファイルの退避に失敗しました（次回起動時も同じエラーが再発する可能性があります）";
                             Logger.Log(
                                 $"settings.json の解析に失敗したためデフォルトに戻しました。{statusMsg}。理由: {ex.Message}",
                                 LogLevel.Warning);
@@ -547,18 +554,29 @@ public class Settings
 
         settings ??= new Settings();
 
-        // .lhaignore の初期化。レガシー ExcludedFilePatterns があれば移行する。
-        // 既にファイルがあれば何もしないので何度呼んでも安全。
-        // EnsureExists が失敗した（戻り値 false かつファイルも作成されなかった）場合は、
-        // 次回 Save で旧 ExcludedFilePatterns が消えて復元不能にならないよう、レガシー値を温存する。
-        if (!File.Exists(LhaignoreFile.FilePath))
-        {
-            var created = LhaignoreFile.EnsureExists(settings._legacyExcludedFilePatterns);
-            if (created || File.Exists(LhaignoreFile.FilePath))
-                settings._legacyExcludedFilePatterns = null;
-        }
+        InitializeLhaignore(settings, LhaignoreFile.FilePath);
 
         return settings;
+    }
+
+    /// <summary>
+    /// .lhaignore の初期化。レガシー ExcludedFilePatterns があれば移行する。
+    /// 既にファイルがあれば何もしないので何度呼んでも安全。
+    /// </summary>
+    /// <remarks>
+    /// 作成に失敗した（戻り値 false かつファイルも作成されなかった）場合は、
+    /// 次回 Save で旧 ExcludedFilePatterns が消えて復元不能にならないよう、レガシー値を温存する。
+    /// 作成競合に負けた（別プロセスが先に作成した）場合はファイルが存在するので作成済みとして扱う。
+    /// テストから実ユーザーの .lhaignore に触れずに検証できるよう、パスを引数で受け取る。
+    /// </remarks>
+    internal static void InitializeLhaignore(Settings settings, string lhaignorePath)
+    {
+        if (!File.Exists(lhaignorePath))
+        {
+            var created = LhaignoreFile.EnsureExistsAt(lhaignorePath, settings._legacyExcludedFilePatterns);
+            if (created || File.Exists(lhaignorePath))
+                settings._legacyExcludedFilePatterns = null;
+        }
     }
 
     /// <summary>
@@ -866,7 +884,7 @@ public class Settings
     /// ⚠️ atomic 性: <c>File.WriteAllText</c> は OS のディスクキャッシュへの flush タイミングと
     /// プロセス強制終了 / 電源断のレースで、settings.json が 0 バイト truncate や中途半端な JSON で
     /// 残るリスクがある。AutoSave (300ms デバウンス) で頻繁に走る経路なので、
-    /// <see cref="LhaignoreFile.WriteAtomically"/> と同じ「tmp + Move overwrite」パターンで
+    /// <see cref="AtomicFileWriter"/>（.lhaignore と共通）の「tmp + flush + Move overwrite」パターンで
     /// 部分書き込みを排除する。RTK レビュー #B1-007 対応。
     /// </para>
     /// </summary>
@@ -884,37 +902,24 @@ public class Settings
     }
 
     /// <summary>
-    /// 内容を一時ファイルに書いてから <see cref="File.Move(string, string, bool)"/> で
-    /// 上書きすることで、部分書き込みを排除する atomic 書込ヘルパ。
+    /// 内容を一時ファイルに書いてディスクへフラッシュし、<see cref="File.Move(string, string, bool)"/> で
+    /// 上書きすることで、部分書き込みを排除する atomic 書込ヘルパ（実体は <see cref="AtomicFileWriter"/>）。
     /// プロセス強制終了 / 電源断のレースで対象ファイルが 0 バイト truncate されるリスクを防ぐ。
     /// 同一ボリューム上では <c>File.Move</c> は MoveFileEx の <c>MOVEFILE_REPLACE_EXISTING</c>
     /// + Rename で atomic に振る舞う（クロスボリューム時はコピー扱いで atomic 性は劣化するが、
     /// 通常 <c>%LocalAppData%\Lhamiel</c> 配下は同一ボリュームなので問題なし）。
+    /// <para>
+    /// tmp → 本ファイルの上書き move は、AV / 検索インデクサ / バックアップが settings.json を一瞬掴むと
+    /// SHARING_VIOLATION / 一時 AccessDenied で散発失敗する（300ms デバウンス AutoSave・Remember パスワード保存・
+    /// IgnoreUpdateTag 書込が競合しうる）ため、<see cref="AtomicFileWriter"/> 内で LockedFileRetryPolicy により
+    /// リトライする。エンコーディングは旧実装の <c>File.WriteAllText(path, content)</c> と同じ BOM なし UTF-8。
+    /// </para>
     /// </summary>
     private static void WriteAtomically(string destinationPath, string content)
-    {
-        // GUID 付き一時ファイル名で並列書込時の衝突も回避する
-        var tmpPath = $"{destinationPath}.{Guid.NewGuid():N}.tmp";
-        try
-        {
-            File.WriteAllText(tmpPath, content);
-            // tmp → 本ファイルの上書き move は、AV / 検索インデクサ / バックアップが
-            // settings.json を一瞬掴むと SHARING_VIOLATION / 一時 AccessDenied で散発失敗する
-            // (300ms デバウンス AutoSave・Remember パスワード保存・IgnoreUpdateTag 書込が競合し
-            // うる)。プロジェクト共通の LockedFileRetryPolicy (指数バックオフ) でリトライして
-            // 一時ロックを乗り越える。永続エラー (ディスクフル / パス不正等) は即時打ち切りされる。
-            LockedFileRetryPolicy.Execute(
-                () => File.Move(tmpPath, destinationPath, overwrite: true),
-                destinationPath);
-        }
-        catch
-        {
-            // tmp の後始末（best-effort）
-            try { if (File.Exists(tmpPath)) File.Delete(tmpPath); }
-            catch { /* tmp 削除失敗は無視（次回起動時の TempCleanup に任せる） */ }
-            throw;
-        }
-    }
+        => AtomicFileWriter.WriteAllText(destinationPath, content, Utf8NoBom);
+
+    /// <summary>settings.json の書込みに使う BOM なし UTF-8（<c>File.WriteAllText</c> の既定と同じ）。</summary>
+    private static readonly UTF8Encoding Utf8NoBom = new(encoderShouldEmitUTF8Identifier: false);
 
     /// <summary>
     /// 設定をデフォルト値にリセットする

@@ -97,7 +97,7 @@ public class FileAssociation
         {
             Logger.Log($"[関連付け設定] 開始: {extension}", LogLevel.Debug);
 
-            if (!extension.StartsWith("."))
+            if (!extension.StartsWith('.'))
             {
                 extension = "." + extension;
             }
@@ -111,7 +111,7 @@ public class FileAssociation
 
             var appKeyPath = $"Software\\Classes\\{appId}";
             using var appKey = Registry.CurrentUser.CreateSubKey(appKeyPath);
-            appKey?.SetValue("FriendlyTypeName", $"{AppName} {extension.ToUpper()} ファイル");
+            appKey?.SetValue("FriendlyTypeName", $"{AppName} {extension.ToUpperInvariant()} ファイル");
 
             var shellKeyPath = $"Software\\Classes\\{appId}\\shell\\open\\command";
             using var shellKey = Registry.CurrentUser.CreateSubKey(shellKeyPath);
@@ -131,7 +131,7 @@ public class FileAssociation
 
             var typeKeyPath = $"Software\\Classes\\{appId}";
             using var typeKey = Registry.CurrentUser.CreateSubKey(typeKeyPath);
-            typeKey?.SetValue("", $"{AppName} {extension.ToUpper()} ファイル");
+            typeKey?.SetValue("", $"{AppName} {extension.ToUpperInvariant()} ファイル");
 
             Logger.Log($"[関連付け設定] 完了: {extension}", LogLevel.Debug);
             return true;
@@ -241,7 +241,7 @@ public class FileAssociation
     {
         try
         {
-            if (!extension.StartsWith("."))
+            if (!extension.StartsWith('.'))
             {
                 extension = "." + extension;
             }
@@ -251,7 +251,7 @@ public class FileAssociation
             if (userKey != null)
             {
                 var appId = userKey.GetValue("") as string;
-                if (!string.IsNullOrEmpty(appId) && appId.StartsWith("Lhamiel"))
+                if (!string.IsNullOrEmpty(appId) && appId.StartsWith("Lhamiel", StringComparison.Ordinal))
                 {
                     var shellKeyPath = $"Software\\Classes\\{appId}\\shell\\open\\command";
                     using var shellKey = Registry.CurrentUser.OpenSubKey(shellKeyPath);

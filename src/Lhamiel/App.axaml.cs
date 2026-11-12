@@ -139,7 +139,8 @@ public partial class App : Application
                 // メインウィンドウの多重起動チェック。
                 // Local\ プレフィックスでセッションローカルに限定し、別セッション/別ユーザーによる
                 // Mutex 先取りでのサービス妨害（DoS）を防ぐ。
-                const string mutexName = @"Local\Lhamiel_MainWindow_SingleInstance";
+                // 名前は Program のサイレント更新経路と共有する定数（片方だけ変わらないよう 1 か所で定義）。
+                const string mutexName = Program.MainWindowSingleInstanceMutexName;
 
                 try
                 {
@@ -156,7 +157,10 @@ public partial class App : Application
                         Logger.Log(startupArgs.Length > 0
                             ? "コマンドライン引数を既存のインスタンスに送信します。"
                             : "活性化要求（引数なし）を既存のインスタンスに送信します。");
-                        var forwarded = await IpcService.SendArgsToExistingInstanceAsync(startupArgs, ActivateExistingInstance);
+                        // 受信側（既存インスタンス）は自分のカレントディレクトリでパスを解決してしまうため、
+                        // 送信側のカレントディレクトリ基準でパス引数だけを絶対化してから転送する。
+                        var forwardArgs = AbsolutizeForwardedPathArgs(startupArgs, Environment.CurrentDirectory);
+                        var forwarded = await IpcService.SendArgsToExistingInstanceAsync(forwardArgs, ActivateExistingInstance);
                         HandleIpcForwardResult(
                             forwarded,
                             () => NativeMethods.ShowErrorMessageBox(
@@ -275,13 +279,9 @@ public partial class App : Application
         {
             // 起動自体の失敗は表示済みの操作失敗と分け、親へ異常終了として返す。
             if (Program.IsArchiveWorker) Environment.ExitCode = 1;
-            var appDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lhamiel");
-            if (!Directory.Exists(appDataDir))
-            {
-                Directory.CreateDirectory(appDataDir);
-            }
-            var logPath = Path.Combine(appDataDir, "error.log");
-            File.AppendAllText(logPath, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] アプリケーション起動エラー: {ex}\n");
+            // 起動エラーの記録は Logger.LogException に一本化する（マスク・redaction・ローテートを通すため）。
+            // 以前は %LocalAppData%\Lhamiel\error.log へ直書きしていたが、その書込み自体が失敗すると
+            // 後続の Shutdown 処理まで到達しない上、ユーザーパスがマスクされないまま残っていた。
             try
             {
                 Logger.LogException("OnFrameworkInitializationCompleted でエラー", ex);
@@ -399,6 +399,77 @@ public partial class App : Application
         }
 
         return new CommandLineRequest(compressionFormat, operation, [.. filePaths]);
+    }
+
+    /// <summary>
+    /// 既存インスタンスへ IPC 転送する前に、パス引数（非オプション引数）だけを
+    /// 送信側のカレントディレクトリ基準で絶対パスへ変換した新しい配列を返す。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// 受信側は <see cref="ParseCommandLineArgs"/> でパスを未解決のまま収集し、その後の
+    /// <c>File.Exists</c> や <c>CompressionWorkerLauncher</c> の <c>Path.GetFullPath</c> を
+    /// 「受信側プロセスの」カレントディレクトリで評価する。2 つ目のインスタンスを別ディレクトリから
+    /// 相対パス付きで起動すると、別のファイルを指したり見つからなかったりするため、送信側で確定させる。
+    /// </para>
+    /// <para>
+    /// 判定規則は <see cref="ParseCommandLineArgs"/> と一致させる（どちらかを変えるときは両方を直すこと）:
+    /// <c>--shell-selection</c> の直後のトークン、worker 要求引数の直後の値、
+    /// <c>--format</c> の直後の値（後続がある場合のみ）はオプション値なので変更しない。
+    /// <c>--</c> で始まる引数はオプションとしてそのまま転送する。それ以外がパス引数。
+    /// </para>
+    /// <para>
+    /// 絶対化に失敗する文字列（空文字・不正文字など）は元の値のまま転送し、受信側の既存の
+    /// 存在確認・エラー処理に委ねる（転送そのものは失敗させない）。
+    /// </para>
+    /// </remarks>
+    /// <param name="args">送信側のコマンドライン引数（実行ファイル名を除く）。</param>
+    /// <param name="baseDirectory">相対パスの基準にする送信側のカレントディレクトリ（絶対パス）。</param>
+    internal static string[] AbsolutizeForwardedPathArgs(string[] args, string baseDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentException.ThrowIfNullOrEmpty(baseDirectory);
+
+        var result = (string[])args.Clone();
+        for (var index = 0; index < result.Length; index++)
+        {
+            switch (result[index])
+            {
+                case ShellSelectionFile.Argument:
+                case CompressionWorkerLauncher.RequestArgument:
+                    // 直後のトークン / 要求 ID はパスではないため読み飛ばす（不足時はそのまま転送し、
+                    // 受信側の ParseCommandLineArgs が従来どおり不正入力として扱う）。
+                    index++;
+                    break;
+                case "--format" when index + 1 < result.Length:
+                    // 形式名はパスではない。ParseCommandLineArgs と同じく後続がある場合だけ値を消費する。
+                    index++;
+                    break;
+                default:
+                    if (!result[index].StartsWith("--", StringComparison.Ordinal))
+                        result[index] = TryGetFullPath(result[index], baseDirectory);
+                    break;
+            }
+        }
+
+        return result;
+
+        static string TryGetFullPath(string path, string basePath)
+        {
+            // 既に完全修飾されたパス（\\?\ 付き長パスや UNC を含む）は送信側の値をそのまま渡す。
+            // GetFullPath の正規化（.. の畳み込み等）で利用者の指定を変えないため。
+            if (string.IsNullOrWhiteSpace(path) || Path.IsPathFullyQualified(path))
+                return path;
+            try
+            {
+                // ドライブ相対（"C:foo"）やルート相対（"\foo"）も含め、送信側の基準で確定させる。
+                return Path.GetFullPath(path, basePath);
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                return path;
+            }
+        }
     }
 
     /// <summary>
@@ -1442,18 +1513,15 @@ public partial class App : Application
     {
         Logger.Log("アプリケーション終了");
 
-        // 進行中の Check4Update があれば最大 2 秒待機する。
-        // Logger.Dispose 後に LogException が呼ばれて ObjectDisposedException 二次例外になる経路を回避するため、
-        // Logger.Dispose の前に async タスクの完結を待つ。
+        // 進行中の Check4Update は待たずに終了する。
+        // 旧実装はここ（Exit イベント = UI スレッド）で Thread.Sleep(50) を最大 2 秒繰り返していたが、
+        // Check4Update の async ラムダは UI の同期コンテキストで await しており、finally の EndUpdateCheck も
+        // ContinueWith の保険も UI スレッドの再開が前提なので、UI スレッドを塞ぐ待機は必ず 2 秒満了し、
+        // 「Logger.Dispose 前の完結待ち」も達成できなかった。
+        // 終了後に更新チェック側がログを書いても安全なように、Logger.Dispose 後の Log / LogException は
+        // Logger 側で no-op にしている（Logger.Dispose の remarks 参照）。
         if (IsUpdateCheckInProgress)
-        {
-            Logger.Log("更新チェック進行中のため最大 2 秒待機します", LogLevel.Warning);
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            while (IsUpdateCheckInProgress && sw.ElapsedMilliseconds < 2000)
-                Thread.Sleep(50);
-            if (IsUpdateCheckInProgress)
-                Logger.Log("更新チェックが 2 秒以内に完了しませんでした (継続中のまま終了)", LogLevel.Warning);
-        }
+            Logger.Log("更新チェック進行中のまま終了します（完了は待ちません）", LogLevel.Warning);
 
         // debounce 中の設定保存をフラッシュ（設定変更直後の終了でもロストしない）
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } mainWindow }

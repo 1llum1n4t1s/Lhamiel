@@ -110,9 +110,8 @@ public partial class PasswordDialog : Window
         IsRetry = isRetry;
         Mode = mode;
         InitializeComponent();
-        Util.AcrylicFallbackHelper.Attach(this);
-        DialogChrome.Attach(this, "DialogBody", "DialogActions");
-        Util.AppIconManager.Apply(this);
+        // アクリル代替背景 → 共通枠 → アイコンの順で初期化する（順序は DialogChrome.InitializeDialog が固定）。
+        DialogChrome.InitializeDialog(this);
 
         Opened += (_, _) => _passwordBox?.Focus();
     }

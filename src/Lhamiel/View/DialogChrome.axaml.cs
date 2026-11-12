@@ -11,6 +11,31 @@ public partial class DialogChrome : UserControl
 {
     public DialogChrome() => AvaloniaXamlLoader.Load(this);
 
+    /// <summary>本文を収めた Grid の既定名（全ダイアログの XAML で共通）。</summary>
+    internal const string DefaultBodyName = "DialogBody";
+
+    /// <summary>操作ボタン群の既定名。ProgressWindow だけはキャンセルボタン単体（<c>CancelButton</c>）を渡す。</summary>
+    internal const string DefaultActionsName = "DialogActions";
+
+    /// <summary>
+    /// ダイアログ code-behind の共通初期化。XAML 読込み（InitializeComponent / AvaloniaXamlLoader.Load）の直後に呼ぶ。
+    /// <para>
+    /// 順序は固定: (1) <see cref="Util.AcrylicFallbackHelper.Attach"/> → (2) <see cref="Attach"/> → (3) <see cref="Util.AppIconManager.Apply"/>。
+    /// (1) は root Panel の直接の子にある ExperimentalAcrylicBorder を探索する契約なので、(2) が本文を
+    /// DialogChrome へ移し替えて root の子構成を変える前に呼ぶ（従来の各ダイアログと同じ順序）。
+    /// (3) のアイコン適用は見た目のみで順序依存はないが、従来どおり最後に行う。
+    /// </para>
+    /// </summary>
+    /// <param name="window">初期化するダイアログ。</param>
+    /// <param name="actionsName">操作領域のコントロール名。既定は <see cref="DefaultActionsName"/>。</param>
+    /// <param name="appIconVariant">ウィンドウアイコンの variant。<c>null</c> なら現在の設定値（従来の <c>AppIconManager.Apply(this)</c> と同じ）。</param>
+    internal static void InitializeDialog(Window window, string actionsName = DefaultActionsName, string? appIconVariant = null)
+    {
+        Util.AcrylicFallbackHelper.Attach(window);
+        Attach(window, DefaultBodyName, actionsName);
+        Util.AppIconManager.Apply(window, appIconVariant);
+    }
+
     internal static void Attach(Window window, string bodyName, string actionsName)
     {
         var body = window.FindControl<Grid>(bodyName)!;

@@ -39,9 +39,17 @@ public sealed class LoggerConfig
 /// </summary>
 public static class Logger
 {
-    private static ILog? _logger;
+    // volatile: Dispose（終了処理のスレッド）で null に戻した値を、他スレッドの書込み側が確実に観測するため。
+    private static volatile ILog? _logger;
     private static bool _isConfigured;
-    private static readonly object _initLock = new();
+
+    /// <summary>
+    /// <see cref="Dispose"/> 済みで、再 <see cref="Initialize"/> されていない状態なら <c>true</c>。
+    /// 終了後に遅れて走った処理（アプリ終了時に進行中だった更新チェック等）のログを黙って捨てるために使う。
+    /// 未初期化（起動直後の失敗など）とは区別し、未初期化時だけ緊急ログへフォールバックさせる。
+    /// </summary>
+    private static volatile bool _isShutDown;
+    private static readonly Lock _initLock = new();
     private static string _appName = "App";
 
     // 一時的なログマスク対象トークンの集合 (defense-in-depth、v1.0.181+)。
@@ -218,6 +226,7 @@ public static class Logger
             });
 
             _logger = LogManager.GetLogger(config.FilePrefix);
+            _isShutDown = false;
             _isConfigured = true;
         }
 
@@ -489,21 +498,6 @@ public static class Logger
     }
 
     /// <summary>
-    /// 複数行のログを出力する
-    /// </summary>
-    /// <param name="messages">ログメッセージの配列</param>
-    /// <param name="level">ログレベル（デフォルト: Info）</param>
-    public static void LogLines(string[] messages, LogLevel level = LogLevel.Info)
-    {
-        if (messages == null || messages.Length == 0) return;
-
-        foreach (var message in messages)
-        {
-            Log(message, level);
-        }
-    }
-
-    /// <summary>
     /// 例外情報を含むログを出力する（常にErrorレベル）
     /// </summary>
     /// <param name="message">ログメッセージ</param>
@@ -514,7 +508,9 @@ public static class Logger
         // CodeRabbit #3381597792: 通常経路でも redaction 経路でも MaskUserPath / GetCorrelationSuffix を
         // 統一的に通す。WriteToLogger は exception 引数を取らないので LogException 専用に同じ前処理を直接呼ぶ。
         var maskedMessage = MaskUserPath(ApplyRedaction(message)) + GetCorrelationSuffix();
-        if (_logger != null)
+        // Dispose と並走しても null 判定後に別の値を読まないよう、1 回だけ読む。
+        var logger = _logger;
+        if (logger != null)
         {
             // 例外オブジェクトをそのまま構造化ログ (_logger.Error(msg, exception)) に渡すと、
             // SuperLightLogger のレイアウト (${exception:format=tostring}) が内部で exception.ToString() を
@@ -530,12 +526,23 @@ public static class Logger
             var maskedException = exception is not null
                 ? MaskUserPath(ApplyRedaction(exception.ToString()))
                 : string.Empty;
-            if (string.IsNullOrEmpty(maskedException))
-                _logger.Error(maskedMessage);
-            else
-                _logger.Error($"{maskedMessage}{Environment.NewLine}{maskedException}");
+            try
+            {
+                if (string.IsNullOrEmpty(maskedException))
+                    logger.Error(maskedMessage);
+                else
+                    logger.Error($"{maskedMessage}{Environment.NewLine}{maskedException}");
+            }
+            catch (ObjectDisposedException)
+            {
+                // Dispose（LogManager.Shutdown）と競合した終了間際の書込みは捨てる。
+            }
             return;
         }
+
+        // 終了処理で Dispose 済みなら、遅れて届いたログは捨てる（緊急ログを終了時のノイズで汚さない）。
+        if (_isShutDown)
+            return;
 
         // Logger 初期化前 / 初期化失敗時の緊急フォールバック。
         // Avalonia 起動失敗・LogManager.Configure 例外などでロガーが
@@ -584,9 +591,12 @@ public static class Logger
     /// <param name="args">コマンドライン引数</param>
     public static void LogStartup(string[] args)
     {
+        // 文字列組立て（引数の列挙）を避けるための早期 return。判定は Log と同じ条件。
         if (LogLevel.Debug < MinLogLevel) return;
 
-        _logger?.Debug(
+        // Log 経由にして、通常ログと同じ redaction・ユーザーパスのマスク・相関 ID 付加・
+        // Dispose 競合時の握り潰しを通す（引数や実行ファイルパスにユーザー名が含まれ得るため）。
+        Log(
             $"""
             === {_appName} 起動ログ ===
             起動時刻: {DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}
@@ -594,16 +604,28 @@ public static class Logger
             コマンドライン引数の数: {args.Length}
             コマンドライン引数:
             {string.Join(Environment.NewLine, args.Select((a, i) => $"  [{i}]: {a}"))}
-            """);
+            """,
+            LogLevel.Debug);
     }
 
     /// <summary>
     /// ロガーを明示的に終了する（バッファのフラッシュなど）
     /// </summary>
+    /// <remarks>
+    /// Dispose 後に遅れて <see cref="Log"/> / <see cref="LogException"/> が呼ばれても安全なように、
+    /// Shutdown より先に <c>_logger</c> を外す。以降の呼び出しは no-op になり、Shutdown 済みのロガーへ
+    /// 書き込んで ObjectDisposedException 等の二次例外を起こさない（アプリ終了時に進行中だった
+    /// 更新チェックが後からログを書く経路を想定。終了処理側は UI スレッドで完了を待たない）。
+    /// </remarks>
     public static void Dispose()
     {
-        LogManager.Shutdown();
-        _isConfigured = false;
+        lock (_initLock)
+        {
+            _isShutDown = true;
+            _logger = null;
+            LogManager.Shutdown();
+            _isConfigured = false;
+        }
     }
 
     /// <summary>
@@ -612,25 +634,34 @@ public static class Logger
     /// </summary>
     private static void WriteToLogger(string message, LogLevel level)
     {
-        if (_logger == null) return;
+        // Dispose と並走しても null 判定後に別の値を読まないよう、1 回だけ読む。
+        var logger = _logger;
+        if (logger == null) return;
 
         // ユーザー名マスク + 相関 ID 付加
         var augmented = MaskUserPath(message) + GetCorrelationSuffix();
 
-        switch (level)
+        try
         {
-            case LogLevel.Debug:
-                _logger.Debug(augmented);
-                break;
-            case LogLevel.Info:
-                _logger.Info(augmented);
-                break;
-            case LogLevel.Warning:
-                _logger.Warn(augmented);
-                break;
-            case LogLevel.Error:
-                _logger.Error(augmented);
-                break;
+            switch (level)
+            {
+                case LogLevel.Debug:
+                    logger.Debug(augmented);
+                    break;
+                case LogLevel.Info:
+                    logger.Info(augmented);
+                    break;
+                case LogLevel.Warning:
+                    logger.Warn(augmented);
+                    break;
+                case LogLevel.Error:
+                    logger.Error(augmented);
+                    break;
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // Dispose（LogManager.Shutdown）と競合した終了間際の書込みは捨てる。
         }
     }
 

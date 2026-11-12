@@ -278,9 +278,6 @@ public static partial class DiskSpaceChecker
     }
 
     /// <summary>
-    /// ファイルサイズの表示用文字列
-    /// </summary>
-    /// <summary>
     /// ファイルサイズの表示用文字列（最小単位: KB）
     /// </summary>
     public static string FormatSize(long bytes) => bytes switch

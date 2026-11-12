@@ -11,38 +11,27 @@ public static class FolderOpener
     /// </summary>
     internal static bool DryRun { get; set; }
     /// <summary>
-    /// 展開結果のフォルダを開く。
-    /// CreateArchiveNameFolder=ON + 二重ネスト防止スキップ時は、アーカイブのルートフォルダを開く。
-    /// </summary>
-    /// <param name="outputPath">展開先パス</param>
-    /// <param name="structureInfo">アーカイブ構造情報</param>
-    /// <param name="createArchiveNameFolder">展開時に使用されたフォルダ作成設定の値</param>
-    public static void OpenExtractionResult(
-        string outputPath,
-        ArchiveExtractor.ArchiveStructureInfo? structureInfo = null,
-        bool? createArchiveNameFolder = null)
-    {
-        var folderToOpen = GetExtractionFolderToOpen(outputPath, structureInfo, createArchiveNameFolder);
-        if (Directory.Exists(folderToOpen))
-            OpenFolder(folderToOpen);
-    }
-
-    /// <summary>
-    /// <see cref="OpenExtractionResult"/> の待機可能版。ファイルマネージャー起動
-    /// (Process.Start のリターン) まで完了する Task を返す。
+    /// 展開結果のフォルダを開き、ファイルマネージャー起動 (Process.Start のリターン) まで完了する
+    /// Task を返す。CreateArchiveNameFolder=ON + 二重ネスト防止スキップ時は、アーカイブのルートフォルダを開く。
     /// </summary>
     /// <remarks>
-    /// CLI / ファイル関連付け / アイコンドロップ起動の「処理後に自己終了する」経路で使う。
-    /// 同期版は fire-and-forget のため、呼び出し元が直後に <c>desktop.Shutdown()</c> すると
+    /// CLI / ファイル関連付け / アイコンドロップ起動の「処理後に自己終了する」経路でも使うため待機可能にしている。
+    /// fire-and-forget で起動すると、呼び出し元が直後に <c>desktop.Shutdown()</c> したとき
     /// ファイルマネージャー起動がバックグラウンドスレッド上で走り切る前にプロセスが落ち、
     /// フォルダが開かない競合になる (v1.0.171 回帰)。この版を await すれば Shutdown 前に起動が
     /// 完了する。起動自体は引き続き <see cref="ShellOpener.OpenFolderWithDefaultHandlerAsync"/> の
     /// Task.Run で別スレッドに逃がすため、UI スレッドはブロックしない (Issue #54 対策を維持)。
     /// </remarks>
+    /// <param name="outputPath">展開先パス</param>
+    /// <param name="structureInfo">アーカイブ構造情報（無い場合は null）</param>
+    /// <param name="createArchiveNameFolder">
+    /// 展開操作の設定スナップショットにある <c>CreateArchiveNameFolder</c> の値。
+    /// 現在の設定を読み直さないよう、呼び出し側が必ず明示する。
+    /// </param>
     public static async Task OpenExtractionResultAsync(
         string outputPath,
-        ArchiveExtractor.ArchiveStructureInfo? structureInfo = null,
-        bool? createArchiveNameFolder = null)
+        ArchiveExtractor.ArchiveStructureInfo? structureInfo,
+        bool createArchiveNameFolder)
     {
         var folderToOpen = GetExtractionFolderToOpen(outputPath, structureInfo, createArchiveNameFolder);
         if (Directory.Exists(folderToOpen))
@@ -55,26 +44,26 @@ public static class FolderOpener
     /// アーカイブのルートフォルダ（outputPath/SingleRootItemName）を返す。
     /// </summary>
     /// <remarks>
-    /// 展開時に使われた設定値を最も優先する：
+    /// 展開時に使われた設定値を優先する：
     /// <list type="number">
-    ///   <item><description><see cref="ArchiveExtractor.ArchiveStructureInfo.CapturedCreateArchiveNameFolder"/>（展開時スナップショット）</description></item>
-    ///   <item><description><paramref name="createArchiveNameFolder"/>（呼び出し側が明示）</description></item>
-    ///   <item><description>現在の設定値（フォールバック）</description></item>
+    ///   <item><description><see cref="ArchiveExtractor.ArchiveStructureInfo.CapturedCreateArchiveNameFolder"/>（展開時スナップショット。null でなければ採用）</description></item>
+    ///   <item><description><paramref name="createArchiveNameFolder"/>（呼び出し側が操作のスナップショットから明示）</description></item>
     /// </list>
-    /// この順で参照することで、展開中のユーザー設定変更に対しても
-    /// 「作成したフォルダ」と「開くフォルダ」の整合性を保つ。
+    /// 現在の設定値は参照しない。展開中にユーザーが設定を変更しても
+    /// 「作成したフォルダ」と「開くフォルダ」の整合性を保つため。
     /// </remarks>
     /// <param name="outputPath">展開先として指定されたベースディレクトリ</param>
     /// <param name="structureInfo">アーカイブ構造の解析結果。展開時にキャプチャした設定値を含む</param>
-    /// <param name="createArchiveNameFolder">展開時に使用された設定値。nullの場合は structureInfo か現在の設定を参照する。</param>
+    /// <param name="createArchiveNameFolder">
+    /// 展開操作の設定スナップショットにある値。structureInfo にキャプチャ値が無い場合に使う。
+    /// </param>
     internal static string GetExtractionFolderToOpen(
         string outputPath,
         ArchiveExtractor.ArchiveStructureInfo? structureInfo,
-        bool? createArchiveNameFolder = null)
+        bool createArchiveNameFolder)
     {
-        var createFolder = structureInfo?.CapturedCreateArchiveNameFolder
-                           ?? createArchiveNameFolder
-                           ?? SettingsManager.Instance.Current.CreateArchiveNameFolder;
+        // スナップショット値 > 呼び出し側の明示値。現在設定へのフォールバックは持たない。
+        var createFolder = structureInfo?.CapturedCreateArchiveNameFolder ?? createArchiveNameFolder;
 
         if (createFolder && structureInfo is { ShouldSkipFolderCreation: true }
             && !string.IsNullOrEmpty(structureInfo.SingleRootItemName))

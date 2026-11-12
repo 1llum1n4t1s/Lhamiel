@@ -196,7 +196,6 @@
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Error</x:String>
   <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Impormasyon</x:String>
-  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Babala</x:String>
   <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Tapos Na</x:String>
   <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Mga Detalye: </x:String>
 
@@ -352,22 +351,11 @@
   <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Nabigong ilipat ang mga nilalaman sa destinasyon. Ang orihinal na nilalaman ay nananatili sa backup na lokasyon.</x:String>
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Walang tinukoy na mga file para i-compress.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Hindi natagpuan ang tinukoy na path: {0}</x:String>
-  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Hindi makagawa ng natatanging pangalan ng file: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Nabigong i-save ang mga setting: {0}</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Hindi natagpuan ang na-extract na file.</x:String>
 
   <!-- Path validation messages -->
-  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Walang laman ang file path.</x:String>
-  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Masyadong mahaba ang path. Pinakamarami {0} na karakter ang pinapayagan. (Kasalukuyan: {1} na karakter)</x:String>
-  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Masyadong mahaba ang directory path. Pinakamarami {0} na karakter ang pinapayagan.</x:String>
-  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Masyadong mahaba ang pangalan ng file. Pinakamarami {0} na karakter ang pinapayagan.</x:String>
-  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Nabigong i-parse ang path: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">May hindi wastong karakter sa path: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">May hindi wastong karakter sa pangalan ng file: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Nagkaroon ng error habang bina-validate ang pangalan ng file: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Na-detect ang hindi wastong format ng path</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Nabigo ang path validation: {0}</x:String>
-  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Ginagamit ang reserved na pangalan ng device: {0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">Ang '{0}' ay protektado ng sistema at hindi maaaring i-overwrite. Mangyaring pumili ng ibang lokasyon.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Nagko-compress...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">Ang archive ay naglalaman ng hindi ligtas na entry na tumuturo sa labas ng target ng extraction: {0}</x:String>

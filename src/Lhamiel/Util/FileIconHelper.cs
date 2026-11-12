@@ -32,22 +32,26 @@ file static class ThumbnailExtensions
 /// </summary>
 public static partial class FileIconHelper
 {
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct SHFILEINFO
+    // LibraryImport（ソース生成マーシャリング）は ref 渡しの構造体が blittable であることを要求する。
+    // 旧定義の ByValTStr（string フィールド）は非 blittable なので、同じレイアウトの固定長 UTF-16 バッファへ置き換える。
+    // MAX_PATH(260) / 80 文字の WCHAR 配列で、CharSet.Unicode + ByValTStr と同一のメモリ配置・サイズになる。
+    // 両フィールドは参照していない（hIcon だけを使う）ため、文字列化のコードは不要。
+    [StructLayout(LayoutKind.Sequential)]
+    private unsafe struct SHFILEINFO
     {
         public IntPtr hIcon;
         public int iIcon;
         public uint dwAttributes;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
-        public string szDisplayName;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
-        public string szTypeName;
+        public fixed char szDisplayName[260];
+        public fixed char szTypeName[80];
     }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct ICONINFO
     {
-        public bool fIcon;
+        // Win32 の BOOL（4 バイト）。旧定義の bool フィールドは既定で 4 バイト BOOL としてマーシャリングされていたが、
+        // bool は非 blittable で LibraryImport の out 渡しに使えないため、同じ幅の int で表す（未使用フィールド）。
+        public int fIcon;
         public int xHotspot;
         public int yHotspot;
         public IntPtr hbmMask;
@@ -89,6 +93,10 @@ public static partial class FileIconHelper
         public uint biClrImportant;
     }
 
+    // PreserveSig = false（失敗 HRESULT を例外へ変換する）は LibraryImport では表現できないため、
+    // この 1 件だけ DllImport のまま残す。LibraryImport へ移すと戻り値の HRESULT を自前で
+    // Marshal.ThrowExceptionForHR する必要があり、GetThumbnail の例外経路（catch してログ・null 返却）の
+    // 例外型・メッセージが変わり得る。string 引数は CharSet.Unicode で UTF-16 のまま渡す。
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, PreserveSig = false)]
     private static extern void SHCreateItemFromParsingName(
         string pszPath, IntPtr pbc, ref Guid riid, out IntPtr ppv);
@@ -107,31 +115,37 @@ public static partial class FileIconHelper
     private const uint FILE_ATTRIBUTE_NORMAL = 0x00000080;
     private const uint FILE_ATTRIBUTE_DIRECTORY = 0x00000010;
 
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
-    private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
+    // 旧 DllImport(CharSet.Unicode) は W 版へ解決されていたため、LibraryImport では EntryPoint で W 版を明示する。
+    [LibraryImport("shell32.dll", EntryPoint = "SHGetFileInfoW", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbSizeFileInfo, uint uFlags);
 
     [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool DestroyIcon(IntPtr hIcon);
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern IntPtr LoadImage(IntPtr hInst, string name, uint type, int cx, int cy, uint fuLoad);
+    // CharSet.Unicode の旧定義と同じく W 版・UTF-16 文字列・SetLastError を維持する。
+    [LibraryImport("user32.dll", EntryPoint = "LoadImageW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    private static partial IntPtr LoadImage(IntPtr hInst, string name, uint type, int cx, int cy, uint fuLoad);
 
     private const uint IMAGE_ICON = 1;
     private const uint LR_LOADFROMFILE = 0x00000010;
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetIconInfo(IntPtr hIcon, out ICONINFO piconinfo);
+    private static partial bool GetIconInfo(IntPtr hIcon, out ICONINFO piconinfo);
 
-    [DllImport("gdi32.dll")]
-    private static extern int GetObject(IntPtr hObject, int nCount, ref BITMAP lpObject);
+    // gdi32 には "GetObject" という名前のエクスポートが無く A/W 版のみ存在する。旧 DllImport（既定 CharSet.Ansi）は
+    // 実行時に A 版へ解決していた。LibraryImport は名前を補完しないため EntryPoint で同じ A 版を明示する
+    // （BITMAP 構造体の取得は文字列を含まないので A/W で結果は変わらない）。
+    [LibraryImport("gdi32.dll", EntryPoint = "GetObjectA")]
+    private static partial int GetObject(IntPtr hObject, int nCount, ref BITMAP lpObject);
 
-    [DllImport("gdi32.dll")]
-    private static extern int GetBitmapBits(IntPtr hbmp, int cbBuffer, byte[] lpvBits);
+    // 出力バッファなので [Out] を明示する（旧 DllImport では blittable 配列のピン留めにより書き戻されていた）。
+    [LibraryImport("gdi32.dll")]
+    private static partial int GetBitmapBits(IntPtr hbmp, int cbBuffer, [Out] byte[] lpvBits);
 
-    [DllImport("gdi32.dll")]
-    private static extern int GetDIBits(IntPtr hdc, IntPtr hbmp, uint start, uint cLines, byte[] lpvBits, ref BITMAPINFOHEADER lpbmi, uint usage);
+    [LibraryImport("gdi32.dll")]
+    private static partial int GetDIBits(IntPtr hdc, IntPtr hbmp, uint start, uint cLines, [Out] byte[] lpvBits, ref BITMAPINFOHEADER lpbmi, uint usage);
 
     [LibraryImport("user32.dll")]
     private static partial IntPtr GetDC(IntPtr hWnd);

@@ -22,9 +22,8 @@ public partial class DiskSpaceDialog : Window
         _outputPath = outputPath;
 
         AvaloniaXamlLoader.Load(this);
-        AcrylicFallbackHelper.Attach(this);
-        DialogChrome.Attach(this, "DialogBody", "DialogActions");
-        AppIconManager.Apply(this);
+        // アクリル代替背景 → 共通枠 → アイコンの順で初期化する（順序は DialogChrome.InitializeDialog が固定）。
+        DialogChrome.InitializeDialog(this);
 
         var titleText = this.FindControl<TextBlock>("TitleText");
         var requiredText = this.FindControl<TextBlock>("RequiredText");

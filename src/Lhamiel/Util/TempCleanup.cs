@@ -47,7 +47,7 @@ internal static class TempCleanup
     /// <remarks>
     /// ベストエフォート。エラーはログだけ残して続行する。
     /// </remarks>
-    private static readonly object TrackedDirectoriesLock = new();
+    private static readonly Lock TrackedDirectoriesLock = new();
     private static readonly Dictionary<string, (FileStream Stream, int Count)> ActiveDirectoryLeases =
         new(StringComparer.OrdinalIgnoreCase);
     private static string TrackedDirectoriesFilePath =>

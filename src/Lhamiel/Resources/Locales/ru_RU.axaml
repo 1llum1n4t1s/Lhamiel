@@ -196,7 +196,6 @@
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Ошибка</x:String>
   <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Информация</x:String>
-  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Предупреждение</x:String>
   <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Завершено</x:String>
   <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Подробности: </x:String>
 
@@ -352,22 +351,11 @@
   <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Не удалось переместить содержимое в место назначения. Исходное содержимое остаётся в резервном расположении.</x:String>
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Не указаны файлы для сжатия.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Указанный путь не найден: {0}</x:String>
-  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Не удалось сгенерировать уникальное имя файла: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Не удалось сохранить настройки: {0}</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Извлечённый файл не найден.</x:String>
 
   <!-- Path validation messages -->
-  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Путь к файлу пуст.</x:String>
-  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Путь слишком длинный. Максимум {0} символов. (Текущая длина: {1} символов)</x:String>
-  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Путь к каталогу слишком длинный. Максимум {0} символов.</x:String>
-  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Имя файла слишком длинное. Максимум {0} символов.</x:String>
-  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Не удалось разобрать путь: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Путь содержит недопустимый символ: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">Имя файла содержит недопустимый символ: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Ошибка при проверке имени файла: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Обнаружен недопустимый формат пути</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Проверка пути не пройдена: {0}</x:String>
-  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Используется зарезервированное имя устройства: {0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' защищён системой и не может быть перезаписан. Выберите другое расположение.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Сжатие...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">Архив содержит небезопасную запись, указывающую за пределы каталога извлечения: {0}</x:String>

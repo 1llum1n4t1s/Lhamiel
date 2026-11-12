@@ -196,7 +196,6 @@
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Erreur</x:String>
   <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Information</x:String>
-  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Avertissement</x:String>
   <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Terminé</x:String>
   <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Détails : </x:String>
 
@@ -352,22 +351,11 @@
   <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Impossible de déplacer le contenu vers la destination. Le contenu original reste à l'emplacement de sauvegarde.</x:String>
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Aucun fichier spécifié pour la compression.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Le chemin spécifié est introuvable : {0}</x:String>
-  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Impossible de générer un nom de fichier unique : {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Échec de l'enregistrement des paramètres : {0}</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Fichier extrait introuvable.</x:String>
 
   <!-- Path validation messages -->
-  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Le chemin du fichier est vide.</x:String>
-  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Le chemin est trop long. Maximum {0} caractères autorisés. (Actuel : {1} caractères)</x:String>
-  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Le chemin du répertoire est trop long. Maximum {0} caractères autorisés.</x:String>
-  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Le nom du fichier est trop long. Maximum {0} caractères autorisés.</x:String>
-  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Échec de l'analyse du chemin : {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Le chemin contient un caractère non valide : '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">Le nom du fichier contient un caractère non valide : '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Une erreur s'est produite lors de la validation du nom de fichier : {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Format de chemin non valide détecté</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">La validation du chemin a échoué : {0}</x:String>
-  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Un nom de périphérique réservé est utilisé : {0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' est protégé par le système et ne peut pas être écrasé. Veuillez choisir un autre emplacement.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Compression en cours...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">L'archive contient une entrée non sécurisée pointant à l'extérieur du répertoire cible : {0}</x:String>

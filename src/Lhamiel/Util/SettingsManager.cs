@@ -22,7 +22,7 @@ public sealed class SettingsManager
     /// （除外パターンは <see cref="LhaignoreFile"/> = `.lhaignore` ファイルが真の源で、
     /// Settings 上に状態は持たない。）
     /// </summary>
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
 
     /// <summary>
     /// SettingsManager のシングルトンインスタンスを取得

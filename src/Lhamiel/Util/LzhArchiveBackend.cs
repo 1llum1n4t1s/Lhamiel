@@ -137,7 +137,7 @@ internal sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
 /// </summary>
 internal sealed class LzhProgressThrottler(int reportIntervalMs = 100)
 {
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly HashSet<ArchiveProgressPhase> _seenPhases = [];
     private long _lastReportTime;
 

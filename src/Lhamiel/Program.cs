@@ -20,14 +20,26 @@ internal class Program
     private const string ShortcutIconRestoreMarkerFileName = ".shortcut-icon-restore-pending";
 
     /// <summary>
-    /// アプリケーションのエントリーポイント。Velopack のブートストラップを実行後、Avalonia を起動する。
-    /// --update-check 引数が指定された場合は UI なしでサイレント更新チェックのみ実行する。
+    /// 通常 UI モードの単一インスタンス Mutex 名。
+    /// <para>
+    /// UI 側（<c>App.OnFrameworkInitializationCompleted</c> の多重起動チェック）と、サイレント更新経路
+    /// （<see cref="Main"/> の UI 並走検知）の両方が同じ名前で所有権を取る。片方だけ変えると並走検知が
+    /// 黙って効かなくなるため、ここに 1 か所で定義する。値は既存のリリースと互換を保つため変更しない。
+    /// <c>Local\</c> プレフィックスでセッションローカルに限定し、別セッション/別ユーザーによる
+    /// Mutex 先取りでのサービス妨害（DoS）を防ぐ。
+    /// </para>
     /// </summary>
+    internal const string MainWindowSingleInstanceMutexName = @"Local\Lhamiel_MainWindow_SingleInstance";
+
     /// <summary>
     /// プロセスとショートカットで共有する、現在の配置先に対応した AppUserModelID。
     /// </summary>
     internal static string AppUserModelId => TaskbarIdentity.Current;
 
+    /// <summary>
+    /// アプリケーションのエントリーポイント。Velopack のブートストラップを実行後、Avalonia を起動する。
+    /// --update-check 引数が指定された場合は UI なしでサイレント更新チェックのみ実行する。
+    /// </summary>
     [STAThread]
     public static void Main(string[] args)
     {
@@ -231,7 +243,7 @@ internal class Program
         // ⚠️ RTK レビュー #D-003 対応: UI 側 (App.axaml.cs) と同じ `initiallyOwned: true` で所有権を取り、
         // サイレント実行中に UI モード起動が走るレースを完全に防ぐ。所有権取得は finally 内で
         // ReleaseMutex してから Dispose する。
-        const string uiMutexName = @"Local\Lhamiel_MainWindow_SingleInstance";
+        const string uiMutexName = MainWindowSingleInstanceMutexName;
         Mutex? guardMutex = null;
         var guardMutexOwned = false;
         var skipSilentUpdate = false;

@@ -720,7 +720,7 @@ public static class ArchiveProcessor
             var totalCount = filePaths.Length;
             var successCount = 0;
             var failedFiles = new List<string>();
-            var lockObject = new object();
+            var lockObject = new Lock();
 
             // ディスクI/O負荷を考慮し、並列数をCPUコア数ではなく制限
             var maxDegreeOfParallelism = ArchiveProgressHelper.IoBoundParallelism;
@@ -962,6 +962,8 @@ public static class ArchiveProcessor
                 // 過大な空き容量を要求し得る。ここで得た一覧は CompressFilesAsync にもそのまま渡す。
                 var lhaignoreLines = LhaignoreFile.ReadLines();
                 var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
+                // 走査で列挙できなかったフォルダー数。圧縮側のアクセス不能スキップ数へ合算して通知に使う。
+                var scanFailures = new ArchiveCompressor.ScanFailureCounter();
                 compressionProgress.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", 0)));
                 List<(string fullPath, string relativePath)> resolvedFiles = await ArchiveCompressor.ScanSourceFiles(
                     [sourcePath],
@@ -973,7 +975,8 @@ public static class ArchiveProcessor
                     respectNestedGitignore: settings.RespectNestedGitignore,
                     globalIgnoreLines: lhaignoreLines,
                     sourceIgnoreFileNames: settings.SourceIgnoreFileNames,
-                    progress: compressionProgress);
+                    progress: compressionProgress,
+                    scanFailures: scanFailures);
 
                 // Flatモードで個別圧縮時に relativePath 重複があれば競合ダイアログを表示。
                 if (settings.DirectoryStructureMode == DirectoryStructureMode.Flat && Directory.Exists(sourcePath))
@@ -1013,10 +1016,12 @@ public static class ArchiveProcessor
                         throw new OperationCanceledException(App.Text("Error.DiskSpaceCancelled"));
                 }
 
+                // 走査で列挙できなかったフォルダーも、アーカイブに入らなかった「アクセス不能スキップ」として合算する。
                 var inaccessibleSkipped = await ArchiveCompressor.CompressFilesCoreAsync(
                     [sourcePath], tempOutputPath, parsedFormat, compressionProgress, actualCancellationToken,
                     resolvedFiles, settingsOverride: settings,
-                    password: passwordState.Password, encryptFileNames: passwordState.EncryptFileNames);
+                    password: passwordState.Password, encryptFileNames: passwordState.EncryptFileNames)
+                    + scanFailures.Count;
 
                 // atomic swap: 圧縮が成功して初めて既存ファイルを破壊する
                 if (targetExists && !string.Equals(tempOutputPath, outputPath, StringComparison.OrdinalIgnoreCase))
@@ -1264,7 +1269,7 @@ public static class ArchiveProcessor
             var totalCount = sourcePaths.Length;
             var successCount = 0;
             var failedPaths = new List<string>();
-            var lockObject = new object();
+            var lockObject = new Lock();
 
             using var linkedCts = progressWindow != null
                 ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, progressWindow.GetCancellationToken())
@@ -1529,6 +1534,8 @@ public static class ArchiveProcessor
                 // layered matcher として合成する。
                 var lhaignoreLines = LhaignoreFile.ReadLines();
                 var ignoreMatcher = GitignoreMatcher.Compile(lhaignoreLines);
+                // 走査で列挙できなかったフォルダー数。圧縮側のアクセス不能スキップ数へ合算して通知に使う。
+                var scanFailures = new ArchiveCompressor.ScanFailureCounter();
                 progress.Report(new ProgressInfo(App.Text("Progress.ScanningFiles", 0)));
                 var scannedFiles = await ArchiveCompressor.ScanSourceFiles(
                     sourcePaths.ToList(), ignoreMatcher, actualCancellationToken,
@@ -1538,7 +1545,8 @@ public static class ArchiveProcessor
                     respectNestedGitignore: settings.RespectNestedGitignore,
                     globalIgnoreLines: lhaignoreLines,
                     sourceIgnoreFileNames: settings.SourceIgnoreFileNames,
-                    progress: progress);
+                    progress: progress,
+                    scanFailures: scanFailures);
 
                 // 衝突検出
                 var conflicts = ArchiveCompressor.DetectConflicts(scannedFiles);
@@ -1592,10 +1600,12 @@ public static class ArchiveProcessor
 
                 // 解決済みリストで圧縮 (一時パスに書く)
                 var parsedFormat = ArchiveCompressor.ParseFormat(format);
+                // 走査で列挙できなかったフォルダーも、アーカイブに入らなかった「アクセス不能スキップ」として合算する。
                 var inaccessibleSkipped = await ArchiveCompressor.CompressFilesCoreAsync(
                     sourcePaths, tempMergedOutputPath, parsedFormat, progress, actualCancellationToken,
                     resolvedFiles, settingsOverride: settings,
-                    password: mergedPasswordState.Password, encryptFileNames: mergedPasswordState.EncryptFileNames);
+                    password: mergedPasswordState.Password, encryptFileNames: mergedPasswordState.EncryptFileNames)
+                    + scanFailures.Count;
 
                 // atomic swap (codex P1 #3381582647 / P2 #3382065860)
                 if (targetExists && !string.Equals(tempMergedOutputPath, outputPath, StringComparison.OrdinalIgnoreCase))

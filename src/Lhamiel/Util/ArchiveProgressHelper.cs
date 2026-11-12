@@ -32,7 +32,7 @@ internal static class ArchiveProgressHelper
     /// 完了済み件数をベースラインとし、処理中の個別進捗を加算して全体進捗を計算する。
     /// </summary>
     internal static IProgress<ProgressInfo> CreateMappedProgress(
-        int totalCount, object lockObject, Func<int> getCompletedCount,
+        int totalCount, Lock lockObject, Func<int> getCompletedCount,
         ProgressWindow? progressWindow, ProgressThrottler? sharedThrottler = null)
     {
         if (totalCount == 1)

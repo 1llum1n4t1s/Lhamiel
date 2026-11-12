@@ -34,9 +34,8 @@ public partial class FileConflictDialog : Window
     {
         _isTwoPane = isTwoPane;
         InitializeComponent();
-        Util.AcrylicFallbackHelper.Attach(this);
-        DialogChrome.Attach(this, "DialogBody", "DialogActions");
-        Util.AppIconManager.Apply(this);
+        // アクリル代替背景 → 共通枠 → アイコンの順で初期化する（順序は DialogChrome.InitializeDialog が固定）。
+        DialogChrome.InitializeDialog(this);
 
         if (conflictGroups.Count == 0)
         {
@@ -631,7 +630,6 @@ public partial class ConflictCellViewModel : ObservableObject
     public string LastModifiedDisplay => Entry.LastModified.ToString("yyyy/MM/dd HH:mm");
     public string ParentFolderName => Entry.ShortenedPath;
     public string FullPathDisplay => Path.GetDirectoryName(Entry.FullPath) ?? Entry.FullPath;
-    public string DateAndSizeDisplay => $"{LastModifiedDisplay}  {FileSizeDisplay}";
 
     /// <summary>
     /// OS から取得したファイルアイコン。

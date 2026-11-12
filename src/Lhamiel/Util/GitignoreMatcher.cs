@@ -58,6 +58,22 @@ public sealed class GitignoreMatcher
         }
     }
 
+    /// <summary>
+    /// このマッチャーが持つ規則で発生した正規表現タイムアウトの累計件数（診断・テスト用）。
+    /// 規則オブジェクトは派生マッチャーと共有されるため、共有元で発生した件数も含む。
+    /// </summary>
+    internal int RegexTimeoutCount
+    {
+        get
+        {
+            var total = 0;
+            foreach (var layer in _layers)
+                foreach (var rule in layer.Rules)
+                    total += rule.TimeoutCount;
+            return total;
+        }
+    }
+
     private GitignoreMatcher(Layer[] layers)
     {
         _layers = layers;
@@ -165,6 +181,9 @@ public sealed class GitignoreMatcher
         if (normalized.Length == 0)
             return false;
 
+        // テスト用の照合差し替えフック（AsyncLocal）は 1 回の判定の間に変わらないので、規則・エントリごとに
+        // 読まず、ここで一度だけ読んで SafeIsMatch へ渡す（AsyncLocal 読み出しは ExecutionContext の辞書引きを伴う）。
+        var matchOverride = MatchOverrideForTests.Value;
         var excluded = false;
         foreach (var layer in _layers)
         {
@@ -193,10 +212,10 @@ public sealed class GitignoreMatcher
                     {
                         // ディレクトリ限定ルールはディレクトリにのみ自身レベルで一致する。
                         // ファイルへの波及は DFS 枝刈りが担当するため、ここでは扱わない。
-                        if (isDirectory && SafeIsMatch(regexForMatch, localPath))
+                        if (isDirectory && SafeIsMatch(rule, regexForMatch, localPath, rule.Negated, matchOverride))
                             excluded = !rule.Negated;
                     }
-                    else if (SafeIsMatch(regexForMatch, localPath))
+                    else if (SafeIsMatch(rule, regexForMatch, localPath, rule.Negated, matchOverride))
                     {
                         excluded = !rule.Negated;
                     }
@@ -204,7 +223,8 @@ public sealed class GitignoreMatcher
                 }
 
                 // ── flat 経路（単一パス照合・従来挙動）──
-                // MatchTimeout 超過時は ReDoS パターンとして「マッチしない」扱いに倒す（安全側）。
+                // MatchTimeout 超過時は ReDoS パターンとして「除外側」に倒す（SafeIsMatch 参照。
+                // 除外ルール=一致扱い、否定ルール=不一致扱い。traversal 経路も同じ）。
                 // ユーザー編集の `.lhaignore` / nested `.gitignore` で catastrophic backtracking を
                 // 起こすパターンが書かれても圧縮スキャンが固まらないように保護する。
                 if (rule.DirectoryOnly)
@@ -221,7 +241,7 @@ public sealed class GitignoreMatcher
                         var regexToUse = rule.Negated && rule.ExactPathRegex is not null
                             ? rule.ExactPathRegex
                             : rule.Regex;
-                        if (SafeIsMatch(regexToUse, localPath))
+                        if (SafeIsMatch(rule, regexToUse, localPath, rule.Negated, matchOverride))
                             excluded = !rule.Negated;
                     }
                     else if (!rule.Negated)
@@ -236,14 +256,14 @@ public sealed class GitignoreMatcher
                         if (lastSlash > 0)
                         {
                             var parentDir = localPath[..lastSlash];
-                            if (SafeIsMatch(rule.Regex, parentDir))
+                            if (SafeIsMatch(rule, rule.Regex, parentDir, negated: false, matchOverride))
                                 excluded = true;
                         }
                     }
                 }
                 else
                 {
-                    if (SafeIsMatch(rule.Regex, localPath))
+                    if (SafeIsMatch(rule, rule.Regex, localPath, rule.Negated, matchOverride))
                         excluded = !rule.Negated;
                 }
             }
@@ -349,7 +369,7 @@ public sealed class GitignoreMatcher
             body = string.Empty;
             endsWithDoubleStar = true;
         }
-        else if (body.EndsWith("/**"))
+        else if (body.EndsWith("/**", StringComparison.Ordinal))
         {
             body = body[..^3];
             endsWithDoubleStar = true;
@@ -588,8 +608,8 @@ public sealed class GitignoreMatcher
             // NOTE: RegexOptions.Compiled は Native AOT 非対応のため使用禁止。
             // MatchTimeout: ユーザー編集の .lhaignore / nested .gitignore から構築される regex に
             // `(?:.*/)?` 多段ネスト等が含まれると catastrophic backtracking で CPU 100% スピンする経路がある。
-            // 100ms の上限を設けて、超過したパターンは IsMatch 側で RegexMatchTimeoutException として
-            // catch して「マッチしない」扱いに倒す（安全側）。RTK レビュー #A2-004 / #C1-002 対応。
+            // 100ms の上限を設けて、超過したパターンは SafeIsMatch 側で RegexMatchTimeoutException として
+            // catch し「除外側」に倒す（除外ルール=一致扱い、否定ルール=不一致扱い）。RTK レビュー #A2-004 / #C1-002 対応。
             return new Regex(
                 sb.ToString(),
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
@@ -602,23 +622,88 @@ public sealed class GitignoreMatcher
     }
 
     /// <summary>
-    /// <see cref="Regex.IsMatch(string)"/> を <see cref="RegexMatchTimeoutException"/> 安全に実行する。
-    /// タイムアウト時は「マッチしない」を返して圧縮スキャンを継続させる（安全側に倒す）。
+    /// テスト専用: <see cref="SafeIsMatch"/> の照合処理を差し替えるフック。
+    /// <para>
+    /// 実際の正規表現タイムアウト（100ms）を CI で安定して誘発するのは難しいため、テストから
+    /// <see cref="RegexMatchTimeoutException"/> を決定的に投げさせてタイムアウト時の倒し方を検証する。
+    /// <see cref="AsyncLocal{T}"/> にしているのは、並列実行される他テストの照合へ影響させないため
+    /// （設定したテストの実行フロー内でだけ有効）。本番コードでは常に <c>null</c>。
+    /// </para>
     /// </summary>
-    private static bool SafeIsMatch(Regex regex, string input)
+    internal static readonly AsyncLocal<Func<Regex, string, bool>?> MatchOverrideForTests = new();
+
+    /// <summary>
+    /// <see cref="Regex.IsMatch(string)"/> を <see cref="RegexMatchTimeoutException"/> 安全に実行する。
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// タイムアウト時は「除外側」に倒す。除外ルール（<paramref name="negated"/>=<c>false</c>）は
+    /// 一致扱い（<c>true</c>）にして対象を除外し、否定（再包含）ルール（<paramref name="negated"/>=<c>true</c>）は
+    /// 不一致扱い（<c>false</c>）にして再包含を行わない。traversalMode のディレクトリ枝刈りでも同じ向きになり、
+    /// 除外ディレクトリには降りない。
+    /// </para>
+    /// <para>
+    /// 旧実装は常に「不一致」を返していたため、除外ルールのタイムアウトで除外したいファイルが黙って
+    /// アーカイブへ入る（fail-open 除外漏れ）一方、否定ルールでは再包含だけ外れ、パスごとに結果が不揃いになっていた。
+    /// 除外漏れは秘密ファイル等の意図しない同梱に直結するため、「含めるべきものが欠ける」側を選ぶ。
+    /// 欠けた事実は Warning ログ（パターンと入力を含む）で診断できる。
+    /// </para>
+    /// <para>
+    /// ログは規則単位で抑制する。ReDoS を起こす規則は走査中の全エントリでタイムアウトし得るため、
+    /// 毎回詳細を出すと 1 エントリあたり最大 100ms の照合に加えてログ I/O が積み重なり、ログも肥大化する。
+    /// 各規則の初回だけ詳細（パターン・入力・例外メッセージ）を出し、以降は件数だけを数えて
+    /// 累計が 10・100・1000…（10 の累乗）に達したときに集計ログを出す。判定（除外側に倒す）は毎回同じ。
+    /// 規則オブジェクトは <c>CompileLayered(baseMatcher, ...)</c>
+    /// で派生したマッチャー間でも共有されるため、フォルダーごとに派生するマッチャーでも初回ログは 1 回に収まる。
+    /// </para>
+    /// </remarks>
+    /// <param name="rule">照合中の規則。タイムアウト件数の集計先。</param>
+    /// <param name="regex">照合する正規表現（規則の通常 Regex または ExactPathRegex）。</param>
+    /// <param name="input">照合対象の layer 相対パス。</param>
+    /// <param name="negated">呼び出し元のルールが否定（<c>!</c> 始まり）なら <c>true</c>。タイムアウト時の倒し方を決める。</param>
+    /// <param name="matchOverride"><see cref="IsExcluded"/> の先頭で一度だけ読んだテスト用フック（本番は <c>null</c>）。</param>
+    private static bool SafeIsMatch(Rule rule, Regex regex, string input, bool negated, Func<Regex, string, bool>? matchOverride)
     {
         try
         {
-            return regex.IsMatch(input);
+            return matchOverride is null ? regex.IsMatch(input) : matchOverride(regex, input);
         }
         catch (RegexMatchTimeoutException ex)
         {
-            // パターンが ReDoS を引き起こした事実をユーザー診断のためログに残す（過剰ログ防止のため Warning）。
-            Logger.Log(
-                $"Gitignore パターンの正規表現マッチがタイムアウトしました（ReDoS 防御）: pattern='{regex}', input='{input}', {ex.Message}",
-                LogLevel.Warning);
-            return false;
+            // 除外ルール → 一致扱い（除外）、否定ルール → 不一致扱い（再包含しない）。どちらも「除外側」。
+            var fallback = !negated;
+            var count = rule.RecordTimeout();
+            // パターンはユーザーの除外ルール由来で秘密値を含まないため伏字にしない。
+            if (count == 1)
+            {
+                // 規則ごとの初回だけ詳細を残す（ユーザー診断用。過剰ログ防止のため Warning）。
+                Logger.Log(
+                    $"Gitignore パターンの正規表現マッチがタイムアウトしました（ReDoS 防御）。除外側に倒します: " +
+                    $"pattern='{regex}', negated={negated}, treatedAsMatch={fallback}, input='{input}', {ex.Message}" +
+                    "（同じパターンの以降のタイムアウトは件数のみ集計して記録します）",
+                    LogLevel.Warning);
+            }
+            else if (IsPowerOfTen(count))
+            {
+                Logger.Log(
+                    $"Gitignore パターンの正規表現マッチのタイムアウトが累計 {count} 件に達しました（詳細ログは抑制中、除外側に倒しています）: " +
+                    $"pattern='{regex}', negated={negated}",
+                    LogLevel.Warning);
+            }
+            return fallback;
         }
+    }
+
+    /// <summary>
+    /// タイムアウト集計ログを出す節目（10, 100, 1000, …）かどうか。初回（1）は詳細ログ側で扱う。
+    /// </summary>
+    internal static bool IsPowerOfTen(int count)
+    {
+        if (count < 10)
+            return false;
+        while (count % 10 == 0)
+            count /= 10;
+        return count == 1;
     }
 
     /// <summary>
@@ -671,7 +756,18 @@ public sealed class GitignoreMatcher
     /// <param name="Negated">否定ルール（<c>!</c> 始まり）かどうか。マッチしたエントリを再包含する。</param>
     /// <param name="DirectoryOnly">ディレクトリ限定ルール（末尾 <c>/</c>）かどうか。</param>
     /// <param name="Anchored">アンカー付きルール（先頭 <c>/</c> や中間 <c>/</c> を含む）かどうか。layer の base 基準で照合する。</param>
-    private sealed record Rule(Regex Regex, Regex? ExactPathRegex, bool Negated, bool DirectoryOnly, bool Anchored);
+    private sealed record Rule(Regex Regex, Regex? ExactPathRegex, bool Negated, bool DirectoryOnly, bool Anchored)
+    {
+        // 正規表現タイムアウトの累計件数（ログ抑制用）。並列スキャンから同じ規則が照合され得るので Interlocked で数える。
+        // 判定結果には影響しない診断専用の状態。
+        private int _timeoutCount;
+
+        /// <summary>タイムアウトを 1 件記録し、記録後の累計件数を返す（1 なら初回）。</summary>
+        public int RecordTimeout() => Interlocked.Increment(ref _timeoutCount);
+
+        /// <summary>これまでのタイムアウト累計件数。</summary>
+        public int TimeoutCount => Volatile.Read(ref _timeoutCount);
+    }
 
     /// <summary>
     /// 1 つの <c>.gitignore</c> ファイル（または <c>.lhaignore</c>）のスコープを表す layer。

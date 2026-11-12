@@ -196,7 +196,6 @@
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Fehler</x:String>
   <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Information</x:String>
-  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Warnung</x:String>
   <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Abgeschlossen</x:String>
   <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Details: </x:String>
 
@@ -352,22 +351,11 @@
   <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Inhalte konnten nicht zum Ziel verschoben werden. Die Originalinhalte befinden sich noch am Sicherungsort.</x:String>
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Keine Dateien zum Komprimieren angegeben.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Der angegebene Pfad wurde nicht gefunden: {0}</x:String>
-  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Ein eindeutiger Dateiname konnte nicht generiert werden: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Einstellungen konnten nicht gespeichert werden: {0}</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Entpackte Datei nicht gefunden.</x:String>
 
   <!-- Path validation messages -->
-  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Dateipfad ist leer.</x:String>
-  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Pfad ist zu lang. Maximal {0} Zeichen erlaubt. (Aktuell: {1} Zeichen)</x:String>
-  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Verzeichnispfad ist zu lang. Maximal {0} Zeichen erlaubt.</x:String>
-  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Dateiname ist zu lang. Maximal {0} Zeichen erlaubt.</x:String>
-  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Pfad konnte nicht analysiert werden: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Pfad enthält ein ungültiges Zeichen: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">Dateiname enthält ein ungültiges Zeichen: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Beim Überprüfen des Dateinamens ist ein Fehler aufgetreten: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Ungültiges Pfadformat erkannt</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Pfadvalidierung fehlgeschlagen: {0}</x:String>
-  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Reservierter Gerätename wird verwendet: {0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' ist vom System geschützt und kann nicht überschrieben werden. Bitte wählen Sie einen anderen Speicherort.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Komprimiere...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">Das Archiv enthält einen unsicheren Eintrag, der außerhalb des Zielverzeichnisses liegt: {0}</x:String>

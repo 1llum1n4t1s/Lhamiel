@@ -79,12 +79,6 @@ public static class MessageService
         => ShowMessageAsync(message, title ?? App.Text("Dialog.Info"), MessageKind.Info);
 
     /// <summary>
-    /// 警告メッセージを表示
-    /// </summary>
-    public static Task ShowWarning(string message, string? title = null)
-        => ShowMessageAsync(message, title ?? App.Text("Dialog.Warning"), MessageKind.Warning, LogLevel.Warning);
-
-    /// <summary>
     /// 例外に基づいてエラーメッセージを表示（LogException で詳細ログを出力済みのため ShowMessageAsync のログは省略）
     /// </summary>
     public static Task ShowException(string context, Exception ex, string? title = null)
@@ -115,23 +109,6 @@ public static class MessageService
             await closeTransientWindow();
 
         await showMessage();
-    }
-
-    /// <summary>
-    /// はい/いいえの確認ダイアログを表示する
-    /// </summary>
-    /// <param name="message">メッセージ本文</param>
-    /// <param name="title">タイトル</param>
-    /// <param name="parentWindow">親ウィンドウ（nullの場合は自動検索）</param>
-    /// <returns>「はい」が選ばれた場合true</returns>
-    public static async Task<bool> ShowYesNoQuestionAsync(string message, string title, Window? parentWindow = null)
-    {
-        return await RunOnUiThreadAsync(async () =>
-        {
-            parentWindow ??= await GetActiveWindowAsync();
-            var dialog = new MessageDialog(message, title, MessageDialogButtons.YesNo);
-            return await dialog.ShowAsync(parentWindow);
-        });
     }
 
     private static Task RunOnUiThreadAsync(Func<Task> action) =>

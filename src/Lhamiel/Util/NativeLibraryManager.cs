@@ -7,7 +7,7 @@ namespace Lhamiel.Util;
 public static partial class NativeLibraryManager
 {
     private static IntPtr _hModule = IntPtr.Zero;
-    private static readonly object _initLock = new();
+    private static readonly Lock _initLock = new();
 
     /// <summary>
     /// 7z.dll をプロセスにロードして固定します。

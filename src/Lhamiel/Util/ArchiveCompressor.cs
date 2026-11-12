@@ -167,6 +167,9 @@ public static class ArchiveCompressor
         // layered matcher として合成する。
         string[] lhaignoreLines = [];
         var ignoreMatcher = GitignoreMatcher.Empty;
+        // 自前でスキャンした場合に列挙できなかったフォルダー数。アクセス不能スキップ数（戻り値）へ合算する。
+        // resolvedFiles が渡された経路では、スキャンした呼び出し元（ArchiveProcessor）が自分で合算する。
+        var scanFailures = new ScanFailureCounter();
         if (resolvedFiles is null)
         {
             lhaignoreLines = LhaignoreFile.ReadLines();
@@ -196,7 +199,8 @@ public static class ArchiveCompressor
                 respectNestedGitignore: settings.RespectNestedGitignore,
                 globalIgnoreLines: lhaignoreLines,
                 sourceIgnoreFileNames: settings.SourceIgnoreFileNames,
-                progress: progress);
+                progress: progress,
+                scanFailures: scanFailures);
 
             Logger.Log($"圧縮対象のファイル総数: {filesToCompress.Count}個");
 
@@ -209,7 +213,7 @@ public static class ArchiveCompressor
                     outputPath,
                     ResolveLzhCompressionMethod(settings.LzhCompressionMethod),
                     progress,
-                    cancellationToken);
+                    cancellationToken) + scanFailures.Count;
                 Logger.Log(
                     $"LZH圧縮完了: {outputPath}（要求{filesToCompress.Count}件、スキップ{inaccessibleSkipped}件）");
                 return inaccessibleSkipped;
@@ -239,6 +243,8 @@ public static class ArchiveCompressor
                     // ファイルとディレクトリを圧縮アーカイブに追加
                     // スキャン後にファイルが削除されている場合はスキップする
                     var addedCount = 0;
+                    // 走査で列挙できなかったフォルダーも「アクセス不能でスキップ」に含める（部分アーカイブの通知用）。
+                    inaccessibleSkipped = scanFailures.Count;
                     // 準備フェーズの経過表示: writer.Add は 1 ファイルずつ開いて読み取り可否を
                     // 検査するため、数十万ファイル規模では分単位かかる (実測: 528k ファイルで
                     // 93 秒)。無報告だと 0% のまま凍って見えるので、件数ベースの経過を流す。
@@ -628,7 +634,8 @@ public static class ArchiveCompressor
         bool respectNestedGitignore = false,
         IReadOnlyList<string>? globalIgnoreLines = null,
         IReadOnlyList<string>? sourceIgnoreFileNames = null,
-        IProgress<ProgressInfo>? progress = null)
+        IProgress<ProgressInfo>? progress = null,
+        ScanFailureCounter? scanFailures = null)
     {
         var filesToCompress = new List<(string fullPath, string relativePath)>();
         // 除外されたエントリや空フォルダーも確認件数に含め、ファイルが見つからない間も通知する。
@@ -654,8 +661,18 @@ public static class ArchiveCompressor
         var normalizedIgnoreNames = Settings.TryNormalizeSourceIgnoreFileNames(
             sourceIgnoreFileNames ?? Settings.CreateDefaultSourceIgnoreFileNames(), out var names)
             ? names : Settings.CreateDefaultSourceIgnoreFileNames();
+        // ディレクトリ走査の起点となる matcher。
+        // 呼び出し元（ArchiveCompressor / ArchiveProcessor）は matcher を globalIgnoreLines（.lhaignore の行）から
+        // Compile して渡すため、旧実装の CompileLayered(matcher, [("", globalIgnoreLines)]) は同じ "" スコープの
+        // 規則を 2 層積み、全エントリで同一規則を二重評価していた。gitignore は「最後に一致した規則が勝つ」ので、
+        // 同じ規則列を 2 回並べても判定結果は 1 回分と変わらない（2 周目の最後の一致 = 1 周目の最後の一致）。
+        // そこで globalIgnoreLines があるときは lines だけから 1 層を作り、二重に積まない。
+        // 単一ファイル判定（下の ShouldExcludeFile(sourcePath, matcher, ...)）は従来どおり matcher を使い、
+        // respectNestedGitignore=false の経路も従来どおり matcher をそのまま使う。
+        // globalIgnoreLines が null/空のとき（テスト等で matcher だけ渡す経路）は matcher を起点にして
+        // global ルールを落とさない（Codex P2 #3305241279 の回帰防止）。
         var baseMatcher = respectNestedGitignore && globalIgnoreLines is { Count: > 0 }
-            ? GitignoreMatcher.CompileLayered(matcher, [(string.Empty, globalIgnoreLines)])
+            ? GitignoreMatcher.Compile(globalIgnoreLines)
             : matcher;
 
         return await Task.Run(() =>
@@ -682,8 +699,11 @@ public static class ArchiveCompressor
 
                     // Flat は空ディレクトリを出力しないため、訪問・祖先の記録を作らない。
                     var directories = dirMode == DirectoryStructureMode.Flat ? null : new List<string>();
+                    // このルート配下で列挙できなかったフォルダーの記録（ルート自体の失敗も区別する）。
+                    var enumerationFailures = new DirectoryEnumerationFailures();
                     var files = EnumerateSourceFiles(sourcePath, baseMatcher, includeHiddenAndSystemEntries,
-                        respectNestedGitignore, normalizedIgnoreNames, directories, ReportScanProgress, scan.Initial, outputIdentity);
+                        respectNestedGitignore, normalizedIgnoreNames, directories, ReportScanProgress, scan.Initial, outputIdentity,
+                        enumerationFailures);
                     var parentDir = dirMode == DirectoryStructureMode.IncludeRoot
                         ? (Path.GetDirectoryName(sourcePath) ?? "")
                         : sourcePath;
@@ -720,6 +740,23 @@ public static class ArchiveCompressor
                         fileCount++;
                     }
 
+                    // 列挙できなかったフォルダーは「中身が不明」であって空ではない。親の列挙時に directories へ
+                    // 登録済みなので、そのままだと下の空ディレクトリ収集で "denied/" や祖先が空フォルダー
+                    // エントリとして出力され、中身ゼロのはずの入力からアーカイブが公開されてしまう。
+                    // ファイルと同じ要領で自身と祖先を「中身あり」として記録し、空フォルダー扱いから外す。
+                    if (directoriesWithFiles is not null)
+                    {
+                        foreach (var failedDir in enumerationFailures.Paths)
+                        {
+                            var dir = failedDir;
+                            while (dir != null && dir.Length >= sourcePath.Length)
+                            {
+                                if (!directoriesWithFiles.Add(dir)) break;
+                                dir = Path.GetDirectoryName(dir);
+                            }
+                        }
+                    }
+
                     // Flatモードでなければ空ディレクトリを収集してエントリに追加
                     var emptyDirCount = 0;
                     if (directories is not null && directoriesWithFiles is not null)
@@ -745,7 +782,19 @@ public static class ArchiveCompressor
                     // 成立させる (空フォルダ 1 個入りのアーカイブ)。
                     // ExcludeRoot/Flat では root の相対パスが "." になり意味のあるエントリを
                     // 表現できないため追加しない (本当に中身ゼロなら従来通り guard が中止する)。
-                    if (fileCount == 0 && emptyDirCount == 0 && dirMode == DirectoryStructureMode.IncludeRoot)
+                    // ただしルートや配下のフォルダーを列挙できなかった場合（アクセス拒否等）は「空フォルダー」
+                    // ではなく中身が不明なので追加しない。追加すると addedCount==0 ガードを通過して、
+                    // 全入力がアクセス不能なのに空フォルダーだけのアーカイブが公開されてしまう。
+                    if (scanFailures is not null)
+                        scanFailures.Count += enumerationFailures.Count;
+                    if (enumerationFailures.Count > 0)
+                    {
+                        Logger.Log(
+                            $"列挙できなかったフォルダー: {enumerationFailures.Count}個（スキップ数に合算します）: {sourcePath}",
+                            LogLevel.Warning);
+                    }
+                    if (fileCount == 0 && emptyDirCount == 0 && dirMode == DirectoryStructureMode.IncludeRoot
+                        && enumerationFailures.Count == 0)
                     {
                         var rootRelative = NormalizeNfc(Path.GetRelativePath(parentDir, sourcePath), normalizeUnicode);
                         filesToCompress.Add((sourcePath, rootRelative + "/"));
@@ -1019,42 +1068,6 @@ public static class ArchiveCompressor
     }
 
     /// <summary>
-    /// 同名フォルダが存在するかチェックする
-    /// </summary>
-    /// <param name="archivePath">アーカイブパス</param>
-    /// <param name="folderName">チェックするフォルダ名</param>
-    /// <returns>同名フォルダが存在するかどうか</returns>
-    public static bool HasFolderWithSameName(string archivePath, string folderName)
-    {
-        if (!File.Exists(archivePath))
-        {
-            return false;
-        }
-
-        try
-        {
-            // ネイティブ 7z.dll 直列化ゲート（reader より外側で取得して生成→使用→Dispose を覆う）
-            using var nativeGate = NativeArchiveGate.Enter();
-            using var reader = new ArchiveReader(archivePath);
-
-            // アーカイブ内のディレクトリエントリは "folder/" のように末尾区切り文字を伴うことが
-            // あるため、比較前に両者の末尾 '/' '\' を除去して突き合わせる（末尾区切りの有無だけで
-            // 同名フォルダ判定が外れるのを防ぐ）。
-            var normalizedTarget = folderName.TrimEnd('/', '\\');
-
-            // Items プロパティを使用してアーカイブ内容をチェック
-            return reader.Items.Any(item =>
-                item.IsDirectory &&
-                string.Equals(item.FullName.TrimEnd('/', '\\'), normalizedTarget, StringComparison.OrdinalIgnoreCase));
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"フォルダ構造のチェックに失敗しました: {ex.Message}");
-            return false;
-        }
-    }
-
-    /// <summary>
     /// 指定されたパスが除外対象か判定する。<paramref name="rootDir"/> が null の場合は単一ファイルモードで
     /// パス全体を <see cref="GitignoreMatcher"/> に照合する（ファイル名だけでなく、親ディレクトリの
     /// セグメントも directoryOnly ルールで判定される）。<paramref name="rootDir"/> が指定されたときは
@@ -1100,67 +1113,6 @@ public static class ArchiveCompressor
     }
 
     /// <summary>
-    /// アーカイブ内の相対パスが衝突するファイルを解決する
-    /// </summary>
-    /// <param name="files">ファイルリスト（fullPath, relativePath）</param>
-    /// <param name="preservePath">true: 親フォルダ名をプレフィックスとして付与、false: 連番サフィックスで自動リネーム</param>
-    /// <returns>衝突が解決されたファイルリスト</returns>
-    internal static List<(string fullPath, string relativePath)> ResolveRelativePathConflicts(
-        List<(string fullPath, string relativePath)> files, bool preservePath)
-    {
-        // 衝突があるか高速チェック（大半のケースはここで終了）
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var hasConflict = false;
-        foreach (var (_, relativePath) in files)
-        {
-            if (!seen.Add(relativePath))
-            {
-                hasConflict = true;
-                break;
-            }
-        }
-
-        if (!hasConflict)
-            return files;
-
-        Logger.Log($"アーカイブ内の相対パスに衝突を検出。解決方式: {(preservePath ? "パス保持" : "リネーム")}");
-
-        if (preservePath)
-            return ResolveByPreservingPath(files);
-
-        return ResolveByRenaming(files);
-    }
-
-    /// <summary>
-    /// パス保持方式: 親フォルダ名をプレフィックスとして付与して衝突を解決
-    /// </summary>
-    private static List<(string fullPath, string relativePath)> ResolveByPreservingPath(
-        List<(string fullPath, string relativePath)> files)
-    {
-        var result = new List<(string fullPath, string relativePath)>(files.Count);
-        foreach (var (fullPath, relativePath) in files)
-        {
-            // 既にサブフォルダ付き（ディレクトリスキャン由来）ならそのまま
-            if (relativePath.Contains(Path.DirectorySeparatorChar) || relativePath.Contains(Path.AltDirectorySeparatorChar))
-            {
-                result.Add((fullPath, relativePath));
-                continue;
-            }
-
-            // ファイル単体: 親フォルダ名をプレフィックスとして付与
-            var parentDir = Path.GetDirectoryName(fullPath);
-            var parentName = parentDir != null ? Path.GetFileName(parentDir) : "";
-            var newRelativePath = string.IsNullOrEmpty(parentName)
-                ? relativePath
-                : Path.Combine(parentName, relativePath);
-
-            result.Add((fullPath, newRelativePath));
-        }
-
-        return result;
-    }
-
-    /// <summary>
     /// 複合拡張子（.tar.gz 等）を考慮してファイル名をステムと拡張子に分割する。
     /// 例: "archive.tar.gz" → ("archive", ".tar.gz")
     ///      "photo.jpg"      → ("photo", ".jpg")
@@ -1185,78 +1137,6 @@ public static class ArchiveCompressor
     }
 
     /// <summary>
-    /// リネーム方式: 衝突するファイル名に連番サフィックスを付与して解決する。
-    /// usedPaths の値を「次に試す連番」として使い、do-while で毎回先頭から探索する
-    /// O(K²) の挙動を避けて O(K) で解決する。
-    /// </summary>
-    private static List<(string fullPath, string relativePath)> ResolveByRenaming(
-        List<(string fullPath, string relativePath)> files)
-    {
-        var result = new List<(string fullPath, string relativePath)>(files.Count);
-        // key = 元の relativePath、value = 次に試す連番（次回は value++ したものを使う）
-        var nextSuffix = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        // 既に使用済みの実パス集合（衝突回避用）
-        var usedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var (fullPath, relativePath) in files)
-        {
-            if (!usedPaths.Contains(relativePath))
-            {
-                // 初出: そのまま使用
-                usedPaths.Add(relativePath);
-                nextSuffix[relativePath] = 1;
-                result.Add((fullPath, relativePath));
-                continue;
-            }
-
-            // 衝突: 連番サフィックスを付与（foo_1.jpg, foo_2.jpg, ...）
-            var dir = Path.GetDirectoryName(relativePath) ?? "";
-            var nameOnly = Path.GetFileName(relativePath);
-            var (name, ext) = SplitStemAndExtension(nameOnly);
-            var count = nextSuffix.TryGetValue(relativePath, out var prev) ? prev : 1;
-            string newPath;
-            do
-            {
-                newPath = string.IsNullOrEmpty(dir)
-                    ? $"{name}_{count}{ext}"
-                    : Path.Combine(dir, $"{name}_{count}{ext}");
-                count++;
-            } while (usedPaths.Contains(newPath));
-
-            nextSuffix[relativePath] = count; // 次回はここから開始
-            usedPaths.Add(newPath);
-            result.Add((fullPath, newPath));
-            Logger.Log($"同名ファイルをリネーム: {relativePath} → {newPath}");
-        }
-
-        return result;
-    }
-
-    /// <summary>
-    /// 出力ファイルパスの衝突を連番サフィックスで回避する
-    /// </summary>
-    /// <param name="outputPath">希望する出力パス</param>
-    /// <returns>衝突しないユニークなパス</returns>
-    public static string GetUniqueOutputPath(string outputPath)
-    {
-        if (!File.Exists(outputPath) && !Directory.Exists(outputPath))
-            return outputPath;
-
-        var dir = Path.GetDirectoryName(outputPath) ?? "";
-        var nameOnly = Path.GetFileName(outputPath);
-        var (name, ext) = SplitStemAndExtension(nameOnly);
-
-        for (var i = 1; i < 10000; i++)
-        {
-            var candidate = Path.Combine(dir, $"{name}_{i}{ext}");
-            if (!File.Exists(candidate) && !Directory.Exists(candidate))
-                return candidate;
-        }
-
-        throw new InvalidOperationException(App.Text("Error.UniqueNameFailed", outputPath));
-    }
-
-    /// <summary>
     /// 各フォルダーを一度だけ列挙し、その分岐の除外ルールを読みながらファイルを返す。
     /// 訪問済みフォルダーは空ディレクトリ判定へ再利用する。
     /// </summary>
@@ -1264,7 +1144,7 @@ public static class ArchiveCompressor
         string root, GitignoreMatcher baseMatcher, bool includeHiddenAndSystemEntries,
         bool respectNestedGitignore, IReadOnlyList<string> sourceIgnoreFileNames,
         List<string>? directories, Action<bool> reportProgress, CompressionOutputRegistry.Exclusions outputExclusions,
-        OutputPathIdentity.Resolver outputIdentity)
+        OutputPathIdentity.Resolver outputIdentity, DirectoryEnumerationFailures failures)
     {
         var enumOpts = CreateNonRecursiveEnumerationOptions(includeHiddenAndSystemEntries);
         var stack = new Stack<(string path, GitignoreMatcher matcher, int priority)>();
@@ -1303,11 +1183,13 @@ public static class ArchiveCompressor
             catch (UnauthorizedAccessException ex)
             {
                 Logger.Log($"アクセス権限がありません: {frame.path}, {ex.Message}");
+                failures.Record(frame.path);
                 continue;
             }
             catch (IOException ex)
             {
                 Logger.Log($"ファイル取得中にI/Oエラー: {frame.path}, {ex.Message}");
+                failures.Record(frame.path);
                 continue;
             }
             using var entries = enumerator;
@@ -1322,12 +1204,15 @@ public static class ArchiveCompressor
                 }
                 catch (UnauthorizedAccessException ex)
                 {
+                    // 列挙途中の失敗: このフォルダーの残りは読めないので、部分的な欠落として数える。
                     Logger.Log($"アクセス権限がありません: {frame.path}, {ex.Message}");
+                    failures.Record(frame.path);
                     break;
                 }
                 catch (IOException ex)
                 {
                     Logger.Log($"ファイル取得中にI/Oエラー: {frame.path}, {ex.Message}");
+                    failures.Record(frame.path);
                     break;
                 }
 
@@ -1348,10 +1233,42 @@ public static class ArchiveCompressor
         }
     }
 
+    /// <summary>
+    /// <see cref="ScanSourceFiles"/> で列挙できなかったフォルダー数を呼び出し元へ返す集計。
+    /// <para>
+    /// 列挙に失敗したフォルダーの中身はアーカイブに入らないため、呼び出し元はこの件数を
+    /// アクセス不能スキップ数（パスワード保護時に利用者へ通知する値）へ合算する。
+    /// スキャンは 1 本の Task 内で逐次に行い、呼び出し元は await 後に読むので同期は不要。
+    /// </para>
+    /// </summary>
+    public sealed class ScanFailureCounter
+    {
+        /// <summary>列挙に失敗したフォルダー数（開始時の失敗と列挙途中の失敗の合計）。</summary>
+        public int Count { get; internal set; }
+    }
+
+    /// <summary>1 つのソースルートの走査で列挙に失敗したフォルダーの記録。</summary>
+    private sealed class DirectoryEnumerationFailures
+    {
+        private readonly List<string> _paths = [];
+
+        /// <summary>列挙に失敗したフォルダー数（開始時・途中の失敗を 1 フォルダーにつき 1 件）。</summary>
+        public int Count => _paths.Count;
+
+        /// <summary>列挙に失敗したフォルダーのパス（中身が不明なので空フォルダー扱いにしない）。</summary>
+        public IReadOnlyList<string> Paths => _paths;
+
+        public void Record(string directory) => _paths.Add(directory);
+    }
+
     private static EnumerationOptions CreateNonRecursiveEnumerationOptions(bool includeHiddenAndSystemEntries) => new()
     {
         RecurseSubdirectories = false,
-        IgnoreInaccessible = true,
+        // false: アクセス拒否のフォルダーを黙って 0 件扱いにせず、UnauthorizedAccessException として
+        // EnumerateSourceFiles の catch へ届ける（失敗数を数えて利用者への通知・全件不能時の失敗へつなげる）。
+        // 自前 DFS で 1 階層ずつ列挙するため、この設定が効くのは各フォルダー自身を開く時点だけで、
+        // 失敗しても走査全体は止めずに次のフォルダーへ進む。
+        IgnoreInaccessible = false,
         // ReparsePoint（ジャンクション / シンボリックリンク）は常に除外する。手書き DFS
         // (EnumerateSourceFiles) は RecurseSubdirectories=false で
         // 自前再帰するため .NET 組込みのループ保護が効かず、自己 / 祖先参照ジャンクションを push すると

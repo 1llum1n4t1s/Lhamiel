@@ -68,18 +68,6 @@ internal static partial class DiagnosticsCollector
         }
     }
 
-    /// <summary>
-    /// デフォルトの出力パス（デスクトップ）を生成。
-    /// </summary>
-    internal static string GetDefaultOutputPath()
-    {
-        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-        if (string.IsNullOrEmpty(desktop))
-            desktop = Path.GetTempPath();
-        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        return Path.Combine(desktop, $"Lhamiel_Diagnostics_{timestamp}.zip");
-    }
-
     private static async Task CollectEnvironmentInfo(string tempDir, CancellationToken cancellationToken)
     {
         var sb = new StringBuilder();

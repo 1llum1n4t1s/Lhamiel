@@ -43,17 +43,18 @@
                     <Grid Grid.Row="2" ColumnDefinitions="*,12,*">
                         <StackPanel Grid.Column="0" Spacing="5">
                             <TextBlock FontSize="13" FontWeight="SemiBold" Text="{DynamicResource Text.Support.Name}" />
-                            <TextBox x:Name="NameBox" MaxLength="100" />
+                            <!--  読み上げ名は表示ラベルと同じローカライズ文言を使う (17 言語の切替に追従)  -->
+                            <TextBox x:Name="NameBox" AutomationProperties.Name="{DynamicResource Text.Support.Name}" MaxLength="100" />
                         </StackPanel>
                         <StackPanel Grid.Column="2" Spacing="5">
                             <TextBlock FontSize="13" FontWeight="SemiBold" Text="{DynamicResource Text.Support.Email}" />
-                            <TextBox x:Name="EmailBox" MaxLength="254" />
+                            <TextBox x:Name="EmailBox" AutomationProperties.Name="{DynamicResource Text.Support.Email}" MaxLength="254" />
                         </StackPanel>
                     </Grid>
 
                     <StackPanel Grid.Row="3" Spacing="5">
                         <TextBlock FontSize="13" FontWeight="SemiBold" Text="{DynamicResource Text.Support.Category}" />
-                        <ComboBox x:Name="CategoryBox" SelectedIndex="1">
+                        <ComboBox x:Name="CategoryBox" AutomationProperties.Name="{DynamicResource Text.Support.Category}" SelectedIndex="1">
                             <ComboBoxItem Content="{DynamicResource Text.Support.Category.Bug}" Tag="bug" />
                             <ComboBoxItem Content="{DynamicResource Text.Support.Category.Question}" Tag="question" />
                             <ComboBoxItem Content="{DynamicResource Text.Support.Category.Feature}" Tag="feature" />
@@ -70,6 +71,7 @@
                     <TextBox
                         x:Name="ContentBox"
                         Grid.Row="5"
+                        AutomationProperties.Name="{DynamicResource Text.Support.Message}"
                         MinHeight="76"
                         AcceptsReturn="True"
                         MaxLength="10000"
@@ -87,6 +89,7 @@
                             <TextBox
                                 x:Name="CodeBox"
                                 Width="150"
+                                AutomationProperties.Name="{DynamicResource Text.Support.Code}"
                                 Margin="0,0,8,6"
                                 MaxLength="6" />
                             <Button

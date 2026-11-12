@@ -741,9 +741,11 @@
                                                         VerticalAlignment="Center"
                                                         FontSize="13"
                                                         Text="{Binding Description}" />
+                                                    <!--  On/Off の表示文言が空のため、読み上げ名は隣の拡張子説明を使う  -->
                                                     <ToggleSwitch
                                                         Grid.Column="1"
                                                         Margin="0"
+                                                        AutomationProperties.Name="{Binding Description}"
                                                         Padding="0"
                                                         VerticalAlignment="Center"
                                                         IsChecked="{Binding IsAssociated}"

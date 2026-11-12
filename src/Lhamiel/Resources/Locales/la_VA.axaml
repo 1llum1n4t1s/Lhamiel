@@ -196,7 +196,6 @@
   <!-- Dialog Titles -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Error</x:String>
   <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Informatio</x:String>
-  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Monitum</x:String>
   <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Perfectum</x:String>
   <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Singula: </x:String>
 
@@ -352,22 +351,11 @@
   <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Contenta ad destinationem movere non potuit. Contenta originalia in loco subsidiario manent.</x:String>
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Nulli fasciculi ad compressionem designati.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Via designata non inventa est: {0}</x:String>
-  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Nomen fasciculi unicum generare non potuit: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Optiones servare non potuit: {0}</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Fasciculus extractus non inventus.</x:String>
 
   <!-- Path validation messages -->
-  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">Via fasciculi vacua est.</x:String>
-  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Via nimis longa est. Maximum {0} characteres permittuntur. (Nunc: {1} characteres)</x:String>
-  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Via directorii nimis longa est. Maximum {0} characteres permittuntur.</x:String>
-  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">Nomen fasciculi nimis longum est. Maximum {0} characteres permittuntur.</x:String>
-  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Viam interpretari non potuit: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Via characterem invalidum continet: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">Nomen fasciculi characterem invalidum continet: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">Error accidit dum nomen fasciculi validatur: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Forma viae invalida detecta est</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Validatio viae defecit: {0}</x:String>
-  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Nomen instrumenti reservatum in usu est: {0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' a systemate tutum est et superscribi non potest. Aliam locationem elige.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Comprimendo...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">Archivum entriam perniciosam continet quae extra locum extractionis indicat: {0}</x:String>

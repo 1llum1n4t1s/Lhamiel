@@ -158,9 +158,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsRememberModeActive))]
     private string _passwordMode = "PromptEachTime";
 
-    /// <summary>ドロップ中のパスワード入力ダイアログを同時に複数起動しないための排他ガード（0=空き / 1=入力中）。</summary>
-    private int _isAwaitingPasswordInput;
-
     // === 派生プロパティ (XAML compiled binding 用) ===
 
     public bool IsZipFormat => string.Equals(SelectedCompressionFormat, "ZIP", StringComparison.OrdinalIgnoreCase);
@@ -199,27 +196,6 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// <summary>VM 外から ciphertext 更新を通知するためのトリガー。</summary>
     internal static void RaiseSavedPasswordExternallyChanged()
         => SavedPasswordExternallyChanged?.Invoke();
-
-    /// <summary>
-    /// MainWindow から drop ハンドリングする際に呼ぶ排他取得。同時 drop を 1 件目だけ処理し、2 件目以降は false で弾く。
-    /// 戻り値の <see cref="IDisposable.Dispose"/> でガード解放。
-    /// </summary>
-    internal IDisposable? TryBeginAwaitingPasswordInput()
-    {
-        if (System.Threading.Interlocked.CompareExchange(ref _isAwaitingPasswordInput, 1, 0) != 0)
-            return null;
-        return new AwaitingPasswordInputGuard(this);
-    }
-
-    private sealed class AwaitingPasswordInputGuard(MainWindowViewModel vm) : IDisposable
-    {
-        private int _released;
-        public void Dispose()
-        {
-            if (System.Threading.Interlocked.Exchange(ref _released, 1) == 0)
-                System.Threading.Interlocked.Exchange(ref vm._isAwaitingPasswordInput, 0);
-        }
-    }
 
     /// <summary>
     /// メイン画面起動時に Velopack 自動更新チェックを走らせるかどうかの UI バインディング。
@@ -983,13 +959,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
             _lhaignoreWatcher = new FileSystemWatcher(dir, Path.GetFileName(LhaignoreFile.FilePath))
             {
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.FileName | NotifyFilters.Size,
-                EnableRaisingEvents = true,
+                // EnableRaisingEvents は debounce タイマー生成とハンドラ登録の後で true にする
+                // (先に有効化すると、登録前の変更イベント取りこぼしや未生成タイマー参照が起き得る)。
                 // RTK レビュー #C2-004 対応: 既定 8KB だと %LocalAppData%\Lhamiel 直下の他ファイル
                 // (settings.json AutoSave / Lhamiel_yyyyMMdd.log ローテーション / dumps/) の
                 // 書込みイベントでバッファ溢れて InternalBufferOverflowException → .lhaignore 変更を
                 // silent に取りこぼす経路がある。64KB に拡大して non-paged pool 消費は許容範囲に収める。
                 InternalBufferSize = 64 * 1024,
             };
+            // 変更イベントの debounce 先。ハンドラ (Changed/Error) が参照するため先に生成しておく。
+            _lhaignoreReloadDebounce = new System.Threading.Timer(_ =>
+            {
+                Dispatcher.UIThread.Post(ReloadExcludedFilePatternsFromFile);
+            }, null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
             _lhaignoreWatcher.Changed += OnLhaignoreChanged;
             _lhaignoreWatcher.Created += OnLhaignoreChanged;
             _lhaignoreWatcher.Renamed += OnLhaignoreChanged;
@@ -1005,10 +987,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
                 try { _lhaignoreReloadDebounce?.Change(250, System.Threading.Timeout.Infinite); }
                 catch { /* timer disposed */ }
             };
-            _lhaignoreReloadDebounce = new System.Threading.Timer(_ =>
-            {
-                Dispatcher.UIThread.Post(ReloadExcludedFilePatternsFromFile);
-            }, null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+            // タイマーとハンドラが揃ってからイベント通知を開始する。
+            _lhaignoreWatcher.EnableRaisingEvents = true;
         }
         catch (Exception ex)
         {

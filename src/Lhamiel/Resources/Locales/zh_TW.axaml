@@ -196,7 +196,6 @@
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">錯誤</x:String>
   <x:String x:Key="Text.Dialog.Info" xml:space="preserve">資訊</x:String>
-  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">警告</x:String>
   <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">完成</x:String>
   <x:String x:Key="Text.Dialog.Details" xml:space="preserve">詳細資訊：</x:String>
 
@@ -352,22 +351,11 @@
   <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">無法將內容移動到目標位置。原始內容仍保留在備份位置。</x:String>
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">未指定要壓縮的檔案。</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">找不到指定的路徑：{0}</x:String>
-  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">無法產生唯一的檔案名稱：{0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">儲存設定失敗：{0}</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">找不到已解壓的檔案。</x:String>
 
   <!-- Path validation messages -->
-  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">檔案路徑為空。</x:String>
-  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">路徑過長。最大允許 {0} 個字元。（目前：{1} 個字元）</x:String>
-  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">目錄路徑過長。最大允許 {0} 個字元。</x:String>
-  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">檔案名稱過長。最大允許 {0} 個字元。</x:String>
-  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">無法解析路徑：{0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">路徑包含無效字元：'{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">檔案名稱包含無效字元：'{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">驗證檔案名稱時發生錯誤：{0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">偵測到無效的路徑格式</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">路徑驗證失敗：{0}</x:String>
-  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">使用了保留的裝置名稱：{0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}' 受到系統保護，無法覆寫。請選擇其他位置。</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">正在壓縮...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">壓縮檔包含指向解壓目標之外的不安全項目：{0}</x:String>

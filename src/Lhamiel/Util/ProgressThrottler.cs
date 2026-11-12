@@ -9,7 +9,7 @@ internal sealed class ProgressThrottler
 {
     private int _lastPercentage = -1;
     private long _lastReportTime;
-    private readonly object _lock = new();
+    private readonly Lock _lock = new();
     private readonly int _reportIntervalMs;
 
     /// <param name="reportIntervalMs">報告間隔（ミリ秒）</param>

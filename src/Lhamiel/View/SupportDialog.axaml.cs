@@ -50,9 +50,8 @@ public partial class SupportDialog : Window
         MinHeight = CompactMinHeight;
         Height = CompactHeight;
         Title = App.Text("Support.Title");
-        AcrylicFallbackHelper.Attach(this);
-        DialogChrome.Attach(this, "DialogBody", "DialogActions");
-        AppIconManager.Apply(this);
+        // アクリル代替背景 → 共通枠 → アイコンの順で初期化する（順序は DialogChrome.InitializeDialog が固定）。
+        DialogChrome.InitializeDialog(this);
         Opened += (_, _) => _nameBox.Focus();
         Closed += (_, _) => _cancellation.Cancel();
     }

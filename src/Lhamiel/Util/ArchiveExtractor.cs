@@ -197,8 +197,8 @@ public static class ArchiveExtractor
         /// <summary>
         /// 展開時に使われた <c>CreateArchiveNameFolder</c> 設定のスナップショット値。
         /// 展開中にユーザーが設定を変更しても、完了後の「開くフォルダ」決定と矛盾しないよう
-        /// <see cref="FolderOpener.OpenExtractionResult"/> にここの値を渡す。
-        /// null の場合は現在の設定値が使われる（下位互換）。
+        /// <see cref="FolderOpener.OpenExtractionResultAsync"/> はここの値を最優先する。
+        /// null の場合は呼び出し側が操作の設定スナップショットから渡した値が使われる（現在設定は読み直さない）。
         /// </summary>
         public bool? CapturedCreateArchiveNameFolder { get; init; }
 
@@ -1535,7 +1535,7 @@ public static class ArchiveExtractor
 
             // 既存ファイルも上書きせず退避してから移動する。退避で宛先が空くため overwrite 指定は
             // 不要で、ReadOnly 属性の一時解除と巻き戻しも要らなくなる（ReadOnly ファイルも
-            // File.Move で退避できることを .NET 10 で確認済み）。
+            // File.Move で退避できる前提は ExtractionOverwriteAtomicityTests で検証している）。
             if (File.Exists(destFile))
                 MoveExistingToBackup(destFile, backupPaths, destDir);
 
@@ -2048,16 +2048,23 @@ public static class ArchiveExtractor
             Logger.Log($"アーカイブ展開完了: {archivePath} -> {outputPath}");
 
         }
-        catch (Exception ex) when (ex is EncryptionException or SevenZipException
+        catch (Exception ex) when ((ex is EncryptionException or SevenZipException
+                || (ex is OperationCanceledException { InnerException: null } libraryOce
+                    && !libraryOce.Data.Contains(PasswordCancelledOceDataKey)
+                    && !cancellationToken.IsCancellationRequested))
             && System.Threading.Volatile.Read(ref passwordAcquisitionCancelled) == 1)
         {
             // パスワード取得が中止された (ダイアログキャンセル / 再試行上限 / 構造解析上限による
             // 抑止 codex P2 #3386575724) 結果の失敗。reader.Save 周りの EncryptionException catch は
-            // open 時 (he=on はヘッダ復号のため open 中にパスワードコールバックが走る) を覆わない上、
+            // open 時 (he=on はヘッダ復号のため open 中にパスワードコールバックが走る) を覆わない。
             // open 時のキャンセルは CryptoGetTextPassword が SevenZipCode.Cancel を返すだけで
-            // cb.Exceptions に記録されず SevenZipException (IsNotArc) になる (EncryptionException
-            // ではない)。フラグが立っている = この失敗は中止に起因するので、種別を問わず通常の
-            // キャンセル扱いに変換する。一時ディレクトリは finally が掃除する。
+            // cb.Exceptions に記録されない。1llum1n4t1s.Sevenzip 1.0.93 以前はこれを
+            // SevenZipException (IsNotArc) として、1.0.94 以降は内部例外なしの
+            // OperationCanceledException として通知する (どちらも EncryptionException ではない)。
+            // フラグが立っている = この失敗は中止に起因するので、種別を問わずパスワード中止の
+            // マーカー付きキャンセルへ変換し、上位 (ArchiveProcessor) の判定を版に依存させない。
+            // 既にマーカー付きの OCE (reader.Save 周りで変換済み) と、利用者の CT による
+            // 本物のキャンセルは対象外にして下の OCE catch へ流す。一時ディレクトリは finally が掃除する。
             Logger.Log("パスワード取得が中止されたため展開を中止します");
             throw CreatePasswordCancelledOce(cancellationToken);
         }

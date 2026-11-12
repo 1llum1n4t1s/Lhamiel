@@ -193,7 +193,6 @@
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Error</x:String>
   <x:String x:Key="Text.Dialog.Info" xml:space="preserve">Information</x:String>
-  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">Warning</x:String>
   <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">Completed</x:String>
   <x:String x:Key="Text.Dialog.Details" xml:space="preserve">Details: </x:String>
 
@@ -349,22 +348,11 @@
   <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">Failed to move contents to the destination. The original contents remain in the backup location.</x:String>
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">No files specified for compression.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">The specified path was not found: {0}</x:String>
-  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">Unable to generate a unique file name: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Failed to save settings: {0}</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Extracted file not found.</x:String>
 
   <!-- Path validation messages -->
-  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">File path is empty.</x:String>
-  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">Path is too long. Maximum {0} characters allowed. (Current: {1} characters)</x:String>
-  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">Directory path is too long. Maximum {0} characters allowed.</x:String>
-  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">File name is too long. Maximum {0} characters allowed.</x:String>
-  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">Failed to parse path: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">Path contains an invalid character: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">File name contains an invalid character: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">An error occurred while validating the file name: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">Invalid path format detected</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">Path validation failed: {0}</x:String>
-  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">Reserved device name is used: {0}</x:String>
 
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">The output '{0}' is protected by the system and cannot be overwritten. Please choose a different location.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">Compressing...</x:String>

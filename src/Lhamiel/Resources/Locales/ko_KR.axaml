@@ -196,7 +196,6 @@
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">오류</x:String>
   <x:String x:Key="Text.Dialog.Info" xml:space="preserve">정보</x:String>
-  <x:String x:Key="Text.Dialog.Warning" xml:space="preserve">경고</x:String>
   <x:String x:Key="Text.Dialog.Completed" xml:space="preserve">완료</x:String>
   <x:String x:Key="Text.Dialog.Details" xml:space="preserve">상세 정보: </x:String>
 
@@ -352,22 +351,11 @@
   <x:String x:Key="Text.Error.MoveFailed" xml:space="preserve">내용을 대상으로 이동하지 못했습니다. 원본 내용은 백업 위치에 남아 있습니다.</x:String>
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">압축할 파일이 지정되지 않았습니다.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">지정된 경로를 찾을 수 없습니다: {0}</x:String>
-  <x:String x:Key="Text.Error.UniqueNameFailed" xml:space="preserve">고유한 파일 이름을 생성할 수 없습니다: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">설정 저장에 실패했습니다: {0}</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">압축 해제된 파일을 찾을 수 없습니다.</x:String>
 
   <!-- Path validation messages -->
-  <x:String x:Key="Text.Validation.PathEmpty" xml:space="preserve">파일 경로가 비어 있습니다.</x:String>
-  <x:String x:Key="Text.Validation.PathTooLong" xml:space="preserve">경로가 너무 깁니다. 최대 {0}자까지 허용됩니다. (현재: {1}자)</x:String>
-  <x:String x:Key="Text.Validation.DirTooLong" xml:space="preserve">디렉터리 경로가 너무 깁니다. 최대 {0}자까지 허용됩니다.</x:String>
-  <x:String x:Key="Text.Validation.FilenameTooLong" xml:space="preserve">파일 이름이 너무 깁니다. 최대 {0}자까지 허용됩니다.</x:String>
-  <x:String x:Key="Text.Validation.PathParseFailed" xml:space="preserve">경로를 분석할 수 없습니다: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathChar" xml:space="preserve">경로에 잘못된 문자가 포함되어 있습니다: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.InvalidFileNameChar" xml:space="preserve">파일 이름에 잘못된 문자가 포함되어 있습니다: '{0}' ({1})</x:String>
-  <x:String x:Key="Text.Validation.FileNameCheckFailed" xml:space="preserve">파일 이름 검증 중 오류가 발생했습니다: {0}</x:String>
-  <x:String x:Key="Text.Validation.InvalidPathFormat" xml:space="preserve">잘못된 경로 형식이 감지되었습니다</x:String>
   <x:String x:Key="Text.Validation.PathCheckFailed" xml:space="preserve">경로 검증에 실패했습니다: {0}</x:String>
-  <x:String x:Key="Text.Validation.ReservedDeviceName" xml:space="preserve">예약된 장치 이름이 사용되고 있습니다: {0}</x:String>
   <x:String x:Key="Text.Error.ProtectedDirectory" xml:space="preserve">'{0}'은(는) 시스템에 의해 보호되어 덮어쓸 수 없습니다. 다른 위치를 선택하세요.</x:String>
   <x:String x:Key="Text.Compressor.Processing" xml:space="preserve">압축 중...</x:String>
   <x:String x:Key="Text.Error.ZipSlipDetected" xml:space="preserve">압축 파일에 추출 대상 외부를 가리키는 안전하지 않은 항목이 포함되어 있습니다: {0}</x:String>

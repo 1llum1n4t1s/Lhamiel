@@ -5,7 +5,7 @@ using Microsoft.Win32.SafeHandles;
 namespace Lhamiel.Util;
 
 /// <summary>合法な出力ルートの別名を、置換されるファイル名を保った共通キーへ解決する。</summary>
-internal static class OutputPathIdentity
+internal static partial class OutputPathIdentity
 {
     internal static string GetCanonicalPath(string path)
     {
@@ -115,10 +115,14 @@ internal static class OutputPathIdentity
         return new IOException(message, new Win32Exception(error));
     }
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
-    private static extern SafeFileHandle CreateFileW(string fileName, uint access, uint share, IntPtr security,
+    // LibraryImport はエントリポイント名を補完しない（旧 ExactSpelling = true と同じ）ため W 版の名前をそのまま使う。
+    // 文字列は UTF-16（旧 CharSet.Unicode）、SetLastError も維持し、NativeError の GetLastWin32Error が引き続き有効。
+    [LibraryImport("kernel32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    private static partial SafeFileHandle CreateFileW(string fileName, uint access, uint share, IntPtr security,
         uint creation, uint flags, IntPtr template);
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
-    private static extern uint GetFinalPathNameByHandleW(SafeFileHandle handle, [Out] char[] path, uint length, uint flags);
+    // path は出力バッファ。旧定義と同じく [Out] で書き戻す。char 配列は StringMarshalling.Utf16 の指定で
+    // UTF-16 のまま（旧 CharSet.Unicode と同じ）受け渡す（指定しないと SYSLIB1051 で char を扱えない）。
+    [LibraryImport("kernel32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
+    private static partial uint GetFinalPathNameByHandleW(SafeFileHandle handle, [Out] char[] path, uint length, uint flags);
 }

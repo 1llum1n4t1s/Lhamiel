@@ -21,9 +21,8 @@ public partial class MessageDialog : Window
     public MessageDialog()
     {
         AvaloniaXamlLoader.Load(this);
-        Util.AcrylicFallbackHelper.Attach(this);
-        DialogChrome.Attach(this, "DialogBody", "DialogActions");
-        Util.AppIconManager.Apply(this);
+        // アクリル代替背景 → 共通枠 → アイコンの順で初期化する（順序は DialogChrome.InitializeDialog が固定）。
+        DialogChrome.InitializeDialog(this);
         _messageText = GetRequiredControl<TextBlock>("MessageText");
         _okButton = GetRequiredControl<Button>("OkButton");
         _yesButton = GetRequiredControl<Button>("YesButton");
