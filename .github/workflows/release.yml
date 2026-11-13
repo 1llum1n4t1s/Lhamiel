@@ -1,0 +1,78 @@
+name: Release
+
+# 署名付き Velopack リリースを GitHub Actions で作り、R2 (lhamiel.kagayoi.com) へ配信する。
+# - 署名: Sigilune (https://github.com/1llum1n4t1s/Sigilune) が Certum SimplySign のクラウド鍵で行う。
+#   本人の PC や SimplySign Desktop は不要。
+# - 起動: 手動 (workflow_dispatch)。/vava で版を上げて push した後に、リリースしたいブランチを指定して実行する。
+#   誤配信を避けるため push / tag では自動起動しない。
+# - 秘密情報: Environment "release" の Secrets だけを使う
+#   (SIGILUNE_EMAIL / SIGILUNE_TOTP_URI / CLOUDFLARE_API_TOKEN)。
+# 手順の本体は scripts/release-local.ps1 で、ローカル実行と同じ処理を通す。
+on:
+  workflow_dispatch:
+    inputs:
+      skip_upload:
+        description: 'ビルドと署名だけ行い、R2 へ配信しない (成果物は Actions に残る)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # 同じリポジトリのリリースは同時に走らせない (R2 の固定名ファイルを取り合わないように)。
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    environment: release
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: リポジトリをチェックアウト
+        # actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: .NET SDK をセットアップ
+        # actions/setup-dotnet@v6.1.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
+        with:
+          # SDK はリポジトリ直下の global.json で固定し、ローカルと CI の暗黙 ILCompiler 版を揃える。
+          global-json-file: global.json
+
+      - name: Sigilune を導入
+        uses: 1llum1n4t1s/Sigilune@v1
+
+      - name: ビルド・署名・配信
+        env:
+          SIGILUNE_EMAIL: ${{ secrets.SIGILUNE_EMAIL }}
+          SIGILUNE_TOTP_URI: ${{ secrets.SIGILUNE_TOTP_URI }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SKIP_UPLOAD: ${{ inputs.skip_upload }}
+        run: |
+          $work = Join-Path ([IO.Path]::GetTempPath()) "Codex\Lhamiel\release-$env:GITHUB_RUN_ID"
+          "WORK_DIR=$work" >> $env:GITHUB_ENV
+          $arguments = @{ WorkDirectory = $work }
+          if ($env:SKIP_UPLOAD -eq 'true') { $arguments.SkipUpload = $true }
+          try {
+            & ./scripts/release-local.ps1 @arguments
+          } finally {
+            # ランナー上の Certum セッションを残さない。
+            sigilune logout | Out-Null
+          }
+
+      - name: 成果物をアップロード
+        if: always()
+        # actions/upload-artifact@v7.0.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: lhamiel-release-packages
+          path: ${{ env.WORK_DIR }}/packages/*
+          if-no-files-found: warn
+          retention-days: 7

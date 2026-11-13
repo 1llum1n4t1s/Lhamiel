@@ -96,9 +96,12 @@ $sdkBin = Get-ChildItem -LiteralPath $windowsKitsBin -Directory |
     Select-Object -First 1
 if (-not $sdkBin) { throw 'Windows SDK の bin ディレクトリが見つかりません' }
 $makeAppx = Join-Path $sdkBin.FullName 'x64\makeappx.exe'
-$signTool = Join-Path $sdkBin.FullName 'x64\signtool.exe'
-foreach ($tool in $makeAppx, $signTool) {
-    if (-not (Test-Path -LiteralPath $tool)) { throw "Windows SDK ツールが見つかりません: $tool" }
+if (-not (Test-Path -LiteralPath $makeAppx)) { throw "Windows SDK ツールが見つかりません: $makeAppx" }
+
+# 署名は Sigilune（Certum クラウド鍵を signtool /dlib で使う）で行う。ビルド前に場所を確定して早く失敗させる。
+if (-not $SkipSigning) {
+    . (Join-Path $PSScriptRoot 'Sigilune.Common.ps1')
+    $sigilune = Resolve-SigiluneExe
 }
 
 Write-Host "== Shell 拡張ビルド: $Runtime ==" -ForegroundColor Cyan
@@ -131,8 +134,7 @@ $nativeDll = Join-Path $nativeOutput 'Lhamiel.ShellExtension.dll'
 if (-not (Test-Path -LiteralPath $nativeDll)) { throw "Shell 拡張 DLL が見つかりません: $nativeDll" }
 
 if (-not $SkipSigning) {
-    & $signTool sign /n $CertificateSubjectName /fd SHA256 /td SHA256 /tr http://time.certum.pl $nativeDll
-    if ($LASTEXITCODE -ne 0) { throw "Shell 拡張 DLL の署名に失敗しました (exit $LASTEXITCODE)" }
+    Invoke-SigiluneSign -SigiluneExe $sigilune -Path $nativeDll -CertificateSubjectName $CertificateSubjectName
 }
 
 $versionNode = ([xml](Get-Content (Join-Path $repoRoot 'Directory.Build.props') -Raw)).SelectSingleNode('/Project/PropertyGroup/Version')
@@ -161,8 +163,7 @@ try { $packageManifest.Save($writer) } finally { $writer.Dispose() }
 if ($LASTEXITCODE -ne 0) { throw "sparse MSIX の生成に失敗しました (exit $LASTEXITCODE)" }
 
 if (-not $SkipSigning) {
-    & $signTool sign /n $CertificateSubjectName /fd SHA256 /td SHA256 /tr http://time.certum.pl $packageOutput
-    if ($LASTEXITCODE -ne 0) { throw "sparse MSIX の署名に失敗しました (exit $LASTEXITCODE)" }
+    Invoke-SigiluneSign -SigiluneExe $sigilune -Path $packageOutput -CertificateSubjectName $CertificateSubjectName
 }
 
 $assetDirectory = Join-Path $publishPath 'Assets\Lhamiel'

@@ -4,13 +4,15 @@
 
 Lhamiel の Setup.exe / Update.exe / 同梱バイナリに Authenticode 署名を付与し、Windows SmartScreen 警告を解消するための運用ガイド。
 
+> **現在の署名経路（2026-11 以降）**: 署名は [Sigilune](https://github.com/1llum1n4t1s/Sigilune) で行う。Certum のクラウド鍵を signtool の `/dlib` から直接使うため、SimplySign Desktop の接続・スマホでのコード入力・`--signParams` は不要になった。手順の正本は `scripts/release-local.ps1` と `scripts/Sigilune.Common.ps1`、および AGENTS.md の Code signing 項。以下の証明書の取得・本人確認・SimplySign アカウントの準備は引き続き有効だが、SimplySign Desktop と signtool `/sha1` を使う署名手順は旧経路の記録として残している。
+
 ### 採用構成
 
 | 項目 | 採用 | 理由 |
 |------|------|------|
 | 証明書ベンダー | **Certum (Open Source Code Signing)** | 個人開発者・OSS プロジェクト向け最安帯 (€49/年) |
 | 配信形態 | **SimplySign Cloud** | USB トークン不要、IDnow オンライン本人確認で即日〜翌営業日開始可能 |
-| 署名方式 | **ローカル署名・ローカル R2 配信** (`scripts/release-local.ps1`、CI は署名・配信しない) | 鍵が手元から動かず最安全、運用負荷も最小 |
+| 署名方式 | **GitHub Actions で Sigilune 署名・R2 配信** (`.github/workflows/release.yml` が `scripts/release-local.ps1` を実行) | 鍵はクラウドから動かず、本人の PC を使わずにリリースできる |
 | 署名ツール | **signtool.exe** (Windows SDK 同梱) | SimplySign Desktop 経由で Windows Cert Store に登録された証明書を直接利用 |
 | 対象バイナリ | Setup.exe / Update.exe / Lhamiel.exe / 同梱 DLL | `vpk pack` が自動で全 PE を署名 |
 | タイムスタンプ | `http://time.certum.pl` (RFC 3161) | Certum 公式 TSA |
@@ -181,15 +183,18 @@ Get-AuthenticodeSignature releases/win/Lhamiel-win-Setup.exe | Format-List
 
 ### 現状
 
-`vpk pack` 時点で署名する必要があるが、SimplySign Desktop は GUI アプリで GitHub Actions の `windows-latest` runner では動かない。
-そのため旧 CI リリース workflow (`velopack-release.yml`) は廃止済みで、公式リリースは `scripts/release-local.ps1` をローカル実行して作る。
+SimplySign Desktop は GUI アプリで GitHub Actions の runner では動かないが、Sigilune は Certum のクラウドへ直接接続して
+signtool `/dlib` で署名するため、runner 上でも署名できる。公式リリースは `.github/workflows/release.yml`（手動起動）で作る。
 
 ```text
-release-local.ps1 (ローカル):
-  Native AOT publish (win-x64 / win-arm64) → vpk pack (--signParams で署名)
+release.yml (GitHub Actions, Environment "release"):
+  1llum1n4t1s/Sigilune@v1 で導入 → scripts/release-local.ps1 を実行
+release-local.ps1 (CI・ローカル共通):
+  Native AOT publish (win-x64 / win-arm64) → vpk pack (--signTemplate で Sigilune 署名)
   → 署名検証 → R2 アップロード (R2Distribution.Common.ps1) → 固定名 URL のキャッシュパージ → 旧版クリーンアップ
 ```
 
+- 資格情報は Environment `release` の Secrets（`SIGILUNE_EMAIL` / `SIGILUNE_TOTP_URI` / `CLOUDFLARE_API_TOKEN`）だけに置く。TOTP の登録情報を持つため、Secrets を読めるワークフローを増やさない。
 - CI (`.github/workflows/dotnet-build.yml` / `build.yml`) は PR の未署名ビルド・テスト検証だけを行い、署名・配信はしない。
 - 実行コマンドと再開手順は [AGENTS.md](../AGENTS.md#cicd)、作業ディレクトリ・検証・保持方針は [DESIGN.md](../DESIGN.md#local-signed-releases-to-r2) を参照する。
 

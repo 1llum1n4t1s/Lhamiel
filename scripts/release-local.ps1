@@ -1,13 +1,14 @@
 # release-local.ps1 — ローカル署名付き Velopack リリース
 #
-# SimplySign (Certum クラウド署名) は Desktop 接続 + スマホトークンが必要で
-# GitHub Actions からは署名できないため、リリースは本スクリプトでローカル実行する。
-# 旧 CI リリース (.github/workflows/velopack-release.yml) はこのスクリプトに置換済み。
+# 署名は Sigilune (Certum SimplySign のクラウド鍵を signtool /dlib で使う CLI) で行う。
+# 通常のリリースは GitHub Actions の .github/workflows/release.yml (手動起動・Environment "release") が
+# 本スクリプトを実行する。ローカル実行も同じ手順で動き、検証や再開に使う。
 #
 # 前提:
-#   - SimplySign Desktop が接続済み (証明書が CurrentUser\My に見えていること)
+#   - Sigilune を使えること (scripts/Sigilune.Common.ps1 参照)。
+#     ローカルは `sigilune setup` で Certum アカウントを登録済み、CI は SIGILUNE_EMAIL / SIGILUNE_TOTP_URI を渡す
 #   - Directory.Build.props の <Version> がリリースしたいバージョンになっていること (/vava 済み)
-#   - D:\Dev\Secret\secrets.json に cloudflare.api_token があること
+#   - 環境変数 CLOUDFLARE_API_TOKEN (CI)、なければ D:\Dev\Secret\secrets.json の cloudflare.api_token (ローカル)
 #
 # 使い方:
 #   pwsh scripts/release-local.ps1                # フルリリース (build + sign + upload + cleanup)
@@ -67,9 +68,8 @@ $ZoneName = 'kagayoi.com'           # Cloudflare zone (apex)。$BaseUrl の Host
                                      # apex / co.jp 等の複合 TLD で誤判定するため定数で固定する
 $AccountId = '10901bfadbf1005164774a7350082985'
 $SecretsPath = 'D:\Dev\Secret\secrets.json'
+# 署名者の CN。証明書の年次更新で thumbprint が変わっても同じ値で照合できる。
 $CertSubjectName = 'Open Source Developer Yuichiro Shinozaki'
-# /n (Subject 名) で選択: 証明書の年次更新で thumbprint が変わっても動く
-$SignParams = "/n `"$CertSubjectName`" /fd SHA256 /td SHA256 /tr http://time.certum.pl"
 
 $RuntimeMatrix = @{
     'win-x64'   = @{ PlatformTarget = 'x64';   Channel = 'win' }
@@ -140,13 +140,16 @@ Import-Module $developerShell -ErrorAction Stop
 
 Write-Host "バージョン: $version"
 
-# SimplySign 接続確認 (証明書が見えなければ署名できないので最初に落とす)
-$cert = Get-ChildItem Cert:\CurrentUser\My |
-    Where-Object { $_.Subject -like "CN=$CertSubjectName*" -and $_.NotAfter -gt (Get-Date) }
-if (-not $cert) {
-    throw "署名証明書 (CN=$CertSubjectName) が見つかりません。SimplySign Desktop を起動してトークンでログインしてください。"
+# 署名の準備 (Sigilune の場所とクラウドへのログインを、ビルド前に確認して早く落とす)。
+# 配信だけを再開する -UploadOnly では署名しないためログインしない。
+. (Join-Path $PSScriptRoot 'Sigilune.Common.ps1')
+if (-not $UploadOnly) {
+    $Sigilune = Resolve-SigiluneExe
+    Connect-Sigilune -SigiluneExe $Sigilune
+    # Velopack はファイルごとに別プロセスで署名テンプレートを実行する。Sigilune はログインを共有し、
+    # 署名後に有効性・署名者・タイムスタンプを検証して失敗なら非0で終わる。
+    $SignTemplate = "`"$Sigilune`" sign {{file}}"
 }
-Write-Host "署名証明書: $($cert.Subject) (期限 $($cert.NotAfter.ToString('yyyy-MM-dd')))"
 
 # vpk を固定バージョンで用意
 $vpkInstalled = (dotnet tool list --global | Select-String -SimpleMatch 'vpk') -match [regex]::Escape($VpkVersion)
@@ -161,9 +164,12 @@ if (-not $vpkInstalled) {
 # R2 アップロード後の途中失敗 (新ファイルだけ R2 に乗ってパージ・クリーンアップが
 # 走らない半端なリリース) を避け、何もアップロードしていない時点で fail fast する
 if (-not $SkipUpload) {
-    $secrets = Get-Content $SecretsPath -Raw | ConvertFrom-Json
-    if (-not $secrets.cloudflare.api_token) { throw "secrets.json に cloudflare.api_token が見つかりません" }
-    $env:CLOUDFLARE_API_TOKEN = $secrets.cloudflare.api_token
+    # CI では Environment "release" の Secret が環境変数で渡る。ローカルは secrets.json から必要なキーだけ読む。
+    if (-not $env:CLOUDFLARE_API_TOKEN) {
+        $secrets = Get-Content $SecretsPath -Raw | ConvertFrom-Json
+        if (-not $secrets.cloudflare.api_token) { throw "secrets.json に cloudflare.api_token が見つかりません" }
+        $env:CLOUDFLARE_API_TOKEN = $secrets.cloudflare.api_token
+    }
     $env:CLOUDFLARE_ACCOUNT_ID = $AccountId
 
     $cfHeaders = @{ Authorization = "Bearer $($env:CLOUDFLARE_API_TOKEN)" }
@@ -252,7 +258,7 @@ foreach ($runtime in $Runtimes) {
             --channel $config.Channel `
             --runtime $runtime `
             --shortcuts 'StartMenuRoot,Desktop' `
-            --signParams $SignParams
+            --signTemplate $SignTemplate
     }
 }
 

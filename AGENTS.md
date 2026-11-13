@@ -43,7 +43,7 @@ dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r win-arm64 -p:PlatformTar
 # Run the app
 dotnet run --project src/Lhamiel/Lhamiel.csproj
 
-# 署名付きローカルインストーラー作成（配信なし。SimplySign 接続が必要）
+# 署名付きローカルインストーラー作成（配信なし。Sigilune の導入・登録が必要）
 pwsh scripts/release-local.ps1 -SkipUpload -Runtimes win-x64 -WorkDirectory <空の絶対Tempパス>
 # → 指定作業ルートの packages/Lhamiel-win-Setup.exe が生成される
 ```
@@ -104,7 +104,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - **展開パスの安全境界** — `ArchiveReader.Save` を追加・移動するときは、書き込み開始前に必ず全 `item.FullName` を `ArchiveExtractor.ValidateArchiveEntryPaths` へ通す。出力パスには `RawName` を使わず、予約デバイス名・末尾空白/ピリオド・境界外パスを拒否する。展開先や一時/退避フォルダーの属性走査では `ReparsePoint` を辿らない（詳細は `DESIGN.md` の不変条件を参照）
 - **Logger** — `SuperLightLogger` File Target。ログ保存先は [README.md](README.md#トラブルシューティング)。ログ経路で `Environment.UserName` を呼ばない（RDP 等で無期限ブロックする）。`MaskUserPath` は USERNAME とプロファイルフォルダ名の事前コンパイル済みパターンを使う。
 - **Velopack** — `SimpleWebSource` で `https://lhamiel.kagayoi.com`（R2）から更新し、通常リリースは R2 のみに配信する。廃止済み `lhamiel.1llum1n4t1.com` は残さない。旧 `GithubSource` クライント用の Kagayoi 版 GitHub Releases 踏み台は削除せず永続保持し、継続併用配信はしない。`Program.cs --update-check` はログイン時のサイレント経路、`App.Check4Update` は起動時設定と手動操作に使う UI 経路。
-- **Code signing (Authenticode)** — 全リリースバイナリ（exe・Setup・Portable を含む）を Certum Open Source Code Signing in the cloud で署名する。SimplySign Desktop のログインセッションが必要なため `scripts/release-local.ps1` をローカル実行する。証明書更新で thumbprint が変わるため Subject 名を使う。単発署名: `signtool sign /n "Open Source Developer Yuichiro Shinozaki" /fd SHA256 /td SHA256 /tr http://time.certum.pl <file>`（bash では `MSYS2_ARG_CONV_EXCL='*'`）。
+- **Code signing (Authenticode)** — 全リリースバイナリ（exe・Setup・Portable を含む）を Certum Open Source Code Signing in the cloud で署名する。署名は [Sigilune](https://github.com/1llum1n4t1s/Sigilune)（クラウド鍵を signtool `/dlib` で使う CLI。SimplySign Desktop・手入力コード不要）で行い、共通関数は `scripts/Sigilune.Common.ps1`（実行ファイルは `SIGILUNE_EXE` → PATH → 既定 `%USERPROFILE%\.local\Sigilune\bin\sigilune.exe`）。通常のリリースは `.github/workflows/release.yml`（手動起動・Environment `release` の `SIGILUNE_EMAIL` / `SIGILUNE_TOTP_URI` / `CLOUDFLARE_API_TOKEN`）が `scripts/release-local.ps1` を実行し、ローカル実行は検証・再開に使う。Velopack は `--signTemplate "<sigilune> sign {{file}}"`、Shell 拡張 DLL と sparse MSIX は `Invoke-SigiluneSign` で署名する。署名者は証明書更新で thumbprint が変わるため CN で照合する。単発署名: `sigilune sign <file>`（署名後に有効性・署名者・タイムスタンプを検証）。
 - **AllowUnsafeBlocks** for P/Invoke (COM interop in `ShortcutCreator`, `FileIconHelper`, `CrashHandler`)
 - **Acrylic blur / 可読性レイヤー** — 全ダイアログで `ExperimentalAcrylicBorder` + `ExtendClientAreaToDecorationsHint`。白いデスクトップ背景が透けても文字コントラストを保つため、root `Panel` の子は「アクリル境界 → `Brush.Window` / `Opacity=0.5` / `IsHitTestVisible=false` のスクリム → コンテンツ」の順を維持する（`AcrylicFallbackHelper` が直接のアクリル子を探索する契約も守る）。補助文字はテーマ別 `FG2` を使い、個別ウィンドウで薄い `TintOpacity` を再導入しない
 - Async/await + CancellationToken throughout all I/O operations
@@ -131,15 +131,18 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 - **CodeQL**: `.github/workflows/codeql.yml` — C# security analysis on PR + weekly
 - **Dependabot**: `.github/dependabot.yml` — NuGet weekly + github-actions weekly
 
-### ローカルリリースの実行
+### リリースの実行
+
+通常は GitHub Actions で公開する。/vava で版を上げて push した後、`gh workflow run release.yml --ref <ブランチ>` で起動し、`gh run watch` で完了を確認する（`-f skip_upload=true` は配信せず署名済み成果物だけを Actions に残す）。ワークフローは `scripts/release-local.ps1` を実行するため、ビルド・検証・配信の契約はローカル実行と同じ。CI の Certum セッションはランナー上の一時領域だけに置き、終了時に `sigilune logout` する。以下はローカルで実行・再開する場合の手順。
 
 R2 配布は PowerShell 7.2 以降と同梱の `scripts/R2Distribution.Common.ps1` を使う。配布に Node.js・pnpm・Wrangler は不要（製品の JS ビルド要件は別途維持）。署名・転送・検証の正本は同梱の `scripts/R2Transfer.Core.cs` とし、PS helper は公開関数の互換入口とする。更新時は中核と使用する入口を同じディレクトリへ同梱する。固定名は `no-cache, must-revalidate`、バージョン付き成果物は不変として 1 年キャッシュし、payload を先、assets・RELEASES・releases を最後に送信する。
 
-公開依頼時は、リポジトリルートで有効な署名証明書を事前確認し、成功した場合だけリリースを実行する。失敗時は SimplySign Desktop へのログインを案内し、署名を省略して続行しない。配信しない検証と再開の引数は、上記のコマンドを参照する。
+公開依頼時は、リポジトリルートで Sigilune のクラウドログインを事前確認し、成功した場合だけリリースを実行する（`release-local.ps1` もビルド前に同じ確認を行う）。失敗時は `sigilune status` で登録を確認するよう案内し、ログインを自動再試行せず、署名を省略して続行しない。配信しない検証と再開の引数は、上記のコマンドを参照する。
 
 ```powershell
-pwsh -NoProfile -Command 'if (-not (Get-ChildItem Cert:\CurrentUser\My | Where-Object { $_.Subject -like "CN=Open Source Developer Yuichiro Shinozaki*" -and $_.NotAfter -gt (Get-Date) })) { exit 1 }'
-if ($LASTEXITCODE -eq 0) { pwsh -NoProfile -File scripts/release-local.ps1 } else { throw '署名証明書が見つからないよ。SimplySign Desktop を起動してトークンでログインしてから /vava を再実行してね' }
+$sigilune = if ($env:SIGILUNE_EXE) { $env:SIGILUNE_EXE } else { Join-Path $env:USERPROFILE '.local\Sigilune\bin\sigilune.exe' }
+& $sigilune login
+if ($LASTEXITCODE -eq 0) { pwsh -NoProfile -File scripts/release-local.ps1 } else { throw 'Sigilune でクラウドにログインできなかったよ。sigilune status で登録を確認してから /vava を再実行してね' }
 ```
 
 ## Testing
