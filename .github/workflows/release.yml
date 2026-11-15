@@ -3,12 +3,16 @@ name: Release
 # 署名付き Velopack リリースを GitHub Actions で作り、R2 (lhamiel.kagayoi.com) へ配信する。
 # - 署名: Sigilune (https://github.com/1llum1n4t1s/Sigilune) が Certum SimplySign のクラウド鍵で行う。
 #   本人の PC や SimplySign Desktop は不要。
-# - 起動: 手動 (workflow_dispatch)。/vava で版を上げて push した後に、リリースしたいブランチを指定して実行する。
-#   誤配信を避けるため push / tag では自動起動しない。
+# - 起動: release/** ブランチへの push (/vava が release/<version> を push すると始まる)。
+#   手動実行 (workflow_dispatch) は、同じ release/<version> を指定した再実行にだけ使う。
+#   タグは使わない。Environment "release" は release/* だけを許可する。
 # - 秘密情報: Environment "release" の Secrets だけを使う
 #   (SIGILUNE_EMAIL / SIGILUNE_TOTP_URI / CLOUDFLARE_API_TOKEN)。
 # 手順の本体は scripts/release-local.ps1 で、ローカル実行と同じ処理を通す。
 on:
+  push:
+    branches:
+      - 'release/**'
   workflow_dispatch:
     inputs:
       skip_upload:
@@ -47,7 +51,7 @@ jobs:
           global-json-file: global.json
 
       - name: Sigilune を導入
-        uses: 1llum1n4t1s/Sigilune@v1
+        uses: 1llum1n4t1s/Sigilune@c12f5c92398c3648cf19651f5b80796efdfdd06a # v1.1.2
 
       - name: ビルド・署名・配信
         env:
