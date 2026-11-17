@@ -122,7 +122,8 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 
 ## CI/CD
 
-- **PR builds**: `.github/workflows/dotnet-build.yml` — restore, build, test + code coverage on every PR。build（再利用 `build.yml`）と test job は互いの成果物を使わないため並列に実行し、同じ ref の古い実行は `concurrency` で打ち切る（`release/**` は対象外）。test job に `needs: [build]` を戻さない
+- **PR・main の検証**: `.github/workflows/dotnet-build.yml` は main への push・全 PR・手動で動き、build（再利用 `build.yml`）と test（再利用 `test.yml`、restore・Release テスト・カバレッジ）を並列に実行する。互いの成果物を使わないため test に `needs: [build]` を戻さない。同じ ref の古い実行は `concurrency` で打ち切る。`test.yml` に `concurrency` を置かない（呼び出し側の group と衝突して待ち合わせになる）。
+- **配信前のテスト**: `release.yml` は `test.yml` を `test` job として先に呼び、`release` job は `needs: test` で署名・R2 配信より前にテストが通ることを要求する。失敗したら配信しない。
 - 製品ページの配信は兄弟リポジトリの `../Web/deploy/deploy-lp.ps1` を使う。公開ホスト・更新ファイルの既存経路を維持する。
 - **RID 別リリース出力**: `release-local.ps1` の x64 / ARM64 `dotnet publish` は RID ごとの `--artifacts-path` を必須とし、ProjectReference 先を含む共通 `bin/obj` の再利用による異アーキテクチャ参照（CS8012）を防ぐ。
 - **リリースの再開**: リポジトリルートで `pwsh scripts/release-local.ps1 -ReusePublish -WorkDirectory <既存の絶対Tempパス>` を使うと、指定作業ルートの `publish-<RID>/` を検証して再パッケージし、exe がない RID はビルドする。配信だけ再開する場合は同じ作業ルートを `pwsh scripts/release-local.ps1 -UploadOnly -WorkDirectory <既存の絶対Tempパス>` に渡す。通常実行は空の作業ルートを要求し、省略時は作成先を表示する。再開時に `-WorkDirectory` は必須。`-Runtimes win-x64` / `win-arm64` で対象を限定し、`-SkipUpload` は配信前で終了する。保存場所・検証条件・再開の境界は [DESIGN.md](DESIGN.md#local-signed-releases-to-r2) を参照する。

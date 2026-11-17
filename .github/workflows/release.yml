@@ -29,7 +29,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # 署名・R2 配信より前に回帰テストを通す。失敗したら release job は動かない。
+  test:
+    name: テスト実行
+    uses: ./.github/workflows/test.yml
+
   release:
+    needs: test
     runs-on: windows-latest
     timeout-minutes: 90
     environment: release

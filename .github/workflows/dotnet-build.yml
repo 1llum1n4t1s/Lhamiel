@@ -1,78 +1,25 @@
 name: .NET ビルド
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   pull_request:
 
 permissions:
   contents: read
 
-# 同じ ref の古い実行は新しい push で打ち切る。release/** は検証の途中打ち切りを避けるため対象外。
+# 同じ ref の古い実行は新しい push で打ち切る。
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+  cancel-in-progress: true
 
 jobs:
   build:
     name: Build
     uses: ./.github/workflows/build.yml
-    if: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
 
+  # build（公開物の検査）と test は互いの成果物を使わないため並列に走らせる。
   test:
     name: テスト実行
-    # test は build の成果物（artifact）を使わず、自前で locked restore → --no-restore でテストするため、
-    # build と並列に走らせて壁時計を短縮する。従来は needs により release/** でも build と同時に skip されていたので、同じ条件を維持する。
-    if: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
-    runs-on: windows-latest
-    steps:
-      - name: リポジトリをチェックアウト
-        # actions/checkout@v7.0.1
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - name: Verify R2 transfer fixtures
-        shell: pwsh
-        run: |
-          & (Join-Path $env:GITHUB_WORKSPACE 'tests/R2Transfer/Run.ps1') -WorkRoot (Join-Path $env:RUNNER_TEMP 'r2-transfer-check')
-      - name: .NET SDK をセットアップ
-        # actions/setup-dotnet@v6.1.0
-        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73
-        with:
-          # ビルドに使う SDK はリポジトリ直下の global.json で固定し、ローカルと CI の暗黙 ILCompiler 版を揃える。
-          global-json-file: global.json
-
-      # 7z.dll は 1llum1n4t1s.Sevenzip NuGet パッケージに同梱済み。
-      # dotnet test が実行時に NuGet キャッシュから解決する。
-
-      # 追跡対象 packages.lock.json は Kagayoi.Support をパッケージ参照する構成の正本。
-      # CI は兄弟リポジトリを持たないが、ローカルと同じ復元グラフを明示して lockfile との不一致を失敗にする。
-      # RID 付き publish（build.yml）は ARM64 で lock の RID セクションを書き換えるため locked-mode を掛けない。
-      - name: 依存関係を復元（lockfile 固定）
-        run: dotnet restore Lhamiel.slnx -p:KagayoiSupportClientUsePackage=true --locked-mode
-
-      - name: テスト実行（カバレッジ付き）
-        run: >-
-          dotnet test Lhamiel.slnx
-          --no-restore
-          --configuration Release
-          --verbosity normal
-          --logger "trx;LogFileName=test-results.trx"
-          --collect:"XPlat Code Coverage"
-          --settings src/Lhamiel.Tests.Unit/coverlet.runsettings
-
-      - name: テスト結果をアップロード
-        # actions/upload-artifact@v7.0.2
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always()
-        with:
-          name: test-results-Release
-          path: '**/TestResults/*.trx'
-          retention-days: 1
-
-      - name: カバレッジレポートをアップロード
-        # actions/upload-artifact@v7.0.2
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: always()
-        with:
-          name: coverage-report
-          path: '**/TestResults/**/coverage.cobertura.xml'
-          retention-days: 7
+    uses: ./.github/workflows/test.yml
