@@ -57,7 +57,7 @@ jobs:
           global-json-file: global.json
 
       - name: Sigilune を導入
-        uses: 1llum1n4t1s/Sigilune@05006dcad019e5e863a08985b9208d72004f1b5f # v1.1.3
+        uses: 1llum1n4t1s/Sigilune@b2142b4d1084ec2a5b0a18e83cea7e886406b389 # v1.1.4
 
       - name: ビルド・署名・配信
         env:
