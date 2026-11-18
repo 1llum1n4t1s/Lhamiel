@@ -130,7 +130,7 @@ Set-Content -Path "$env:USERPROFILE/.lhamiel_sign_thumbprint" -Value "<取得し
 1. **SimplySign Desktop を起動** (タスクトレイに常駐)
    - 初回起動時のみ PIN 入力 (Windows ログオン中はキャッシュ)
 2. **`/vava` 実行**
-   - version bump → publish → vpk pack (署名込み) → R2 upload (`scripts/release-local.ps1`) → release ブランチ push まで自動
+   - version bump → publish → vpk pack (署名込み) → R2 upload (`scripts/release-local.ps1`) → 版タグ `v<version>` の push まで自動（配信は CI の `release.yml` がタグの push で行う）
 3. **スマホ通知承認** (1〜数回)
    - vpk pack 中、署名 1 回ごとにスマホにプッシュ通知が来る
    - `--signParallel 1` 設定なら都度承認、まとめ承認モード設定すれば 1 回で済む
@@ -184,10 +184,11 @@ Get-AuthenticodeSignature releases/win/Lhamiel-win-Setup.exe | Format-List
 ### 現状
 
 SimplySign Desktop は GUI アプリで GitHub Actions の runner では動かないが、Sigilune は Certum のクラウドへ直接接続して
-signtool `/dlib` で署名するため、runner 上でも署名できる。公式リリースは `.github/workflows/release.yml`（手動起動）で作る。
+signtool `/dlib` で署名するため、runner 上でも署名できる。公式リリースは `.github/workflows/release.yml`（版タグ `v<version>` の push で起動し、やり直しだけ手動起動）で作る。
 
 ```text
 release.yml (GitHub Actions, Environment "release"):
+  guard (Secrets なし: タグ・軽量タグ・main の祖先・Directory.Build.props の版との一致) の後、
   1llum1n4t1s/Sigilune@v1 で導入 → scripts/release-local.ps1 を実行
 release-local.ps1 (CI・ローカル共通):
   Native AOT publish (win-x64 / win-arm64) → vpk pack (--signTemplate で Sigilune 署名)

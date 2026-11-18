@@ -134,7 +134,7 @@ Adding a new locale: create `Resources/Locales/{xx_YY}.axaml` → add `ResourceI
 
 ### リリースの実行
 
-通常は GitHub Actions で公開する。/vava で版を上げて push した後、`gh workflow run release.yml --ref <ブランチ>` で起動し、`vigilia watch HEAD` で完了を確認する（REST枠を使わずGraphQLで取得し、同じ対象は全セッションでキャッシュ共有されるため複数セッションが同時に見てよい。`-f skip_upload=true` は配信せず署名済み成果物だけを Actions に残す）。ワークフローは `scripts/release-local.ps1` を実行するため、ビルド・検証・配信の契約はローカル実行と同じ。CI の Certum セッションはランナー上の一時領域だけに置き、終了時に `sigilune logout` する。以下はローカルで実行・再開する場合の手順。
+通常は GitHub Actions で公開する。/vava が版を上げた main へ軽量タグ `v<版>` を付けて push すると `release.yml` が自動で起動する（`guard` ジョブが軽量タグ・main の祖先・`Directory.Build.props` の版との一致を確かめる。やり直しは `gh workflow run release.yml --ref v<版>`）。`vigilia watch HEAD` で完了を確認する（REST枠を使わずGraphQLで取得し、同じ対象は全セッションでキャッシュ共有されるため複数セッションが同時に見てよい。`-f skip_upload=true` は配信せず署名済み成果物だけを Actions に残す）。ワークフローは `scripts/release-local.ps1` を実行するため、ビルド・検証・配信の契約はローカル実行と同じ。CI の Certum セッションはランナー上の一時領域だけに置き、終了時に `sigilune logout` する。以下はローカルで実行・再開する場合の手順。
 
 R2 配布は PowerShell 7.2 以降と同梱の `scripts/R2Distribution.Common.ps1` を使う。配布に Node.js・pnpm・Wrangler は不要（製品の JS ビルド要件は別途維持）。署名・転送・検証の正本は同梱の `scripts/R2Transfer.Core.cs` とし、PS helper は公開関数の互換入口とする。更新時は中核と使用する入口を同じディレクトリへ同梱する。固定名は `no-cache, must-revalidate`、バージョン付き成果物は不変として 1 年キャッシュし、payload を先、assets・RELEASES・releases を最後に送信する。
 
