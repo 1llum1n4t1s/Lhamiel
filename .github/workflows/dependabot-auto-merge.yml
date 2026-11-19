@@ -11,19 +11,15 @@ on:
   status:
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
-  actions: read
-  checks: read
-  statuses: read
+permissions: {}
 
 concurrency:
   group: dependabot-auto-merge-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
-  auto-merge:
+  # 判定は読み取り権限のジョブで行い、書き込み権限はマージだけを行うジョブに限る。
+  verify:
     if: >-
       github.repository_owner == '1llum1n4t1s' &&
       (github.event_name != 'pull_request_target' || github.event.pull_request.user.id == 49699333) &&
@@ -31,11 +27,21 @@ jobs:
       (github.event_name != 'check_run' || github.event.check_run.app.slug != 'github-actions')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+      checks: read
+      statuses: read
+    outputs:
+      candidates: ${{ steps.verify.outputs.candidates }}
     steps:
-      - name: Verify CI and merge Dependabot updates
+      - name: Verify CI and collect Dependabot updates
+        id: verify
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           REQUIRED_WORKFLOWS: '[".github/workflows/dotnet-build.yml"]'
+          EXCLUDED_PATHS: '[]'
         with:
           script: |
             // GitHub Actions の信頼済み既定ブランチ上で実行する。PR のコードは実行しない。
@@ -45,6 +51,8 @@ jobs:
             const branch = repository.default_branch;
             const botId = 49699333;
             const report = [];
+            const candidates = [];
+            const excluded = JSON.parse(process.env.EXCLUDED_PATHS || '[]');
             const held = (pr, reason) => {
               core.info(`#${pr.number}: ${reason}`);
               report.push(`- #${pr.number}: ${reason}`);
@@ -72,7 +80,7 @@ jobs:
                 const changed = file.patch.split('\n').filter(line => /^[+-]/.test(line) && !/^\+\+\+|^---/.test(line));
                 return changed.length > 0 && changed.every(line => /^[+-]\s*(?:FROM\s|image:\s)/i.test(line));
               }
-              const manifest = /(^|\/)(?:Package\.swift|Package\.resolved|vcpkg\.json|vcpkg-configuration\.json|rust-toolchain(?:\.toml)?|Directory\.Build\.props|package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|yarn\.lock|bun\.lockb?|Cargo\.toml|Cargo\.lock|Gemfile|Gemfile\.lock|pubspec\.yaml|pubspec\.lock|global\.json|packages\.config|packages\.lock\.json|Directory\.Packages\.props|requirements[^/]*\.txt|setup\.py|setup\.cfg|pyproject\.toml|poetry\.lock|uv\.lock|Pipfile(?:\.lock)?|build\.gradle(?:\.kts)?|settings\.gradle(?:\.kts)?|gradle\.properties|libs\.versions\.toml|gradle-wrapper\.properties|gradle\.lockfile|[^/]+\.lockfile|\.terraform\.lock\.hcl)$/.test(name)
+              const manifest = /(^|\/)(?:Package\.swift|Package\.resolved|vcpkg\.json|vcpkg-configuration\.json|rust-toolchain(?:\.toml)?|Directory\.Build\.(?:props|targets)|package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|yarn\.lock|bun\.lockb?|Cargo\.toml|Cargo\.lock|Gemfile|Gemfile\.lock|pubspec\.yaml|pubspec\.lock|global\.json|packages\.config|packages(?:\.[A-Za-z0-9_-]+)*\.lock\.json|Directory\.Packages\.props|requirements[^/]*\.txt|setup\.py|setup\.cfg|pyproject\.toml|poetry\.lock|uv\.lock|Pipfile(?:\.lock)?|build\.gradle(?:\.kts)?|settings\.gradle(?:\.kts)?|gradle\.properties|libs\.versions\.toml|gradle-wrapper\.properties|gradle\.lockfile|[^/]+\.lockfile|\.terraform\.lock\.hcl)$/.test(name)
                 || /\.(?:csproj|fsproj|vbproj|tf)$/.test(name);
               if (manifest) return true;
               // 既存submoduleのcommit差分だけを許可し、URL変更や通常コードは許可しない。
@@ -93,6 +101,30 @@ jobs:
               }
             }
             
+            // 依存の固定・差し替え定義（overrides / resolutions / patchedDependencies）は人手で確認する。
+            const canonicalJson = value => JSON.stringify(value, (key, item) => item && typeof item === 'object' && !Array.isArray(item)
+              ? Object.fromEntries(Object.keys(item).sort().map(name => [name, item[name]])) : item);
+            const protectedSection = manifest => canonicalJson({
+              overrides: manifest.overrides, resolutions: manifest.resolutions, patchedDependencies: manifest.patchedDependencies,
+              pnpmOverrides: manifest.pnpm?.overrides, pnpmPatchedDependencies: manifest.pnpm?.patchedDependencies,
+              pnpmPackageExtensions: manifest.pnpm?.packageExtensions,
+            });
+            async function changesProtectedDependencies(file, baseSha, sha) {
+              if (/(^|\/)patches\//.test(file.filename)) return true;
+              if (!/(^|\/)package\.json$/.test(file.filename)) return false;
+              try {
+                const read = async ref => {
+                  const {data} = await github.rest.repos.getContent({owner, repo, path: file.filename, ref});
+                  if (data.type !== 'file' || data.encoding !== 'base64' || typeof data.content !== 'string') throw new Error('content unavailable');
+                  return JSON.parse(Buffer.from(data.content, 'base64').toString('utf8'));
+                };
+                const [before, after] = await Promise.all([read(baseSha), read(sha)]);
+                return protectedSection(before) !== protectedSection(after);
+              } catch {
+                return true;
+              }
+            }
+
             let prs;
             if (context.eventName === 'pull_request_target') {
               prs = [context.payload.pull_request];
@@ -117,6 +149,19 @@ jobs:
               // PRのbase.shaは作成時点の値を返すことがあるため、既定ブランチを直接取得する。
               const baseSha = (await github.rest.repos.getBranch({owner, repo, branch})).data.commit.sha;
               const files = await github.paginate(github.rest.pulls.listFiles, {owner, repo, pull_number: pr.number, per_page: 100});
+              const blocked = files.find(file => excluded.some(prefix => file.filename.startsWith(prefix) || file.previous_filename?.startsWith(prefix)));
+              if (blocked) {
+                held(pr, `自動マージ対象外のパス (${blocked.filename}) を含むため手動で確認`);
+                continue;
+              }
+              let protectedChange = false;
+              for (const file of files) {
+                if (await changesProtectedDependencies(file, baseSha, sha)) { protectedChange = true; break; }
+              }
+              if (protectedChange) {
+                held(pr, 'overrides・resolutions・patchedDependencies・patchesの変更を含むため手動で確認');
+                continue;
+              }
               let dependencyOnly = true;
               for (const file of files) {
                 if (!(await dependencyFile(file, baseSha, sha))) { dependencyOnly = false; break; }
@@ -166,13 +211,51 @@ jobs:
                 held(pr, 'head/baseまたはマージ可能状態が変化したため再検証を待機');
                 continue;
               }
-              const mergeMethod = repository.allow_squash_merge ? 'squash' : repository.allow_merge_commit ? 'merge' : 'rebase';
+              candidates.push({number: pr.number, sha});
+              held(pr, 'CIと依存差分の確認が完了したためマージジョブへ引き渡し');
+            }
+            core.setOutput('candidates', JSON.stringify(candidates));
+            await core.summary.addHeading('Dependabot auto-merge (verify)').addRaw(report.join('\n') || '対象PRなし').write();
+  merge:
+    needs: verify
+    if: ${{ needs.verify.outputs.candidates != '' && needs.verify.outputs.candidates != '[]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Merge verified Dependabot updates
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CANDIDATES: ${{ needs.verify.outputs.candidates }}
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const candidates = JSON.parse(process.env.CANDIDATES || '[]');
+            const repository = (await github.rest.repos.get({owner, repo})).data;
+            const report = [];
+            const held = (pr, reason) => {
+              core.info(`#${pr.number}: ${reason}`);
+              report.push(`- #${pr.number}: ${reason}`);
+            };
+            const mergeMethod = repository.allow_squash_merge ? 'squash' : repository.allow_merge_commit ? 'merge' : 'rebase';
+            for (const candidate of candidates) {
+              let pr = (await github.rest.pulls.get({owner, repo, pull_number: candidate.number})).data;
+              if (pr.mergeable === null) {
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                pr = (await github.rest.pulls.get({owner, repo, pull_number: candidate.number})).data;
+              }
+              if (pr.state !== 'open' || pr.draft || pr.head.sha !== candidate.sha || pr.mergeable !== true) {
+                held(pr, 'head/baseまたはマージ可能状態が変化したため再検証を待機');
+                continue;
+              }
               try {
-                const result = (await github.rest.pulls.merge({owner, repo, pull_number: pr.number, sha, merge_method: mergeMethod})).data;
+                const result = (await github.rest.pulls.merge({owner, repo, pull_number: pr.number, sha: candidate.sha, merge_method: mergeMethod})).data;
                 held(pr, result.merged ? `CI成功後にマージ済み (${result.sha})` : 'GitHubのマージ要件を満たすまで保留');
               } catch (error) {
                 if (![403, 405, 409, 422].includes(error.status)) throw error;
                 held(pr, `GitHubのマージ要件により保留 (${error.status})`);
               }
             }
-            await core.summary.addHeading('Dependabot auto-merge').addRaw(report.join('\n') || '対象PRなし').write();
+            await core.summary.addHeading('Dependabot auto-merge (merge)').addRaw(report.join('\n') || '対象PRなし').write();
