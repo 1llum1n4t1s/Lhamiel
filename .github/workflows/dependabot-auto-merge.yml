@@ -35,7 +35,6 @@ jobs:
       statuses: read
     outputs:
       candidates: ${{ steps.verify.outputs.candidates }}
-      rebase: ${{ steps.verify.outputs.rebase }}
     steps:
       - name: Verify CI and collect Dependabot updates
         id: verify
@@ -53,7 +52,6 @@ jobs:
             const botId = 49699333;
             const report = [];
             const candidates = [];
-            const rebase = [];
             // GitHubがmergeableを計算中（null）の間は短く待って取り直す。
             const settle = async number => {
               let current;
@@ -191,8 +189,7 @@ jobs:
               }
               if (pr.mergeable === null) pr = await settle(pr.number);
               if (pr.mergeable === false || pr.mergeable_state === 'dirty') {
-                rebase.push({number: pr.number, sha});
-                held(pr, '競合があるため保留（マージジョブで @dependabot rebase を依頼）');
+                held(pr, '競合のため Dependabot の rebase 待ち（$deps で依頼）');
                 continue;
               }
               let verified = true;
@@ -227,8 +224,7 @@ jobs:
                 continue;
               }
               if (pr.mergeable === false) {
-                rebase.push({number: pr.number, sha});
-                held(pr, '競合があるため保留（マージジョブで @dependabot rebase を依頼）');
+                held(pr, '競合のため Dependabot の rebase 待ち（$deps で依頼）');
                 continue;
               }
               if (pr.mergeable !== true) {
@@ -239,11 +235,10 @@ jobs:
               held(pr, 'CIと依存差分の確認が完了したためマージジョブへ引き渡し');
             }
             core.setOutput('candidates', JSON.stringify(candidates));
-            core.setOutput('rebase', JSON.stringify(rebase));
             await core.summary.addHeading('Dependabot auto-merge (verify)').addRaw(report.join('\n') || '対象PRなし').write();
   merge:
     needs: verify
-    if: ${{ (needs.verify.outputs.candidates != '' && needs.verify.outputs.candidates != '[]') || (needs.verify.outputs.rebase != '' && needs.verify.outputs.rebase != '[]') }}
+    if: ${{ needs.verify.outputs.candidates != '' && needs.verify.outputs.candidates != '[]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -254,15 +249,11 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           CANDIDATES: ${{ needs.verify.outputs.candidates }}
-          REBASE: ${{ needs.verify.outputs.rebase }}
         with:
           script: |
             const {owner, repo} = context.repo;
             const candidates = JSON.parse(process.env.CANDIDATES || '[]');
-            const rebase = JSON.parse(process.env.REBASE || '[]');
-            const botId = 49699333;
             const repository = (await github.rest.repos.get({owner, repo})).data;
-            const branch = repository.default_branch;
             const report = [];
             const held = (pr, reason) => {
               core.info(`#${pr.number}: ${reason}`);
@@ -279,28 +270,15 @@ jobs:
               }
               return current;
             };
-            // 競合したDependabot PRには、同じhead SHAにつき1回だけrebaseを依頼する。
-            const requestRebase = async pr => {
-              const marker = `<!-- dependabot-auto-merge:rebase head=${pr.head.sha} -->`;
-              const comments = await github.paginate(github.rest.issues.listComments, {owner, repo, issue_number: pr.number, per_page: 100});
-              if (comments.some(comment => comment.body?.includes(marker))) {
-                held(pr, '競合のため rebase を依頼済み（同じheadには再依頼しない）');
-                return;
-              }
-              await github.rest.issues.createComment({owner, repo, issue_number: pr.number, body: `@dependabot rebase\n\n${marker}`});
-              held(pr, '競合のため @dependabot rebase を依頼');
-            };
-            const handled = new Set();
-            let merged = 0;
+            // 先にマージしたPRでbaseが進んでも、headが同じで競合が無ければ、この実行の中でマージする。
             for (const candidate of candidates) {
-              handled.add(candidate.number);
               const pr = await settle(candidate.number);
               if (pr.state !== 'open' || pr.draft || pr.head.sha !== candidate.sha) {
                 held(pr, 'headが変化したため再検証を待機');
                 continue;
               }
               if (pr.mergeable === false) {
-                await requestRebase(pr);
+                held(pr, '競合のため Dependabot の rebase 待ち（$deps で依頼）');
                 continue;
               }
               if (pr.mergeable !== true) {
@@ -309,27 +287,10 @@ jobs:
               }
               try {
                 const result = (await github.rest.pulls.merge({owner, repo, pull_number: pr.number, sha: candidate.sha, merge_method: mergeMethod})).data;
-                if (result.merged) merged++;
                 held(pr, result.merged ? `CI成功後にマージ済み (${result.sha})` : 'GitHubのマージ要件を満たすまで保留');
               } catch (error) {
                 if (![403, 405, 409, 422].includes(error.status)) throw error;
                 held(pr, `GitHubのマージ要件により保留 (${error.status})`);
-              }
-            }
-            for (const item of rebase) {
-              if (handled.has(item.number)) continue;
-              handled.add(item.number);
-              const pr = await settle(item.number);
-              if (pr.state === 'open' && !pr.draft && pr.head.sha === item.sha && pr.mergeable === false) await requestRebase(pr);
-              else held(pr, '状態が変化したため再検証を待機');
-            }
-            // マージでbaseが進んだ後に競合した残りのDependabot PRも、同じ実行の中で評価し直す。
-            if (merged > 0) {
-              const open = await github.paginate(github.rest.pulls.list, {owner, repo, state: 'open', base: branch, per_page: 100});
-              for (const item of open) {
-                if (handled.has(item.number) || item.user?.id !== botId || item.draft || item.head.repo?.id !== repository.id) continue;
-                const pr = await settle(item.number);
-                if (pr.mergeable === false) await requestRebase(pr);
               }
             }
             await core.summary.addHeading('Dependabot auto-merge (merge)').addRaw(report.join('\n') || '対象PRなし').write();
