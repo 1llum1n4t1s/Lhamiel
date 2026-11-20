@@ -37,8 +37,26 @@ jobs:
       # 過去は 7-zip.org から直接ダウンロードしていたが、ハッシュ検証がなく
       # サプライチェーン攻撃リスクがあるため NuGet 経由に統一した。
 
+      - name: NuGet パッケージキャッシュを復元
+        id: nuget-cache
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/heads/release/') }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-build-${{ github.job }}-${{ matrix.runtime }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props', '**/Directory.Build.targets', '**/Directory.Packages.props', '**/packages*.lock.json', '**/global.json', '**/nuget.config', '**/NuGet.config', '**/NuGet.Config') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-build-${{ github.job }}-${{ matrix.runtime }}-
+            ${{ runner.os }}-nuget-
+
       - name: 公開
         run: dotnet publish src/Lhamiel/Lhamiel.csproj -c Release -r ${{ matrix.runtime }} -p:PlatformTarget=${{ matrix.platform_target }} -o publish
+
+      - name: NuGet パッケージキャッシュを保存
+        if: ${{ github.ref == 'refs/heads/main' && steps.nuget-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: ${{ steps.nuget-cache.outputs.cache-primary-key }}
 
       - name: 成果物を確認
         shell: pwsh

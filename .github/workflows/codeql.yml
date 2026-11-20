@@ -33,6 +33,17 @@ jobs:
           # SDK はリポジトリ直下の global.json で固定し、ローカルと CI の暗黙 ILCompiler 版を揃える。
           global-json-file: global.json
 
+      - name: NuGet パッケージキャッシュを復元
+        id: nuget-cache
+        if: ${{ !startsWith(github.ref, 'refs/tags/') && !startsWith(github.ref, 'refs/heads/release/') }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-codeql-${{ github.job }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props', '**/Directory.Build.targets', '**/Directory.Packages.props', '**/packages*.lock.json', '**/global.json', '**/nuget.config', '**/NuGet.config', '**/NuGet.Config') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-codeql-${{ github.job }}-
+            ${{ runner.os }}-nuget-
+
       - name: CodeQL を初期化
         # github/codeql-action/init@v4.39.3
         uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
@@ -42,6 +53,13 @@ jobs:
 
       - name: ビルド
         run: dotnet build Lhamiel.slnx -c Release
+
+      - name: NuGet パッケージキャッシュを保存
+        if: ${{ github.ref == 'refs/heads/main' && steps.nuget-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: ${{ steps.nuget-cache.outputs.cache-primary-key }}
 
       - name: CodeQL 解析を実行
         # github/codeql-action/analyze@v4.39.3
