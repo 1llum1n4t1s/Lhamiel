@@ -35,6 +35,7 @@ jobs:
       statuses: read
     outputs:
       candidates: ${{ steps.verify.outputs.candidates }}
+      rebase: ${{ steps.verify.outputs.rebase }}
     steps:
       - name: Verify CI and collect Dependabot updates
         id: verify
@@ -52,6 +53,17 @@ jobs:
             const botId = 49699333;
             const report = [];
             const candidates = [];
+            const rebase = [];
+            // GitHubがmergeableを計算中（null）の間は短く待って取り直す。
+            const settle = async number => {
+              let current;
+              for (let attempt = 0; attempt < 5; attempt++) {
+                current = (await github.rest.pulls.get({owner, repo, pull_number: number})).data;
+                if (current.mergeable !== null) break;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              }
+              return current;
+            };
             const excluded = JSON.parse(process.env.EXCLUDED_PATHS || '[]');
             const held = (pr, reason) => {
               core.info(`#${pr.number}: ${reason}`);
@@ -64,9 +76,10 @@ jobs:
               const before = lines.filter(line => line[0] === '-').map(line => line.slice(1));
               const after = lines.filter(line => line[0] === '+').map(line => line.slice(1));
               if (!before.length || before.length !== after.length) return false;
-              const normalize = line => line.replace(/(uses:\s*[^\s@]+@)[A-Za-z0-9._/-]+/g, '$1<VERSION>');
-              return before.every((line, i) => /^\s*(?:-\s*)?uses:\s*[^\s@]+@[A-Za-z0-9._/-]+(?:\s*#.*)?$/.test(line)
-                && /^\s*(?:-\s*)?uses:\s*[^\s@]+@[A-Za-z0-9._/-]+(?:\s*#.*)?$/.test(after[i])
+              // uses の値は引用符で囲まれていてもよい（"actions/setup-dotnet@<sha>" など）。
+              const normalize = line => line.replace(/(uses:\s*["']?[^\s@"']+@)[A-Za-z0-9._/-]+/g, '$1<VERSION>');
+              return before.every((line, i) => /^\s*(?:-\s*)?uses:\s*["']?[^\s@"']+@[A-Za-z0-9._/-]+["']?(?:\s*#.*)?$/.test(line)
+                && /^\s*(?:-\s*)?uses:\s*["']?[^\s@"']+@[A-Za-z0-9._/-]+["']?(?:\s*#.*)?$/.test(after[i])
                 && normalize(line).replace(/\s+#.*$/, '') === normalize(after[i]).replace(/\s+#.*$/, ''));
             }
             
@@ -176,8 +189,10 @@ jobs:
                 held(pr, 'Dependabotの署名付き更新または既定ブランチの統合として確認できないコミットがあるため保留');
                 continue;
               }
+              if (pr.mergeable === null) pr = await settle(pr.number);
               if (pr.mergeable === false || pr.mergeable_state === 'dirty') {
-                held(pr, '競合があるため保留');
+                rebase.push({number: pr.number, sha});
+                held(pr, '競合があるため保留（マージジョブで @dependabot rebase を依頼）');
                 continue;
               }
               let verified = true;
@@ -205,20 +220,30 @@ jobs:
                 held(pr, `commit statusが${statuses.state}のため保留`);
                 continue;
               }
-              const currentBase = (await github.rest.repos.getBranch({owner, repo, branch})).data.commit.sha;
-              pr = (await github.rest.pulls.get({owner, repo, pull_number: pr.number})).data;
-              if (pr.state !== 'open' || pr.head.sha !== sha || currentBase !== baseSha || pr.mergeable !== true) {
-                held(pr, 'head/baseまたはマージ可能状態が変化したため再検証を待機');
+              // headが変わっていないことは必須。baseだけが進んだ場合は、競合が無ければマージ可能として扱う。
+              pr = await settle(pr.number);
+              if (pr.state !== 'open' || pr.head.sha !== sha) {
+                held(pr, 'headが変化したため再検証を待機');
+                continue;
+              }
+              if (pr.mergeable === false) {
+                rebase.push({number: pr.number, sha});
+                held(pr, '競合があるため保留（マージジョブで @dependabot rebase を依頼）');
+                continue;
+              }
+              if (pr.mergeable !== true) {
+                held(pr, 'マージ可能状態を確認できないため再検証を待機');
                 continue;
               }
               candidates.push({number: pr.number, sha});
               held(pr, 'CIと依存差分の確認が完了したためマージジョブへ引き渡し');
             }
             core.setOutput('candidates', JSON.stringify(candidates));
+            core.setOutput('rebase', JSON.stringify(rebase));
             await core.summary.addHeading('Dependabot auto-merge (verify)').addRaw(report.join('\n') || '対象PRなし').write();
   merge:
     needs: verify
-    if: ${{ needs.verify.outputs.candidates != '' && needs.verify.outputs.candidates != '[]' }}
+    if: ${{ (needs.verify.outputs.candidates != '' && needs.verify.outputs.candidates != '[]') || (needs.verify.outputs.rebase != '' && needs.verify.outputs.rebase != '[]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -229,33 +254,82 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           CANDIDATES: ${{ needs.verify.outputs.candidates }}
+          REBASE: ${{ needs.verify.outputs.rebase }}
         with:
           script: |
             const {owner, repo} = context.repo;
             const candidates = JSON.parse(process.env.CANDIDATES || '[]');
+            const rebase = JSON.parse(process.env.REBASE || '[]');
+            const botId = 49699333;
             const repository = (await github.rest.repos.get({owner, repo})).data;
+            const branch = repository.default_branch;
             const report = [];
             const held = (pr, reason) => {
               core.info(`#${pr.number}: ${reason}`);
               report.push(`- #${pr.number}: ${reason}`);
             };
             const mergeMethod = repository.allow_squash_merge ? 'squash' : repository.allow_merge_commit ? 'merge' : 'rebase';
-            for (const candidate of candidates) {
-              let pr = (await github.rest.pulls.get({owner, repo, pull_number: candidate.number})).data;
-              if (pr.mergeable === null) {
-                await new Promise(resolve => setTimeout(resolve, 3000));
-                pr = (await github.rest.pulls.get({owner, repo, pull_number: candidate.number})).data;
+            // GitHubがmergeableを計算中（null）の間は短く待って取り直す。
+            const settle = async number => {
+              let current;
+              for (let attempt = 0; attempt < 5; attempt++) {
+                current = (await github.rest.pulls.get({owner, repo, pull_number: number})).data;
+                if (current.mergeable !== null) break;
+                await new Promise(resolve => setTimeout(resolve, 2000));
               }
-              if (pr.state !== 'open' || pr.draft || pr.head.sha !== candidate.sha || pr.mergeable !== true) {
-                held(pr, 'head/baseまたはマージ可能状態が変化したため再検証を待機');
+              return current;
+            };
+            // 競合したDependabot PRには、同じhead SHAにつき1回だけrebaseを依頼する。
+            const requestRebase = async pr => {
+              const marker = `<!-- dependabot-auto-merge:rebase head=${pr.head.sha} -->`;
+              const comments = await github.paginate(github.rest.issues.listComments, {owner, repo, issue_number: pr.number, per_page: 100});
+              if (comments.some(comment => comment.body?.includes(marker))) {
+                held(pr, '競合のため rebase を依頼済み（同じheadには再依頼しない）');
+                return;
+              }
+              await github.rest.issues.createComment({owner, repo, issue_number: pr.number, body: `@dependabot rebase\n\n${marker}`});
+              held(pr, '競合のため @dependabot rebase を依頼');
+            };
+            const handled = new Set();
+            let merged = 0;
+            for (const candidate of candidates) {
+              handled.add(candidate.number);
+              const pr = await settle(candidate.number);
+              if (pr.state !== 'open' || pr.draft || pr.head.sha !== candidate.sha) {
+                held(pr, 'headが変化したため再検証を待機');
+                continue;
+              }
+              if (pr.mergeable === false) {
+                await requestRebase(pr);
+                continue;
+              }
+              if (pr.mergeable !== true) {
+                held(pr, 'マージ可能状態を確認できないため再検証を待機');
                 continue;
               }
               try {
                 const result = (await github.rest.pulls.merge({owner, repo, pull_number: pr.number, sha: candidate.sha, merge_method: mergeMethod})).data;
+                if (result.merged) merged++;
                 held(pr, result.merged ? `CI成功後にマージ済み (${result.sha})` : 'GitHubのマージ要件を満たすまで保留');
               } catch (error) {
                 if (![403, 405, 409, 422].includes(error.status)) throw error;
                 held(pr, `GitHubのマージ要件により保留 (${error.status})`);
+              }
+            }
+            for (const item of rebase) {
+              if (handled.has(item.number)) continue;
+              handled.add(item.number);
+              const pr = await settle(item.number);
+              if (pr.state === 'open' && !pr.draft && pr.head.sha === item.sha && pr.mergeable === false) await requestRebase(pr);
+              else held(pr, '状態が変化したため再検証を待機');
+            }
+            // マージでbaseが進んだ後に競合した残りのDependabot PRも、同じ実行の中で評価し直す。
+            if (merged > 0) {
+              const open = await github.paginate(github.rest.pulls.list, {owner, repo, state: 'open', base: branch, per_page: 100});
+              for (const item of open) {
+                if (handled.has(item.number) || item.user?.id !== botId || item.draft || item.head.repo?.id !== repository.id) continue;
+                const pr = await settle(item.number);
+                if (pr.mergeable === false) await requestRebase(pr);
               }
             }
             await core.summary.addHeading('Dependabot auto-merge (merge)').addRaw(report.join('\n') || '対象PRなし').write();
