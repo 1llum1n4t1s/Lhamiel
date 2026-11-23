@@ -62,20 +62,20 @@
          上書きされた後の Debug Rebuild で CS0246 になるため、compile/runtime asset は常時除外する。 -->
     <PackageReference
       Include="CRDebugger.Avalonia"
-      Version="1.0.34"
+      Version="1.0.38"
       ExcludeAssets="compile;runtime"
       GeneratePathProperty="true"
       PrivateAssets="all" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.94" GeneratePathProperty="true" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.95" GeneratePathProperty="true" />
     <PackageReference Include="Kagayoi.UnLhaRe" Version="$(UnLhaReVersion)" />
-    <PackageReference Include="SuperLightLogger" Version="1.0.22" />
+    <PackageReference Include="SuperLightLogger" Version="1.0.23" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。
          Windows 専用 (Lhamiel 自体 Windows 専用なので問題なし)。Native AOT 対応。
          製品の TargetFramework (net11.0) に合わせて 11.x を使う。 -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="11.0.0" />
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
-    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.22" />
+    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.24" />
   </ItemGroup>
 
   <ItemGroup>
