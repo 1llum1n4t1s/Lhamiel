@@ -9,9 +9,9 @@ on:
 permissions:
   contents: read
 
-# 同じ ref の古い実行は新しい push で打ち切る。
+# 同じ PR の古い実行は新しい push で打ち切る。main への push は run ごとに独立して完走する。
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
