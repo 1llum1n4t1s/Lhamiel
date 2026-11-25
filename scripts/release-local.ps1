@@ -78,6 +78,15 @@ if (-not $VpkVersion) { throw 'vpk の最新安定版バージョンの取得に
 Write-Host "vpk 最新安定版: $VpkVersion"
 
 
+# channel ごとの配信ファイル名の許可リスト。win は Velopack の既定 channel で、nupkg
+# (Lhamiel-<版>-full.nupkg) と旧形式一覧 (RELEASES) に接尾辞が付かない。他は RELEASES-<channel>。
+function Get-ChannelReleaseFileName {
+    param([string]$Channel, [string[]]$AssetFileName)
+    $names = @($AssetFileName) + @("releases.$Channel.json", "assets.$Channel.json", "Lhamiel-$Channel-Setup.exe", "Lhamiel-$Channel-Portable.zip")
+    $names += if ($Channel -eq 'win') { 'RELEASES' } else { "RELEASES-$Channel" }
+    return $names
+}
+
 function Invoke-Native {
     param([string]$Description, [scriptblock]$Block)
     & $Block
@@ -169,7 +178,7 @@ foreach ($runtime in $Runtimes) {
         if ($existingVersion -ne $version) { throw "既存 publish の version が異なります: $existingVersion" }
         foreach ($name in @('Lhamiel.ShellExtension.dll', 'Lhamiel.ContextMenu.msix')) {
             $sig = Get-AuthenticodeSignature -LiteralPath (Join-Path $publishDir $name)
-            if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notlike "CN=$CertSubjectName*") { throw "再利用できない署名です: $name" }
+            if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notlike "CN=$CertSubjectName*" -or -not $sig.TimeStamperCertificate) { throw "再利用できない署名です: $name" }
         }
         Write-Host "== 署名済み publish を再利用: $runtime =="
     } else {
@@ -239,6 +248,7 @@ foreach ($runtime in $Runtimes) {
 
 # 保存済み成果物だけを配信するときも、版・実体・署名を確認する。
 foreach ($runtime in $Runtimes) {
+    if (-not $RuntimeMatrix[$runtime]) { throw "未知の runtime: $runtime" }
     $channel = $RuntimeMatrix[$runtime].Channel
     $manifest = Get-Content -LiteralPath (Join-Path $ArtifactsDir "releases.$channel.json") -Raw | ConvertFrom-Json
     if (@($manifest.Assets).Count -eq 0) { throw "配信manifestが空です: $channel" }
@@ -250,11 +260,39 @@ foreach ($runtime in $Runtimes) {
     if (-not (Test-Path -LiteralPath (Join-Path $ArtifactsDir "Lhamiel-$channel-Setup.exe"))) { throw "Setupがありません: $channel" }
 }
 
+# 検証・署名確認・アップロード・パージ・クリーンアップの対象は、今回検証した channel のファイルだけにする。
+# 作業ルートに対象外 channel の未検証ファイル (-Runtimes で絞った再開時の残り) があっても配信しない。
+# 一部の channel だけを選んだときは、検証済み manifest の Assets と channel の固定名だけを許可し、
+# 許可リストに無いファイルは送らない。全 channel を選んだときは全ファイルを送る。
+$allFiles = @(Get-ChildItem $ArtifactsDir -File)
+$selectedChannels = @($Runtimes | ForEach-Object { $RuntimeMatrix[$_].Channel } | Select-Object -Unique)
+$allChannelsSelected = @($RuntimeMatrix.Values | Where-Object { $selectedChannels -notcontains $_.Channel }).Count -eq 0
+if ($allChannelsSelected) {
+    # 全 channel を検証した通常のリリースは、従来どおり作業ルートの全ファイルを送る。
+    $releaseFiles = $allFiles
+} else {
+    # 一部の channel だけを再開・限定するときは、検証済みの許可リストに載るファイルだけを送る。
+    # 既定の channel (win) は nupkg と旧形式一覧 (RELEASES) に channel 接尾辞が付かないため、
+    # 名前の除外判定ではなく、検証済み manifest の Assets[].FileName と固定名の許可リストで選ぶ。
+    $allowed = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($runtime in $Runtimes) {
+        $channel = $RuntimeMatrix[$runtime].Channel
+        $manifestPath = Join-Path $ArtifactsDir "releases.$channel.json"
+        $assetNames = @((Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json).Assets | ForEach-Object { $_.FileName })
+        foreach ($n in Get-ChannelReleaseFileName -Channel $channel -AssetFileName $assetNames) { [void]$allowed.Add($n) }
+    }
+    $releaseFiles = @($allFiles | Where-Object { $allowed.Contains($_.Name) })
+    foreach ($skipped in @($allFiles | Where-Object { -not $allowed.Contains($_.Name) })) {
+        Write-Host "  対象外 (未検証 channel): $($skipped.Name)" -ForegroundColor Yellow
+    }
+}
+
 # 署名検証 (Setup.exe が正しく署名されているかリリース前に確認)
 Write-Host '== 署名検証 ==' -ForegroundColor Cyan
-foreach ($exe in Get-ChildItem $ArtifactsDir -Filter '*.exe') {
-    $sig = Get-AuthenticodeSignature $exe.FullName
-    if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notlike "CN=$CertSubjectName*") {
+foreach ($exe in @($releaseFiles | Where-Object { $_.Extension -eq '.exe' })) {
+    $sig = Get-AuthenticodeSignature -LiteralPath $exe.FullName
+    # 署名・署名者に加えて RFC 3161 タイムスタンプも確認する (不変条件: 署名とタイムスタンプ)。
+    if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notlike "CN=$CertSubjectName*" -or -not $sig.TimeStamperCertificate) {
         throw "署名検証失敗: $($exe.Name) → $($sig.Status)"
     }
     Write-Host "  ✅ $($exe.Name): Valid ($($sig.SignerCertificate.Subject -replace ',.*$'))"
@@ -262,7 +300,7 @@ foreach ($exe in Get-ChildItem $ArtifactsDir -Filter '*.exe') {
 
 if ($SkipUpload) {
     Write-Host "`n✅ -SkipUpload 指定のためここで終了。成果物: $ArtifactsDir" -ForegroundColor Green
-    Get-ChildItem $ArtifactsDir | Format-Table Name, @{n='Size(MB)'; e={[math]::Round($_.Length/1MB,1)}}
+    $releaseFiles | Format-Table Name, @{n='Size(MB)'; e={[math]::Round($_.Length/1MB,1)}}
     return
 }
 
@@ -271,7 +309,7 @@ if ($SkipUpload) {
 # - *.nupkg は put のみ (過去版は cleanup ステップが manifest 基準で削除)
 Write-Host '== R2 アップロード ==' -ForegroundColor Cyan
 $uploaded = 0
-$uploadFiles = @(Get-ChildItem $ArtifactsDir -File)
+$uploadFiles = $releaseFiles
 $ordered = @($uploadFiles | Where-Object { $_.Name -notmatch '^(?:releases\..*\.json|assets\..*\.json|RELEASES(?:-.*)?)$' }) +
     @($uploadFiles | Where-Object { $_.Name -match '^(?:releases\..*\.json|assets\..*\.json|RELEASES(?:-.*)?)$' })
 foreach ($f in $ordered) {
@@ -289,7 +327,7 @@ Write-Host "✅ R2 アップロード完了: $uploaded ファイル"
 # 毎リリースで中身が変わるため、配信内容を取得せず固定 URL を全件パージする。
 Write-Host '== Cloudflare キャッシュパージ ==' -ForegroundColor Cyan
 # $zoneId / $cfHeaders はプリフライト (Cloudflare トークン取得時) で解決・検証済み
-$purgeUrls = @(Get-ChildItem $ArtifactsDir -File | Where-Object { $_.Name -notlike '*.nupkg' } | ForEach-Object { "$BaseUrl/$($_.Name)" })
+$purgeUrls = @($releaseFiles | Where-Object { $_.Name -notlike '*.nupkg' } | ForEach-Object { "$BaseUrl/$($_.Name)" })
 if ($purgeUrls.Count -gt 0) {
     try {
         # purge_cache は 1 リクエストあたり最大 30 URL までのため分割送信する
@@ -320,7 +358,7 @@ if ($purgeUrls.Count -gt 0) {
 # バージョン文字列を含まないため削除対象外。
 Write-Host '== 旧 nupkg クリーンアップ ==' -ForegroundColor Cyan
 $keep = @{}
-$manifests = Get-ChildItem $ArtifactsDir -Filter 'releases.*.json'
+$manifests = @($releaseFiles | Where-Object { $_.Name -like 'releases.*.json' })
 if (-not $manifests) { throw 'packages に releases.*.json が見つかりません' }
 foreach ($m in $manifests) {
     foreach ($asset in (Get-Content $m.FullName -Raw | ConvertFrom-Json).Assets) {
@@ -332,29 +370,32 @@ $api = "https://api.cloudflare.com/client/v4/accounts/$AccountId/r2/buckets/$Buc
 $headers = @{ Authorization = "Bearer $($env:CLOUDFLARE_API_TOKEN)" }
 
 $allKeys = [System.Collections.Generic.List[string]]::new()
-$cursor = ''
-while ($true) {
-    $uri = "$api/objects?per_page=1000" + $(if ($cursor) { "&cursor=$cursor" })
-    $resp = Invoke-RestMethod -Uri $uri -Headers $headers -TimeoutSec 30
-    foreach ($obj in $resp.result) { $allKeys.Add($obj.key) }
-    # 全件 1 ページに収まると result_info が省略される (StrictMode 下では直接参照が throw)
-    $info = $resp.PSObject.Properties['result_info']
-    if (-not $info -or -not $info.Value) { break }
-    $truncated = $info.Value.PSObject.Properties['is_truncated']
-    if (-not $truncated -or -not $truncated.Value) { break }
-    $cursorProp = $info.Value.PSObject.Properties['cursor']
-    $cursor = if ($cursorProp) { $cursorProp.Value } else { '' }
-    if (-not $cursor) { break }
-}
-
-# バケット上の全 channel の manifest を、公開 CDN ではなく認証付き R2 API (既存の
-# R2Transfer.Core.cs の GetArtifactObject) で取得し、参照ファイルを保持集合へ加える。
-# 公開 URL からの取得は CDN キャッシュの影響を受けるうえ、公開後の配信内容取得を行わない
-# 運用方針 (AGENTS.md の公開完了判定) にも反するため使わない。
 $cleanupAborted = $false
-$remoteManifestKeys = @($allKeys | Where-Object { $_ -match '^releases\.[^/]+\.json$' })
+$remoteManifestKeys = @()
 $manifestClient = $null
+# 一覧取得と manifest 取得は、公開 (アップロード・パージ) の成否に影響しない後始末なので、
+# 失敗は警告にとどめてクリーンアップだけを中止する (try の外で失敗するとリリース済みなのに異常終了になる)。
 try {
+    $cursor = ''
+    while ($true) {
+        $uri = "$api/objects?per_page=1000" + $(if ($cursor) { "&cursor=$([uri]::EscapeDataString($cursor))" })
+        $resp = Invoke-RestMethod -Uri $uri -Headers $headers -TimeoutSec 30
+        foreach ($obj in $resp.result) { $allKeys.Add($obj.key) }
+        # 全件 1 ページに収まると result_info が省略される (StrictMode 下では直接参照が throw)
+        $info = $resp.PSObject.Properties['result_info']
+        if (-not $info -or -not $info.Value) { break }
+        $truncated = $info.Value.PSObject.Properties['is_truncated']
+        if (-not $truncated -or -not $truncated.Value) { break }
+        $cursorProp = $info.Value.PSObject.Properties['cursor']
+        $cursor = if ($cursorProp) { $cursorProp.Value } else { '' }
+        if (-not $cursor) { break }
+    }
+
+    # バケット上の全 channel の manifest を、公開 CDN ではなく認証付き R2 API (既存の
+    # R2Transfer.Core.cs の GetArtifactObject) で取得し、参照ファイルを保持集合へ加える。
+    # 公開 URL からの取得は CDN キャッシュの影響を受けるうえ、公開後の配信内容取得を行わない
+    # 運用方針 (AGENTS.md の公開完了判定) にも反するため使わない。
+    $remoteManifestKeys = @($allKeys | Where-Object { $_ -match '^releases\.[^/]+\.json$' })
     $manifestClient = New-R2DistributionClient
     # 直前にアップロードした manifest が一覧に無い場合は、一覧が不完全 (取得失敗・反映遅延) とみなして
     # 削除を中止する。不完全な一覧から作った保持集合で削除すると、他 RID の参照ファイルを消しうるため。
@@ -387,7 +428,7 @@ try {
     }
 } catch {
     $cleanupAborted = $true
-    Write-Warning "  R2 上の manifest を取得・解析できないため、旧版クリーンアップを中止します (リリース自体は完了しています) — $($_.Exception.Message)"
+    Write-Warning "  R2 上のオブジェクト一覧または manifest を取得・解析できないため、旧版クリーンアップを中止します (リリース自体は完了しています) — $($_.Exception.Message)"
 } finally {
     if ($manifestClient) { $manifestClient.Dispose() }
 }

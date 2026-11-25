@@ -187,7 +187,7 @@ var record = new
     phase, root, assembly = extractor.Assembly.Location,
     assemblySha256 = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(extractor.Assembly.Location))),
     timestamp = DateTimeOffset.UtcNow, failures, junctions, results,
-    cleanup = "dummy tree retained; use global recyclehelper on each recorded leaf junction first, then on the fixture root"
+    cleanup = "dummy tree retained; use Remove-LocalWorkItem in Cleanup.ps1 on each recorded leaf junction first, then on the fixture root"
 };
 var json = JsonSerializer.Serialize(record, new JsonSerializerOptions { WriteIndented = true });
 File.WriteAllText(Path.Combine(evidence, "boundary-" + phase + "-result.json"), json);

@@ -8,7 +8,7 @@ $buffer=New-Object byte[] (4MB); [Security.Cryptography.RandomNumberGenerator]::
 $stream=[IO.File]::Create($firstSource)
 try{for($i=0;$i -lt 64;$i++){$stream.Write($buffer)}}finally{$stream.Dispose()}
 [IO.File]::WriteAllText($secondSource,'parallel canary')
-$settings=@{CompressionFormat='ZIP';CompressionOutputToSameDirectory=$true;OpenCompressionOutputFolder=$false;Check4UpdatesOnStartup=$false;IsPasswordProtectionEnabled=$false;CompressionLevel='Ultra'}
+$settings=@{CompressionFormat='ZIP';CompressionOutputToSameDirectory=$true;OpenCompressionOutputFolder=$false;Check4UpdatesOnStartup=$false;IsPasswordProtectionEnabled=$false;ZipCompressionLevel=9}
 $owned=[Collections.Generic.List[Diagnostics.Process]]::new();$tokens=[Collections.Generic.List[string]]::new()
 function Launch([string]$Source){
  $token=[guid]::NewGuid().ToString('N');$path=Join-Path $env:TEMP ('Lhamiel-compression-request-'+$token+'.json');$tokens.Add($path)

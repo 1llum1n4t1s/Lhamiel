@@ -16,11 +16,15 @@ if (-not $VerifyOnly) { Assert-NoActiveProduct }
 if ((Test-Path -LiteralPath $ArtifactDirectory) -and -not $VerifyOnly) { throw '未使用の成果物ディレクトリを指定してください。' }
 if (-not $VerifyOnly) { New-Item -ItemType Directory -Path $ArtifactDirectory | Out-Null }
 $env:LHAMIEL_EXTRACTION_TEST_ROOT = $ArtifactDirectory
+# このスクリプトが起動した Process だけを記録し、終了時 (タイムアウト・失敗を含む) に残っていれば止める。
+$ownedProcesses = [Collections.Generic.List[Diagnostics.Process]]::new()
 function Start-Probe([string[]]$Arguments) {
     $info = [Diagnostics.ProcessStartInfo]::new($ProbePath)
     $info.UseShellExecute = $false
     foreach ($argument in $Arguments) { $info.ArgumentList.Add($argument) }
-    [Diagnostics.Process]::Start($info)
+    $process = [Diagnostics.Process]::Start($info)
+    if ($process) { $ownedProcesses.Add($process) }
+    $process
 }
 function Read-Shared([string]$Path) {
     $stream = [IO.FileStream]::new($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
@@ -46,10 +50,13 @@ function Start-Route([string]$Source) {
             $info = [Diagnostics.ProcessStartInfo]::new($link)
             $info.UseShellExecute = $true
             $info.Arguments = '"' + $Source + '"'
-            [Diagnostics.Process]::Start($info)
+            $process = [Diagnostics.Process]::Start($info)
+            if ($process) { $ownedProcesses.Add($process) }
+            $process
         }
     }
 }
+try {
 if (-not $VerifyOnly) {
 $fixtureArgument = if ($Mode -in @('Batch','UiBatch')) { '--fixture-batch' } else { '--fixture' }
 $fixture = Start-Probe @($fixtureArgument)
@@ -69,7 +76,8 @@ else {
     $launches += Start-Route $first
     $firstStarted = $false
     while ((Get-Date) -lt $until) {
-        foreach ($log in Get-ChildItem (Join-Path $ArtifactDirectory 'settings') -Filter '*extraction*.log') {
+        # settings フォルダーはプローブの起動後に作られるため、未作成の間は空として待つ。
+        foreach ($log in @(Get-ChildItem (Join-Path $ArtifactDirectory 'settings') -Filter '*extraction*.log' -ErrorAction SilentlyContinue)) {
             if ((Read-Shared $log.FullName).Contains('一時ディレクトリへの展開処理開始')) { $firstStarted = $true; break }
         }
         if ($firstStarted) { break }
@@ -168,3 +176,9 @@ $result = [ordered]@{
 $result | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $ArtifactDirectory 'result.json') -Encoding utf8
 $result | ConvertTo-Json -Depth 8
 if (-not $result.passed) { throw 'E2E failed; inspect result.json and retained logs.' }
+} finally {
+    foreach ($owned in $ownedProcesses) {
+        try { if (-not $owned.HasExited) { $owned.Kill($true); $owned.WaitForExit(5000) | Out-Null } } catch { }
+        $owned.Dispose()
+    }
+}

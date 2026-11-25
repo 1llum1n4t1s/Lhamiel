@@ -152,7 +152,7 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'src\Lhamiel\icon\app_icon.png') `
 if (-not $SkipSigning) {
     foreach ($signedFile in $nativeDll, $packageOutput) {
         $signature = Get-AuthenticodeSignature -LiteralPath $signedFile
-        if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notlike "CN=$CertificateSubjectName*") {
+        if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notlike "CN=$CertificateSubjectName*" -or -not $signature.TimeStamperCertificate) {
             throw "署名検証に失敗しました: $signedFile → $($signature.Status)"
         }
     }
