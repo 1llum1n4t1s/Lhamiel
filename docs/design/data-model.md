@@ -2,7 +2,7 @@
 
 ## Shell selection tokens
 
-Native selections exceeding the Windows command-line limit are passed as a GUID token (`--shell-selection`) referencing a UTF-16LE, NUL-separated file in the current user's temporary directory, bounded to 32 MiB. CLI and IPC carry the same short token; the receiving instance expands and consumes the complete selection once. Compression workers receive the resolved paths through a separate settings-snapshot request token, preserving the entire selection. The receiver accepts GUID tokens and fully qualified paths only, rejects reparse files and malformed payloads, and consumes the file with `DeleteOnClose`. The native sender removes the file if process creation fails. A receiver that never starts or never consumes a forwarded request can leave the temporary file behind; requests are not silently split or partially accepted.
+Native selections exceeding the Windows command-line limit are passed as a GUID token (`--shell-selection`) referencing a UTF-16LE, NUL-separated file in the current user's temporary directory, bounded to 32 MiB. CLI and IPC carry the same short token; the receiving instance expands and consumes the complete selection once. See [selection token handling](commands.md#selection-token-handling) for validation and cleanup, and [worker requests](workflow.md#worker-requests) for resolved paths.
 
 ## Compression output registry
 

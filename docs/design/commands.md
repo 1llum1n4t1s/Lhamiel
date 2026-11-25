@@ -8,6 +8,10 @@ After registration is confirmed, every enabled command's COM class must support 
 
 Raw commands remain for missing native artifacts and hosts ignoring `DelegateExecute`, which may invoke once per item. All enabled commands are checked. If any returns `E_NOINTERFACE` (`0x80004002`), log the class ID and HRESULT and publish the requested visibility with GUID-based raw verbs for all enabled commands, without `DelegateExecute`; a later setting application rechecks. This does not claim the server was updated. Other activation and deployment failures preserve the previous registration and visibility. Identifier matching is not a documented deduplication guarantee and must be verified in the actual shell UI.
 
+## Selection token handling
+
+The receiver accepts only GUID tokens and fully qualified paths, rejects reparse files and malformed payloads, and consumes the file with `DeleteOnClose`. The native sender removes it if process creation fails; a receiver that never starts or consumes the request can leave it behind. Requests are never split or partially accepted.
+
 ## Visibility and removal
 
 Disabling both context-menu commands removes classic verbs and writes zero to the native visibility flags while retaining the sparse MSIX registration. This avoids pending removal while Explorer holds the DLL. Enabling a command registers or updates the package only when the current-registration check above does not match. `0x80073D3C` (`ERROR_BLOCKED_BY_PENDING_PACKAGE_REMOVAL`) rejects deployment rather than reporting a successful deferred update: its failure propagates before classic verbs or visibility flags change, and registration can be retried after logging off and on. Only product uninstall uses `RemoveAll` to remove classic verbs and state, then unregister main packages selected by the exact package family `Nephilim.Lhamiel.ContextMenu_n9k69gpd3y5t4`.
