@@ -11,3 +11,11 @@
 ## Unhandled exceptions
 
 Unobserved task exceptions are logged and marked observed without writing a live-process dump. Self-dumps are limited to terminating unhandled exceptions. Deferred exception logs and dump companion text retain exception types, HRESULTs, and stacks (including inner exceptions), without exception messages whose redaction scopes may have expired.
+
+## Unreadable settings
+
+`Settings.LoadWithStatus` reports `Created` (missing; defaults written), `Loaded`, `CorruptReset` (only `JsonException`; quarantined) or `Unreadable` (exclusive lock, access denied, or attributes cannot be queried). `Load()` returns defaults for `Unreadable` without writing them. Reads retry transient locks 3 times (about 0.1 s total).
+
+If startup was `Unreadable` or its load threw, `SettingsManager` refuses every save with `InvalidOperationException` until restart: in-memory defaults are indistinguishable from user edits and would erase settings and the encrypted password. An `Unreadable` pre-save re-read (UI or archive worker) aborts before the mutator with the same exception type as a failed write. `RefreshSavedCompressionPassword` then keeps its value. A failed mutating save restores pre-mutation values under the lock.
+
+An `Unreadable` UI session warns once after the main window appears (never CLI, worker, or silent-update runs) and refuses context-menu, file-association, icon-shortcut, and shortcut changes before touching external state. `.lhaignore` initialization and the Velopack hook's context-menu refresh and icon restore are skipped; the icon-restore marker survives for the next readable startup.
