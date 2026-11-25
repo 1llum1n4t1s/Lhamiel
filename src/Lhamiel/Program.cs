@@ -118,14 +118,26 @@ internal class Program
 
         var settings = SettingsManager.Instance.Current;
         if (ShellContextMenu.SetEnabled(settings.AddExtractToContextMenu, settings.AddCompressToContextMenu))
-            DeleteMarker(GetShellContextMenuRefreshMarkerPath(), "右クリックメニュー再登録マーカーの削除に失敗しました");
+            DeleteShellContextMenuRefreshMarkers(GetShellContextMenuRefreshMarkerPath());
+    }
+
+    /// <summary>回収中に確保したマーカーの名前（マーカーのパス + この拡張子）。</summary>
+    private const string ClaimedMarkerSuffix = ".claimed";
+
+    internal static void DeleteShellContextMenuRefreshMarkers(string markerPath)
+    {
+        const string failureMessage = "右クリックメニュー再登録マーカーの削除に失敗しました";
+        DeleteMarker(markerPath, failureMessage);
+        DeleteMarker(markerPath + ClaimedMarkerSuffix, failureMessage);
     }
 
     /// <summary>
     /// 更新フックが見送った右クリックメニューの再登録を、設定を読めた通常 UI 起動で一度だけ行う。
-    /// 成功したとき（または利用者の切替が先に適用済みのとき）だけマーカーを消し、失敗・読込不能なら残す。
+    /// 適用の前にマーカーを別名へ確保し、適用中に更新フックが書き直した新しいマーカーを消さない。
+    /// 成功したとき（または利用者の切替が先に適用済みのとき）だけ確保したマーカーを消し、
+    /// 失敗・譲り・例外・確保の失敗では残して次回起動で再試行する。読込不能ならどちらにも触れない。
     /// </summary>
-    /// <returns>マーカーを回収したら true。</returns>
+    /// <returns>保留を回収したら true。</returns>
     internal static bool RefreshPendingShellContextMenuRegistration(
         string? markerPath = null,
         bool? settingsUnreadable = null,
@@ -133,7 +145,8 @@ internal class Program
         Func<bool, bool, bool>? setEnabled = null)
     {
         var path = markerPath ?? GetShellContextMenuRefreshMarkerPath();
-        if (!File.Exists(path))
+        var claimed = path + ClaimedMarkerSuffix;
+        if (!File.Exists(path) && !File.Exists(claimed))
             return false;
 
         if (settingsUnreadable ?? SettingsManager.Instance.StartedWithUnreadableSettings)
@@ -142,13 +155,27 @@ internal class Program
             return false;
         }
 
+        // 前回の異常終了・失敗で確保済みのものがあれば保留とみなす。新しいマーカーは確保して適用の対象に含める。
+        if (File.Exists(path))
+        {
+            try
+            {
+                File.Move(path, claimed, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogException("右クリックメニュー再登録マーカーの確保に失敗しました", ex);
+                return false;
+            }
+        }
+
         var result = ShellContextMenu.RefreshPendingRegistration(
             readSettings ?? ReadContextMenuSettings,
             setEnabled);
         if (result is ShellContextMenu.PendingRefreshResult.Failed or ShellContextMenu.PendingRefreshResult.Busy)
             return false;
 
-        DeleteMarker(path, "右クリックメニュー再登録マーカーの削除に失敗しました");
+        DeleteMarker(claimed, "右クリックメニュー再登録マーカーの削除に失敗しました");
         return true;
     }
 
@@ -167,7 +194,9 @@ internal class Program
     {
         try
         {
-            if (IsArchiveWorker || args.Length != 0 || !File.Exists(GetShellContextMenuRefreshMarkerPath()))
+            var markerPath = GetShellContextMenuRefreshMarkerPath();
+            if (IsArchiveWorker || args.Length != 0
+                || (!File.Exists(markerPath) && !File.Exists(markerPath + ClaimedMarkerSuffix)))
                 return;
 
             _ = Task.Run(() =>
@@ -200,7 +229,7 @@ internal class Program
     {
         // 保留中の再登録がアンインストール後に登録を復活させないよう、先にマーカーを消す。
         (clearShellContextMenuRefreshPending ?? (() =>
-            DeleteMarker(GetShellContextMenuRefreshMarkerPath(), "右クリックメニュー再登録マーカーの削除に失敗しました")))();
+            DeleteShellContextMenuRefreshMarkers(GetShellContextMenuRefreshMarkerPath())))();
         (unregisterStartup ?? StartupRegistration.Unregister)();
         _ = (removeContextMenu ?? ShellContextMenu.RemoveAll)();
         _ = (disassociateAllFileTypes ?? FileAssociation.DisassociateAllFileTypes)();

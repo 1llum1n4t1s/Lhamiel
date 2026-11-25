@@ -463,6 +463,16 @@ public class Settings
     private const int ReadInitialDelayMs = 40;
 
     /// <summary>
+    /// テスト用の差し替え口。引き継ぎと既定値の新規作成が失敗・競合した後の分岐を、実ファイルの競合なしに決定的に試す。
+    /// <see cref="AsyncLocal{T}"/> なので、並列実行される他テストの読込みへ影響しない。本番では常に null。
+    /// </summary>
+    internal sealed record LoadFileHooks(
+        Func<string, string, Exception?>? AdoptLegacy = null,
+        Func<string, string, bool>? CreateNew = null);
+
+    internal static readonly AsyncLocal<LoadFileHooks?> LoadFileHooksForTests = new();
+
+    /// <summary>
     /// 指定パスの設定を読み込む。パスを引数に取るのは、テストが実ユーザーの設定へ触れずに検証できるようにするため。
     /// </summary>
     /// <param name="settingsPath">settings.json のパス</param>
@@ -489,7 +499,8 @@ public class Settings
                 if (legacyProbe.Exists)
                 {
                     // 旧設定を引き継げないまま既定値を新規作成すると、旧設定が以後読まれず失われる。引き継げなければ読込不能にする。
-                    var adoptError = AdoptLegacySettingsFile(legacySettingsPath, settingsPath);
+                    var adoptError = (LoadFileHooksForTests.Value?.AdoptLegacy ?? AdoptLegacySettingsFile)(
+                        legacySettingsPath, settingsPath);
                     probe = ProbeSettingsFile(settingsPath);
                     // 失敗しても、別プロセスが先に新位置を作っていれば読込みへ進む。旧ファイルが消えていて新位置も無いときは
                     // 引き継ぐ物が無いので、従来どおり既定値を作る。それ以外の失敗は旧設定を失わないよう読込不能にする。
@@ -520,10 +531,10 @@ public class Settings
             try
             {
                 // 新規作成は上書きしない。別プロセスが先に作っていたら、その内容を1回だけ読み直して採用する。
-                var created = AtomicFileWriter.TryCreateNew(
-                    settingsPath,
-                    JsonSerializer.Serialize(defaultSettings, AppJsonContext.Default.Settings),
-                    Utf8NoBom);
+                var defaultJson = JsonSerializer.Serialize(defaultSettings, AppJsonContext.Default.Settings);
+                var created = LoadFileHooksForTests.Value?.CreateNew is { } createNew
+                    ? createNew(settingsPath, defaultJson)
+                    : AtomicFileWriter.TryCreateNew(settingsPath, defaultJson, Utf8NoBom);
                 if (!created)
                 {
                     var (racedJson, racedError) = ReadSettingsText(settingsPath);
@@ -570,7 +581,7 @@ public class Settings
     /// 旧ファイルの削除は best-effort で、残っても新位置がある間は旧位置を読まないので再移行されない。
     /// </summary>
     /// <returns>引き継げなかったときの原因。成功（競合で先に作られていた場合を含む）は null。</returns>
-    private static Exception? AdoptLegacySettingsFile(string legacySettingsPath, string settingsPath)
+    internal static Exception? AdoptLegacySettingsFile(string legacySettingsPath, string settingsPath)
     {
         try
         {

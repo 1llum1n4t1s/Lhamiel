@@ -10,7 +10,7 @@ The compression output registry stores immutable plan payloads separately from s
 
 ## Pending context-menu refresh marker
 
-A context-menu refresh skipped by the Velopack hook leaves `.shell-context-menu-refresh-pending`; the next readable, argument-free primary UI instance reapplies the current setting in the background. A successful refresh, a later successful hook, a user toggle, or uninstall removes the marker; failure or a busy gate keeps it for the next startup. Workers, CLI, and silent update never consume it.
+A context-menu refresh skipped by the Velopack hook leaves `.shell-context-menu-refresh-pending`; the next readable, argument-free primary UI instance reapplies the current setting in the background. It first moves the marker to `.shell-context-menu-refresh-pending.claimed`, applies the setting, and deletes only the claimed file after a successful refresh or an earlier user toggle, so a marker the hook writes during the apply survives for a later startup. A failed, busy, or interrupted run keeps the claimed file, which the next startup treats as pending. A later successful hook or uninstall removes both. Workers, CLI, and silent update never consume it.
 
 ## Capacity estimates
 

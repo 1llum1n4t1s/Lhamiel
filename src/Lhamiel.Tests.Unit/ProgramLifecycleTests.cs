@@ -88,6 +88,7 @@ public class ProgramLifecycleTests
 
             Assert.Equal((true, false), applied);
             Assert.False(File.Exists(marker));
+            Assert.False(File.Exists(marker + ".claimed"));
         }
         finally
         {
@@ -96,28 +97,212 @@ public class ProgramLifecycleTests
     }
 
     [Fact]
-    public void ShellContextMenuRefreshPending_KeepsMarkerWhenFailedOrUnreadableAndIgnoresMissingMarker()
+    public void ShellContextMenuRefreshPending_KeepsPendingWhenFailedOrUnreadableAndIgnoresMissingMarker()
     {
         var directory = Path.Combine(Path.GetTempPath(), $"Lhamiel-MenuRefresh-{Guid.NewGuid():N}");
         try
         {
             var marker = CreateMarker(directory);
+            var claimed = marker + ".claimed";
             var calls = 0;
 
-            Assert.False(Program.RefreshPendingShellContextMenuRegistration(
-                marker, false, () => (true, true), (_, _) => { calls++; return false; }));
-            Assert.True(File.Exists(marker));
-            Assert.Equal(1, calls);
-
+            // 読めない間はマーカーを確保もしない。
             Assert.False(Program.RefreshPendingShellContextMenuRegistration(
                 marker, true, () => (true, true), (_, _) => { calls++; return true; }));
             Assert.True(File.Exists(marker));
+            Assert.False(File.Exists(claimed));
+            Assert.Equal(0, calls);
+
+            // 失敗したときは確保したマーカーが残り、次回起動で再試行される。
+            Assert.False(Program.RefreshPendingShellContextMenuRegistration(
+                marker, false, () => (true, true), (_, _) => { calls++; return false; }));
+            Assert.False(File.Exists(marker));
+            Assert.True(File.Exists(claimed));
             Assert.Equal(1, calls);
 
-            File.Delete(marker);
+            // 確保済みだけが残った状態から回収できる。
+            Assert.True(Program.RefreshPendingShellContextMenuRegistration(
+                marker, false, () => (true, true), (_, _) => { calls++; return true; }));
+            Assert.False(File.Exists(claimed));
+            Assert.Equal(2, calls);
+
             Assert.False(Program.RefreshPendingShellContextMenuRegistration(
                 marker, false, () => (true, true), (_, _) => { calls++; return true; }));
+            Assert.Equal(2, calls);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ShellContextMenuRefreshPending_ClaimedOnlyAndUnreadable_TouchesNothing()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"Lhamiel-MenuRefresh-{Guid.NewGuid():N}");
+        try
+        {
+            var marker = Path.Combine(directory, "pending");
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(marker + ".claimed", "pending");
+
+            Assert.False(Program.RefreshPendingShellContextMenuRegistration(
+                marker, true, () => (true, true), (_, _) => throw new InvalidOperationException("適用されました")));
+
+            Assert.True(File.Exists(marker + ".claimed"));
+            Assert.False(File.Exists(marker));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ShellContextMenuRefreshPending_MarkerWrittenDuringApply_SurvivesForNextStartup()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"Lhamiel-MenuRefresh-{Guid.NewGuid():N}");
+        try
+        {
+            var marker = CreateMarker(directory);
+
+            Assert.True(Program.RefreshPendingShellContextMenuRegistration(
+                marker, false, () => (true, true),
+                (_, _) =>
+                {
+                    // 適用中に更新フックが新しいマーカーを書く。
+                    File.WriteAllText(marker, "pending");
+                    return true;
+                }));
+
+            Assert.True(File.Exists(marker));
+            Assert.False(File.Exists(marker + ".claimed"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ShellContextMenuRefreshPending_MarkerWrittenDuringFailedApply_KeepsBothAndNextRunCollectsThem()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"Lhamiel-MenuRefresh-{Guid.NewGuid():N}");
+        try
+        {
+            var marker = CreateMarker(directory);
+            var claimed = marker + ".claimed";
+
+            Assert.False(Program.RefreshPendingShellContextMenuRegistration(
+                marker, false, () => (true, true),
+                (_, _) =>
+                {
+                    File.WriteAllText(marker, "pending");
+                    return false;
+                }));
+            Assert.True(File.Exists(marker));
+            Assert.True(File.Exists(claimed));
+
+            // 両方ある場合は、新しい方を確保（上書き）して1回で回収する。
+            var calls = 0;
+            Assert.True(Program.RefreshPendingShellContextMenuRegistration(
+                marker, false, () => (true, true), (_, _) => { calls++; return true; }));
             Assert.Equal(1, calls);
+            Assert.False(File.Exists(marker));
+            Assert.False(File.Exists(claimed));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ShellContextMenuRefreshPending_WhenApplyThrows_KeepsClaimedMarker()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"Lhamiel-MenuRefresh-{Guid.NewGuid():N}");
+        try
+        {
+            var marker = CreateMarker(directory);
+
+            Assert.Throws<InvalidOperationException>(() => Program.RefreshPendingShellContextMenuRegistration(
+                marker, false, () => (true, true), (_, _) => throw new InvalidOperationException("失敗")));
+
+            Assert.True(File.Exists(marker + ".claimed"));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ShellContextMenuRefreshPending_WhenApplyIsBusy_KeepsClaimedMarker()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"Lhamiel-MenuRefresh-{Guid.NewGuid():N}");
+        var previous = ShellContextMenu.AppliedInProcess;
+        try
+        {
+            ShellContextMenu.AppliedInProcess = false;
+            var marker = CreateMarker(directory);
+            var result = true;
+            // 別スレッドが適用ゲートを保持している間に回収すると、待たずに譲って保留を残す。
+            ShellContextMenu.RefreshPendingRegistration(
+                () => (true, true),
+                (_, _) =>
+                {
+                    var other = new Thread(() => result = Program.RefreshPendingShellContextMenuRegistration(
+                        marker, false, () => (true, true), (_, _) => true));
+                    other.Start();
+                    other.Join();
+                    return true;
+                });
+
+            Assert.False(result);
+            Assert.True(File.Exists(marker + ".claimed"));
+            Assert.False(File.Exists(marker));
+        }
+        finally
+        {
+            ShellContextMenu.AppliedInProcess = previous;
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ShellContextMenuRefreshPending_WhenClaimFails_DoesNotApplyAndKeepsMarker()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"Lhamiel-MenuRefresh-{Guid.NewGuid():N}");
+        try
+        {
+            var marker = CreateMarker(directory);
+            // 確保先にディレクトリがあると Move が失敗する。
+            Directory.CreateDirectory(marker + ".claimed");
+
+            Assert.False(Program.RefreshPendingShellContextMenuRegistration(
+                marker, false, () => (true, true), (_, _) => throw new InvalidOperationException("適用されました")));
+
+            Assert.True(File.Exists(marker));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ShellContextMenuRefreshPending_ClearsBothMarkersOnSuccessfulHookAndUninstall()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"Lhamiel-MenuRefresh-{Guid.NewGuid():N}");
+        try
+        {
+            var marker = CreateMarker(directory);
+            File.WriteAllText(marker + ".claimed", "pending");
+
+            Program.DeleteShellContextMenuRefreshMarkers(marker);
+
+            Assert.False(File.Exists(marker));
+            Assert.False(File.Exists(marker + ".claimed"));
         }
         finally
         {

@@ -202,7 +202,7 @@ public sealed class SettingsLoadFailureTests : IDisposable
     }
 
     [Fact]
-    public void LoadFromPath_ParentOfNewLocationCannotBeCreated_IsUnreadable()
+    public void LoadFromPath_ParentOfNewLocationIsAFile_IsUnreadableAndKeepsLegacy()
     {
         WriteLegacySettings("Dark");
         var blocker = Path.Combine(_directory, "blocker");
@@ -212,6 +212,98 @@ public sealed class SettingsLoadFailureTests : IDisposable
 
         Assert.Equal(SettingsLoadStatus.Unreadable, result.Status);
         Assert.True(File.Exists(LegacyPath));
+    }
+
+    private static SettingsLoadResult LoadWithHooks(
+        Settings.LoadFileHooks hooks, string settingsPath, string legacyPath)
+    {
+        Settings.LoadFileHooksForTests.Value = hooks;
+        try { return Settings.LoadFromPath(settingsPath, legacyPath); }
+        finally { Settings.LoadFileHooksForTests.Value = null; }
+    }
+
+    [Fact]
+    public void AdoptLegacySettingsFile_NewLocationCannotBeCreated_ReturnsErrorAndKeepsLegacyContent()
+    {
+        WriteLegacySettings("Dark");
+        var before = File.ReadAllText(LegacyPath);
+        // 親フォルダーが無い新位置への作成は、TryCreateNew が本当に例外を投げる。
+        var unreachable = Path.Combine(_directory, "missing-parent", "settings.json");
+
+        var error = Settings.AdoptLegacySettingsFile(LegacyPath, unreachable);
+
+        Assert.NotNull(error);
+        Assert.False(File.Exists(unreachable));
+        Assert.Equal(before, File.ReadAllText(LegacyPath));
+        Assert.Empty(Directory.GetFiles(_directory, "*.tmp", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public void LoadFromPath_AdoptionErrorWithLegacyStillPresent_IsUnreadableAndKeepsLegacy()
+    {
+        WriteLegacySettings("Dark");
+
+        var result = LoadWithHooks(
+            new Settings.LoadFileHooks(AdoptLegacy: (_, _) => new IOException("作成失敗")),
+            SettingsPath, LegacyPath);
+
+        Assert.Equal(SettingsLoadStatus.Unreadable, result.Status);
+        Assert.False(File.Exists(SettingsPath));
+        Assert.True(File.Exists(LegacyPath));
+    }
+
+    [Fact]
+    public void LoadFromPath_AdoptionFailsButNewLocationAppeared_ReadsNewLocation()
+    {
+        WriteLegacySettings("Dark");
+
+        var result = LoadWithHooks(
+            new Settings.LoadFileHooks(AdoptLegacy: (_, settingsPath) =>
+            {
+                // 失敗した直後に、別プロセスが新位置を作った。
+                new Settings { Theme = "Light" }.SaveTo(settingsPath);
+                return new IOException("競合");
+            }),
+            SettingsPath, LegacyPath);
+
+        Assert.Equal(SettingsLoadStatus.Loaded, result.Status);
+        Assert.Equal("Light", result.Settings.Theme);
+    }
+
+    [Fact]
+    public void LoadFromPath_AdoptionFailsAndNeitherLocationExists_CreatesDefaults()
+    {
+        WriteLegacySettings("Dark");
+
+        var result = LoadWithHooks(
+            new Settings.LoadFileHooks(AdoptLegacy: (legacyPath, _) =>
+            {
+                // 失敗した直後に、旧ファイルも別プロセスに消された。引き継ぐ物は無い。
+                File.Delete(legacyPath);
+                return new IOException("競合");
+            }),
+            SettingsPath, LegacyPath);
+
+        Assert.Equal(SettingsLoadStatus.Created, result.Status);
+        Assert.True(File.Exists(SettingsPath));
+    }
+
+    [Fact]
+    public void LoadFromPath_DefaultCreationLosesRace_AdoptsWinnersFileWithSingleCreateAttempt()
+    {
+        var createAttempts = 0;
+        var result = LoadWithHooks(
+            new Settings.LoadFileHooks(CreateNew: (path, _) =>
+            {
+                createAttempts++;
+                new Settings { Theme = "Dark" }.SaveTo(path);
+                return false;
+            }),
+            SettingsPath, LegacyPath);
+
+        Assert.Equal(1, createAttempts);
+        Assert.Equal(SettingsLoadStatus.Loaded, result.Status);
+        Assert.Equal("Dark", result.Settings.Theme);
     }
 
     private string LhaignorePath => Path.Combine(_directory, "data", ".lhaignore");
