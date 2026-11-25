@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using Lhamiel.Util;
 using Xunit;
 
@@ -97,22 +98,44 @@ public sealed class SettingsSaveRollbackTests
         Assert.False(new SettingsManager(Loaded(), Loaded, _ => { }).StartedWithUnreadableSettings);
     }
 
+    /// <summary>
+    /// 単体テストでは Application が無く、App.Text は未解決のキー名（"Text.Error.…"）を返す。そのため
+    /// App.Text から接頭辞を作ると、メッセージと同じ解決結果同士の比較になり、接頭辞が付いても検査が落ちない。
+    /// ここでは未解決のキー名と、製品の ja_JP ロケールファイルの実文言（"{0}" より前）の両方を接頭辞として返す。
+    /// </summary>
+    private static string[] SaveFailedPrefixes()
+    {
+        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
+        var element = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "Locales", "ja_JP.axaml"))
+            .Descendants()
+            .Single(e => (string?)e.Attribute(x + "Key") == "Text.Error.SaveSettingsFailed");
+        var template = element.Value;
+        var placeholder = template.IndexOf("{0}", StringComparison.Ordinal);
+        Assert.True(placeholder > 0, "ja_JP の Error.SaveSettingsFailed に接頭辞と {0} が必要");
+        var literalPrefix = template[..placeholder].TrimEnd(' ', ':', '：');
+        Assert.NotEmpty(literalPrefix);
+        return ["Error.SaveSettingsFailed", literalPrefix];
+    }
+
     [Fact]
     public void SaveAborted_Messages_AreLocalizedReasonsWithoutPrefixOrPaths()
     {
         var startedUnreadable = new SettingsManager(Unreadable(), Loaded, _ => { });
         var startup = Assert.Throws<InvalidOperationException>(() => startedUnreadable.MutateAndSave(_ => { }));
-        Assert.Equal(App.Text("Error.SaveAbortedStartupUnreadable"), startup.Message);
 
         var becameUnreadable = new SettingsManager(Loaded(), Unreadable, _ => { });
         var file = Assert.Throws<InvalidOperationException>(() => becameUnreadable.MutateAndSave(_ => { }));
+
+        // 接頭辞は表示側が1回だけ付けるため、例外メッセージ自体には含まれない。
+        foreach (var prefix in SaveFailedPrefixes())
+        {
+            Assert.DoesNotContain(prefix, startup.Message);
+            Assert.DoesNotContain(prefix, file.Message);
+        }
+
+        Assert.Equal(App.Text("Error.SaveAbortedStartupUnreadable"), startup.Message);
         Assert.Equal(App.Text("Error.SaveAbortedFileUnreadable"), file.Message);
         Assert.DoesNotContain("someone", file.Message);
         Assert.IsType<IOException>(file.InnerException);
-
-        // 接頭辞は表示側が1回だけ付けるため、例外メッセージ自体には含まれない。
-        var prefixOnly = App.Text("Error.SaveSettingsFailed", "").TrimEnd(' ', ':', '：');
-        Assert.DoesNotContain(prefixOnly, startup.Message);
-        Assert.DoesNotContain(prefixOnly, file.Message);
     }
 }

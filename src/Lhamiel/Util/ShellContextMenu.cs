@@ -44,8 +44,66 @@ internal static class ShellContextMenu
     private static readonly string[] CompressTargetClasses = ["*", "Directory"];
     private static readonly string[] LegacyTargetClasses = ["*", "Directory"];
 
+    /// <summary>登録の適用を直列化する。更新フックの回収処理と利用者の切替が同時に走って古い値で上書きしないため。</summary>
+    private static readonly object ApplyGate = new();
+
+    /// <summary>このプロセスで登録の適用に成功したか。成功済みなら、保留中の再登録はその適用に置き換わる。</summary>
+    internal static bool AppliedInProcess { get; set; }
+
+    /// <summary>保留中の再登録の結果。</summary>
+    internal enum PendingRefreshResult
+    {
+        /// <summary>設定どおりに登録し直した。</summary>
+        Applied,
+        /// <summary>このプロセスで利用者の切替などによる適用が済んでいるため、古い設定での上書きを避けて何もしなかった。</summary>
+        Superseded,
+        /// <summary>登録に失敗した。</summary>
+        Failed,
+        /// <summary>利用者の切替などが適用中だったため、待たずに譲った。</summary>
+        Busy,
+    }
+
+    /// <summary>
+    /// 更新フックが見送った登録を、適用ゲートの内側で現在の設定を読んで登録し直す。
+    /// 先に <see cref="SetEnabled"/> が成功していれば（利用者の切替直後など）、その適用が最新なので何もしない。
+    /// </summary>
+    internal static PendingRefreshResult RefreshPendingRegistration(
+        Func<(bool Extract, bool Compress)> readCurrentSettings,
+        Func<bool, bool, bool>? setEnabled = null)
+    {
+        ArgumentNullException.ThrowIfNull(readCurrentSettings);
+        // 起動直後の切替を待たせないよう、適用中なら譲って保留（マーカー）を残す。
+        if (!Monitor.TryEnter(ApplyGate, 0))
+            return PendingRefreshResult.Busy;
+        try
+        {
+            if (AppliedInProcess)
+                return PendingRefreshResult.Superseded;
+
+            var (extract, compress) = readCurrentSettings();
+            return (setEnabled ?? SetEnabled)(extract, compress)
+                ? PendingRefreshResult.Applied
+                : PendingRefreshResult.Failed;
+        }
+        finally
+        {
+            Monitor.Exit(ApplyGate);
+        }
+    }
+
     /// <summary>右クリックメニューの展開／圧縮コマンドを独立して切り替える。</summary>
     internal static bool SetEnabled(bool extractEnabled, bool compressEnabled)
+    {
+        lock (ApplyGate)
+        {
+            var succeeded = SetEnabledCore(extractEnabled, compressEnabled);
+            if (succeeded)
+                AppliedInProcess = true;
+            return succeeded;
+        }
+    }
+
+    private static bool SetEnabledCore(bool extractEnabled, bool compressEnabled)
     {
         var enabled = extractEnabled || compressEnabled;
         try

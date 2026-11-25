@@ -54,8 +54,9 @@ internal static class LhaignoreFile
     /// 作成は <see cref="AtomicFileWriter.TryCreateNew"/> で「一時ファイル → フラッシュ → 上書きしない Move」の
     /// 原子的な初回作成にする。途中で失敗しても中途半端な .lhaignore が残らず、存在確認から作成までの間に
     /// 別プロセス・外部エディタが先に作った場合はその内容を上書きせず false を返す（作成済み扱い）。
-    /// それ以外の失敗は従来どおりログを残して false を返し、呼び出し側（<see cref="Settings"/> の Load）は
-    /// ファイルが存在しないことを見て旧 ExcludedFilePatterns を温存する。
+    /// それ以外の失敗は従来どおりログを残して false を返す。呼び出し側（<see cref="Settings"/> の Load）は
+    /// 戻り値 true（このメソッドが作成した）のときだけ旧 ExcludedFilePatterns を捨て、false のときは
+    /// 移行できていないため温存する。
     /// </remarks>
     /// <param name="filePath">作成先の .lhaignore の絶対パス。</param>
     /// <param name="legacyPatterns">旧 settings.json の ExcludedFilePatterns（移行時のみ）。</param>

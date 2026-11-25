@@ -126,7 +126,7 @@
 挙動メモ:
 - マッチは大小区別なし（Windows ファイルシステム互換）。
 - ディレクトリ除外（`node_modules/` など）は配下を枝刈りするため、`!node_modules/keep.txt` での再包含は機能しない。
-- 旧 `settings.json` の `ExcludedFilePatterns` 配列は初回起動時に自動で `.lhaignore` へ移行され、次回 Save で JSON から消える。
+- 旧 `settings.json` の `ExcludedFilePatterns` 配列は初回起動時に自動で `.lhaignore` へ移行され、自分で `.lhaignore` を作成できた場合だけ、次回 Save で JSON から消える（既に `.lhaignore` がある場合は温存する）。
 
 ### 圧縮元フォルダー別ルールの読み込み
 

@@ -184,6 +184,9 @@ public partial class App : Application
                         }
                         return;
                     }
+
+                    // 単一インスタンスを確保できた通常起動だけ、更新フックが見送った右クリックメニュー登録を背景で回収する。
+                    Program.StartPendingShellContextMenuRefresh(startupArgs);
                 }
                 catch (Exception ex)
                 {

@@ -140,6 +140,142 @@ public sealed class SettingsLoadFailureTests : IDisposable
         Assert.True(Directory.Exists(SettingsPath));
     }
 
+    private void WriteLegacySettings(string theme)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(LegacyPath)!);
+        new Settings { Theme = theme, IgnoreUpdateTag = "legacy-tag" }.SaveTo(LegacyPath);
+    }
+
+    [Fact]
+    public void LoadFromPath_LegacyOnly_MovesToNewLocation()
+    {
+        WriteLegacySettings("Dark");
+
+        var result = Load();
+
+        Assert.Equal(SettingsLoadStatus.Loaded, result.Status);
+        Assert.Equal("Dark", result.Settings.Theme);
+        Assert.True(File.Exists(SettingsPath));
+        Assert.False(File.Exists(LegacyPath));
+    }
+
+    [Fact]
+    public void LoadFromPath_LegacyReadableButNotMovable_CopiesAtomicallyAndNeverRereadsLegacy()
+    {
+        WriteLegacySettings("Dark");
+
+        SettingsLoadResult first;
+        // 読めるが移動・削除できない形（FileShare.Delete なし）で旧ファイルを開く。
+        using (new FileStream(LegacyPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            first = Load();
+        }
+
+        Assert.Equal(SettingsLoadStatus.Loaded, first.Status);
+        Assert.Equal("Dark", first.Settings.Theme);
+        Assert.Equal("legacy-tag", first.Settings.IgnoreUpdateTag);
+        Assert.True(File.Exists(LegacyPath));
+        Assert.Empty(Directory.GetFiles(_directory, "*.tmp"));
+
+        // 新位置がある間は旧位置を読まない（旧ファイルが新設定を上書き・再移行しない）。
+        new Settings { Theme = "Light" }.SaveTo(LegacyPath);
+        var second = Load();
+
+        Assert.Equal("Dark", second.Settings.Theme);
+    }
+
+    [Fact]
+    public void LoadWithStatusFrom_LegacyExclusivelyLocked_IsUnreadableAndCreatesNothing()
+    {
+        WriteLegacySettings("Dark");
+
+        SettingsLoadResult result;
+        using (new FileStream(LegacyPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            result = LoadWithLhaignore();
+        }
+
+        Assert.Equal(SettingsLoadStatus.Unreadable, result.Status);
+        Assert.False(File.Exists(SettingsPath));
+        Assert.False(File.Exists(LhaignorePath));
+        Assert.Empty(Directory.GetFiles(_directory, "*.tmp"));
+    }
+
+    [Fact]
+    public void LoadFromPath_ParentOfNewLocationCannotBeCreated_IsUnreadable()
+    {
+        WriteLegacySettings("Dark");
+        var blocker = Path.Combine(_directory, "blocker");
+        File.WriteAllText(blocker, "x");
+
+        var result = Settings.LoadFromPath(Path.Combine(blocker, "settings.json"), LegacyPath);
+
+        Assert.Equal(SettingsLoadStatus.Unreadable, result.Status);
+        Assert.True(File.Exists(LegacyPath));
+    }
+
+    private string LhaignorePath => Path.Combine(_directory, "data", ".lhaignore");
+
+    private SettingsLoadResult LoadWithLhaignore()
+        => Settings.LoadWithStatusFrom(SettingsPath, LegacyPath, LhaignorePath);
+
+    [Fact]
+    public void LoadWithStatusFrom_LegacyPatternsWithContextMenuMigration_MigratesAndKeepsJsonUntilNextSave()
+    {
+        // 旧 AddToContextMenu の移行保存が .lhaignore の初期化より先に走っても、旧パターンを失わない。
+        File.WriteAllText(SettingsPath, """{ "AddToContextMenu": true, "ExcludedFilePatterns": ["old.tmp", "foo[1].log"] }""");
+
+        var result = LoadWithLhaignore();
+
+        Assert.Equal(SettingsLoadStatus.Loaded, result.Status);
+        var lines = File.ReadAllLines(LhaignorePath);
+        Assert.Contains("old.tmp", lines);
+        Assert.Contains(@"foo\[1\].log", lines);
+        Assert.Null(result.Settings.ExcludedFilePatternsLegacy);
+        Assert.Contains("old.tmp", File.ReadAllText(SettingsPath));
+    }
+
+    [Fact]
+    public void LoadWithStatusFrom_PartiallyBrokenFile_RecoversAndMigratesLegacyPatterns()
+    {
+        File.WriteAllText(SettingsPath, """{ "Theme": 5, "ExcludedFilePatterns": ["old.tmp"] }""");
+
+        var result = LoadWithLhaignore();
+
+        Assert.Equal(SettingsLoadStatus.Loaded, result.Status);
+        Assert.Contains("old.tmp", File.ReadAllLines(LhaignorePath));
+    }
+
+    [Fact]
+    public void LoadWithStatusFrom_LegacyPatternsAndCreationBlocked_KeepsLegacyInMemoryAndJson()
+    {
+        File.WriteAllText(SettingsPath, """{ "AddToContextMenu": true, "ExcludedFilePatterns": ["old.tmp"] }""");
+        // .lhaignore の親パスをファイルにして作成を失敗させる。
+        File.WriteAllText(Path.Combine(_directory, "data"), "x");
+
+        var result = LoadWithLhaignore();
+
+        Assert.Equal(["old.tmp"], result.Settings.ExcludedFilePatternsLegacy);
+        Assert.Contains("old.tmp", File.ReadAllText(SettingsPath));
+        Assert.False(File.Exists(LhaignorePath));
+    }
+
+    [Fact]
+    public void LoadWithStatusFrom_Unreadable_WritesNoLhaignore()
+    {
+        File.WriteAllText(SettingsPath, """{ "ExcludedFilePatterns": ["old.tmp"] }""");
+
+        SettingsLoadResult result;
+        using (new FileStream(SettingsPath, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            result = LoadWithLhaignore();
+        }
+
+        Assert.Equal(SettingsLoadStatus.Unreadable, result.Status);
+        Assert.False(File.Exists(LhaignorePath));
+        Assert.False(Directory.Exists(Path.GetDirectoryName(LhaignorePath)));
+    }
+
     [Fact]
     public void LoadFromPath_CorruptJson_QuarantinesAndReportsCorruptReset()
     {

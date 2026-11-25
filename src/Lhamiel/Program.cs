@@ -18,6 +18,7 @@ internal class Program
     internal static bool IsArchiveWorker => IsCompressionWorker || IsExtractionWorker;
 
     private const string ShortcutIconRestoreMarkerFileName = ".shortcut-icon-restore-pending";
+    private const string ShellContextMenuRefreshMarkerFileName = ".shell-context-menu-refresh-pending";
 
     /// <summary>
     /// 通常 UI モードの単一インスタンス Mutex 名。
@@ -109,14 +110,82 @@ internal class Program
         // それを根拠に利用者の右クリックメニュー登録を解除・変更しない。
         if (SettingsManager.Instance.StartedWithUnreadableSettings)
         {
+            // フックは短い時間制限内で終えるため、登録し直しは次の正常な UI 起動に回す。
             Logger.Log("settings.json を読めなかったため、右クリックメニュー登録の更新を見送りました", LogLevel.Warning);
+            WriteMarker(GetShellContextMenuRefreshMarkerPath(), "右クリックメニュー再登録マーカーの作成に失敗しました");
             return;
         }
 
         var settings = SettingsManager.Instance.Current;
-        _ = ShellContextMenu.SetEnabled(
-            settings.AddExtractToContextMenu,
-            settings.AddCompressToContextMenu);
+        if (ShellContextMenu.SetEnabled(settings.AddExtractToContextMenu, settings.AddCompressToContextMenu))
+            DeleteMarker(GetShellContextMenuRefreshMarkerPath(), "右クリックメニュー再登録マーカーの削除に失敗しました");
+    }
+
+    /// <summary>
+    /// 更新フックが見送った右クリックメニューの再登録を、設定を読めた通常 UI 起動で一度だけ行う。
+    /// 成功したとき（または利用者の切替が先に適用済みのとき）だけマーカーを消し、失敗・読込不能なら残す。
+    /// </summary>
+    /// <returns>マーカーを回収したら true。</returns>
+    internal static bool RefreshPendingShellContextMenuRegistration(
+        string? markerPath = null,
+        bool? settingsUnreadable = null,
+        Func<(bool Extract, bool Compress)>? readSettings = null,
+        Func<bool, bool, bool>? setEnabled = null)
+    {
+        var path = markerPath ?? GetShellContextMenuRefreshMarkerPath();
+        if (!File.Exists(path))
+            return false;
+
+        if (settingsUnreadable ?? SettingsManager.Instance.StartedWithUnreadableSettings)
+        {
+            Logger.Log("settings.json を読めなかったため、右クリックメニュー登録の再登録を見送りました", LogLevel.Warning);
+            return false;
+        }
+
+        var result = ShellContextMenu.RefreshPendingRegistration(
+            readSettings ?? ReadContextMenuSettings,
+            setEnabled);
+        if (result is ShellContextMenu.PendingRefreshResult.Failed or ShellContextMenu.PendingRefreshResult.Busy)
+            return false;
+
+        DeleteMarker(path, "右クリックメニュー再登録マーカーの削除に失敗しました");
+        return true;
+    }
+
+    private static (bool Extract, bool Compress) ReadContextMenuSettings()
+    {
+        var settings = SettingsManager.Instance.Current;
+        return (settings.AddExtractToContextMenu, settings.AddCompressToContextMenu);
+    }
+
+    /// <summary>
+    /// 単一インスタンス Mutex を取得できた直後（<c>App</c>）に呼ぶ。引数なしの通常 UI 起動だけが、
+    /// 保留中の再登録を背景で回収する（worker・引数あり・Mutex 取得に失敗したフォールバック起動は除く）。
+    /// MSIX 登録は数秒かかり得るため、起動と UI スレッドを塞がない。開始の失敗は起動を妨げない。
+    /// </summary>
+    internal static void StartPendingShellContextMenuRefresh(string[] args)
+    {
+        try
+        {
+            if (IsArchiveWorker || args.Length != 0 || !File.Exists(GetShellContextMenuRefreshMarkerPath()))
+                return;
+
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    _ = RefreshPendingShellContextMenuRegistration();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogException("右クリックメニューの再登録で予期しないエラーが発生しました", ex);
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("右クリックメニューの再登録を開始できませんでした", ex);
+        }
     }
 
     /// <summary>
@@ -126,8 +195,12 @@ internal class Program
     internal static void CleanupBeforeUninstall(
         Action? unregisterStartup = null,
         Func<bool>? removeContextMenu = null,
-        Func<bool>? disassociateAllFileTypes = null)
+        Func<bool>? disassociateAllFileTypes = null,
+        Action? clearShellContextMenuRefreshPending = null)
     {
+        // 保留中の再登録がアンインストール後に登録を復活させないよう、先にマーカーを消す。
+        (clearShellContextMenuRefreshPending ?? (() =>
+            DeleteMarker(GetShellContextMenuRefreshMarkerPath(), "右クリックメニュー再登録マーカーの削除に失敗しました")))();
         (unregisterStartup ?? StartupRegistration.Unregister)();
         _ = (removeContextMenu ?? ShellContextMenu.RemoveAll)();
         _ = (disassociateAllFileTypes ?? FileAssociation.DisassociateAllFileTypes)();
@@ -236,6 +309,39 @@ internal class Program
 
     private static string GetShortcutIconRestoreMarkerPath() =>
         Path.Combine(Settings.AppDataDirectory, ShortcutIconRestoreMarkerFileName);
+
+    private static string GetShellContextMenuRefreshMarkerPath() =>
+        Path.Combine(Settings.AppDataDirectory, ShellContextMenuRefreshMarkerFileName);
+
+    private static bool WriteMarker(string path, string failureMessage)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(directory))
+                Directory.CreateDirectory(directory);
+            File.WriteAllText(path, "pending");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException(failureMessage, ex);
+            return false;
+        }
+    }
+
+    private static void DeleteMarker(string path, string failureMessage)
+    {
+        try
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException(failureMessage, ex);
+        }
+    }
 
     /// <summary>
     /// UI なしでサイレント更新チェックを実行する

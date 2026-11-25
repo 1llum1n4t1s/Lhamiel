@@ -388,7 +388,8 @@ public class Settings
     /// <summary>
     /// <paramref name="source"/>（<see cref="Snapshot"/> で取った変更前の複製）の値でこのインスタンスを巻き戻す。
     /// <see cref="SettingsManager"/> が保存の失敗・中止時に、ロック内でメモリ上の設定を変更前へ戻すために使う。
-    /// 設定プロパティを追加したときは必ずここへ追記する（<c>SettingsCopyFromTests</c> が全プロパティの網羅を検査する）。
+    /// 設定プロパティを追加したときは必ずここへ追記する（<c>SettingsSaveRollbackTests.MutateAndSave_WriteFails_RestoresEveryPropertyAndKeepsReference</c> が
+    /// 公開プロパティを全部変えて巻き戻りを検査するため、追記漏れはそのテストが落ちて見つかる）。
     /// </summary>
     internal void CopyFrom(Settings source)
     {
@@ -440,11 +441,19 @@ public class Settings
     /// 設定は既定値になる（起動は継続できるが、呼び出し側は既定値をファイルへ書き戻してはならない）。
     /// </summary>
     internal static SettingsLoadResult LoadWithStatus()
+        => LoadWithStatusFrom(
+            SettingsFilePath, Path.Combine(AppContext.BaseDirectory, "settings.json"), LhaignoreFile.FilePath);
+
+    /// <summary>
+    /// <see cref="LoadWithStatus"/> の本体。読込みと .lhaignore の初期化・移行の順序を、テストが実ユーザーの
+    /// 設定・.lhaignore へ触れずに検証できるよう、3 つのパスを引数に取る。
+    /// </summary>
+    internal static SettingsLoadResult LoadWithStatusFrom(string settingsPath, string legacySettingsPath, string lhaignorePath)
     {
-        var result = LoadFromPath(SettingsFilePath, Path.Combine(AppContext.BaseDirectory, "settings.json"));
+        var result = LoadFromPath(settingsPath, legacySettingsPath);
         // 読めなかったときの設定は既定値なので、それを根拠に .lhaignore（外部ファイル）を作成・移行しない。
         if (result.Status != SettingsLoadStatus.Unreadable)
-            InitializeLhaignore(result.Settings, LhaignoreFile.FilePath);
+            InitializeLhaignore(result.Settings, lhaignorePath);
         return result;
     }
 
@@ -472,19 +481,25 @@ public class Settings
             var probe = ProbeSettingsFile(settingsPath);
 
             // 移行処理：新しい場所に設定ファイルがなく、古い場所にある場合は移動する
-            if (probe.Error is null && !probe.Exists && File.Exists(legacySettingsPath))
+            if (probe.Error is null && !probe.Exists)
             {
-                try
+                var legacyProbe = ProbeSettingsFile(legacySettingsPath);
+                if (legacyProbe.Error is not null)
+                    return UnreadableResult(legacyProbe.Error);
+                if (legacyProbe.Exists)
                 {
-                    File.Move(legacySettingsPath, settingsPath);
-                    // Logger.Log を使うと再帰の恐れがあるため、デバッグ出力のみ
-                    Debug.WriteLine($"設定ファイルを移行しました: {legacySettingsPath} -> {settingsPath}");
+                    // 旧設定を引き継げないまま既定値を新規作成すると、旧設定が以後読まれず失われる。引き継げなければ読込不能にする。
+                    var adoptError = AdoptLegacySettingsFile(legacySettingsPath, settingsPath);
+                    probe = ProbeSettingsFile(settingsPath);
+                    // 失敗しても、別プロセスが先に新位置を作っていれば読込みへ進む。旧ファイルが消えていて新位置も無いときは
+                    // 引き継ぐ物が無いので、従来どおり既定値を作る。それ以外の失敗は旧設定を失わないよう読込不能にする。
+                    if (adoptError is not null && !probe.Exists)
+                    {
+                        var legacyRecheck = ProbeSettingsFile(legacySettingsPath);
+                        if (legacyRecheck.Error is not null || legacyRecheck.Exists)
+                            return UnreadableResult(adoptError);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"設定ファイルの移行に失敗しました: {ex.Message}");
-                }
-                probe = ProbeSettingsFile(settingsPath);
             }
 
             if (probe.Error is not null)
@@ -494,32 +509,29 @@ public class Settings
 
             if (probe.Exists)
             {
-                string? json;
-                try
-                {
-                    json = LockedFileRetryPolicy.Execute<string?>(
-                        () => File.ReadAllText(settingsPath), settingsPath, ReadMaxAttempts, ReadInitialDelayMs);
-                }
-                catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
-                {
-                    // 調べた直後に消えた場合は不存在として扱う（新規作成へ進む）。
-                    json = null;
-                }
-                catch (Exception ex)
-                {
-                    return UnreadableResult(ex);
-                }
-
+                var (json, readError) = ReadSettingsText(settingsPath);
+                if (readError is not null)
+                    return UnreadableResult(readError);
                 if (json is not null)
-                {
                     return ParseLoadedSettings(json, settingsPath);
-                }
             }
 
             var defaultSettings = new Settings();
             try
             {
-                defaultSettings.SaveTo(settingsPath); // 新規作成時にファイルに書き込む
+                // 新規作成は上書きしない。別プロセスが先に作っていたら、その内容を1回だけ読み直して採用する。
+                var created = AtomicFileWriter.TryCreateNew(
+                    settingsPath,
+                    JsonSerializer.Serialize(defaultSettings, AppJsonContext.Default.Settings),
+                    Utf8NoBom);
+                if (!created)
+                {
+                    var (racedJson, racedError) = ReadSettingsText(settingsPath);
+                    if (racedError is not null)
+                        return UnreadableResult(racedError);
+                    if (racedJson is not null)
+                        return ParseLoadedSettings(racedJson, settingsPath);
+                }
             }
             catch (Exception ex)
             {
@@ -532,6 +544,51 @@ public class Settings
         {
             return UnreadableResult(ex);
         }
+    }
+
+    /// <summary>設定ファイルを読む（一時ロックは再試行）。調べた直後に消えていたら (null, null) を返し、不存在として扱わせる。</summary>
+    private static (string? Json, Exception? Error) ReadSettingsText(string path)
+    {
+        try
+        {
+            return (LockedFileRetryPolicy.Execute<string?>(
+                () => File.ReadAllText(path), path, ReadMaxAttempts, ReadInitialDelayMs), null);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return (null, null);
+        }
+        catch (Exception ex)
+        {
+            return (null, ex);
+        }
+    }
+
+    /// <summary>
+    /// 旧位置の settings.json を新位置へ引き継ぐ。旧ファイルは移動せず、読んだ内容を一時ファイル経由で新位置へ
+    /// 「上書きしない」原子的な作成で複製する（途中までの内容を新位置に残さない。別プロセスが先に作っていたらそちらを尊重する）。
+    /// 旧ファイルの削除は best-effort で、残っても新位置がある間は旧位置を読まないので再移行されない。
+    /// </summary>
+    /// <returns>引き継げなかったときの原因。成功（競合で先に作られていた場合を含む）は null。</returns>
+    private static Exception? AdoptLegacySettingsFile(string legacySettingsPath, string settingsPath)
+    {
+        try
+        {
+            var json = LockedFileRetryPolicy.Execute(
+                () => File.ReadAllText(legacySettingsPath), legacySettingsPath, ReadMaxAttempts, ReadInitialDelayMs);
+            AtomicFileWriter.TryCreateNew(settingsPath, json, Utf8NoBom);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"設定ファイルの移行に失敗しました: {ex.Message}");
+            return ex;
+        }
+
+        try { File.Delete(legacySettingsPath); }
+        catch (Exception ex) { Debug.WriteLine($"旧設定ファイルを削除できませんでした（新位置を優先するため影響なし）: {ex.Message}"); }
+        // Logger.Log を使うと再帰の恐れがあるため、デバッグ出力のみ
+        Debug.WriteLine($"設定ファイルを移行しました: {legacySettingsPath} -> {settingsPath}");
+        return null;
     }
 
     private static SettingsLoadResult UnreadableResult(Exception error)
@@ -699,9 +756,9 @@ public class Settings
     /// 既にファイルがあれば何もしないので何度呼んでも安全。
     /// </summary>
     /// <remarks>
-    /// 作成に失敗した（戻り値 false かつファイルも作成されなかった）場合は、
-    /// 次回 Save で旧 ExcludedFilePatterns が消えて復元不能にならないよう、レガシー値を温存する。
-    /// 作成競合に負けた（別プロセスが先に作成した）場合はファイルが存在するので作成済みとして扱う。
+    /// このメソッドが移行内容を書けたと確認できた（戻り値 true）ときだけレガシー値を破棄する。
+    /// 作成に失敗した場合や、作成競合に負けた（別プロセス・外部エディタが先に作成した。内容は旧パターンを含むとは限らない）
+    /// 場合は、次回 Save で旧 ExcludedFilePatterns が消えて復元不能にならないよう、レガシー値を温存する。
     /// テストから実ユーザーの .lhaignore に触れずに検証できるよう、パスを引数で受け取る。
     /// </remarks>
     internal static void InitializeLhaignore(Settings settings, string lhaignorePath)
@@ -709,7 +766,7 @@ public class Settings
         if (!File.Exists(lhaignorePath))
         {
             var created = LhaignoreFile.EnsureExistsAt(lhaignorePath, settings._legacyExcludedFilePatterns);
-            if (created || File.Exists(lhaignorePath))
+            if (created)
                 settings._legacyExcludedFilePatterns = null;
         }
     }
