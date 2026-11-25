@@ -89,6 +89,15 @@ internal class DialogPreviewContainer
     }
 
     [CRCategory("圧縮")]
+    [CRAction(Label = "ArchiveOverwriteDialog（圧縮の上書き確認）")]
+    public void ShowArchiveOverwriteDialog()
+    {
+        var folder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        var output = Path.Combine(folder, "preview.zip");
+        ShowDialog(() => new ArchiveOverwriteDialog([folder], output, ArchiveOverwriteInfo.Gather([folder], output)));
+    }
+
+    [CRCategory("圧縮")]
     [CRAction(Label = "ProgressWindow（圧縮：準備 → 圧縮 → 完了）")]
     public void ShowCompressPreparingProgress()
     {

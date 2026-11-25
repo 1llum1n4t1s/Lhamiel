@@ -333,6 +333,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">続行</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">キャンセル</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">すべて上書き</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">上書きの確認</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">同じ名前のファイルが既にあります</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">上書きすると、既存のファイルは新しいアーカイブに置き換わります。</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">保存先: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">既存のファイル</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">新しく圧縮する内容</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">更新日時: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">サイズ: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">圧縮前の合計: {0}（{1} ファイル、除外設定の適用前）</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">圧縮前の合計を計算中…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">圧縮前の合計を取得できませんでした</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">ほか {0} 件</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">上書き</x:String>
 
   <!-- 進捗完了メッセージ -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">展開完了: {0}/{1} 個のファイルが成功</x:String>

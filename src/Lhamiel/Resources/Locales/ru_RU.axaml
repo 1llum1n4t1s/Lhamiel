@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Продолжить</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Отмена</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Заменить все</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">Подтверждение замены</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">Файл с таким именем уже существует</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">При замене существующий файл будет заменён новым архивом.</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">Расположение: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">Существующий файл</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">Новое содержимое для сжатия</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">Изменён: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">Размер: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">Общий размер до сжатия: {0} (файлов: {1}, до применения исключений)</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">Подсчёт общего размера до сжатия…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">Не удалось получить общий размер до сжатия</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">Ещё {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">Заменить</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Извлечение завершено: {0}/{1} файлов успешно</x:String>

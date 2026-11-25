@@ -465,52 +465,6 @@ public partial class FileConflictDialog : Window
     // ── Static helpers ──
 
     /// <summary>
-    /// 上書き確認をバックグラウンドスレッドから表示する（FileOverwriteDialog の代替）。
-    /// </summary>
-    public static async Task<bool> CanOverwriteFromBackgroundAsync(string sourcePath, string destinationPath, Window? parentWindow)
-    {
-        if (parentWindow == null) return true;
-
-        var destExists = File.Exists(destinationPath) || Directory.Exists(destinationPath);
-        if (!destExists) return true;
-
-        var destName = Path.GetFileName(destinationPath);
-        if (string.IsNullOrEmpty(destName)) destName = destinationPath;
-
-        var destInfo = File.Exists(destinationPath) ? new FileInfo(destinationPath) : null;
-        var destDirInfo = Directory.Exists(destinationPath) ? new DirectoryInfo(destinationPath) : null;
-        var srcInfo = File.Exists(sourcePath) ? new FileInfo(sourcePath) : null;
-
-        // 左=ソース（これからコピー/展開するもの）、右=宛先（既に存在するもの）
-        var group = new FileConflictGroup
-        {
-            ConflictingName = destName,
-            Entries =
-            [
-                new FileConflictEntry(
-                    sourcePath, Path.GetFileName(sourcePath),
-                    srcInfo?.Length ?? 0,
-                    srcInfo?.LastWriteTime ?? DateTime.MinValue),
-                new FileConflictEntry(
-                    destinationPath, destName,
-                    destInfo?.Length ?? 0,
-                    destInfo?.LastWriteTime ?? destDirInfo?.LastWriteTime ?? DateTime.MinValue)
-            ]
-        };
-
-        return await Dispatcher.UIThread.InvokeAsync(async () =>
-        {
-            var dialog = new FileConflictDialog([group], isTwoPane: true);
-            var result = await dialog.ShowDialog<FileConflictResult?>(parentWindow) ?? FileConflictResult.Cancel;
-            if (result != FileConflictResult.Continue) return false;
-
-            // ユーザーがソース側（左ペイン）を選択した場合のみ上書き許可
-            var selectedFiles = dialog.GetSelectedFiles();
-            return selectedFiles.Any(f => f.fullPath == sourcePath);
-        });
-    }
-
-    /// <summary>
     /// バックグラウンドスレッドから競合ダイアログを表示する。
     /// </summary>
     /// <param name="groups">表示する衝突グループのリスト</param>

@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Продовжити</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Скасувати</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Замінити все</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">Підтвердження заміни</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">Файл із такою назвою вже існує</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">Під час заміни наявний файл буде замінено новим архівом.</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">Розташування: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">Наявний файл</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">Новий вміст для стиснення</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">Змінено: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">Розмір: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">Загальний розмір до стиснення: {0} (файлів: {1}, до застосування винятків)</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">Обчислення загального розміру до стиснення…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">Не вдалося отримати загальний розмір до стиснення</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">Ще {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">Замінити</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Розпакування завершено: {0}/{1} файлів успішно</x:String>

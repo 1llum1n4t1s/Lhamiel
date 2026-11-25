@@ -45,7 +45,7 @@ public class ArchiveProcessorTests : IDisposable
         public FileConflictResult ShowResult { get; set; } = FileConflictResult.Continue;
         public List<(string fullPath, string relativePath)> SelectedFiles { get; set; } = [];
 
-        public Task<bool> CanOverwriteFromBackgroundAsync(string sourcePath, string destinationPath, Window? parentWindow)
+        public Task<bool> CanOverwriteFromBackgroundAsync(IReadOnlyList<string> sourcePaths, string destinationPath, Window? parentWindow)
             => Task.FromResult(CanOverwriteResult);
 
         public Task<(FileConflictResult result, List<(string fullPath, string relativePath)> selectedFiles)>

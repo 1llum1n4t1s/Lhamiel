@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">继续</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">取消</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">全部覆盖</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">确认覆盖</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">已存在同名文件</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">覆盖后，现有文件将被新的压缩包替换。</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">保存位置：{0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">现有文件</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">本次新压缩的内容</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">修改时间：{0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">大小：{0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">压缩前总计：{0}（{1} 个文件，应用排除设置之前）</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">正在计算压缩前总计…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">无法获取压缩前总计</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">另有 {0} 项</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">覆盖</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">解压完成：{0}/{1} 个文件成功</x:String>

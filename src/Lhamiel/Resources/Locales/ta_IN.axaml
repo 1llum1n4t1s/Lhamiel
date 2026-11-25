@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">தொடரவும்</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">ரத்துசெய்</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">அனைத்தையும் மேலெழுது</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">மேலெழுதலை உறுதிசெய்</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">அதே பெயரில் கோப்பு ஏற்கனவே உள்ளது</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">மேலெழுதினால், ஏற்கனவே உள்ள கோப்பு புதிய காப்பகத்தால் மாற்றப்படும்.</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">சேமிப்பிடம்: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">ஏற்கனவே உள்ள கோப்பு</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">புதிதாக சுருக்கப்படும் உள்ளடக்கம்</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">மாற்றிய நேரம்: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">அளவு: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">சுருக்குவதற்கு முன் மொத்தம்: {0} ({1} கோப்புகள், விலக்கு அமைப்புகள் பயன்படுத்தப்படுவதற்கு முன்)</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">சுருக்குவதற்கு முன் மொத்தத்தைக் கணக்கிடுகிறது…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">சுருக்குவதற்கு முன் மொத்தத்தைப் பெற முடியவில்லை</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">மேலும் {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">மேலெழுது</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">பிரித்தெடுத்தல் முடிந்தது: {0}/{1} கோப்புகள் வெற்றி</x:String>

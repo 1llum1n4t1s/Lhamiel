@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">अनुवर्तताम्</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">निवर्तताम्</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">सर्वं पुनर्लिखतु</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">पुनर्लेखनस्य पुष्टिः</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">समाननामकं सञ्चिकं पूर्वमेव अस्ति</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">पुनर्लिखने सति विद्यमानं सञ्चिकं नूतनेन सङ्ग्रहेण स्थापयिष्यते।</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">स्थानम्: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">विद्यमानं सञ्चिकम्</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">नूतनं सङ्कोचनीयं विषयवस्तु</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">परिवर्तितम्: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">आकारः: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">सङ्कोचनात् पूर्वं योगः: {0} ({1} सञ्चिकानि, अपवर्जननियमप्रयोगात् पूर्वम्)</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">सङ्कोचनात् पूर्वं योगः गण्यते…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">सङ्कोचनात् पूर्वं योगः प्राप्तुं न शक्यते</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">अन्ये {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">पुनर्लिखतु</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">निष्कर्षणं सम्पन्नम्: {0}/{1} सञ्चिकाः सफलाः</x:String>

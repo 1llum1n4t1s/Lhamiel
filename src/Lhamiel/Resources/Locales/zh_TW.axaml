@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">繼續</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">取消</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">全部覆寫</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">確認覆寫</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">已有同名檔案</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">覆寫後，現有檔案將被新的壓縮檔取代。</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">儲存位置：{0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">現有檔案</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">本次新壓縮的內容</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">修改時間：{0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">大小：{0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">壓縮前總計：{0}（{1} 個檔案，套用排除設定之前）</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">正在計算壓縮前總計…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">無法取得壓縮前總計</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">另有 {0} 項</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">覆寫</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">解壓完成：{0}/{1} 個檔案成功</x:String>

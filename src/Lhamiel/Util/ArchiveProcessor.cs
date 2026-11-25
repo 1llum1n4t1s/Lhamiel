@@ -903,7 +903,7 @@ public static class ArchiveProcessor
                 {
                     Logger.Log($"出力先が既に存在します: {outputPath}");
 
-                    var canOverwrite = await ConflictDialogImpl.CanOverwriteFromBackgroundAsync(sourcePath, outputPath, progressWindow);
+                    var canOverwrite = await ConflictDialogImpl.CanOverwriteFromBackgroundAsync([sourcePath], outputPath, progressWindow);
                     Logger.Log($"上書き確認ダイアログ結果: canOverwrite={canOverwrite}");
 
                     if (!canOverwrite)
@@ -1496,7 +1496,7 @@ public static class ArchiveProcessor
                 // 上書き対象の存在は事前判定済み (targetExists)。
                 if (targetExists)
                 {
-                    var canOverwrite = await ConflictDialogImpl.CanOverwriteFromBackgroundAsync(sourcePaths[0], outputPath, progressWindow);
+                    var canOverwrite = await ConflictDialogImpl.CanOverwriteFromBackgroundAsync(sourcePaths, outputPath, progressWindow);
                     if (!canOverwrite)
                     {
                         Logger.Log("ユーザーがまとめ圧縮をキャンセルしました");

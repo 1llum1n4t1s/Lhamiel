@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">계속</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">취소</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">모두 덮어쓰기</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">덮어쓰기 확인</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">같은 이름의 파일이 이미 있습니다</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">덮어쓰면 기존 파일이 새 아카이브로 바뀝니다.</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">저장 위치: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">기존 파일</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">새로 압축할 내용</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">수정한 날짜: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">크기: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">압축 전 합계: {0} ({1}개 파일, 제외 설정 적용 전)</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">압축 전 합계를 계산하는 중…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">압축 전 합계를 가져올 수 없습니다</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">외 {0}개</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">덮어쓰기</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">압축 해제 완료: {0}/{1}개 파일 성공</x:String>

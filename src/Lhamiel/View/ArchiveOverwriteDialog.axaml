@@ -1,0 +1,167 @@
+<Window
+    x:Class="Lhamiel.View.ArchiveOverwriteDialog"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Title="{DynamicResource Text.Overwrite.ConfirmTitle}"
+    Width="480"
+    SizeToContent="Height"
+    d:DesignHeight="420"
+    d:DesignWidth="480"
+    Background="Transparent"
+    CanResize="False"
+    ExtendClientAreaTitleBarHeightHint="32"
+    ExtendClientAreaToDecorationsHint="True"
+    TransparencyLevelHint="AcrylicBlur"
+    WindowStartupLocation="CenterOwner"
+    mc:Ignorable="d">
+    <Panel>
+        <ExperimentalAcrylicBorder IsHitTestVisible="False">
+            <ExperimentalAcrylicBorder.Material>
+                <ExperimentalAcrylicMaterial
+                    BackgroundSource="Digger"
+                    TintColor="{DynamicResource Color.Window}" />
+            </ExperimentalAcrylicBorder.Material>
+        </ExperimentalAcrylicBorder>
+        <!-- 白いデスクトップが透けても文字とのコントラストを保つテーマ色のスクリム -->
+        <Border
+            Background="{DynamicResource Brush.Window}"
+            IsHitTestVisible="False"
+            Opacity="0.5" />
+        <Grid x:Name="DialogBody" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto">
+
+            <TextBlock
+                Grid.Row="0"
+                Margin="0,0,0,6"
+                FontSize="16"
+                FontWeight="SemiBold"
+                Foreground="{DynamicResource Brush.FG1}"
+                Text="{DynamicResource Text.Overwrite.Header}"
+                TextWrapping="Wrap" />
+            <TextBlock
+                Grid.Row="1"
+                Margin="0,0,0,12"
+                FontSize="12"
+                Foreground="{DynamicResource Brush.FG2}"
+                Text="{DynamicResource Text.Overwrite.Description}"
+                TextWrapping="Wrap" />
+
+            <!-- 出力ファイル名と保存先 -->
+            <StackPanel Grid.Row="2" Margin="0,0,0,12" Spacing="2">
+                <TextBlock
+                    x:Name="OutputNameText"
+                    FontSize="14"
+                    FontWeight="Bold"
+                    Foreground="{DynamicResource Brush.FG1}"
+                    TextWrapping="Wrap" />
+                <TextBlock
+                    x:Name="LocationText"
+                    FontSize="12"
+                    Foreground="{DynamicResource Brush.FG2}"
+                    TextWrapping="Wrap" />
+            </StackPanel>
+
+            <!-- 既存のファイル -->
+            <Border
+                x:Name="ExistingCard"
+                Grid.Row="3"
+                Margin="0,0,0,8"
+                Padding="12"
+                Background="{DynamicResource Brush.Container}"
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="8">
+                    <TextBlock
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource Brush.FG2}"
+                        Text="{DynamicResource Text.Overwrite.Existing}" />
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Image
+                            x:Name="ExistingIcon"
+                            Width="40"
+                            Height="40"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Top" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock
+                                x:Name="ExistingModifiedText"
+                                TextWrapping="Wrap"
+                                FontSize="13"
+                                Foreground="{DynamicResource Brush.FG1}" />
+                            <TextBlock
+                                x:Name="ExistingSizeText"
+                                TextWrapping="Wrap"
+                                FontSize="13"
+                                Foreground="{DynamicResource Brush.FG1}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- 新しく圧縮する内容 -->
+            <Border
+                x:Name="NewCard"
+                Grid.Row="4"
+                Margin="0,0,0,16"
+                Padding="12"
+                Background="{DynamicResource Brush.Container}"
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="1"
+                CornerRadius="8">
+                <StackPanel Spacing="8">
+                    <TextBlock
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Foreground="{DynamicResource Brush.FG2}"
+                        Text="{DynamicResource Text.Overwrite.New}" />
+                    <Grid ColumnDefinitions="Auto,*">
+                        <Image
+                            x:Name="NewIcon"
+                            Width="40"
+                            Height="40"
+                            Margin="0,0,12,0"
+                            VerticalAlignment="Top" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                            <StackPanel x:Name="NewNamesPanel" Spacing="1" />
+                            <TextBlock
+                                x:Name="NewModifiedText"
+                                TextWrapping="Wrap"
+                                FontSize="13"
+                                Foreground="{DynamicResource Brush.FG1}" />
+                            <TextBlock
+                                x:Name="NewTotalText"
+                                TextWrapping="Wrap"
+                                FontSize="13"
+                                Foreground="{DynamicResource Brush.FG1}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- ボタン: 既定ボタンは置かず、初期フォーカスとキャンセル操作は「キャンセル」側 -->
+            <StackPanel
+                x:Name="DialogActions"
+                Grid.Row="5"
+                HorizontalAlignment="Right"
+                Orientation="Horizontal"
+                Spacing="10">
+                <Button
+                    x:Name="OverwriteButton"
+                    MinWidth="100"
+                    AutomationProperties.Name="{DynamicResource Text.Overwrite.Overwrite}"
+                    Click="OverwriteButton_Click"
+                    Content="{DynamicResource Text.Overwrite.Overwrite}" />
+                <Button
+                    x:Name="CancelButton"
+                    MinWidth="100"
+                    AutomationProperties.Name="{DynamicResource Text.Conflict.Cancel}"
+                    Click="CancelButton_Click"
+                    Content="{DynamicResource Text.Conflict.Cancel}"
+                    IsCancel="True" />
+            </StackPanel>
+        </Grid>
+    </Panel>
+</Window>

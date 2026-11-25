@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Continua</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Annulla</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Sovrascrivi tutto</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">Conferma sovrascrittura</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">Esiste già un file con lo stesso nome</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">Se sovrascrivi, il file esistente verrà sostituito dal nuovo archivio.</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">Destinazione: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">File esistente</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">Nuovo contenuto da comprimere</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">Modificato: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">Dimensione: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">Totale prima della compressione: {0} ({1} file, prima dell'applicazione delle esclusioni)</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">Calcolo del totale prima della compressione…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">Impossibile ottenere il totale prima della compressione</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">Altri {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">Sovrascrivi</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Estrazione completata: {0}/{1} file riusciti</x:String>

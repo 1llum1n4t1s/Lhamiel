@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Perge</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Cancella</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Omnia rescribe</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">Rescriptionem confirma</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">Fasciculus eodem nomine iam exstat</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">Si rescribis, fasciculus exstans novo archivo substituetur.</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">Locus: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">Fasciculus exstans</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">Contentum novum comprimendum</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">Mutatum: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">Magnitudo: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">Summa ante compressionem: {0} ({1} fasciculi, ante exclusionum applicationem)</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">Summa ante compressionem computatur…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">Summa ante compressionem obtineri non potuit</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">Et {0} alia</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">Rescribe</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Extractio perfecta: {0}/{1} fasciculi feliciter</x:String>

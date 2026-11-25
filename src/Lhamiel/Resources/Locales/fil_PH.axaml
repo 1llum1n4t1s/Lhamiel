@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Magpatuloy</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Kanselahin</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Patungan lahat</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">Kumpirmahin ang Pagpapatong</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">May file nang may parehong pangalan</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">Kapag pinatungan, papalitan ng bagong archive ang kasalukuyang file.</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">Lokasyon: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">Kasalukuyang file</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">Bagong i-compress na nilalaman</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">Binago: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">Laki: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">Kabuuan bago i-compress: {0} ({1} file, bago ilapat ang mga exclusion)</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">Kinakalkula ang kabuuan bago i-compress…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">Hindi makuha ang kabuuan bago i-compress</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">{0} pa</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">Patungan</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Extraction kumpleto: {0}/{1} na file ang nagtagumpay</x:String>

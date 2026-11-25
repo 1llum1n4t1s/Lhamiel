@@ -158,7 +158,7 @@ static class Probe
     sealed class Messages : IMessageService { public Task ShowError(string message,string? title=null) { lock(Errors) Errors.Add(message); return Task.CompletedTask; } }
     sealed class Overwrite : IConflictDialogService
     {
-        public Task<bool> CanOverwriteFromBackgroundAsync(string source,string destination,Window? owner)=>Task.FromResult(true);
+        public Task<bool> CanOverwriteFromBackgroundAsync(IReadOnlyList<string> sources,string destination,Window? owner)=>Task.FromResult(true);
         public Task<(FileConflictResult result,List<(string fullPath,string relativePath)> selectedFiles)> ShowFromBackgroundAsync(List<FileConflictGroup> groups,Window? owner,bool isTwoPane=true)=>throw new Exception("unexpected conflict dialog");
     }
 }

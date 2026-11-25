@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Continuar</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Cancelar</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Substituir tudo</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">Confirmar substituição</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">Já existe um arquivo com o mesmo nome</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">Ao substituir, o arquivo existente será trocado pelo novo arquivo compactado.</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">Local: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">Arquivo existente</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">Novo conteúdo a compactar</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">Modificado em: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">Tamanho: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">Total antes da compactação: {0} ({1} arquivos, antes de aplicar as exclusões)</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">Calculando o total antes da compactação…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">Não foi possível obter o total antes da compactação</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">Mais {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">Substituir</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Extração concluída: {0}/{1} arquivos com sucesso</x:String>

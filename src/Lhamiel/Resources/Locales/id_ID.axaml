@@ -335,6 +335,19 @@
   <x:String x:Key="Text.Conflict.Continue" xml:space="preserve">Lanjutkan</x:String>
   <x:String x:Key="Text.Conflict.Cancel" xml:space="preserve">Batal</x:String>
   <x:String x:Key="Text.Conflict.OverwriteAll" xml:space="preserve">Timpa semua</x:String>
+  <x:String x:Key="Text.Overwrite.ConfirmTitle" xml:space="preserve">Konfirmasi Timpa</x:String>
+  <x:String x:Key="Text.Overwrite.Header" xml:space="preserve">File dengan nama yang sama sudah ada</x:String>
+  <x:String x:Key="Text.Overwrite.Description" xml:space="preserve">Jika ditimpa, file yang ada akan digantikan oleh arsip baru.</x:String>
+  <x:String x:Key="Text.Overwrite.Location" xml:space="preserve">Lokasi: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Existing" xml:space="preserve">File yang ada</x:String>
+  <x:String x:Key="Text.Overwrite.New" xml:space="preserve">Isi baru yang dikompresi</x:String>
+  <x:String x:Key="Text.Overwrite.Modified" xml:space="preserve">Diubah: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.Size" xml:space="preserve">Ukuran: {0}</x:String>
+  <x:String x:Key="Text.Overwrite.SourceTotal" xml:space="preserve">Total sebelum kompresi: {0} ({1} file, sebelum aturan pengecualian diterapkan)</x:String>
+  <x:String x:Key="Text.Overwrite.Calculating" xml:space="preserve">Menghitung total sebelum kompresi…</x:String>
+  <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">Tidak dapat memperoleh total sebelum kompresi</x:String>
+  <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">{0} lainnya</x:String>
+  <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">Timpa</x:String>
 
   <!-- Progress completion -->
   <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Ekstraksi selesai: {0}/{1} berkas berhasil</x:String>

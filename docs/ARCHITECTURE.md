@@ -72,6 +72,7 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 | `MainWindow.axaml` | メインウィンドウ。D&D、設定画面（タブ切替） |
 | `ProgressWindow.axaml` | 展開/圧縮の進捗表示。キャンセル機能、ディスク容量警告表示 |
 | `FileConflictDialog.axaml` | ファイル衝突解決。展開時（2ペイン比較）と圧縮時（グリッドリスト）の両モード |
+| `ArchiveOverwriteDialog.axaml` | 圧縮の出力先アーカイブが既存のときの上書き確認（上書き／キャンセル） |
 | `ErrorRecoveryDialog.axaml` | エラー発生時のリトライ/スキップ選択 |
 | `DiskSpaceDialog.axaml` | ディスク容量不足時の一時停止・再開/キャンセル |
 | `PasswordDialog.axaml` | パスワード保護アーカイブの入力ダイアログ。誤入力時は再試行表示、最大 3 回で自動キャンセル |
@@ -148,6 +149,8 @@ D&D → MainWindowViewModel.ProcessDroppedPathsAsync
 - **展開時（2ペイン）**: 左「現在の場所」右「宛先の場所」でファイル比較。ヘッダーチェックで一括選択
 - **圧縮時（グリッド）**: 同名ファイルをグループ表示。グループヘッダーチェックで一括選択
 - **スキップ機能**: 日付とサイズが同じファイルをフィルタリング
+
+出力アーカイブが既に存在する圧縮の上書き確認は `ArchiveOverwriteDialog`（`CanOverwriteFromBackgroundAsync(sourcePaths, outputPath, owner)`）が担当する。既存ファイルと新しく圧縮する内容（名前・更新日時・圧縮前の合計サイズとファイル数。合計は背景で列挙しリパースポイントを辿らない）を示し、「上書き」だけが true、Esc・×・キャンセルは false を返す。
 
 ## ローカライズ
 

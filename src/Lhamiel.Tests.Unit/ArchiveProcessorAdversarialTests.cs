@@ -36,7 +36,7 @@ public class ArchiveProcessorAdversarialTests : IDisposable
 
     private sealed class StubConflictDialogService : IConflictDialogService
     {
-        public Task<bool> CanOverwriteFromBackgroundAsync(string sourcePath, string destinationPath, Window? parentWindow)
+        public Task<bool> CanOverwriteFromBackgroundAsync(IReadOnlyList<string> sourcePaths, string destinationPath, Window? parentWindow)
             => Task.FromResult(true);
         public Task<(FileConflictResult result, List<(string fullPath, string relativePath)> selectedFiles)>
             ShowFromBackgroundAsync(List<FileConflictGroup> groups, Window? parentWindow, bool isTwoPane = true)

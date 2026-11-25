@@ -26,7 +26,7 @@ internal interface IUiDispatcher
 /// </summary>
 internal interface IConflictDialogService
 {
-    Task<bool> CanOverwriteFromBackgroundAsync(string sourcePath, string destinationPath, Window? parentWindow);
+    Task<bool> CanOverwriteFromBackgroundAsync(IReadOnlyList<string> sourcePaths, string destinationPath, Window? parentWindow);
     Task<(FileConflictResult result, List<(string fullPath, string relativePath)> selectedFiles)>
         ShowFromBackgroundAsync(List<FileConflictGroup> groups, Window? parentWindow, bool isTwoPane = true);
 }
@@ -62,8 +62,8 @@ internal sealed class DefaultUiDispatcher : IUiDispatcher
 
 internal sealed class DefaultConflictDialogService : IConflictDialogService
 {
-    public Task<bool> CanOverwriteFromBackgroundAsync(string sourcePath, string destinationPath, Window? parentWindow)
-        => View.FileConflictDialog.CanOverwriteFromBackgroundAsync(sourcePath, destinationPath, parentWindow);
+    public Task<bool> CanOverwriteFromBackgroundAsync(IReadOnlyList<string> sourcePaths, string destinationPath, Window? parentWindow)
+        => View.ArchiveOverwriteDialog.CanOverwriteFromBackgroundAsync(sourcePaths, destinationPath, parentWindow);
 
     public Task<(FileConflictResult result, List<(string fullPath, string relativePath)> selectedFiles)>
         ShowFromBackgroundAsync(List<FileConflictGroup> groups, Window? parentWindow, bool isTwoPane = true)
