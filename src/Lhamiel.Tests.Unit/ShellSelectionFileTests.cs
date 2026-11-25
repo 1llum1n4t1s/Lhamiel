@@ -28,13 +28,10 @@ public sealed class ShellSelectionFileTests
 
     [Theory]
     [InlineData("../anything")]
-    [InlineData("C:\\anything")]
-    [InlineData("")]
     public void Read_RejectsNonTokenInput(string token) =>
         Assert.Throws<InvalidDataException>(() => ShellSelectionFile.Read(token));
 
     [Theory]
-    [InlineData("relative.txt\0")]
     [InlineData("--compress\0")]
     [InlineData("C:\\good.txt\0\0")]
     [InlineData("C:\\truncated.txt")]

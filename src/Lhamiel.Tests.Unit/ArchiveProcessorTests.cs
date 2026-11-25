@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Lhamiel.Models;
 using Lhamiel.Util;
 using System.IO.Compression;
 using System.Text;
@@ -16,14 +15,12 @@ public class ArchiveProcessorTests : IDisposable
 {
     private readonly IMessageService _originalMessage;
     private readonly IUiDispatcher _originalDispatcher;
-    private readonly IConflictDialogService _originalConflict;
     private readonly Func<string, long, Window?, CancellationToken, Task<bool>> _originalEnsureDiskSpaceAsync;
 
     public ArchiveProcessorTests()
     {
         _originalMessage = ArchiveProcessor.MessageServiceImpl;
         _originalDispatcher = ArchiveProcessor.UiDispatcherImpl;
-        _originalConflict = ArchiveProcessor.ConflictDialogImpl;
         _originalEnsureDiskSpaceAsync = ArchiveProcessor.EnsureDiskSpaceAsyncImpl;
     }
 
@@ -31,43 +28,56 @@ public class ArchiveProcessorTests : IDisposable
     {
         ArchiveProcessor.MessageServiceImpl = _originalMessage;
         ArchiveProcessor.UiDispatcherImpl = _originalDispatcher;
-        ArchiveProcessor.ConflictDialogImpl = _originalConflict;
         ArchiveProcessor.EnsureDiskSpaceAsyncImpl = _originalEnsureDiskSpaceAsync;
     }
 
-    // --- スタブ実装 ---
-
     // メッセージサービス・UI ディスパッチャのスタブは TestDoubles.cs の共有実装を使う。
-
-    private sealed class StubConflictDialogService : IConflictDialogService
-    {
-        public bool CanOverwriteResult { get; set; } = true;
-        public FileConflictResult ShowResult { get; set; } = FileConflictResult.Continue;
-        public List<(string fullPath, string relativePath)> SelectedFiles { get; set; } = [];
-
-        public Task<bool> CanOverwriteFromBackgroundAsync(IReadOnlyList<string> sourcePaths, string destinationPath, Window? parentWindow)
-            => Task.FromResult(CanOverwriteResult);
-
-        public Task<(FileConflictResult result, List<(string fullPath, string relativePath)> selectedFiles)>
-            ShowFromBackgroundAsync(List<FileConflictGroup> groups, Window? parentWindow, bool isTwoPane = true)
-            => Task.FromResult((ShowResult, SelectedFiles));
-    }
 
     // --- テスト ---
 
+    // 存在しない入力は項目ごとにエラー通知される（ArchiveProcessorAdversarialTests から移設）。
+
     [Fact]
-    public async Task ExtractArchiveAsync_NonExistentFile_ShowsError()
+    public async Task ExtractArchivesAsync_AllNonExistent_ShowsErrorForEachFile()
     {
         var stub = new RecordingMessageService();
         ArchiveProcessor.MessageServiceImpl = stub;
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
+        var files = new[] { @"C:\fake1.zip", @"C:\fake2.7z", @"C:\fake3.tar" };
 
-        var (path, info) = await ArchiveProcessor.ExtractArchiveAsync(
-            @"C:\non_existent_file_12345.zip", @"C:\temp", false, null,
+        await ArchiveProcessor.ExtractArchivesAsync(
+            files, @"C:\temp", false, null,
             cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.Null(path);
-        Assert.Null(info);
-        Assert.Single(stub.Errors);
+        Assert.Equal(files.Length, stub.Errors.Count);
+    }
+
+    [Fact]
+    public async Task CompressMergedAsync_EmptyPaths_ReturnsFalse()
+    {
+        ArchiveProcessor.MessageServiceImpl = new RecordingMessageService();
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
+
+        var result = await ArchiveProcessor.CompressMergedAsync(
+            [], @"C:\temp", false, "zip", null,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task CompressItemsAsync_AllNonExistent_ShowsErrorForEachPath()
+    {
+        var stub = new RecordingMessageService();
+        ArchiveProcessor.MessageServiceImpl = stub;
+        ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
+        var paths = new[] { @"C:\nonexist_a", @"C:\nonexist_b" };
+
+        await ArchiveProcessor.CompressItemsAsync(
+            paths, @"C:\temp", false, "zip", null,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(paths.Length, stub.Errors.Count);
     }
 
     [Fact]

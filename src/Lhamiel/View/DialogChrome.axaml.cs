@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.LogicalTree;
 
@@ -9,7 +8,7 @@ namespace Lhamiel.View;
 /// <summary>本文と操作領域を共通の枠で囲む。アクリルは各窓のメイン画面準拠の背景を使う。</summary>
 public partial class DialogChrome : UserControl
 {
-    public DialogChrome() => AvaloniaXamlLoader.Load(this);
+    public DialogChrome() => InitializeComponent();
 
     /// <summary>本文を収めた Grid の既定名（全ダイアログの XAML で共通）。</summary>
     internal const string DefaultBodyName = "DialogBody";
@@ -18,7 +17,7 @@ public partial class DialogChrome : UserControl
     internal const string DefaultActionsName = "DialogActions";
 
     /// <summary>
-    /// ダイアログ code-behind の共通初期化。XAML 読込み（InitializeComponent / AvaloniaXamlLoader.Load）の直後に呼ぶ。
+    /// ダイアログ code-behind の共通初期化。XAML 読込み（InitializeComponent）の直後に呼ぶ。
     /// <para>
     /// 順序は固定: (1) <see cref="Util.AcrylicFallbackHelper.Attach"/> → (2) <see cref="Attach"/> → (3) <see cref="Util.AppIconManager.Apply"/>。
     /// (1) は root Panel の直接の子にある ExperimentalAcrylicBorder を探索する契約なので、(2) が本文を
@@ -66,16 +65,16 @@ public partial class DialogChrome : UserControl
         }
 
         var chrome = new DialogChrome();
-        chrome.FindControl<ContentControl>("BodyHost")!.Content = body;
-        chrome.FindControl<ContentControl>("ActionHost")!.Content = actions;
-        chrome.FindControl<TextBlock>("Caption")!.Bind(TextBlock.TextProperty, window.GetObservable(Window.TitleProperty));
-        chrome.FindControl<Button>("CloseButton")!.Click += (_, _) => window.Close();
-        chrome.FindControl<Grid>("TitleBar")!.PointerPressed += (_, e) =>
+        chrome.BodyHost.Content = body;
+        chrome.ActionHost.Content = actions;
+        chrome.Caption.Bind(TextBlock.TextProperty, window.GetObservable(Window.TitleProperty));
+        chrome.CloseButton.Click += (_, _) => window.Close();
+        chrome.TitleBar.PointerPressed += (_, e) =>
         {
             if (e.GetCurrentPoint(window).Properties.IsLeftButtonPressed)
                 window.BeginMoveDrag(e);
         };
-        var surface = chrome.FindControl<Border>("Surface")!;
+        var surface = chrome.Surface;
         surface.SizeChanged += (_, _) => surface.Clip = new RectangleGeometry(new Rect(surface.Bounds.Size), 14, 14);
         window.WindowDecorations = WindowDecorations.BorderOnly;
         window.ExtendClientAreaToDecorationsHint = true;

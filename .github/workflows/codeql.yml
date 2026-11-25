@@ -45,8 +45,8 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: CodeQL を初期化
-        # github/codeql-action/init@v4.39.3
-        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        # github/codeql-action/init@v4.39.5
+        uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           languages: csharp
           build-mode: manual
@@ -62,7 +62,7 @@ jobs:
           key: ${{ steps.nuget-cache.outputs.cache-primary-key }}
 
       - name: CodeQL 解析を実行
-        # github/codeql-action/analyze@v4.39.3
-        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        # github/codeql-action/analyze@v4.39.5
+        uses: github/codeql-action/analyze@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           category: /language:csharp

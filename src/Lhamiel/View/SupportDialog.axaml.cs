@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using Kagayoi.Support.Client;
 using Lhamiel.Util;
 
@@ -27,17 +26,6 @@ public partial class SupportDialog : Window
     private readonly CancellationTokenSource _cancellation = new();
     private readonly SupportSubmissionSession _session = new(_client);
     private readonly string _locale;
-    private TextBox _nameBox = null!;
-    private TextBox _emailBox = null!;
-    private ComboBox _categoryBox = null!;
-    private TextBox _contentBox = null!;
-    private TextBox _codeBox = null!;
-    private StackPanel _codePanel = null!;
-    private TextBlock _messageText = null!;
-    private Button _sendButton = null!;
-    private Button _resendButton = null!;
-    private Button _changeEmailButton = null!;
-    private Button _cancelButton = null!;
     private bool _isCodeRequested;
     private bool _isSubmitted;
 
@@ -52,40 +40,20 @@ public partial class SupportDialog : Window
         Title = App.Text("Support.Title");
         // アクリル代替背景 → 共通枠 → アイコンの順で初期化する（順序は DialogChrome.InitializeDialog が固定）。
         DialogChrome.InitializeDialog(this);
-        Opened += (_, _) => _nameBox.Focus();
+        Opened += (_, _) => NameBox.Focus();
         Closed += (_, _) => _cancellation.Cancel();
     }
 
-    private void InitializeComponent()
-    {
-        AvaloniaXamlLoader.Load(this);
-        _nameBox = FindRequired<TextBox>("NameBox");
-        _emailBox = FindRequired<TextBox>("EmailBox");
-        _categoryBox = FindRequired<ComboBox>("CategoryBox");
-        _contentBox = FindRequired<TextBox>("ContentBox");
-        _codeBox = FindRequired<TextBox>("CodeBox");
-        _codePanel = FindRequired<StackPanel>("CodePanel");
-        _messageText = FindRequired<TextBlock>("MessageText");
-        _sendButton = FindRequired<Button>("SendButton");
-        _resendButton = FindRequired<Button>("ResendButton");
-        _changeEmailButton = FindRequired<Button>("ChangeEmailButton");
-        _cancelButton = FindRequired<Button>("CancelButton");
-    }
-
-    private T FindRequired<T>(string name) where T : Control
-        => this.FindControl<T>(name)
-           ?? throw new InvalidOperationException($"SupportDialog control '{name}' was not found.");
-
     private async void SendButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (_categoryBox.SelectedItem is not ComboBoxItem { Tag: string category })
+        if (CategoryBox.SelectedItem is not ComboBoxItem { Tag: string category })
         {
             SetMessage("Support.InvalidFields");
             return;
         }
 
         var ticketInput = CreateTicketInput(category);
-        var validation = SupportInputRules.Validate(_emailBox.Text, ticketInput);
+        var validation = SupportInputRules.Validate(EmailBox.Text, ticketInput);
         if (validation != SupportInputValidation.Valid)
         {
             SetMessage(validation == SupportInputValidation.InvalidEmail
@@ -103,7 +71,7 @@ public partial class SupportDialog : Window
                 return;
             }
 
-            var code = _codeBox.Text?.Trim() ?? string.Empty;
+            var code = CodeBox.Text?.Trim() ?? string.Empty;
             if (code.Length != 6 || !code.All(char.IsAsciiDigit))
             {
                 SetMessage("Support.InvalidCode");
@@ -120,14 +88,14 @@ public partial class SupportDialog : Window
             {
                 _isSubmitted = true;
                 SetMessage("Support.Success", reference);
-                _nameBox.IsEnabled = false;
-                _emailBox.IsEnabled = false;
-                _categoryBox.IsEnabled = false;
-                _contentBox.IsEnabled = false;
-                _codeBox.IsEnabled = false;
+                NameBox.IsEnabled = false;
+                EmailBox.IsEnabled = false;
+                CategoryBox.IsEnabled = false;
+                ContentBox.IsEnabled = false;
+                CodeBox.IsEnabled = false;
                 SetVerificationPanelVisible(false);
-                _sendButton.IsVisible = false;
-                _cancelButton.Content = App.Text("Button.OK");
+                SendButton.IsVisible = false;
+                CancelButton.Content = App.Text("Button.OK");
                 return;
             }
 
@@ -150,7 +118,7 @@ public partial class SupportDialog : Window
 
     private async void ResendButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (!SupportInputRules.IsValidEmail(_emailBox.Text))
+        if (!SupportInputRules.IsValidEmail(EmailBox.Text))
         {
             SetMessage("Support.InvalidEmail");
             return;
@@ -174,30 +142,30 @@ public partial class SupportDialog : Window
     private void ChangeEmailButton_Click(object? sender, RoutedEventArgs e)
     {
         _isCodeRequested = false;
-        _emailBox.IsEnabled = true;
-        _codeBox.Text = string.Empty;
+        EmailBox.IsEnabled = true;
+        CodeBox.Text = string.Empty;
         SetVerificationPanelVisible(false);
-        _sendButton.Content = App.Text("Support.Send");
-        _messageText.Text = string.Empty;
-        _emailBox.Focus();
+        SendButton.Content = App.Text("Support.Send");
+        MessageText.Text = string.Empty;
+        EmailBox.Focus();
     }
 
     private async Task RequestCodeAsync()
     {
         SetMessage("Support.Sending");
         var requested = await _session.RequestCodeAsync(
-            _emailBox.Text!,
+            EmailBox.Text!,
             _cancellation.Token);
         switch (requested)
         {
             case SupportRequestCodeStatus.Sent:
                 _isCodeRequested = true;
-                _emailBox.IsEnabled = false;
-                _codeBox.Text = string.Empty;
+                EmailBox.IsEnabled = false;
+                CodeBox.Text = string.Empty;
                 SetVerificationPanelVisible(true);
-                _sendButton.Content = App.Text("Support.VerifyAndSend");
+                SendButton.Content = App.Text("Support.VerifyAndSend");
                 SetMessage("Support.CodeSent");
-                _codeBox.Focus();
+                CodeBox.Focus();
                 break;
             case SupportRequestCodeStatus.InvalidEmail:
                 SetMessage("Support.InvalidEmail");
@@ -228,17 +196,17 @@ public partial class SupportDialog : Window
 
     private void SetBusy(bool busy)
     {
-        _sendButton.IsEnabled = !busy && !_isSubmitted;
-        _resendButton.IsEnabled = !busy && !_isSubmitted;
-        _changeEmailButton.IsEnabled = !busy && !_isSubmitted;
-        _cancelButton.IsEnabled = !busy;
-        _emailBox.IsEnabled = !busy && !_isCodeRequested && !_isSubmitted;
-        _codeBox.IsEnabled = !busy && !_isSubmitted;
+        SendButton.IsEnabled = !busy && !_isSubmitted;
+        ResendButton.IsEnabled = !busy && !_isSubmitted;
+        ChangeEmailButton.IsEnabled = !busy && !_isSubmitted;
+        CancelButton.IsEnabled = !busy;
+        EmailBox.IsEnabled = !busy && !_isCodeRequested && !_isSubmitted;
+        CodeBox.IsEnabled = !busy && !_isSubmitted;
     }
 
     private void SetVerificationPanelVisible(bool visible)
     {
-        _codePanel.IsVisible = visible;
+        CodePanel.IsVisible = visible;
         MinHeight = visible ? VerificationMinHeight : CompactMinHeight;
         if (visible && Height < VerificationHeight)
             Height = VerificationHeight;
@@ -247,16 +215,16 @@ public partial class SupportDialog : Window
     }
 
     private void SetMessage(string textKey, params object[] args)
-        => _messageText.Text = args.Length == 0
+        => MessageText.Text = args.Length == 0
             ? App.Text(textKey)
             : App.Text(textKey, args);
 
     private SupportTicketInput CreateTicketInput(string category)
         => new()
         {
-            Name = _nameBox.Text,
+            Name = NameBox.Text,
             Category = category,
-            Content = _contentBox.Text ?? string.Empty,
+            Content = ContentBox.Text ?? string.Empty,
             AppVersion = typeof(SupportDialog).Assembly.GetName().Version?.ToString(3),
             OsVersion = Environment.OSVersion.VersionString,
             Locale = _locale,

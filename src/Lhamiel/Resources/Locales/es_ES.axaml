@@ -5,12 +5,10 @@
   </ResourceDictionary.MergedDictionaries>
 
   <!-- Window Titles -->
-  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Herramienta de compresión y extracción de archivos</x:String>
   <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">El destino de compresión es un enlace a una carpeta y no se puede sobrescribir: {0}</x:String>
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} elementos</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Cancelar todo</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Procesando...</x:String>
-  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Reemplazar archivo</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Opciones de recuperación de errores</x:String>
 
   <!-- Drop Zone -->
@@ -23,7 +21,6 @@
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">Compresión</x:String>
   <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">Exclusiones de compresión</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">Asociaciones de archivos</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">Versión</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">General</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">Extracción</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">Compresión</x:String>
@@ -68,7 +65,6 @@
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Abrir la carpeta de destino después de la compresión</x:String>
-  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Compresión combinada</x:String>
   <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Opciones de compresión</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Comprimir varios archivos en un solo archivo comprimido</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Cuando está desactivado, cada archivo se comprimirá en un archivo comprimido independiente</x:String>
@@ -81,7 +77,6 @@
   <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">Método de compresión LZH</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Incluir archivos y carpetas ocultos/del sistema</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">También se agregan al archivo las entradas con atributos Hidden o System.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Exclusiones de compresión</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">La configuración de esta página se aplica a todas las compresiones de Lhamiel para este usuario de Windows. Defina las exclusiones específicas del origen en archivos de reglas dentro de cada carpeta.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">Reglas de exclusión compartidas</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">Los patrones registrados aquí se aplican a todos los orígenes de compresión. Se admite la sintaxis compatible con .gitignore.</x:String>
@@ -120,7 +115,6 @@
   <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">Carpeta helada</x:String>
 
   <!-- Version Tab -->
-  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">Herramienta de compresión y extracción de archivos</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">Versión</x:String>
   <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
@@ -156,7 +150,6 @@
   <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">No se pudo conectar con el servicio de soporte. Inténtelo más tarde.</x:String>
 
   <!-- Buttons -->
-  <x:String x:Key="Text.Button.Save" xml:space="preserve">Guardar</x:String>
   <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Cancelar</x:String>
   <x:String x:Key="Text.Button.OK" xml:space="preserve">Aceptar</x:String>
   <x:String x:Key="Text.Button.Yes" xml:space="preserve">Sí</x:String>
@@ -169,7 +162,6 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Moviendo archivos...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Extrayendo</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Comprimiendo</x:String>
-  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Verificando integridad...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Aplicando marca de seguridad...</x:String>
   <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">Explorando archivos... {0:N0}</x:String>
   <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">Preparando la compresión... {0:N0} / {1:N0}</x:String>
@@ -187,11 +179,6 @@
   <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Recordar esta elección</x:String>
 
   <!-- Overwrite Dialog -->
-  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">La carpeta '{0}' ya existe.\n\n¿Eliminar la carpeta existente y sobrescribir?</x:String>
-  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">El archivo '{0}' ya existe.\n\n¿Desea reemplazarlo?</x:String>
-  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Confirmar sobrescritura de carpeta</x:String>
-  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Reemplazar archivo</x:String>
-  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">El archivo ya existe.\n\n¿Desea reemplazarlo?</x:String>
 
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Error</x:String>
@@ -206,15 +193,12 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Formato de archivo no compatible.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Formato de compresión no compatible.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Se produjo un error durante la extracción.\n{0}</x:String>
-  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Error en la verificación de integridad CRC: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Se produjo un error durante la compresión.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Se produjo un error durante el procesamiento.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">El destino '{0}' está en uso o se denegó el acceso.</x:String>
-  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">No se pudieron guardar los ajustes.</x:String>
   <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">No se pudieron procesar los archivos.</x:String>
   <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">No se pudieron aplicar los ajustes de asociación de archivos.</x:String>
   <x:String x:Key="Text.Error.InitApp" xml:space="preserve">No se pudo inicializar la aplicación.</x:String>
-  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">No se pudo mostrar el diálogo de confirmación de sobrescritura: {0}</x:String>
   <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">Se produjo un error al seleccionar todo.</x:String>
   <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">Se produjo un error al deseleccionar todo.</x:String>
   <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Error de extracción</x:String>
@@ -225,10 +209,6 @@
   <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">Se produjo un error al crear el acceso directo.</x:String>
 
   <!-- Update Messages -->
-  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Aplicando actualización... Reiniciando.</x:String>
-  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Ya está actualizado.</x:String>
-  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ No se pueden buscar actualizaciones en el entorno de desarrollo.</x:String>
-  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ El repositorio de actualizaciones no está configurado.</x:String>
   <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ Se produjo un error al buscar actualizaciones.</x:String>
   <x:String x:Key="Text.Update.Timeout" xml:space="preserve">Se agotó el tiempo de espera de la búsqueda de actualizaciones.</x:String>
   <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Descargando actualización...</x:String>
@@ -305,8 +285,6 @@
 
   <!-- Partial Extraction -->
   <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Extrayendo: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Re-extrayendo: {0}</x:String>
-  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">Archivo objetivo no encontrado en el archivo comprimido.</x:String>
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Archivo: {0}\nError: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Puede elegir reintentar u omitir.</x:String>
 
@@ -365,6 +343,10 @@
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">No se especificaron archivos para comprimir.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">La ruta especificada no fue encontrada: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Error al guardar la configuración: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedStartupUnreadable" xml:space="preserve">No se pudo leer settings.json al iniciar, así que se canceló el guardado para proteger su configuración existente. Reinicie la aplicación</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedFileUnreadable" xml:space="preserve">No se puede leer settings.json en este momento (puede que otra aplicación lo tenga abierto), así que se canceló el guardado para proteger su configuración existente</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableStartup" xml:space="preserve">Lhamiel no pudo leer settings.json y se inició con la configuración predeterminada. Los cambios de esta sesión no se guardarán. Tampoco se pudieron leer la contraseña de compresión guardada ni la protección con contraseña, por lo que los archivos podrían crearse sin protección con contraseña. Compruebe si otro Lhamiel u otra aplicación tiene abierto settings.json y reinicie Lhamiel.</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableExternalChange" xml:space="preserve">Como no se pudo leer settings.json, este cambio (menú contextual, asociaciones de archivos, iconos o accesos directos) no se puede aplicar. Reinicie la aplicación.</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Archivo extraído no encontrado.</x:String>
 
   <!-- Path validation messages -->
@@ -407,7 +389,6 @@
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Las contraseñas no coinciden. Vuelva a introducir la confirmación.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Introduzca una contraseña.</x:String>
   <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">La contraseña debe tener al menos 4 caracteres.</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Puede pegar desde un gestor de contraseñas (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">¿Eliminar la contraseña guardada?</x:String>
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Cambiar a "Preguntar en cada acción de soltar" eliminará la contraseña guardada actualmente. ¿Continuar?</x:String>

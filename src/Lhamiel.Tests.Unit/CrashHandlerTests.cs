@@ -111,32 +111,10 @@ public class CrashHandlerTests
     }
 
     [Fact]
-    public void WriteMiniDump_ProducesDumpFile()
-    {
-        var originalDumpDir = CrashHandler.DumpDirectory;
-        var dumpDir = Path.Combine(Path.GetTempPath(), $"lhamiel_dump_test_{Guid.NewGuid():N}");
-        CrashHandler.DumpDirectory = dumpDir;
-        var target = StartDumpTargetProcess();
-        try
-        {
-            var dumpPath = WriteDumpWithRetry(target);
-            Assert.NotNull(dumpPath);
-            Assert.True(File.Exists(dumpPath), $"ダンプファイルが存在しない: {dumpPath}");
-            Assert.True(new FileInfo(dumpPath!).Length > 0, "ダンプファイルが空");
-        }
-        finally
-        {
-            KillQuietly(target);
-            CrashHandler.DumpDirectory = originalDumpDir;
-            if (Directory.Exists(dumpDir))
-                Directory.Delete(dumpDir, true);
-        }
-    }
-
-    [Fact]
     public void WriteMiniDump_WithException_CreatesCompanionTextFile()
     {
         var originalDumpDir = CrashHandler.DumpDirectory;
+        // ダンプ先フォルダーは事前に作らない（自動作成も同時に確認する）。
         var dumpDir = Path.Combine(Path.GetTempPath(), $"lhamiel_dump_test_{Guid.NewGuid():N}");
         CrashHandler.DumpDirectory = dumpDir;
         var target = StartDumpTargetProcess();
@@ -145,6 +123,9 @@ public class CrashHandlerTests
             var ex = new InvalidOperationException("abc", new Exception("secret-in-inner"));
             var dumpPath = WriteDumpWithRetry(target, ex);
             Assert.NotNull(dumpPath);
+            Assert.True(File.Exists(dumpPath), $"ダンプファイルが存在しない: {dumpPath}");
+            Assert.True(new FileInfo(dumpPath!).Length > 0, "ダンプファイルが空");
+            Assert.True(Directory.Exists(Path.GetDirectoryName(dumpPath)!));
 
             var txtPath = Path.ChangeExtension(dumpPath, ".txt");
             Assert.True(File.Exists(txtPath), "例外情報テキストが作成されていない");
@@ -203,30 +184,6 @@ public class CrashHandlerTests
         finally
         {
             CrashHandler.MaxDumpFiles = originalMax;
-            CrashHandler.DumpDirectory = originalDumpDir;
-            if (Directory.Exists(dumpDir))
-                Directory.Delete(dumpDir, true);
-        }
-    }
-
-    [Fact]
-    public void WriteMiniDump_DumpDirectoryCreatedAutomatically()
-    {
-        var originalDumpDir = CrashHandler.DumpDirectory;
-        var dumpDir = Path.Combine(Path.GetTempPath(), $"lhamiel_dump_test_{Guid.NewGuid():N}");
-        CrashHandler.DumpDirectory = dumpDir;
-        var target = StartDumpTargetProcess();
-        try
-        {
-            var dumpPath = WriteDumpWithRetry(target);
-            Assert.NotNull(dumpPath);
-
-            var dir = Path.GetDirectoryName(dumpPath)!;
-            Assert.True(Directory.Exists(dir));
-        }
-        finally
-        {
-            KillQuietly(target);
             CrashHandler.DumpDirectory = originalDumpDir;
             if (Directory.Exists(dumpDir))
                 Directory.Delete(dumpDir, true);

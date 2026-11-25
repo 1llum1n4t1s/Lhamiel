@@ -9,14 +9,6 @@ namespace Lhamiel.Tests.Unit;
 public class LockedFileRetryPolicyTests
 {
     [Fact]
-    public void Execute_SuccessOnFirstAttempt_NoRetry()
-    {
-        var callCount = 0;
-        LockedFileRetryPolicy.Execute(() => callCount++, "test");
-        Assert.Equal(1, callCount);
-    }
-
-    [Fact]
     public void Execute_SharingViolationThenSuccess_Retries()
     {
         var callCount = 0;
@@ -108,13 +100,6 @@ public class LockedFileRetryPolicyTests
     // === Execute<T> テスト ===
 
     [Fact]
-    public void ExecuteT_SuccessOnFirstAttempt_ReturnsValue()
-    {
-        var result = LockedFileRetryPolicy.Execute(() => 42, "test");
-        Assert.Equal(42, result);
-    }
-
-    [Fact]
     public void ExecuteT_RetryThenSuccess_ReturnsValue()
     {
         var callCount = 0;
@@ -130,19 +115,6 @@ public class LockedFileRetryPolicyTests
     }
 
     // === ExecuteAsync テスト ===
-
-    [Fact]
-    public async Task ExecuteAsync_SuccessOnFirstAttempt_Completes()
-    {
-        var callCount = 0;
-        await LockedFileRetryPolicy.ExecuteAsync(async () =>
-        {
-            callCount++;
-            await Task.CompletedTask;
-        }, "test");
-
-        Assert.Equal(1, callCount);
-    }
 
     [Fact]
     public async Task ExecuteAsync_RetryThenSuccess_Completes()

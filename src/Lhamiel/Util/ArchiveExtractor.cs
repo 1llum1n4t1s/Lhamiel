@@ -144,19 +144,6 @@ public static class ArchiveExtractor
     }
 
     /// <summary>
-    /// アーカイブファイルの展開先ディレクトリを取得する
-    /// </summary>
-    /// <param name="archivePath">アーカイブファイルのパス</param>
-    /// <param name="defaultOutputDir">デフォルトの出力ディレクトリ</param>
-    /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
-    /// <returns>展開先ディレクトリのパス（アーカイブ名フォルダを含む）</returns>
-    public static string GetOutputDirectory(string archivePath, string defaultOutputDir, bool outputToSameDirectory = false)
-    {
-        var baseDir = GetBaseOutputDirectory(archivePath, defaultOutputDir, outputToSameDirectory);
-        return ResolveArchiveOutputDirectory(baseDir, archivePath);
-    }
-
-    /// <summary>
     /// 基準となる出力ディレクトリを取得（アーカイブ名フォルダを含まない）
     /// </summary>
     /// <param name="archivePath">アーカイブファイルのパス</param>
@@ -1252,7 +1239,7 @@ public static class ArchiveExtractor
                 var progressCallback = progress != null ? new Action<ProgressInfo>(p => progress.Report(p)) : null;
                 try
                 {
-                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, null, null, normalizeUnicode, knownPassword, suppressPasswordPrompt, onPasswordPrompted);
+                    await ExtractArchive(archivePath, tempDir, progressCallback, null, false, cancellationToken, [], null, normalizeUnicode, knownPassword, suppressPasswordPrompt, onPasswordPrompted);
                 }
                 finally
                 {
@@ -1376,13 +1363,13 @@ public static class ArchiveExtractor
 
             // ファイル同士の衝突、またはファイル↔ディレクトリのパス型衝突を検出。
             // File.Exists + Directory.Exists + FileInfo で 3〜4 回 stat が走るのを避けるため、
-            // File.GetAttributes を 1 回だけ呼んで属性フラグで分岐する。
+            // FileInfo.Attributes を 1 回だけ呼んで属性フラグで分岐する（未存在は例外ではなく -1 で返るため、
+            // 非衝突ファイルごとの例外送出を避けられる。リンクは辿らず、無効文字・UNC 不達・アクセス拒否は従来通り例外→スキップ）。
             FileAttributes destAttrs;
-            try { destAttrs = File.GetAttributes(destFile); }
-            catch (FileNotFoundException) { continue; }
-            catch (DirectoryNotFoundException) { continue; }
+            try { destAttrs = new FileInfo(destFile).Attributes; }
             catch (IOException) { continue; }
             catch (UnauthorizedAccessException) { continue; }
+            if ((int)destAttrs == -1) continue;
 
             // システムファイル・ディレクトリをスキップ
             var fileName = Path.GetFileName(relativePath);
@@ -2085,7 +2072,6 @@ public static class ArchiveExtractor
             {
                 if (Directory.Exists(tempOutputPath))
                 {
-                    RemoveReadOnlyAttributes(tempOutputPath);
                     TempCleanup.DeleteDirectorySafely(tempOutputPath);
                 }
             }

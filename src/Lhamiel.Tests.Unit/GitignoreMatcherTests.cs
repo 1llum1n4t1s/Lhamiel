@@ -10,13 +10,6 @@ namespace Lhamiel.Tests.Unit;
 public class GitignoreMatcherTests
 {
     [Fact]
-    public void Empty_MatchesNothing()
-    {
-        Assert.False(GitignoreMatcher.Empty.IsExcluded("anything", false));
-        Assert.False(GitignoreMatcher.Empty.HasRules);
-    }
-
-    [Fact]
     public void Compile_BlankLinesAndComments_AreSkipped()
     {
         var m = GitignoreMatcher.Compile(["", "  ", "# comment", "\t# tab comment", "*.log"]);
@@ -32,6 +25,7 @@ public class GitignoreMatcherTests
         Assert.True(m.IsExcluded("a/.DS_Store", false));
         Assert.True(m.IsExcluded("a/b/c/.DS_Store", false));
         Assert.False(m.IsExcluded("readme.txt", false));
+        Assert.False(m.IsExcluded("my.DS_Store.bak", false));
     }
 
     [Fact]
@@ -56,16 +50,6 @@ public class GitignoreMatcherTests
     }
 
     [Fact]
-    public void DoubleStar_MatchesArbitraryDepth()
-    {
-        var m = GitignoreMatcher.Compile(["foo/**/bar"]);
-        Assert.True(m.IsExcluded("foo/bar", false));
-        Assert.True(m.IsExcluded("foo/x/bar", false));
-        Assert.True(m.IsExcluded("foo/x/y/bar", false));
-        Assert.False(m.IsExcluded("foo/bar.txt", false));
-    }
-
-    [Fact]
     public void MiddleDoubleStar_DoesNotMergePathComponents()
     {
         // gitignore 仕様: "foo/**/bar" は path 区切りを跨ぐが、隣接 component をマージしない。
@@ -83,6 +67,7 @@ public class GitignoreMatcherTests
         Assert.False(m.IsExcluded("foobar.txt", false));    // 区切りなし + 拡張子
         Assert.False(m.IsExcluded("xfoo/bar", false));      // foo の前に余計な文字
         Assert.False(m.IsExcluded("foo/barx", false));      // bar の後に余計な文字
+        Assert.False(m.IsExcluded("foo/bar.txt", false));   // bar の後に拡張子
     }
 
     [Fact]
@@ -92,16 +77,6 @@ public class GitignoreMatcherTests
         Assert.True(m.IsExcluded("build", true));
         Assert.True(m.IsExcluded("build/output.txt", false));
         Assert.False(m.IsExcluded("src/build", false));
-    }
-
-    [Fact]
-    public void TrailingSlash_MatchesDirectoriesOnly()
-    {
-        var m = GitignoreMatcher.Compile(["node_modules/"]);
-        Assert.True(m.IsExcluded("node_modules", true));
-        Assert.True(m.IsExcluded("a/node_modules", true));
-        // ファイル名が node_modules でも directoryOnly なのでマッチしない
-        Assert.False(m.IsExcluded("a/node_modules", false));
     }
 
     [Fact]
@@ -149,24 +124,12 @@ public class GitignoreMatcherTests
     [Fact]
     public void WindowsBackslashPath_IsNormalized()
     {
-        var m = GitignoreMatcher.Compile(["*.log"]);
+        // 区切りを含むパターンは正規化されないと一致しない。
+        var m = GitignoreMatcher.Compile(["src/sub/*.log"]);
         Assert.True(m.IsExcluded(@"src\sub\debug.log", false));
-    }
-
-    [Fact]
-    public void NormalizePath_ConvertsBackslashesToSlash()
-    {
+        Assert.False(m.IsExcluded(@"other\sub\debug.log", false));
         Assert.Equal("a/b/c", GitignoreMatcher.NormalizePath(@"a\b\c"));
         Assert.Equal("a/b/c", GitignoreMatcher.NormalizePath("a/b/c"));
-    }
-
-    [Fact]
-    public void CharacterClass_MatchesAnyOfTheChars()
-    {
-        var m = GitignoreMatcher.Compile(["[Tt]humbs.db"]);
-        Assert.True(m.IsExcluded("Thumbs.db", false));
-        Assert.True(m.IsExcluded("thumbs.db", false));
-        Assert.False(m.IsExcluded("Xhumbs.db", false));
     }
 
     [Fact]
@@ -263,8 +226,10 @@ public class GitignoreMatcherTests
         Assert.True(m.IsExcluded("node_modules", isDirectory: true));
         Assert.True(m.IsExcluded("node_modules/a.js", isDirectory: false));
         Assert.True(m.IsExcluded("src/node_modules/index.js", isDirectory: false));
+        Assert.True(m.IsExcluded("a/node_modules", isDirectory: true));
         // ファイル名が "node_modules" だが directoryOnly なのでマッチしない
         Assert.False(m.IsExcluded("node_modules", isDirectory: false));
+        Assert.False(m.IsExcluded("a/node_modules", isDirectory: false));
     }
 
     [Fact]
@@ -287,6 +252,10 @@ public class GitignoreMatcherTests
         // 配下のファイルも依然 ignored
         Assert.True(m.IsExcluded("src/main.c", isDirectory: false));
         Assert.True(m.IsExcluded("src/sub/file.c", isDirectory: false));
+        Assert.True(m.IsExcluded("src/build/obj.o", isDirectory: false));
+
+        // 他のファイルも * によって ignored のまま
+        Assert.True(m.IsExcluded("readme.txt", isDirectory: false));
     }
 
     [Fact]
@@ -354,39 +323,6 @@ public class GitignoreMatcherTests
     }
 
     [Fact]
-    public void NegatedDirectoryRule_DoesNotReIncludeChildFiles()
-    {
-        // Git 仕様: "!foo/" は foo ディレクトリ自体を traversable にするだけで、配下のファイルを
-        // 再包含しない。allow-list ignore ("*" + "!src/" 等) で Git は src/ 配下のファイルを
-        // 依然 ignored 扱いするが、旧実装は親ディレクトリマッチで child を再包含してしまっていた。
-        // (Codex P2 指摘の回帰テスト)
-        var m = GitignoreMatcher.Compile(["*", "!src/"]);
-
-        // ディレクトリ src そのものは traversable (!src/ で再包含されるべき)
-        Assert.False(m.IsExcluded("src", isDirectory: true));
-
-        // 配下のファイルは依然 ignored (!src/ は file レベルの再包含をしない)
-        Assert.True(m.IsExcluded("src/main.c", isDirectory: false));
-        Assert.True(m.IsExcluded("src/build/obj.o", isDirectory: false));
-
-        // 他のファイルも * によって ignored のまま
-        Assert.True(m.IsExcluded("readme.txt", isDirectory: false));
-    }
-
-    [Fact]
-    public void NonNegatedDirectoryRule_StillExcludesChildFiles()
-    {
-        // 通常の "node_modules/" は配下のファイルも除外する (Git 仕様)
-        // (Codex P2 修正の回帰防止: negated 側だけ child 再包含を止めたことで、
-        //  non-negated 側の child 除外が壊れていないことを保証)
-        var m = GitignoreMatcher.Compile(["node_modules/"]);
-
-        Assert.True(m.IsExcluded("node_modules", isDirectory: true));
-        Assert.True(m.IsExcluded("node_modules/a.js", isDirectory: false));
-        Assert.True(m.IsExcluded("src/node_modules/index.js", isDirectory: false));
-    }
-
-    [Fact]
     public void DirectoryOnlyPattern_SingleFileMode_MatchesParentSegment()
     {
         // 単一ファイル指定（rootDir なし）で C:\...\node_modules\a.js を渡しても、
@@ -410,35 +346,6 @@ public class GitignoreMatcherTests
         "important.tmp",
     ];
 
-    /// <summary>判定に使うパス（ディレクトリかどうか付き）。</summary>
-    private static readonly (string path, bool isDirectory)[] Probes =
-    [
-        ("a.log", false), ("keep.log", false), ("sub/keep.log", false),
-        ("build", true), ("build/out.bin", false), ("src/build", true),
-        ("root-only.txt", false), ("sub/root-only.txt", false),
-        ("docs/x/y/draft1.md", false), ("docs/final.md", false),
-        ("important.tmp", false), ("other.tmp", false), ("plain.txt", false),
-    ];
-
-    [Fact]
-    public void DuplicatedRootLayer_GivesSameResultAsSingleLayer()
-    {
-        // 旧 ScanSourceFiles は Compile(lines) に同じ lines を "" スコープで再追加していた。
-        // gitignore は「最後に一致した規則が勝つ」ので、同じ規則列を 2 回並べても結果は 1 回分と同じであることを示す
-        // （= 二重積みをやめても判定は変わらない）。
-        var single = GitignoreMatcher.Compile(MixedRules);
-        var doubled = GitignoreMatcher.CompileLayered(single, [(string.Empty, MixedRules)]);
-
-        foreach (var traversal in new[] { false, true })
-        {
-            foreach (var (path, isDirectory) in Probes)
-            {
-                Assert.Equal(
-                    doubled.IsExcluded(path, isDirectory, traversalMode: traversal),
-                    single.IsExcluded(path, isDirectory, traversalMode: traversal));
-            }
-        }
-    }
 
     [Fact]
     public async Task ScanSourceFiles_WithGlobalIgnoreLines_MatchesMatcherOnlyScan()
@@ -522,18 +429,6 @@ public class GitignoreMatcherTests
     }
 
     [Fact]
-    public void EmbeddedDoubleStarBetweenSegments_DoesNotSpanPathSeparator()
-    {
-        // "foo**bar" のように segment 内に挟まる ** も通常扱い (Git 仕様)
-        var m = GitignoreMatcher.Compile(["foo**bar"]);
-
-        Assert.True(m.IsExcluded("foobar", false));
-        Assert.True(m.IsExcluded("fooxxbar", false));
-        Assert.False(m.IsExcluded("foo/bar", false));
-        Assert.False(m.IsExcluded("foo/xx/bar", false));
-    }
-
-    [Fact]
     public void TrailingEmbeddedDoubleStar_IsTreatedAsRegularStar()
     {
         // "foo**" は末尾 "/**" 形式ではない（** 直前が '/' でない）ので、通常の連続 * = 単一の * として扱う。
@@ -602,19 +497,6 @@ public class GitignoreMatcherTests
     }
 
     [Fact]
-    public void NegatedCharClassMultipleChars_ExcludesAllMembers()
-    {
-        // [!abc] は a, b, c 以外の単一文字にマッチ
-        var m = GitignoreMatcher.Compile(["[!abc].log"]);
-
-        Assert.True(m.IsExcluded("d.log", false));
-        Assert.True(m.IsExcluded("z.log", false));
-        Assert.False(m.IsExcluded("a.log", false));
-        Assert.False(m.IsExcluded("b.log", false));
-        Assert.False(m.IsExcluded("c.log", false));
-    }
-
-    [Fact]
     public void NonNegatedCharClass_StillWorks()
     {
         // 通常の [abc] は変換されない（従来通り）
@@ -630,25 +512,12 @@ public class GitignoreMatcherTests
     [Fact]
     public void ValidGlobstarForms_StillWorkAsBefore()
     {
-        // 修正後も以下の gitignore 仕様の valid globstar 形式は従来通り動作することを保証する。
-
-        // (1) 先頭の **/ : 任意深さの foo にマッチ
+        // 修正後も gitignore 仕様の先頭 **/ 形式は従来通り動作することを保証する。
+        // （末尾 /** は TrailingDoubleStar_...、中間 /**/ は MiddleDoubleStar_... が確認する。）
         var leading = GitignoreMatcher.Compile(["**/foo"]);
         Assert.True(leading.IsExcluded("foo", false));
         Assert.True(leading.IsExcluded("a/foo", false));
         Assert.True(leading.IsExcluded("a/b/c/foo", false));
-
-        // (2) 末尾の /** : foo 配下の全てにマッチ（ParseLine で endsWithDoubleStar 経由）
-        var trailing = GitignoreMatcher.Compile(["foo/**"]);
-        Assert.True(trailing.IsExcluded("foo/bar", false));
-        Assert.True(trailing.IsExcluded("foo/sub/bar", false));
-        Assert.False(trailing.IsExcluded("foo", false));    // foo 単体ファイルは除外しない
-
-        // (3) 中間の /**/ : 任意セグメント数を跨ぐ
-        var middle = GitignoreMatcher.Compile(["foo/**/bar"]);
-        Assert.True(middle.IsExcluded("foo/bar", false));
-        Assert.True(middle.IsExcluded("foo/x/bar", false));
-        Assert.True(middle.IsExcluded("foo/x/y/z/bar", false));
     }
 
     // === traversalMode: DFS 枝刈り併用の git 忠実な「ディレクトリ否定再包含」===
@@ -691,19 +560,6 @@ public class GitignoreMatcherTests
         // project.xcworkspace も再包含されて降り、contents.xcworkspacedata が含まれる
         Assert.False(m.IsExcluded("app.xcodeproj/project.xcworkspace", isDirectory: true, traversalMode: true));
         Assert.False(m.IsExcluded("app.xcodeproj/project.xcworkspace/contents.xcworkspacedata", isDirectory: false, traversalMode: true));
-    }
-
-    [Fact]
-    public void FlatMode_XcodeReinclude_DescendantFilesStillExcluded_DocumentsOldTransitiveBehavior()
-    {
-        // 対照: flat モード（既定）は従来どおり推移マッチするため、再包含ディレクトリ配下の
-        // 深いファイルは依然除外される（バグ B の挙動）。traversalMode との差分を固定する。
-        var m = GitignoreMatcher.Compile(XcodeGitignore);
-
-        // 直接ファイル否定は flat でも効く
-        Assert.False(m.IsExcluded("app.xcodeproj/project.pbxproj", isDirectory: false));
-        // しかしディレクトリ否定経由の深いファイルは flat では `*.xcodeproj/*` の推移マッチで除外されたまま
-        Assert.True(m.IsExcluded("app.xcodeproj/xcshareddata/xcschemes/App.xcscheme", isDirectory: false));
     }
 
     [Fact]

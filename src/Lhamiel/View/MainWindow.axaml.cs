@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 using Lhamiel.Util;
 using Lhamiel.ViewModels;
@@ -11,15 +10,6 @@ namespace Lhamiel.View;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private Border? _dropOverlay;
-
-    private void InitializeComponent()
-    {
-        AvaloniaXamlLoader.Load(this);
-        _dropOverlay = this.FindControl<Border>("DropOverlay");
-        InitDebugTapArea();
-    }
-
     /// <summary>
     /// MainWindow のコンストラクタ
     /// </summary>
@@ -28,6 +18,7 @@ public partial class MainWindow : Window
         try
         {
             InitializeComponent();
+            InitDebugTapArea();
             Util.AcrylicFallbackHelper.Attach(this);
             Util.AppIconManager.Apply(this);
             var pickExtractionFolder = () => PickFolderAsync(App.Text("Settings.Output.BrowseExtraction"));
@@ -80,8 +71,7 @@ public partial class MainWindow : Window
         if (e.DataTransfer.Contains(DataFormat.File))
         {
             e.DragEffects = DragDropEffects.Copy;
-            if (_dropOverlay != null)
-                _dropOverlay.IsVisible = true;
+            DropOverlay.IsVisible = true;
         }
         else
         {
@@ -94,8 +84,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void DropZone_DragLeave(object? sender, DragEventArgs e)
     {
-        if (_dropOverlay != null)
-            _dropOverlay.IsVisible = false;
+        DropOverlay.IsVisible = false;
     }
 
     /// <summary>
@@ -103,8 +92,7 @@ public partial class MainWindow : Window
     /// </summary>
     private async void DropZone_Drop(object? sender, DragEventArgs e)
     {
-        if (_dropOverlay != null)
-            _dropOverlay.IsVisible = false;
+        DropOverlay.IsVisible = false;
 
         if (!e.DataTransfer.Contains(DataFormat.File) || e.DataTransfer.TryGetFiles() is not { } files)
             return;
@@ -127,12 +115,12 @@ public partial class MainWindow : Window
     {
         var radio = mode switch
         {
-            0 => this.FindControl<RadioButton>("DirModeIncludeRoot"),
-            1 => this.FindControl<RadioButton>("DirModeExcludeRoot"),
-            2 => this.FindControl<RadioButton>("DirModeFlat"),
-            _ => this.FindControl<RadioButton>("DirModeIncludeRoot")
+            0 => DirModeIncludeRoot,
+            1 => DirModeExcludeRoot,
+            2 => DirModeFlat,
+            _ => DirModeIncludeRoot
         };
-        if (radio != null) radio.IsChecked = true;
+        radio.IsChecked = true;
     }
 
     /// <summary>
@@ -152,10 +140,9 @@ public partial class MainWindow : Window
     /// </summary>
     private void InitPasswordModeRadioButtons(string mode)
     {
-        var radioName = string.Equals(mode, "Remember", System.StringComparison.Ordinal)
-            ? "RememberPasswordRadio" : "PromptEachTimeRadio";
-        var radio = this.FindControl<RadioButton>(radioName);
-        if (radio != null) radio.IsChecked = true;
+        var radio = string.Equals(mode, "Remember", System.StringComparison.Ordinal)
+            ? RememberPasswordRadio : PromptEachTimeRadio;
+        radio.IsChecked = true;
     }
 
     /// <summary>
@@ -177,8 +164,7 @@ public partial class MainWindow : Window
     private void InitDebugTapArea()
     {
 #if DEBUG
-        var tapArea = this.FindControl<Border>("DebugTapArea");
-        if (tapArea == null) return;
+        var tapArea = DebugTapArea;
         tapArea.IsVisible = true;
 
         var clickCount = 0;

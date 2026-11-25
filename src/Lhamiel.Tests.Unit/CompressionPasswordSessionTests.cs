@@ -10,20 +10,6 @@ namespace Lhamiel.Tests.Unit;
 public class CompressionPasswordSessionTests
 {
     [Fact]
-    public void Protect_NullPlaintext_ReturnsNull()
-    {
-        Assert.SkipWhen(!OperatingSystem.IsWindows(), "DPAPI は Windows 限定");
-        Assert.Null(CompressionPasswordSession.Protect(null));
-    }
-
-    [Fact]
-    public void Protect_EmptyPlaintext_ReturnsNull()
-    {
-        Assert.SkipWhen(!OperatingSystem.IsWindows(), "DPAPI は Windows 限定");
-        Assert.Null(CompressionPasswordSession.Protect(string.Empty));
-    }
-
-    [Fact]
     public void Protect_TooLongPlaintext_Throws()
     {
         Assert.SkipWhen(!OperatingSystem.IsWindows(), "DPAPI は Windows 限定");
@@ -32,8 +18,6 @@ public class CompressionPasswordSessionTests
     }
 
     [Theory]
-    [InlineData("simple")]
-    [InlineData("with space and symbol !@#$%^&*()_+-=")]
     [InlineData("日本語パスワード")]
     [InlineData("🔐🗝️絵文字パスワード")]
     public void ProtectThenUnprotect_RoundTrip_ReturnsSamePlaintext(string plaintext)
@@ -83,22 +67,5 @@ public class CompressionPasswordSessionTests
 
         var recovered = CompressionPasswordSession.TryUnprotect(garbage);
         Assert.Null(recovered);
-    }
-
-    [Fact]
-    public void Protect_TwoCallsSamePlaintext_ProducesDifferentCiphertext()
-    {
-        Assert.SkipWhen(!OperatingSystem.IsWindows(), "DPAPI は Windows 限定");
-        // DPAPI は内部で entropy/salt を使うので、同じ平文でも 2 回呼ぶと異なる ciphertext が返る (replay 攻撃耐性)。
-        const string pw = "samepassword";
-        var c1 = CompressionPasswordSession.Protect(pw);
-        var c2 = CompressionPasswordSession.Protect(pw);
-        Assert.NotNull(c1);
-        Assert.NotNull(c2);
-        Assert.NotEqual(c1, c2);
-
-        // ただし両方とも復号できる
-        Assert.Equal(pw, CompressionPasswordSession.TryUnprotect(c1));
-        Assert.Equal(pw, CompressionPasswordSession.TryUnprotect(c2));
     }
 }

@@ -22,12 +22,6 @@ namespace Lhamiel.Util;
 public static class ShellOpener
 {
     /// <summary>
-    /// テスト時に <see cref="Process.Start(ProcessStartInfo)"/> をスキップするためのフラグ。
-    /// <c>InternalsVisibleTo</c> 経由でテストプロジェクトから設定する。
-    /// </summary>
-    internal static bool DryRun { get; set; }
-
-    /// <summary>
     /// 関連付けで指定パス / URL を開く。
     /// <para>
     /// 内部で <c>UseShellExecute=true</c> を指定し、Windows シェルの既定ハンドラ
@@ -38,7 +32,6 @@ public static class ShellOpener
     public static Task OpenWithDefaultHandlerAsync(string fileNameOrUrl) =>
         Task.Run(() =>
         {
-            if (DryRun) return;
             using var _ = Process.Start(new ProcessStartInfo
             {
                 FileName = fileNameOrUrl,
@@ -68,7 +61,6 @@ public static class ShellOpener
     public static Task OpenFolderWithDefaultHandlerAsync(string folderPath) =>
         Task.Run(() =>
         {
-            if (DryRun) return;
             try
             {
                 using var _ = Process.Start(new ProcessStartInfo

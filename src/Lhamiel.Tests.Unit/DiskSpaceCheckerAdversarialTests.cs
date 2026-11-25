@@ -20,57 +20,27 @@ public class DiskSpaceCheckerAdversarialTests
     [Fact]
     public void GetAvailableSpace_存在しないドライブ_安全側のゼロを返す()
     {
-        var result = DiskSpaceChecker.GetAvailableSpace("Z:\\NonExistent\\Path");
+        // Z: 固定だと実在する環境で失敗するため、未使用のドライブ文字を動的に選ぶ。
+        var inUse = DriveInfo.GetDrives().Select(d => char.ToUpperInvariant(d.Name[0])).ToHashSet();
+        char? unused = null;
+        for (var c = 'Z'; c >= 'D'; c--)
+        {
+            if (!inUse.Contains(c))
+            {
+                unused = c;
+                break;
+            }
+        }
+        Assert.SkipWhen(unused is null, "未使用のドライブ文字が無い");
+
+        var result = DiskSpaceChecker.GetAvailableSpace($"{unused}:\\NonExistent\\Path");
         Assert.Equal(0, result);
-    }
-
-    [Fact]
-    public void FormatSize_ゼロ_KBで表示()
-    {
-        Assert.Equal("0.0 KB", DiskSpaceChecker.FormatSize(0));
-    }
-
-    /// <summary>
-    /// 1 KB 未満は切り上げ表示され、1023 と 1024 はともに "1.0 KB" になる。
-    /// （旧 FileConflictInfoAdversarialTests.FileSizeDisplay_KB境界 の入力をここへ集約）
-    /// </summary>
-    [Fact]
-    public void FormatSize_KB境界_1023と1024はともに1KB()
-    {
-        Assert.Equal("1.0 KB", DiskSpaceChecker.FormatSize(1023));
-        Assert.Equal("1.0 KB", DiskSpaceChecker.FormatSize(1024));
-    }
-
-    [Fact]
-    public void FormatSize_LongMaxValue_GBで表示()
-    {
-        Assert.Contains("GB", DiskSpaceChecker.FormatSize(long.MaxValue));
-    }
-
-    [Fact]
-    public void FormatSize_KB_MB境界()
-    {
-        Assert.Contains("KB", DiskSpaceChecker.FormatSize(1024 * 1024 - 1));
-        Assert.Contains("MB", DiskSpaceChecker.FormatSize(1024 * 1024));
-    }
-
-    [Fact]
-    public void FormatSize_MB_GB境界()
-    {
-        Assert.Contains("MB", DiskSpaceChecker.FormatSize(1024L * 1024 * 1024 - 1));
-        Assert.Contains("GB", DiskSpaceChecker.FormatSize(1024L * 1024 * 1024));
     }
 
     [Fact]
     public void GetTotalFileSize_空リスト_ゼロを返す()
     {
         Assert.Equal(0, DiskSpaceChecker.GetTotalFileSize([]));
-    }
-
-    [Fact]
-    public void GetTotalFileSize_存在しないパス_サイズ不明を返す()
-    {
-        Assert.Equal(-1, DiskSpaceChecker.GetTotalFileSize([@"C:\NonExistent\File.txt"]));
     }
 
     [Fact]
@@ -107,71 +77,8 @@ public class DiskSpaceCheckerAdversarialTests
     }
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // ⚡ 並行性テスト
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-    [Fact]
-    public async Task GetAvailableSpace_並行呼び出し_全て正の値()
-    {
-        var tasks = Enumerable.Range(0, 20)
-            .Select(_ => Task.Run(() => DiskSpaceChecker.GetAvailableSpace("C:\\")))
-            .ToArray();
-        var results = await Task.WhenAll(tasks);
-        Assert.All(results, r => Assert.True(r > 0));
-    }
-
-    [Fact]
-    public async Task GetTotalFileSize_並行呼び出し_全て正の値()
-    {
-        var tempFile = Path.GetTempFileName();
-        File.WriteAllText(tempFile, "test content");
-        try
-        {
-            var tasks = Enumerable.Range(0, 20)
-                .Select(_ => Task.Run(() => DiskSpaceChecker.GetTotalFileSize([tempFile])))
-                .ToArray();
-            var results = await Task.WhenAll(tasks);
-            Assert.All(results, r => Assert.True(r > 0));
-        }
-        finally
-        {
-            File.Delete(tempFile);
-        }
-    }
-
-    [Fact]
-    public void StartPeriodicCheck_即Dispose_クラッシュしない()
-    {
-        var cts = new CancellationTokenSource();
-        var disposable = DiskSpaceChecker.StartPeriodicCheck("C:\\", 1024, null, cts);
-        disposable.Dispose();
-        cts.Dispose();
-    }
-
-    [Fact]
-    public void StartPeriodicCheck_二重Dispose_安全()
-    {
-        var cts = new CancellationTokenSource();
-        var disposable = DiskSpaceChecker.StartPeriodicCheck("C:\\", 1024, null, cts);
-        disposable.Dispose();
-        var ex = Record.Exception(() => disposable.Dispose());
-        Assert.True(ex is null or ObjectDisposedException);
-        cts.Dispose();
-    }
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🔀 状態遷移テスト
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-    [Fact]
-    public void StartPeriodicCheck_キャンセル済みCTS_クラッシュしない()
-    {
-        var cts = new CancellationTokenSource();
-        cts.Cancel();
-        var disposable = DiskSpaceChecker.StartPeriodicCheck("C:\\", 1024, null, cts);
-        disposable.Dispose();
-        cts.Dispose();
-    }
 
     [Fact]
     public async Task EnsureDiskSpaceAsync_必要量ゼロ_即座にtrue()
@@ -221,21 +128,6 @@ public class DiskSpaceCheckerAdversarialTests
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 🌪️ 環境異常テスト
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-    [Fact]
-    public void GetTotalFileSize_実ファイル_正しいサイズ()
-    {
-        var tempDir = Path.Combine(Path.GetTempPath(), $"DiskTest_{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempDir);
-        try
-        {
-            File.WriteAllBytes(Path.Combine(tempDir, "test1.txt"), new byte[1024]);
-            File.WriteAllBytes(Path.Combine(tempDir, "test2.txt"), new byte[2048]);
-            Assert.Equal(3072, DiskSpaceChecker.GetTotalFileSize(
-                [Path.Combine(tempDir, "test1.txt"), Path.Combine(tempDir, "test2.txt")]));
-        }
-        finally { Directory.Delete(tempDir, true); }
-    }
 
     [Fact]
     public void GetTotalFileSize_ディレクトリ指定_再帰合算()

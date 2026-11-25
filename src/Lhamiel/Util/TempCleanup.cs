@@ -251,6 +251,10 @@ internal static class TempCleanup
             return;
         }
 
+        // ReparsePoint でないディレクトリだけ ReadOnly を外す（リンク先の属性は変えない）
+        if ((attributes & FileAttributes.ReadOnly) != 0)
+            File.SetAttributes(directoryPath, attributes & ~FileAttributes.ReadOnly);
+
         var options = new EnumerationOptions
         {
             RecurseSubdirectories = false,
@@ -270,6 +274,9 @@ internal static class TempCleanup
             }
             else
             {
+                if ((entryAttributes & FileAttributes.ReadOnly) != 0
+                    && (entryAttributes & FileAttributes.ReparsePoint) == 0)
+                    File.SetAttributes(entry, entryAttributes & ~FileAttributes.ReadOnly);
                 File.Delete(entry);
             }
         }

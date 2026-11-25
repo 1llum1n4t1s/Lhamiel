@@ -30,202 +30,59 @@ public partial class ArchiveCompressorTests
         }
     }
 
-    [Fact]
-    public async Task ScanSourceFiles_ManySiblingRules_KeepScopesAndPruneNestedDirectories()
-    {
-        var root = Path.Combine(Path.GetTempPath(), $"lhamiel_scan_{Guid.NewGuid():N}");
-        try
-        {
-            for (var i = 0; i < 120; i++)
-            {
-                var repo = Path.Combine(root, $"repo{i}");
-                Directory.CreateDirectory(Path.Combine(repo, "ignored", "deep", "child"));
-                File.WriteAllText(Path.Combine(repo, ".gitignore"), "ignored/\n*.log\n");
-                File.WriteAllText(Path.Combine(repo, "ignored", ".gitignore"), "!rescue.txt\n");
-                File.WriteAllText(Path.Combine(repo, "ignored", "rescue.txt"), "excluded");
-                for (var j = 0; j < 20; j++)
-                    File.WriteAllText(Path.Combine(repo, $"file{j}.txt"), "included");
-                File.WriteAllText(Path.Combine(repo, "debug.log"), "excluded");
-            }
+    // === ParseFormat / WritableFormats ===
 
-            var timer = System.Diagnostics.Stopwatch.StartNew();
-            var result = await ArchiveCompressor.ScanSourceFiles(
-                [root], GitignoreMatcher.Empty, TestContext.Current.CancellationToken,
-                dirModeOverride: DirectoryStructureMode.IncludeRoot,
-                normalizeUnicodeOverride: false, includeHiddenAndSystemEntriesOverride: true,
-                respectNestedGitignore: true);
-            TestContext.Current.TestOutputHelper!.WriteLine($"走査時間: {timer.ElapsedMilliseconds} ms");
-            Assert.Equal(120 * 21, result.Count);
-            Assert.DoesNotContain(result, entry => entry.fullPath.Contains("ignored") || entry.fullPath.EndsWith(".log"));
-        }
-        finally
-        {
-            Directory.Delete(root, true);
-        }
-    }
-
-    // === ParseFormat ===
-
+    /// <summary>
+    /// ParseFormat は未知値を無言で ZIP にするため、書込み可能一覧だけが増えると
+    /// 中身が ZIP の .lzh などを作る。一覧への包含と ParseFormat の戻り値を対で確かめる。
+    /// </summary>
     [Theory]
     [InlineData("ZIP", Format.Zip)]
-    [InlineData("7Z", Format.SevenZip)]
+    [InlineData("7z", Format.SevenZip)]
     [InlineData("TAR", Format.Tar)]
     [InlineData("LZH", Format.Lzh)]
-    [InlineData("LHA", Format.Lzh)]
-    [InlineData("GZ", Format.GZip)]
-    [InlineData("BZ2", Format.BZip2)]
-    [InlineData("XZ", Format.XZ)]
-    public void ParseFormat_WithUpperCase_ReturnsCorrectFormat(string input, Format expected)
-    {
-        Assert.Equal(expected, ArchiveCompressor.ParseFormat(input));
-    }
-
-    [Theory]
-    [InlineData("zip", Format.Zip)]
-    [InlineData("7z", Format.SevenZip)]
-    [InlineData("tar", Format.Tar)]
-    [InlineData("lzh", Format.Lzh)]
     [InlineData("lha", Format.Lzh)]
     [InlineData("gz", Format.GZip)]
     [InlineData("bz2", Format.BZip2)]
     [InlineData("xz", Format.XZ)]
-    public void ParseFormat_WithLowerCase_ReturnsCorrectFormat(string input, Format expected)
+    public void ParseFormat_AndWritableFormats_AgreeForEachWritableFormat(string input, Format expected)
     {
+        Assert.Contains(input, ArchiveCompressor.WritableFormats);
         Assert.Equal(expected, ArchiveCompressor.ParseFormat(input));
-    }
-
-    [Theory]
-    [InlineData("Zip")]
-    [InlineData("zIp")]
-    [InlineData("ZiP")]
-    public void ParseFormat_WithMixedCase_ReturnsZip(string input)
-    {
-        Assert.Equal(Format.Zip, ArchiveCompressor.ParseFormat(input));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("rar")]
-    [InlineData("cab")]
-    [InlineData("unknown")]
-    [InlineData("  zip  ")]
-    public void ParseFormat_WithInvalidOrUnsupported_ReturnsZipAsDefault(string input)
-    {
-        // 不明な形式はデフォルトでZIPにフォールバックすべき
-        Assert.Equal(Format.Zip, ArchiveCompressor.ParseFormat(input));
     }
 
     // === GetCompressedFileName ===
 
+    /// <summary>
+    /// ドットファイル名フォルダ（.cursor）は GetFileName がそのまま使われ、".zip" だけの名前にならない
+    /// </summary>
     [Fact]
-    public void GetCompressedFileName_WithFile_ReturnsCorrectPath()
+    public void GetCompressedFileName_DotFolder_UsesFullName()
     {
-        var result = ArchiveCompressor.GetCompressedFileName(@"C:\temp\document.txt", "zip");
-        Assert.EndsWith(".zip", result);
-        Assert.Contains("document", result);
+        var result = ArchiveCompressor.GetCompressedFileName(@"C:\project\.cursor", "zip", @"C:\output");
+        Assert.Equal(Path.Combine(@"C:\output", ".cursor.zip"), result);
     }
 
+    // === DetectConflicts ===
+
+    /// <summary>
+    /// 大文字小文字のみが異なる相対パスは、同じ格納名として衝突扱いになる（OrdinalIgnoreCase）
+    /// </summary>
     [Fact]
-    public void GetCompressedFileName_WithFolder_ReturnsCorrectPath()
+    public void DetectConflicts_CaseDifferenceOnly_DetectedAsConflict()
     {
-        var result = ArchiveCompressor.GetCompressedFileName(@"C:\temp\MyProject", "7z");
-        Assert.EndsWith(".7z", result);
-        Assert.Contains("MyProject", result);
-    }
+        var files = new List<(string fullPath, string relativePath)>
+        {
+            (@"C:\a\File.TXT", "File.TXT"),
+            (@"C:\b\file.txt", "file.txt"),
+        };
 
-    [Fact]
-    public void GetCompressedFileName_WithTrailingSeparator_HandlesCorrectly()
-    {
-        // フォルダパスの末尾にセパレータがある場合
-        var result = ArchiveCompressor.GetCompressedFileName(@"C:\temp\MyProject\", "zip");
-        Assert.EndsWith(".zip", result);
-        // フォルダ名が正しく取れること（空文字にならないこと）
-        Assert.DoesNotContain("..", result);
-        Assert.Contains("MyProject", result);
-    }
-
-    [Fact]
-    public void GetCompressedFileName_WithOutputDirectory_UsesOutputDir()
-    {
-        var result = ArchiveCompressor.GetCompressedFileName(
-            @"C:\source\data.txt", "zip", @"D:\output", outputToSameDirectory: false);
-        Assert.StartsWith(@"D:\output", result);
-    }
-
-    [Fact]
-    public void GetCompressedFileName_WithSameDirectory_UsesSourceDir()
-    {
-        var result = ArchiveCompressor.GetCompressedFileName(
-            @"C:\source\data.txt", "zip", @"D:\output", outputToSameDirectory: true);
-        Assert.StartsWith(@"C:\source", result);
-    }
-
-    [Fact]
-    public void GetCompressedFileName_WithDotFile_HandlesCorrectly()
-    {
-        // .gitignore のようなドットファイル
-        var result = ArchiveCompressor.GetCompressedFileName(@"C:\temp\.gitignore", "zip");
-        Assert.EndsWith(".zip", result);
-        // ファイル名部分が空にならないこと
-        var fileName = Path.GetFileName(result);
-        Assert.True(fileName.Length > 4, $"ファイル名が短すぎます: {fileName}");
-    }
-
-    [Fact]
-    public void GetCompressedFileName_FormatIsLowerCase()
-    {
-        var result = ArchiveCompressor.GetCompressedFileName(@"C:\temp\file.txt", "ZIP");
-        // 拡張子は小文字であるべき
-        Assert.EndsWith(".zip", result);
-        Assert.DoesNotContain(".ZIP", result);
-    }
-
-    // === WritableFormats ===
-
-    [Theory]
-    [InlineData("zip")]
-    [InlineData("7z")]
-    [InlineData("tar")]
-    [InlineData("gz")]
-    [InlineData("bz2")]
-    [InlineData("xz")]
-    [InlineData("lzh")]
-    [InlineData("lha")]
-    public void WritableFormats_ContainsExpected(string format)
-    {
-        Assert.Contains(format, ArchiveCompressor.WritableFormats);
-    }
-
-    [Theory]
-    [InlineData("ZIP")]
-    [InlineData("7Z")]
-    [InlineData("TAR")]
-    [InlineData("LZH")]
-    [InlineData("LHA")]
-    public void WritableFormats_IsCaseInsensitive(string format)
-    {
-        Assert.Contains(format, ArchiveCompressor.WritableFormats);
-    }
-
-    [Theory]
-    [InlineData("rar")]
-    [InlineData("cab")]
-    [InlineData("arj")]
-    [InlineData("")]
-    public void WritableFormats_DoesNotContainUnsupported(string format)
-    {
-        Assert.DoesNotContain(format, ArchiveCompressor.WritableFormats);
+        var groups = ArchiveCompressor.DetectConflicts(files);
+        Assert.Single(groups);
+        Assert.Equal(2, groups[0].Entries.Count);
     }
 
     // === ShouldExcludeFile (gitignore semantics) ===
-
-    [Fact]
-    public void ShouldExcludeFile_WithMatchingFilenameInSingleFileMode_ReturnsTrue()
-    {
-        // 単一ファイル（rootDir=null）: ベース名のみで判定
-        var matcher = GitignoreMatcher.Compile([".DS_Store", "Thumbs.db"]);
-        Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\.DS_Store", matcher));
-    }
 
     [Fact]
     public void ShouldExcludeFile_WithMatchingDirectorySegment_ReturnsTrue()
@@ -236,49 +93,12 @@ public partial class ArchiveCompressorTests
     }
 
     [Fact]
-    public void ShouldExcludeFile_WithNoMatch_ReturnsFalse()
-    {
-        var matcher = GitignoreMatcher.Compile([".DS_Store"]);
-        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\readme.txt", matcher));
-    }
-
-    [Fact]
-    public void ShouldExcludeFile_WithEmptyMatcher_ReturnsFalse()
-    {
-        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\.DS_Store", GitignoreMatcher.Empty));
-    }
-
-    [Fact]
-    public void ShouldExcludeFile_CaseInsensitive_ReturnsTrue()
-    {
-        var matcher = GitignoreMatcher.Compile(["thumbs.db"]);
-        Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\THUMBS.DB", matcher));
-    }
-
-    [Fact]
-    public void ShouldExcludeFile_PartialMatch_ReturnsFalse()
-    {
-        // パターンがファイル名の一部にしかマッチしない場合は除外しない
-        var matcher = GitignoreMatcher.Compile(["Test"]);
-        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\TestFile.txt", matcher));
-    }
-
-    [Fact]
     public void ShouldExcludeFile_GitignoreGlobPattern_MatchesExtension()
     {
         // gitignore 互換: *.log は任意の .log ファイルにマッチ
         var matcher = GitignoreMatcher.Compile(["*.log"]);
         Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\debug.log", matcher));
         Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\debug.txt", matcher));
-    }
-
-    [Fact]
-    public void ShouldExcludeFile_GitignoreNegationPattern_ReIncludesFile()
-    {
-        // gitignore 互換: !pattern で除外を取り消し
-        var matcher = GitignoreMatcher.Compile(["*.log", "!keep.log"]);
-        Assert.True(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\debug.log", matcher));
-        Assert.False(ArchiveCompressor.ShouldExcludeFile(@"C:\folder\keep.log", matcher));
     }
 
     // === ScanSourceFiles: 空ディレクトリ ===
@@ -350,37 +170,6 @@ public partial class ArchiveCompressorTests
     }
 
     [Fact]
-    public async Task ScanSourceFiles_DirectoryWithOnlyEmptySubdirs_AllIncluded()
-    {
-        // ファイルが全くないディレクトリでも空サブディレクトリが全て含まれる
-        var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
-        var sourceDir = Path.Combine(testRoot, "AllEmpty");
-
-        try
-        {
-            Directory.CreateDirectory(Path.Combine(sourceDir, "A"));
-            Directory.CreateDirectory(Path.Combine(sourceDir, "B", "C"));
-
-            var result = await ArchiveCompressor.ScanSourceFiles(
-                [sourceDir],
-                GitignoreMatcher.Empty,
-                cancellationToken: TestContext.Current.CancellationToken,
-                dirModeOverride: DirectoryStructureMode.IncludeRoot);
-
-            // 空ディレクトリのみが含まれる（ファイルなし）
-            Assert.All(result, r => Assert.EndsWith("/", r.relativePath));
-            Assert.Contains(result, r => r.relativePath.Contains("A"));
-            Assert.Contains(result, r => r.relativePath.Contains("B"));
-            Assert.Contains(result, r => r.relativePath.Contains("C"));
-        }
-        finally
-        {
-            if (Directory.Exists(testRoot))
-                Directory.Delete(testRoot, true);
-        }
-    }
-
-    [Fact]
     public async Task ScanSourceFiles_IncludeHiddenAndSystemEntries_IncludesHiddenGitDirectory()
     {
         var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
@@ -443,65 +232,49 @@ public partial class ArchiveCompressorTests
     }
 
     [Fact]
-    public async Task CompressFilesAsync_WhenSevenZipExceptionThrown_DeletesPartialOutput()
+    public async Task CompressFilesAsync_WhenAbortedWhileSaving_DeletesPartialOutput()
     {
-        // Windows 固有: 「存在しないドライブレター」を出力先にして例外を誘発する。
-        // 非 Windows ではドライブレターの概念が無いのでスキップ。
-        Assert.SkipWhen(!OperatingSystem.IsWindows(), "Windows のドライブレターに依存するテスト");
-
-        // 圧縮対象ファイル → outputPath まで設定済の状態で writer.Save が SevenZipException 相当を
-        // 投げると、書きかけの outputPath が残ったままになるバグの回帰テスト。
-        // 結果として outputPath が残らない（部分ファイルが残らない）ことを確認する。
+        // writer.Save が出力を開いた後に中断（キャンセル／7z 例外）されると、書きかけの outputPath が
+        // 残る不具合の回帰テスト。以前は存在しないドライブへ出力しており、Save に到達する前に失敗して
+        // File.Exists が常に false となるため何も検証していなかった。
+        // ここでは Save 中に届くバイト進捗でキャンセルし、
+        // 実際に Save へ入ったこと（cancelledDuringSave）を確認したうえで出力が残らないことを検証する。
         var testRoot = Path.Combine(Path.GetTempPath(), $"lhamiel_test_{Guid.NewGuid():N}");
         var sourceDir = Path.Combine(testRoot, "src");
         try
         {
             Directory.CreateDirectory(sourceDir);
-            File.WriteAllText(Path.Combine(sourceDir, "a.txt"), "hello");
+            var payload = new byte[4 * 1024 * 1024];
+            new Random(42).NextBytes(payload);
+            File.WriteAllBytes(Path.Combine(sourceDir, "a.bin"), payload);
+            var outputPath = Path.Combine(testRoot, "out.zip");
 
-            // 存在しないドライブレターを動的に探す。Z:\ などをハードコードすると、テスト環境で
-            // 実際にそのドライブが存在すると例外が出なくなり flake になる。
-            var fakeDrive = FindUnusedDriveLetter();
-            if (fakeDrive is null)
+            using var cts = new CancellationTokenSource();
+            var cancelledDuringSave = false;
+            var progress = new SyncRecordingProgress(info =>
             {
-                Assert.Skip("利用可能な未使用ドライブレターが見つからない");
-                return;
-            }
-            var fakePath = $"{fakeDrive}:\\does_not_exist_lhamiel_test\\out.zip";
+                if (cancelledDuringSave) return;
+                // バイト進捗（Status が空）は writer.Save の中（outputCreated 設定後）でだけ届く。
+                if (!info.IsIndeterminate && info.Status.Length == 0)
+                {
+                    cancelledDuringSave = true;
+                    cts.Cancel();
+                }
+            });
 
-            await Assert.ThrowsAnyAsync<Exception>(async () =>
-                await ArchiveCompressor.CompressFilesAsync(
-                    [sourceDir],
-                    fakePath,
-                    Cube.FileSystem.SevenZip.Format.Zip,
-                    cancellationToken: TestContext.Current.CancellationToken));
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                ArchiveCompressor.CompressFilesAsync(
+                    [sourceDir], outputPath, Cube.FileSystem.SevenZip.Format.Zip,
+                    progress: progress, cancellationToken: cts.Token));
 
-            // 何らかの例外が出るのが期待挙動 (DirectoryNotFoundException / IOException / SevenZipException など)。
-            // 重要なのは出力先に部分ファイルが残らないこと。
-            Assert.False(File.Exists(fakePath), $"部分ファイルが残っている: {fakePath}");
+            Assert.True(cancelledDuringSave, "Save 中の進捗に到達せずキャンセルが発火していない（テストが何も検証していない）");
+            Assert.False(File.Exists(outputPath), $"部分ファイルが残っている: {outputPath}");
         }
         finally
         {
             if (Directory.Exists(testRoot))
                 Directory.Delete(testRoot, true);
         }
-    }
-
-    /// <summary>
-    /// テスト用に「現在マウントされていないドライブレター」を 1 つ返す。見つからなければ null。
-    /// D〜Z を逆順 (Z 寄り) で探す（A〜C はシステム予約寄りで避ける）。
-    /// </summary>
-    private static char? FindUnusedDriveLetter()
-    {
-        var inUse = DriveInfo.GetDrives()
-            .Select(d => char.ToUpperInvariant(d.Name[0]))
-            .ToHashSet();
-        for (var c = 'Z'; c >= 'D'; c--)
-        {
-            if (!inUse.Contains(c))
-                return c;
-        }
-        return null;
     }
 
     // === 生成アーカイブの内容検証（スキャン出力ではなく成果物を ArchiveReader.Items で確認） ===

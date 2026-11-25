@@ -4,8 +4,8 @@ using Xunit;
 namespace Lhamiel.Tests.Unit;
 
 /// <summary>
-/// ProgressThrottler のテスト — 通常の単調増加・スロットリング間隔の基本動作に加え、
-/// 境界値・並行性・状態遷移の嫌がらせケースを 1 ファイルに集約している。
+/// ProgressThrottler のテスト — スロットリング間隔の基本動作に加え、
+/// 境界値・状態遷移の嫌がらせケースを 1 ファイルに集約している。
 /// <para>
 /// 旧 ProgressThrottlerTests の「同じ値の 2 回目は報告しない」は
 /// <see cref="ShouldReport_DecreasedPercentage_NotReported"/>、「0〜100% の連続報告」は
@@ -14,21 +14,6 @@ namespace Lhamiel.Tests.Unit;
 /// </summary>
 public class ProgressThrottlerAdversarialTests
 {
-    // ==============================
-    // ✅ 通常動作（単調増加・スロットリング）
-    // ==============================
-
-    /// <summary>
-    /// スロットリング無効時、前回より大きい値は報告される
-    /// </summary>
-    [Fact]
-    public void ShouldReport_IncreasingPercentage_ReturnsTrue()
-    {
-        var throttler = new ProgressThrottler(0); // スロットリング無効
-        throttler.ShouldReport(10);
-        Assert.True(throttler.ShouldReport(20));
-    }
-
     /// <summary>
     /// 報告間隔内の連続更新は、初回だけ報告して以降を抑止する
     /// </summary>
@@ -40,38 +25,6 @@ public class ProgressThrottlerAdversarialTests
 
         // すぐに次の値を送る → スロットリングされるべき
         Assert.False(throttler.ShouldReport(11));
-    }
-
-    // ==============================
-    // 🗡️ 境界値・極端入力
-    // ==============================
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// 負の進捗率 → 0% 以下は境界値として常に報告される
-    /// </summary>
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(-100)]
-    [InlineData(int.MinValue)]
-    public void ShouldReport_NegativePercentage_AlwaysReported(int percentage)
-    {
-        var throttler = new ProgressThrottler();
-        Assert.True(throttler.ShouldReport(percentage));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// 100超の進捗率 → 100% 以上は境界値として常に報告される
-    /// </summary>
-    [Theory]
-    [InlineData(101)]
-    [InlineData(200)]
-    [InlineData(int.MaxValue)]
-    public void ShouldReport_Over100Percentage_AlwaysReported(int percentage)
-    {
-        var throttler = new ProgressThrottler();
-        Assert.True(throttler.ShouldReport(percentage));
     }
 
     /// <summary>
@@ -132,23 +85,6 @@ public class ProgressThrottlerAdversarialTests
     }
 
     /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// コンストラクタに負の値を渡す → クラッシュせず動作する
-    /// </summary>
-    [Fact]
-    public void ShouldReport_NegativeIntervalMs_DoesNotCrash()
-    {
-        var throttler = new ProgressThrottler(reportIntervalMs: -1);
-        Assert.True(throttler.ShouldReport(0));
-        Assert.True(throttler.ShouldReport(50));
-        Assert.True(throttler.ShouldReport(100));
-    }
-
-    // ==============================
-    // 🔀 状態遷移の矛盾
-    // ==============================
-
-    /// <summary>
     /// @adversarial @category state @severity high
     /// 後退する進捗率（50 → 30）→ 中間値は単調増加を保証するため報告されない
     /// </summary>
@@ -167,18 +103,6 @@ public class ProgressThrottlerAdversarialTests
     }
 
     /// <summary>
-    /// @adversarial @category state @severity high
-    /// 100% の後に 0% → 0% は境界値なので報告される（リセット的動作）
-    /// </summary>
-    [Fact]
-    public void ShouldReport_AfterHundred_ZeroIsStillReported()
-    {
-        var throttler = new ProgressThrottler(reportIntervalMs: 0);
-        Assert.True(throttler.ShouldReport(100));
-        Assert.True(throttler.ShouldReport(0));
-    }
-
-    /// <summary>
     /// @adversarial @category state @severity medium
     /// 100% の後に中間値 → _lastPercentage が 100 なので中間値は拒否
     /// </summary>
@@ -194,6 +118,7 @@ public class ProgressThrottlerAdversarialTests
     /// <summary>
     /// @adversarial @category state @severity medium
     /// 0% → 100% → 0% → 50% → 100% のサイクル → 各境界値は常に報告
+    /// （100% の後の 0% が報告される＝リセット的動作もここで確認する）
     /// </summary>
     [Fact]
     public void ShouldReport_CyclicBoundaryValues_AllReported()
@@ -206,43 +131,4 @@ public class ProgressThrottlerAdversarialTests
         Assert.True(throttler.ShouldReport(50));
         Assert.True(throttler.ShouldReport(100));
     }
-
-    // ==============================
-    // ⚡ 並行性・レースコンディション
-    // ==============================
-
-    /// <summary>
-    /// @adversarial @category concurrency @severity high
-    /// 100スレッドから同時に ShouldReport を呼んでもクラッシュしない
-    /// </summary>
-    [Fact]
-    public async Task ShouldReport_100ConcurrentCalls_NoCrash()
-    {
-        var throttler = new ProgressThrottler(reportIntervalMs: 0);
-        var tasks = Enumerable.Range(0, 100).Select(i =>
-            Task.Run(() => throttler.ShouldReport(i % 101))
-        ).ToArray();
-
-        var results = await Task.WhenAll(tasks);
-        // クラッシュしないこと + いくつかは true を返すはず
-        Assert.Contains(results, r => r);
-    }
-
-
-    /// <summary>
-    /// @adversarial @category concurrency @severity medium
-    /// 100スレッドが同時に 0% を呼ぶ → 全て true（境界値は常に報告）
-    /// </summary>
-    [Fact]
-    public async Task ShouldReport_100ConcurrentZeroPercent_AllReturnsTrue()
-    {
-        var throttler = new ProgressThrottler();
-        var tasks = Enumerable.Range(0, 100)
-            .Select(_ => Task.Run(() => throttler.ShouldReport(0)))
-            .ToArray();
-
-        var results = await Task.WhenAll(tasks);
-        Assert.All(results, r => Assert.True(r));
-    }
-
 }

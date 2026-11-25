@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 
 namespace Lhamiel.View;
 
@@ -12,33 +11,25 @@ internal enum MessageDialogButtons
 
 public partial class MessageDialog : Window
 {
-    private readonly TextBlock _messageText;
-    private readonly Button _okButton;
-    private readonly Button _yesButton;
-    private readonly Button _noButton;
     private TaskCompletionSource<bool>? _standaloneCompletion;
 
     public MessageDialog()
     {
-        AvaloniaXamlLoader.Load(this);
+        InitializeComponent();
         // アクリル代替背景 → 共通枠 → アイコンの順で初期化する（順序は DialogChrome.InitializeDialog が固定）。
         DialogChrome.InitializeDialog(this);
-        _messageText = GetRequiredControl<TextBlock>("MessageText");
-        _okButton = GetRequiredControl<Button>("OkButton");
-        _yesButton = GetRequiredControl<Button>("YesButton");
-        _noButton = GetRequiredControl<Button>("NoButton");
     }
 
     internal MessageDialog(string message, string title, MessageDialogButtons buttons = MessageDialogButtons.Ok)
         : this()
     {
         Title = title;
-        _messageText.Text = message;
+        MessageText.Text = message;
 
         var isQuestion = buttons == MessageDialogButtons.YesNo;
-        _okButton.IsVisible = !isQuestion;
-        _yesButton.IsVisible = isQuestion;
-        _noButton.IsVisible = isQuestion;
+        OkButton.IsVisible = !isQuestion;
+        YesButton.IsVisible = isQuestion;
+        NoButton.IsVisible = isQuestion;
     }
 
     internal async Task<bool> ShowAsync(Window? owner)
@@ -77,8 +68,4 @@ public partial class MessageDialog : Window
         Closed -= OnStandaloneClosed;
         _standaloneCompletion?.TrySetResult(false);
     }
-
-    private T GetRequiredControl<T>(string name) where T : Control =>
-        this.FindControl<T>(name)
-        ?? throw new InvalidOperationException($"ダイアログのコントロールが見つかりません: {name}");
 }

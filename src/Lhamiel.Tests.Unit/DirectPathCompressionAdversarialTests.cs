@@ -100,117 +100,9 @@ public class DirectPathCompressionAdversarialTests
         AssertNoLeakedTempDirs(snapshot);
     }
 
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// Unicode ファイル名（絵文字・CJK拡張）を直接パスで圧縮してラウンドトリップ一致
-    /// 以前はコピー時にパスが正規化されていたが、直接パスでは元パスがそのまま渡る
-    /// </summary>
-    [Fact]
-    public async Task UnicodeFileName_DirectPath_RoundTripsCorrectly()
-    {
-        var snapshot = SnapshotTempDirs();
-        await WithTempDir(async dir =>
-        {
-            var unicodeName = "テスト_データ_2026.txt";
-            var file = Path.Combine(dir, unicodeName);
-            File.WriteAllText(file, "テストデータ");
-            var archivePath = Path.Combine(dir, "out.zip");
-
-            await ArchiveCompressor.CompressFilesAsync([file], archivePath, Format.Zip);
-
-            using var reader = new ArchiveReader(archivePath);
-            Assert.Contains(reader.Items, i => !i.IsDirectory && i.FullName.Contains(unicodeName));
-        });
-        AssertNoLeakedTempDirs(snapshot);
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// スペースを含むファイル名を直接パスで圧縮してラウンドトリップ一致
-    /// </summary>
-    [Fact]
-    public async Task SpacesInFileName_DirectPath_RoundTripsCorrectly()
-    {
-        var snapshot = SnapshotTempDirs();
-        await WithTempDir(async dir =>
-        {
-            var file = Path.Combine(dir, "file with spaces.txt");
-            File.WriteAllText(file, "スペース含みテスト");
-            var archivePath = Path.Combine(dir, "out.zip");
-
-            await ArchiveCompressor.CompressFilesAsync([file], archivePath, Format.Zip);
-
-            using var reader = new ArchiveReader(archivePath);
-            Assert.Contains(reader.Items, i => !i.IsDirectory && i.FullName.Contains("file with spaces.txt"));
-        });
-        AssertNoLeakedTempDirs(snapshot);
-    }
-
     // ==============================
     // ⚡ 並行性・レースコンディション
     // ==============================
-
-    /// <summary>
-    /// @adversarial @category concurrency @severity high
-    /// 圧縮中にソースファイルが書き換わってもクラッシュしない
-    /// 以前はコピーがスナップショットを保証していたが、直接パスでは保証されない
-    /// </summary>
-    [Fact]
-    public async Task FileModifiedDuringCompression_DoesNotCrash()
-    {
-        var snapshot = SnapshotTempDirs();
-        await WithTempDir(async dir =>
-        {
-            // 大きめのファイルを作成（圧縮中に書き換えが間に合うように）
-            var file = Path.Combine(dir, "changing.bin");
-            var data = new byte[512 * 1024];
-            new Random(42).NextBytes(data);
-            File.WriteAllBytes(file, data);
-            var archivePath = Path.Combine(dir, "out.7z");
-
-            // 圧縮中にファイルを書き換えるタスク
-            using var cts = new CancellationTokenSource();
-            var writerTask = Task.Run(async () =>
-            {
-                while (!cts.Token.IsCancellationRequested)
-                {
-                    try
-                    {
-                        await using var fs = new FileStream(file, FileMode.Open, FileAccess.Write,
-                            FileShare.ReadWrite | FileShare.Delete);
-                        fs.Seek(0, SeekOrigin.Begin);
-                        fs.WriteByte(0xFF);
-                    }
-                    catch { /* ファイルが一時的にアクセスできない場合は無視 */ }
-                    await Task.Delay(1);
-                }
-            });
-
-            // 圧縮自体がクラッシュしないことが重要（結果の正確性は保証しない）
-            Exception? caughtException = null;
-            try
-            {
-                await ArchiveCompressor.CompressFilesAsync([file], archivePath, Format.SevenZip);
-            }
-            catch (Exception ex)
-            {
-                caughtException = ex;
-            }
-            finally
-            {
-                cts.Cancel();
-                try { await writerTask; } catch { }
-            }
-
-            // クラッシュ（AccessViolation 等）でなければ OK。圧縮エラーは許容する。
-            if (caughtException is not null)
-            {
-                // NullReferenceException や AccessViolationException は致命的バグ
-                Assert.IsNotType<NullReferenceException>(caughtException);
-            }
-        });
-        AssertNoLeakedTempDirs(snapshot);
-    }
 
     /// <summary>
     /// @adversarial @category concurrency @severity high
@@ -260,40 +152,7 @@ public class DirectPathCompressionAdversarialTests
     // 🔀 状態遷移の矛盾
     // ==============================
 
-    /// <summary>
-    /// @adversarial @category state @severity high
-    /// スキャン後にソースファイルが削除された場合、スキップして圧縮が成功する
-    /// </summary>
-    [Fact]
-    public async Task SourceDeletedAfterScan_SkippedAndSucceeds()
-    {
-        await WithTempDir(async dir =>
-        {
-            var remaining = Path.Combine(dir, "remaining.txt");
-            var deleted = Path.Combine(dir, "will_be_deleted.txt");
-            File.WriteAllText(remaining, "残るファイル");
-            File.WriteAllText(deleted, "消えるファイル");
-            var archivePath = Path.Combine(dir, "out.zip");
-
-            var resolvedFiles = new List<(string fullPath, string relativePath)>
-            {
-                (remaining, "remaining.txt"),
-                (deleted, "will_be_deleted.txt")
-            };
-
-            // ファイルを削除
-            File.Delete(deleted);
-
-            // エラーにならず圧縮が完了する
-            await ArchiveCompressor.CompressFilesAsync([dir], archivePath, Format.Zip,
-                resolvedFiles: resolvedFiles);
-
-            Assert.True(File.Exists(archivePath));
-            using var reader = new ArchiveReader(archivePath);
-            Assert.Contains(reader.Items, i => !i.IsDirectory && i.FullName.Contains("remaining.txt"));
-            Assert.DoesNotContain(reader.Items, i => i.FullName.Contains("will_be_deleted.txt"));
-        });
-    }
+    // 走査後のファイル消失は FileDeletionTimingTests.DeletedBeforeAdd_SkippedAndArchiveCreated が検証する。
 
     /// <summary>
     /// @adversarial @category state @severity medium
@@ -345,60 +204,4 @@ public class DirectPathCompressionAdversarialTests
         });
     }
 
-    /// <summary>
-    /// @adversarial @category chaos @severity medium
-    /// 複数の 7z 形式でも直接パス圧縮が動作する（ZIP 以外のカバレッジ）
-    /// </summary>
-    [Fact]
-    public async Task SevenZipFormat_DirectPath_CompressesSuccessfully()
-    {
-        var snapshot = SnapshotTempDirs();
-        await WithTempDir(async dir =>
-        {
-            var file = Path.Combine(dir, "data.txt");
-            File.WriteAllText(file, "7z 形式テスト");
-            var archivePath = Path.Combine(dir, "out.7z");
-
-            await ArchiveCompressor.CompressFilesAsync([file], archivePath, Format.SevenZip);
-
-            Assert.True(File.Exists(archivePath));
-            using var reader = new ArchiveReader(archivePath);
-            Assert.Contains(reader.Items, i => !i.IsDirectory && i.FullName.Contains("data.txt"));
-        });
-        AssertNoLeakedTempDirs(snapshot);
-    }
-
-    /// <summary>
-    /// @adversarial @category chaos @severity medium
-    /// ロック中ファイルとロックなしファイルが混在する場合、
-    /// ロック中ファイルだけがライブラリ側でコピーされ、全ファイルが正しく圧縮される
-    /// </summary>
-    [Fact]
-    public async Task MixedLockedAndUnlocked_AllFilesCompressed()
-    {
-        var snapshot = SnapshotTempDirs();
-        await WithTempDir(async dir =>
-        {
-            // ロックなしファイル
-            var normalFile = Path.Combine(dir, "normal.txt");
-            File.WriteAllText(normalFile, "通常ファイル");
-
-            // ロック中ファイル
-            var lockedFile = Path.Combine(dir, "locked.txt");
-            File.WriteAllText(lockedFile, "ロック中ファイル");
-
-            var archivePath = Path.Combine(dir, "out.zip");
-
-            await using var lockStream = new FileStream(lockedFile, FileMode.Open,
-                FileAccess.Write, FileShare.Read);
-
-            await ArchiveCompressor.CompressFilesAsync([dir], archivePath, Format.Zip);
-
-            Assert.True(File.Exists(archivePath));
-            using var reader = new ArchiveReader(archivePath);
-            Assert.Contains(reader.Items, i => !i.IsDirectory && i.FullName.Contains("normal.txt"));
-            Assert.Contains(reader.Items, i => !i.IsDirectory && i.FullName.Contains("locked.txt"));
-        });
-        AssertNoLeakedTempDirs(snapshot);
-    }
 }

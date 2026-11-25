@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Automation;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Lhamiel.Util;
 namespace Lhamiel.View;
@@ -11,12 +10,6 @@ namespace Lhamiel.View;
 /// </summary>
 public partial class ProgressWindow : Window
 {
-    private TextBlock? _operationLabel;
-    private ProgressBar? _progressBar;
-    private TextBlock? _progressTextBlock;
-    private TextBlock? _noticeTextBlock;
-    private Button? _cancelButton;
-
     /// <summary>
     /// キャンセルが要求されたときのイベント
     /// </summary>
@@ -26,16 +19,6 @@ public partial class ProgressWindow : Window
     /// キャンセルトークンソース（キャンセル処理に使用）
     /// </summary>
     private CancellationTokenSource? _cancellationTokenSource;
-
-    private void InitializeComponent()
-    {
-        AvaloniaXamlLoader.Load(this);
-        _operationLabel = this.FindControl<TextBlock>("OperationLabel");
-        _progressBar = this.FindControl<ProgressBar>("ProgressBar");
-        _progressTextBlock = this.FindControl<TextBlock>("ProgressTextBlock");
-        _noticeTextBlock = this.FindControl<TextBlock>("NoticeTextBlock");
-        _cancelButton = this.FindControl<Button>("CancelButton");
-    }
 
     /// <summary>
     /// パラメータなしコンストラクタ（デザイナー・XAML プレビュー用。実行時は ProgressWindow(string) を推奨）
@@ -56,7 +39,7 @@ public partial class ProgressWindow : Window
 
         // 操作タイプに応じたタイトルとラベルを設定
         Title = $"{operationType} - Lhamiel";
-        if (_operationLabel != null) _operationLabel.Text = operationType;
+        OperationLabel.Text = operationType;
 
         // キャンセル処理用のトークンソースを初期化
         _cancellationTokenSource = new CancellationTokenSource();
@@ -73,23 +56,17 @@ public partial class ProgressWindow : Window
             : $"{App.Text("Progress.TargetCount", targets.Length)}: {displayName}";
         var parent = Path.GetDirectoryName(targets[0]);
         var identity = string.IsNullOrEmpty(parent) ? summary : $"{summary} — {parent}";
-        Title = $"{_operationLabel?.Text} — {identity} - Lhamiel";
+        Title = $"{OperationLabel.Text} — {identity} - Lhamiel";
         AutomationProperties.SetName(this, Title + "\n" + string.Join("\n", targets));
-        var targetBlock = this.FindControl<TextBlock>("TargetTextBlock");
-        if (targetBlock is not null)
-        {
-            targetBlock.Text = string.Join("\n", targets);
-            targetBlock.IsVisible = true;
-            ToolTip.SetTip(targetBlock, targetBlock.Text);
-            AutomationProperties.SetName(targetBlock, targetBlock.Text);
-        }
-        if (_cancelButton is not null)
-        {
-            var label = App.Text(cancelAll ? "Progress.CancelAll" : "Button.Cancel");
-            _cancelButton.Content = label;
-            AutomationProperties.SetName(_cancelButton, $"{label}: {identity}");
-            ToolTip.SetTip(_cancelButton, string.Join("\n", targets));
-        }
+        TargetTextBlock.Text = string.Join("\n", targets);
+        TargetTextBlock.IsVisible = true;
+        ToolTip.SetTip(TargetTextBlock, TargetTextBlock.Text);
+        AutomationProperties.SetName(TargetTextBlock, TargetTextBlock.Text);
+
+        var label = App.Text(cancelAll ? "Progress.CancelAll" : "Button.Cancel");
+        CancelButton.Content = label;
+        AutomationProperties.SetName(CancelButton, $"{label}: {identity}");
+        ToolTip.SetTip(CancelButton, string.Join("\n", targets));
     }
 
     /// <summary>
@@ -100,9 +77,9 @@ public partial class ProgressWindow : Window
         if (!IsInitialized) return;
         Dispatcher.UIThread.Post(() =>
         {
-            if (!IsInitialized || _noticeTextBlock is null) return;
-            _noticeTextBlock.Text = text;
-            _noticeTextBlock.IsVisible = !string.IsNullOrEmpty(text);
+            if (!IsInitialized) return;
+            NoticeTextBlock.Text = text;
+            NoticeTextBlock.IsVisible = !string.IsNullOrEmpty(text);
         });
     }
 
@@ -152,12 +129,9 @@ public partial class ProgressWindow : Window
             try
             {
                 if (!IsInitialized) return;
-                if (_progressBar != null)
-                {
-                    if (_progressBar.IsIndeterminate) _progressBar.IsIndeterminate = false;
-                    _progressBar.Value = percentage;
-                }
-                if (_progressTextBlock != null) _progressTextBlock.Text = $"{percentage}%";
+                if (ProgressBar.IsIndeterminate) ProgressBar.IsIndeterminate = false;
+                ProgressBar.Value = percentage;
+                ProgressTextBlock.Text = $"{percentage}%";
             }
             catch (Exception ex)
             {
@@ -178,8 +152,8 @@ public partial class ProgressWindow : Window
             try
             {
                 if (!IsInitialized) return;
-                if (_progressBar != null) _progressBar.IsIndeterminate = true;
-                if (_progressTextBlock != null) _progressTextBlock.Text = message;
+                ProgressBar.IsIndeterminate = true;
+                ProgressTextBlock.Text = message;
             }
             catch (Exception ex)
             {
@@ -200,8 +174,8 @@ public partial class ProgressWindow : Window
             try
             {
                 if (!IsInitialized) return;
-                if (_progressBar != null) _progressBar.Value = 100;
-                if (_progressTextBlock != null) _progressTextBlock.Text = string.IsNullOrEmpty(message) ? "100%" : message;
+                ProgressBar.Value = 100;
+                ProgressTextBlock.Text = string.IsNullOrEmpty(message) ? "100%" : message;
             }
             catch (Exception ex)
             {
@@ -263,7 +237,7 @@ public partial class ProgressWindow : Window
 
     private void CancelButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (_cancelButton != null) _cancelButton.IsEnabled = false;
+        CancelButton.IsEnabled = false;
         TryCancel();
         CancelRequested?.Invoke(this, EventArgs.Empty);
     }

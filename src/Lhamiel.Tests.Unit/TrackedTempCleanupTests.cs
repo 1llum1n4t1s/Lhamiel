@@ -53,6 +53,71 @@ public sealed class TrackedTempCleanupTests
     }
 
     [Fact]
+    public void DeleteDirectorySafely_RemovesReadOnlyEntriesAndKeepsJunctionTarget()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"Lhamiel-ReadOnlyDelete-{Guid.NewGuid():N}");
+        var target = Path.Combine(root, $"Lhamiel_Temp_{Guid.NewGuid():N}");
+        var sub = Path.Combine(target, "sub");
+        var roDir = Path.Combine(target, "rodir");
+        var outside = Path.Combine(root, "outside");
+        var junction = Path.Combine(target, "link");
+        Directory.CreateDirectory(sub);
+        Directory.CreateDirectory(roDir);
+        Directory.CreateDirectory(outside);
+        var roFile = Path.Combine(target, "ro.txt");
+        var roSubFile = Path.Combine(sub, "ro2.txt");
+        var roDirFile = Path.Combine(roDir, "ro3.txt");
+        var outsideFile = Path.Combine(outside, "preserve.txt");
+        File.WriteAllText(roFile, "a");
+        File.WriteAllText(roSubFile, "b");
+        File.WriteAllText(roDirFile, "c");
+        File.WriteAllText(outsideFile, "preserve");
+        File.SetAttributes(outsideFile, FileAttributes.ReadOnly);
+        try
+        {
+            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardError = true,
+                ArgumentList = { "/d", "/c", "mklink", "/J", junction, outside },
+            });
+            Assert.NotNull(process);
+            process.WaitForExit();
+            Assert.True(process.ExitCode == 0, process.StandardError.ReadToEnd());
+
+            File.SetAttributes(roFile, FileAttributes.ReadOnly);
+            File.SetAttributes(roSubFile, FileAttributes.ReadOnly);
+            File.SetAttributes(roDirFile, FileAttributes.ReadOnly);
+            File.SetAttributes(sub, FileAttributes.Directory | FileAttributes.ReadOnly);
+            File.SetAttributes(roDir, FileAttributes.Directory | FileAttributes.ReadOnly);
+
+            TempCleanup.DeleteDirectorySafely(target);
+
+            Assert.False(Directory.Exists(target));
+            Assert.True(File.Exists(outsideFile));
+            Assert.True((File.GetAttributes(outsideFile) & FileAttributes.ReadOnly) != 0);
+        }
+        finally
+        {
+            if (File.Exists(outsideFile))
+                File.SetAttributes(outsideFile, FileAttributes.Normal);
+            if (Directory.Exists(junction))
+                Directory.Delete(junction);
+            if (Directory.Exists(root))
+            {
+                // 後始末で本来の assertion 失敗を隠さないよう、ディレクトリの ReadOnly も外してから消す。
+                foreach (var f in Directory.EnumerateFileSystemEntries(root, "*", SearchOption.AllDirectories))
+                {
+                    var a = File.GetAttributes(f);
+                    File.SetAttributes(f, (a & FileAttributes.Directory) != 0 ? FileAttributes.Directory : FileAttributes.Normal);
+                }
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void CleanupTrackedDirectories_PreservesFreshDirectoryForRetry()
     {
         var root = Path.Combine(Path.GetTempPath(), $"Lhamiel-TrackedCleanupFresh-{Guid.NewGuid():N}");

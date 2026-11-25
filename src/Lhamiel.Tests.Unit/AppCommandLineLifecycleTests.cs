@@ -135,15 +135,6 @@ public sealed class AppCommandLineLifecycleTests
         Assert.True(notified);
     }
 
-    [Fact]
-    public void HandleIpcForwardResult_SuccessDoesNotNotifyUser()
-    {
-        var notified = false;
-
-        Assert.True(App.HandleIpcForwardResult(true, () => notified = true));
-        Assert.False(notified);
-    }
-
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

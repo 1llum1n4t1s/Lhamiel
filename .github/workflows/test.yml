@@ -24,6 +24,25 @@ jobs:
         shell: pwsh
         run: |
           & (Join-Path $env:GITHUB_WORKSPACE 'tests/R2Transfer/Run.ps1') -WorkRoot (Join-Path $env:RUNNER_TEMP 'r2-transfer-check')
+
+      - name: Shell 拡張のネイティブテスト
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
+          if (-not $msbuild) {
+              $vsPath = & $vswhere -latest -prerelease -products * -property installationPath | Select-Object -First 1
+              if ($vsPath) {
+                  $candidate = Join-Path $vsPath 'MSBuild\Current\Bin\MSBuild.exe'
+                  if (Test-Path -LiteralPath $candidate) { $msbuild = $candidate }
+              }
+          }
+          if (-not $msbuild) { throw 'Visual Studio の MSBuild.exe が見つかりません' }
+          & $msbuild src/Lhamiel.ShellExtension/ShellExtension.Tests.vcxproj /p:Configuration=Release /p:Platform=x64
+          if ($LASTEXITCODE -ne 0) { throw "ShellExtension.Tests のビルドに失敗しました (exit $LASTEXITCODE)" }
+          & ./src/Lhamiel.ShellExtension/bin/x64/Release/Lhamiel.ShellExtension.Tests.exe
+          if ($LASTEXITCODE -ne 0) { throw "ShellExtension.Tests が失敗しました (exit $LASTEXITCODE)" }
+
       - name: .NET SDK をセットアップ
         # actions/setup-dotnet@v6.1.0
         uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73

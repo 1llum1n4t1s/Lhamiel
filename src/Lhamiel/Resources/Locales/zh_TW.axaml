@@ -5,12 +5,10 @@
   </ResourceDictionary.MergedDictionaries>
 
   <!-- Window Titles -->
-  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - 壓縮檔壓縮與解壓縮工具</x:String>
   <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">壓縮輸出位置是指向資料夾的連結，無法覆寫: {0}</x:String>
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} 個項目</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">全部取消</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">處理中...</x:String>
-  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">取代檔案</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">錯誤復原選項</x:String>
 
   <!-- Drop Zone -->
@@ -23,7 +21,6 @@
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">壓縮</x:String>
   <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">壓縮排除設定</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">檔案關聯</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">版本</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">一般</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">解壓</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">壓縮</x:String>
@@ -68,7 +65,6 @@
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">壓縮後開啟目的資料夾</x:String>
-  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">合併壓縮</x:String>
   <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">壓縮選項</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">將多個檔案壓縮成單一壓縮檔</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">關閉時，每個檔案將分別壓縮成獨立的壓縮檔</x:String>
@@ -81,7 +77,6 @@
   <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">LZH 壓縮方式</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">包含隱藏/System 檔案與資料夾</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">具有 Hidden 或 System 屬性的項目也會加入壓縮檔。</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">壓縮排除設定</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">此頁面的設定適用於目前 Windows 使用者透過 Lhamiel 進行的所有壓縮。各來源專用的排除內容請在相應資料夾內的規則檔案中設定。</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">共用排除規則</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">此處登錄的樣式適用於所有壓縮來源。支援與 .gitignore 相容的語法。</x:String>
@@ -120,7 +115,6 @@
   <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">冰封資料夾</x:String>
 
   <!-- Version Tab -->
-  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">壓縮檔壓縮與解壓縮工具</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">版本</x:String>
   <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
@@ -156,7 +150,6 @@
   <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">無法連線支援服務。請稍後再試。</x:String>
 
   <!-- Buttons -->
-  <x:String x:Key="Text.Button.Save" xml:space="preserve">儲存</x:String>
   <x:String x:Key="Text.Button.Cancel" xml:space="preserve">取消</x:String>
   <x:String x:Key="Text.Button.OK" xml:space="preserve">確定</x:String>
   <x:String x:Key="Text.Button.Yes" xml:space="preserve">是</x:String>
@@ -169,7 +162,6 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">正在移動檔案...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">解壓縮中</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">壓縮中</x:String>
-  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">正在驗證完整性...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">正在套用安全標記...</x:String>
   <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">正在掃描檔案... {0:N0}</x:String>
   <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">正在準備壓縮... {0:N0} / {1:N0}</x:String>
@@ -187,11 +179,6 @@
   <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">記住此選擇</x:String>
 
   <!-- Overwrite Dialog -->
-  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">資料夾「{0}」已存在。\n\n是否刪除現有資料夾並覆蓋？</x:String>
-  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">檔案「{0}」已存在。\n\n是否取代？</x:String>
-  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">確認覆蓋資料夾</x:String>
-  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">取代檔案</x:String>
-  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">該檔案已存在。\n\n是否取代？</x:String>
 
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">錯誤</x:String>
@@ -206,15 +193,12 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">不支援的檔案格式。\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">不支援的壓縮格式。\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">解壓縮時發生錯誤。\n{0}</x:String>
-  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">CRC 完整性驗證失敗：{0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">壓縮時發生錯誤。\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">處理時發生錯誤。\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">輸出「{0}」正在使用中或存取被拒絕。</x:String>
-  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">儲存設定失敗。</x:String>
   <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">處理檔案失敗。</x:String>
   <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">套用檔案關聯設定失敗。</x:String>
   <x:String x:Key="Text.Error.InitApp" xml:space="preserve">應用程式初始化失敗。</x:String>
-  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">顯示覆蓋確認對話方塊失敗：{0}</x:String>
   <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">全選時發生錯誤。</x:String>
   <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">取消全選時發生錯誤。</x:String>
   <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">解壓縮錯誤</x:String>
@@ -225,10 +209,6 @@
   <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">建立捷徑時發生錯誤。</x:String>
 
   <!-- Update Messages -->
-  <x:String x:Key="Text.Update.Applying" xml:space="preserve">正在套用更新... 即將重新啟動。</x:String>
-  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ 已是最新版本。</x:String>
-  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ 無法在開發環境中檢查更新。</x:String>
-  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ 未設定更新儲存庫。</x:String>
   <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ 檢查更新時發生錯誤。</x:String>
   <x:String x:Key="Text.Update.Timeout" xml:space="preserve">檢查更新逾時。</x:String>
   <x:String x:Key="Text.Update.Downloading" xml:space="preserve">正在下載更新...</x:String>
@@ -305,8 +285,6 @@
 
   <!-- Partial Extraction -->
   <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">解壓縮中：{0}</x:String>
-  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">重新解壓縮中：{0}</x:String>
-  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">在壓縮檔中找不到目標檔案。</x:String>
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">檔案：{0}\n錯誤：{1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">您可以選擇重試或略過。</x:String>
 
@@ -365,6 +343,10 @@
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">未指定要壓縮的檔案。</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">找不到指定的路徑：{0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">儲存設定失敗：{0}</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedStartupUnreadable" xml:space="preserve">啟動時無法讀取 settings.json，為保護現有設定已取消儲存。請重新啟動應用程式</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedFileUnreadable" xml:space="preserve">目前無法讀取 settings.json（可能被其他應用程式開啟），為保護現有設定已取消儲存</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableStartup" xml:space="preserve">Lhamiel 無法讀取 settings.json，已使用預設設定啟動。本次執行期間的變更不會被儲存。已儲存的壓縮密碼與密碼保護設定也未能讀取，因此建立的壓縮檔可能沒有密碼保護。請檢查是否有其他 Lhamiel 或應用程式正在開啟 settings.json，然後重新啟動 Lhamiel。</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableExternalChange" xml:space="preserve">由於無法讀取 settings.json，此變更（右鍵選單、檔案關聯、圖示或捷徑）無法套用。請重新啟動應用程式。</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">找不到已解壓的檔案。</x:String>
 
   <!-- Path validation messages -->
@@ -407,7 +389,6 @@
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">兩次輸入的密碼不一致,請重新輸入。</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">請輸入密碼。</x:String>
   <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">密碼長度至少需 4 個字元。</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">可以從密碼管理工具貼上 (Ctrl+V)。</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">要刪除已儲存的密碼嗎?</x:String>
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">切換為「每次拖放時確認」將會刪除目前儲存的密碼。確定要繼續嗎?</x:String>

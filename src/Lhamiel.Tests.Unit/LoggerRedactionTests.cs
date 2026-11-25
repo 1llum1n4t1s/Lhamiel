@@ -27,33 +27,9 @@ public sealed class LoggerRedactionTests : IDisposable
         return d;
     }
 
-    [Fact]
-    public void ApplyRedaction_NoToken_ReturnsUnchanged()
-    {
-        Assert.Equal("hello world", Logger.ApplyRedaction("hello world"));
-    }
-
-    [Fact]
-    public void ApplyRedaction_SingleToken_MasksOccurrence()
-    {
-        Register("secret123");
-        Assert.Equal("password=*** end", Logger.ApplyRedaction("password=secret123 end"));
-    }
-
     // 4 文字未満の token を登録しない契約は
     // 下の RegisterRedactionToken_TokenExactly3_IsNoOp に集約。
-
-    [Fact]
-    public void RegisterRedactionToken_NullOrEmpty_IsNoOp()
-    {
-        // null / 空文字列は登録されない (登録されないので解除でも例外を出さない)
-        var d1 = Logger.RegisterRedactionToken(null);
-        var d2 = Logger.RegisterRedactionToken(string.Empty);
-        Assert.NotNull(d1);
-        Assert.NotNull(d2);
-        d1.Dispose();
-        d2.Dispose();
-    }
+    // 未登録時の無変更は Refcount テストの末尾、単一 token のマスクは TokenExactly4 が確認する。
 
     [Fact]
     public void RegisterRedactionToken_Refcount_PreservesUntilLastDispose()

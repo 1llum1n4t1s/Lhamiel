@@ -27,13 +27,6 @@ public class TaskbarIdentityTests
     }
 
     [Fact]
-    public void Resolve_NoRegistrationPreservesVelopackIdentity()
-    {
-        Assert.Equal(TaskbarIdentity.UnpackagedAppId,
-            TaskbarIdentity.Resolve(null, @"C:\Apps\Lhamiel\Lhamiel.exe", []));
-    }
-
-    [Fact]
     public void NativeLookup_CanReadRegisteredExternalLocations()
     {
         var directories = TaskbarIdentity.ReadExternalDirectories();

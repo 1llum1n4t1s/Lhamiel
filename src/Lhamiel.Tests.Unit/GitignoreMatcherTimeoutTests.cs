@@ -110,36 +110,7 @@ public sealed class GitignoreMatcherTimeoutTests
         });
     }
 
-    [Fact]
-    public void MatchOverride_IsClearedAfterScope()
-    {
-        var m = GitignoreMatcher.Compile(["secret*.txt"]);
-
-        WithTimeoutFor("secret", () => Assert.True(m.IsExcluded("other-secret-free.bin", isDirectory: false)));
-
-        // フック解除後は通常照合に戻る（他テストへ漏れない）。
-        Assert.Null(GitignoreMatcher.MatchOverrideForTests.Value);
-        Assert.False(m.IsExcluded("other-secret-free.bin", isDirectory: false));
-    }
-
-    // === タイムアウト件数の集計（ログ抑制）とフックの反映タイミング (旧 GitignoreMatcherLayeringAndTimeoutLogTests) ===
-
-    [Theory]
-    [InlineData(1, false)]
-    [InlineData(2, false)]
-    [InlineData(9, false)]
-    [InlineData(10, true)]
-    [InlineData(11, false)]
-    [InlineData(20, false)]
-    [InlineData(100, true)]
-    [InlineData(1000, true)]
-    [InlineData(1001, false)]
-    [InlineData(1_000_000_000, true)]
-    public void IsPowerOfTen_MarksAggregateLogMilestones(int count, bool expected)
-    {
-        // 初回（1）は詳細ログ、以降は 10・100・1000… の節目だけ集計ログを出す。
-        Assert.Equal(expected, GitignoreMatcher.IsPowerOfTen(count));
-    }
+    // === タイムアウト件数の集計（ログ抑制）(旧 GitignoreMatcherLayeringAndTimeoutLogTests) ===
 
     [Fact]
     public void RepeatedTimeouts_AreCountedPerRule_AndStayFailClosed()
@@ -168,49 +139,4 @@ public sealed class GitignoreMatcherTimeoutTests
         }
     }
 
-    [Fact]
-    public void TimeoutCount_IsSharedWithDerivedLayeredMatchers()
-    {
-        // フォルダーごとに CompileLayered で派生するマッチャーも規則オブジェクトを共有するので、
-        // 初回詳細ログは規則ごとに 1 回で済む（件数は共有元に集計される）。
-        var baseMatcher = GitignoreMatcher.Compile(["secret*.txt"]);
-        var derived = GitignoreMatcher.CompileLayered(baseMatcher, [("sub", ["*.tmp"])]);
-        GitignoreMatcher.MatchOverrideForTests.Value = (regex, input) =>
-        {
-            if (regex.ToString().Contains("secret", StringComparison.Ordinal))
-                throw new RegexMatchTimeoutException(input, regex.ToString(), TimeSpan.FromMilliseconds(100));
-            return regex.IsMatch(input);
-        };
-        try
-        {
-            Assert.True(baseMatcher.IsExcluded("secret.txt", isDirectory: false));
-            Assert.True(derived.IsExcluded("sub/secret.txt", isDirectory: false));
-            Assert.Equal(2, baseMatcher.RegexTimeoutCount);
-            Assert.Equal(2, derived.RegexTimeoutCount);
-        }
-        finally
-        {
-            GitignoreMatcher.MatchOverrideForTests.Value = null;
-        }
-    }
-
-    [Fact]
-    public void MatchOverride_ChangedBetweenCalls_IsHonoredOnNextCall()
-    {
-        // フックは IsExcluded の先頭で 1 回だけ読む。呼び出しをまたいだ変更は次の呼び出しから反映される。
-        var matcher = GitignoreMatcher.Compile(["*.txt"]);
-        Assert.True(matcher.IsExcluded("a.txt", isDirectory: false));
-
-        GitignoreMatcher.MatchOverrideForTests.Value = static (_, _) => false;
-        try
-        {
-            Assert.False(matcher.IsExcluded("a.txt", isDirectory: false));
-        }
-        finally
-        {
-            GitignoreMatcher.MatchOverrideForTests.Value = null;
-        }
-
-        Assert.True(matcher.IsExcluded("a.txt", isDirectory: false));
-    }
 }

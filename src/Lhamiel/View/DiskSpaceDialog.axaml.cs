@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using Lhamiel.Util;
 
 namespace Lhamiel.View;
@@ -21,29 +20,16 @@ public partial class DiskSpaceDialog : Window
         _requiredBytes = requiredBytes;
         _outputPath = outputPath;
 
-        AvaloniaXamlLoader.Load(this);
+        InitializeComponent();
         // アクリル代替背景 → 共通枠 → アイコンの順で初期化する（順序は DialogChrome.InitializeDialog が固定）。
         DialogChrome.InitializeDialog(this);
 
-        var titleText = this.FindControl<TextBlock>("TitleText");
-        var requiredText = this.FindControl<TextBlock>("RequiredText");
-        var availableText = this.FindControl<TextBlock>("AvailableText");
-        var shortageText = this.FindControl<TextBlock>("ShortageText");
-        var driveText = this.FindControl<TextBlock>("DriveText");
-
-        if (titleText != null)
-            titleText.Text = App.Text("DiskSpace.Title");
-        if (requiredText != null)
-            requiredText.Text = DiskSpaceChecker.FormatSize(requiredBytes);
-        if (availableText != null)
-            availableText.Text = DiskSpaceChecker.FormatSize(availableBytes);
-        if (shortageText != null)
-            shortageText.Text = $"-{DiskSpaceChecker.FormatSize(shortageBytes)}";
-        if (driveText != null)
-        {
-            var root = Path.GetPathRoot(outputPath) ?? "";
-            driveText.Text = App.Text("DiskSpace.Drive", root);
-        }
+        TitleText.Text = App.Text("DiskSpace.Title");
+        RequiredText.Text = DiskSpaceChecker.FormatSize(requiredBytes);
+        AvailableText.Text = DiskSpaceChecker.FormatSize(availableBytes);
+        ShortageText.Text = $"-{DiskSpaceChecker.FormatSize(shortageBytes)}";
+        var root = Path.GetPathRoot(outputPath) ?? "";
+        DriveText.Text = App.Text("DiskSpace.Drive", root);
 
         Title = App.Text("DiskSpace.Title");
     }
@@ -60,13 +46,8 @@ public partial class DiskSpaceDialog : Window
 
         // まだ足りない → 表示を更新して再表示のまま
         var shortage = _requiredBytes - available;
-        var availableText = this.FindControl<TextBlock>("AvailableText");
-        var shortageText = this.FindControl<TextBlock>("ShortageText");
-
-        if (availableText != null)
-            availableText.Text = DiskSpaceChecker.FormatSize(available);
-        if (shortageText != null)
-            shortageText.Text = $"-{DiskSpaceChecker.FormatSize(shortage)}";
+        AvailableText.Text = DiskSpaceChecker.FormatSize(available);
+        ShortageText.Text = $"-{DiskSpaceChecker.FormatSize(shortage)}";
 
         Logger.Log($"再開試行: まだ容量不足（空き={DiskSpaceChecker.FormatSize(available)}, 不足={DiskSpaceChecker.FormatSize(shortage)}）");
     }

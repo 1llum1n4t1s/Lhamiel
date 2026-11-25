@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
-using Lhamiel.ViewModels;
 using Xunit;
 namespace Lhamiel.Tests.Unit;
 
@@ -13,86 +12,16 @@ public class LocaleTests
     [Fact]
     public void SupportedLocales_AllHaveDisplayNames()
     {
-        // 全サポートロケールに対応する表示名が定義されていること
-        foreach (var locale in App.SupportedLocales)
+        // SupportedLocales（重複なし）と LocaleDisplayNames のキー集合が一致し、表示名がすべて非空であること。
+        // （旧: 表示名の定義漏れ・余剰・件数・重複の個別検査を集約）
+        Assert.Equal(App.SupportedLocales.Length, App.SupportedLocales.Distinct().Count());
+        Assert.Equal(
+            App.SupportedLocales.OrderBy(l => l, StringComparer.Ordinal),
+            App.LocaleDisplayNames.Keys.OrderBy(l => l, StringComparer.Ordinal));
+        foreach (var (locale, name) in App.LocaleDisplayNames)
         {
-            Assert.True(
-                App.LocaleDisplayNames.ContainsKey(locale),
-                $"ロケール '{locale}' の表示名が LocaleDisplayNames に定義されていません");
+            Assert.False(string.IsNullOrWhiteSpace(name), $"ロケール '{locale}' の表示名が空です");
         }
-    }
-
-    [Fact]
-    public void LocaleDisplayNames_AllAreInSupportedLocales()
-    {
-        // LocaleDisplayNames に定義されたキーがすべて SupportedLocales に含まれること
-        foreach (var key in App.LocaleDisplayNames.Keys)
-        {
-            Assert.Contains(key, App.SupportedLocales);
-        }
-    }
-
-    [Fact]
-    public void SupportedLocales_CountMatchesDisplayNames()
-    {
-        Assert.Equal(App.SupportedLocales.Length, App.LocaleDisplayNames.Count);
-    }
-
-    [Fact]
-    public void SupportedLocales_ContainsExpectedLocales()
-    {
-        // 主要ロケールが含まれていること
-        Assert.Contains("en_US", App.SupportedLocales);
-        Assert.Contains("ja_JP", App.SupportedLocales);
-        Assert.Contains("zh_CN", App.SupportedLocales);
-        Assert.Contains("ko_KR", App.SupportedLocales);
-        Assert.Contains("la_VA", App.SupportedLocales);
-        Assert.Contains("sa_IN", App.SupportedLocales);
-    }
-
-    [Fact]
-    public void SupportedLocales_HasNoDuplicates()
-    {
-        var distinct = App.SupportedLocales.Distinct().ToArray();
-        Assert.Equal(App.SupportedLocales.Length, distinct.Length);
-    }
-
-    [Theory]
-    [InlineData("en_US", "English")]
-    [InlineData("ja_JP", "日本語")]
-    [InlineData("la_VA", "Latina")]
-    [InlineData("sa_IN", "संस्कृतम्")]
-    [InlineData("fil_PH", "Tagalog")]
-    public void LocaleDisplayNames_ReturnsCorrectName(string locale, string expectedName)
-    {
-        Assert.Equal(expectedName, App.LocaleDisplayNames[locale]);
-    }
-
-
-    [Fact]
-    public void LocaleOptions_MatchesSupportedLocales()
-    {
-        // MainWindowViewModel.LocaleOptions が SupportedLocales と一致すること
-        var localeOptionKeys = MainWindowViewModel.LocaleOptions.Select(o => o.Key).ToArray();
-        Assert.Equal(App.SupportedLocales, localeOptionKeys);
-    }
-
-    [Fact]
-    public void LocaleOptions_DisplayNamesNotEmpty()
-    {
-        foreach (var option in MainWindowViewModel.LocaleOptions)
-        {
-            Assert.False(string.IsNullOrWhiteSpace(option.DisplayName),
-                $"ロケール '{option.Key}' の表示名が空です");
-        }
-    }
-
-    [Fact]
-    public void DetectDefaultLocale_ReturnsSupportedLocale()
-    {
-        // DetectDefaultLocale は常に SupportedLocales の中から返すこと
-        var detected = App.DetectDefaultLocale();
-        Assert.Contains(detected, App.SupportedLocales);
     }
 
     // ═══════════════════════════════════════════════════
@@ -208,30 +137,6 @@ public class LocaleTests
             $"重複キーがあります:\n{string.Join("\n", errors)}");
     }
 
-    [Fact]
-    public void AllLocales_LzhEntryTooLarge_HasPathAndLimitPlaceholders()
-    {
-        var localesDir = GetLocalesDirectory();
-        var files = Directory.GetFiles(localesDir, "*.axaml").OrderBy(f => f).ToArray();
-        XNamespace x = "http://schemas.microsoft.com/winfx/2006/xaml";
-        var errors = new List<string>();
-
-        foreach (var file in files)
-        {
-            var value = XDocument.Load(file).Descendants()
-                .Single(element => element.Attribute(x + "Key")?.Value == "Text.Error.LzhEntryTooLarge")
-                .Value;
-            if (!value.Contains("{0}", StringComparison.Ordinal)
-                || !value.Contains("{1}", StringComparison.Ordinal))
-            {
-                errors.Add(Path.GetFileName(file));
-            }
-        }
-
-        Assert.True(errors.Count == 0,
-            $"LZH項目上限メッセージのプレースホルダーが不足しています: {string.Join(", ", errors)}");
-    }
-
     // ═══════════════════════════════════════════════════
     // 書式プレースホルダーの整合性（全キー）
     // ═══════════════════════════════════════════════════
@@ -286,6 +191,9 @@ public class LocaleTests
 
         // 基準側にプレースホルダーを持つキーが 1 件もなければ抽出処理の誤りとみなす
         Assert.Contains(baseline.Values, v => ExtractPlaceholderIndexes(v).Count > 0);
+
+        // LZH 項目上限メッセージはパスと上限の 2 引数（{0}, {1}）を持つ。各ロケールの一致は下で検査する。
+        Assert.Equal([0, 1], ExtractPlaceholderIndexes(baseline["Text.Error.LzhEntryTooLarge"]));
 
         var errors = new List<string>();
         foreach (var file in files)

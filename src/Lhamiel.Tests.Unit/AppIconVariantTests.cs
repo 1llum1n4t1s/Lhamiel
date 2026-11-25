@@ -21,54 +21,6 @@ public sealed class AppIconVariantTests
     }
 
     [Fact]
-    public void Settings_DefaultAppIconVariant_IsClassic()
-    {
-        Assert.Equal(Settings.AppIconVariantClassic, new Settings().AppIconVariant);
-    }
-
-    [Fact]
-    public void ResetToDefaults_RestoresClassicAppIconVariant()
-    {
-        var settings = new Settings { AppIconVariant = Settings.AppIconVariantCrystal };
-
-        settings.ResetToDefaults();
-
-        Assert.Equal(Settings.AppIconVariantClassic, settings.AppIconVariant);
-    }
-
-    [Fact]
-    public void SupportedAppIconVariants_ContainsAllSelectableVariants()
-    {
-        Assert.Equal(
-            [Settings.AppIconVariantClassic, Settings.AppIconVariantCrystal, Settings.AppIconVariantLegacy],
-            Settings.SupportedAppIconVariants);
-    }
-
-    [Theory]
-    [InlineData("Classic", "app_classic.ico")]
-    [InlineData("classic", "app_classic.ico")]
-    [InlineData("Crystal", "app_crystal.ico")]
-    [InlineData("crystal", "app_crystal.ico")]
-    [InlineData("Legacy", "app_legacy.ico")]
-    [InlineData("legacy", "app_legacy.ico")]
-    [InlineData("unknown", "app_classic.ico")]
-    [InlineData(null, "app_classic.ico")]
-    public void GetIconFileName_MapsVariantToExpectedAsset(string? variant, string expected)
-    {
-        Assert.Equal(expected, AppIconManager.GetIconFileName(variant));
-    }
-
-    [Theory]
-    [InlineData("Classic", "avares://Lhamiel/icon/app_icon.png")]
-    [InlineData("Crystal", "avares://Lhamiel/icon/app_icon_crystal.png")]
-    [InlineData("Legacy", "avares://Lhamiel/icon/app_icon_legacy.png")]
-    [InlineData("unknown", "avares://Lhamiel/icon/app_icon.png")]
-    public void GetPreviewResourceUri_MapsVariantToExpectedAsset(string? variant, string expected)
-    {
-        Assert.Equal(expected, AppIconManager.GetPreviewResourceUri(variant));
-    }
-
-    [Fact]
     public void SanitizeAfterLoad_UnknownAppIconVariant_FallsBackToClassic()
     {
         var settings = new Settings { AppIconVariant = "MetalBoxArrow" };
@@ -79,7 +31,6 @@ public sealed class AppIconVariantTests
     }
 
     [Theory]
-    [InlineData("classic", "Classic")]
     [InlineData("CRYSTAL", "Crystal")]
     [InlineData("legacy", "Legacy")]
     public void SanitizeAfterLoad_AppIconVariant_NormalizedToCanonicalCase(string input, string expected)

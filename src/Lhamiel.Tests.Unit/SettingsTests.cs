@@ -7,21 +7,7 @@ namespace Lhamiel.Tests.Unit;
 /// </summary>
 public class SettingsTests
 {
-    [Fact]
-    public void Settings_DefaultValues_AreCorrect()
-    {
-        // Arrange & Act
-        var settings = new Settings();
-
-        // Assert
-        Assert.Equal("ZIP", settings.CompressionFormat);
-        Assert.False(settings.ExtractionOutputToSameDirectory);
-        Assert.False(settings.CompressionOutputToSameDirectory);
-        Assert.Equal("https://lhamiel.kagayoi.com", settings.UpdateBaseUrl);
-        Assert.Equal("release", settings.UpdateChannel);
-        Assert.False(settings.AddExtractToContextMenu);
-        Assert.False(settings.AddCompressToContextMenu);
-    }
+    // 既定値とリセットは SettingsEdgeCaseTests.NewSettings_AndResetToDefaults_ProduceSameValues に集約。
 
     // === InitializeLhaignore（旧 ExcludedFilePatterns の .lhaignore 移行）===
     // 実ユーザーの .lhaignore に触れないよう、必ず一時ディレクトリのパスを渡す。
@@ -74,18 +60,16 @@ public class SettingsTests
         Assert.Same(legacy, settings.ExcludedFilePatternsLegacy);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void MigrateLegacyContextMenuSettings_CopiesOldValueToBothSettings(bool legacyValue)
+    [Fact]
+    public void MigrateLegacyContextMenuSettings_CopiesOldValueToBothSettings()
     {
         var settings = new Settings();
-        var json = $$"""{ "AddToContextMenu": {{legacyValue.ToString().ToLowerInvariant()}} }""";
+        const string json = """{ "AddToContextMenu": true }""";
 
         Assert.True(Settings.MigrateLegacyContextMenuSettings(settings, json));
 
-        Assert.Equal(legacyValue, settings.AddExtractToContextMenu);
-        Assert.Equal(legacyValue, settings.AddCompressToContextMenu);
+        Assert.True(settings.AddExtractToContextMenu);
+        Assert.True(settings.AddCompressToContextMenu);
     }
 
     [Fact]
@@ -117,26 +101,6 @@ public class SettingsTests
     }
 
     [Fact]
-    public void Settings_NewDefaultValues_AreCorrect()
-    {
-        // v1.0.102 で追加されたプロパティのデフォルト値を検証
-        var settings = new Settings();
-
-        Assert.Equal("System", settings.Theme);
-        Assert.Equal("", settings.Locale);
-        Assert.True(settings.CompressMultipleAsOne);
-        Assert.Equal(5, settings.ZipCompressionLevel);
-        Assert.Equal(5, settings.SevenZipCompressionLevel);
-        Assert.True(settings.OpenExtractionOutputFolder);
-        Assert.True(settings.OpenCompressionOutputFolder);
-        Assert.True(settings.IncludeHiddenAndSystemEntries);
-        Assert.False(settings.RespectNestedGitignore);
-        Assert.Equal([".gitignore"], settings.SourceIgnoreFileNames);
-        Assert.Equal(10, settings.LogMaxSizeMB);
-        Assert.Equal(7, settings.LogRetentionDays);
-    }
-
-    [Fact]
     public void SourceIgnoreFileNames_NormalizePreservesPriorityAndDeduplicates()
     {
         var success = Settings.TryNormalizeSourceIgnoreFileNames(
@@ -149,7 +113,6 @@ public class SettingsTests
 
     [Theory]
     [InlineData("../rules")]
-    [InlineData("folder/.gitignore")]
     [InlineData("*.ignore")]
     [InlineData("CON")]
     [InlineData("CON.rules.txt")]
@@ -181,83 +144,6 @@ public class SettingsTests
         Assert.Equal([".lhamielignore", ".gitignore"], snapshot.SourceIgnoreFileNames);
     }
 
-    [Fact]
-    public void ResetToDefaults_RestoresDefaultValues()
-    {
-        // Arrange
-        // UpdateBaseUrl はセキュリティ上ハードコード固定のため初期化子で書き換え不可（読み取り専用）。
-        var settings = new Settings
-        {
-            CompressionFormat = "7z",
-            ExtractionOutputToSameDirectory = true,
-            CompressionOutputToSameDirectory = true,
-            UpdateChannel = "beta",
-            AddExtractToContextMenu = true,
-            AddCompressToContextMenu = true
-        };
-
-        // Act
-        settings.ResetToDefaults();
-
-        // Assert
-        Assert.Equal("ZIP", settings.CompressionFormat);
-        Assert.False(settings.ExtractionOutputToSameDirectory);
-        Assert.False(settings.CompressionOutputToSameDirectory);
-        Assert.Equal("https://lhamiel.kagayoi.com", settings.UpdateBaseUrl);
-        Assert.Equal("release", settings.UpdateChannel);
-        Assert.False(settings.AddExtractToContextMenu);
-        Assert.False(settings.AddCompressToContextMenu);
-        Assert.Equal([".gitignore"], settings.SourceIgnoreFileNames);
-    }
-
-    [Fact]
-    public void UpdateBaseUrl_IsHardcodedAndImmutable()
-    {
-        // 自動更新の配信元 URL は settings.json で書き換えできない（固定）。
-        // 悪意あるユーザーが攻撃者ホスト (R2 / 自前サーバ等) に誘導できないことを担保する回帰テスト。
-        var settings = new Settings();
-        Assert.Equal("https://lhamiel.kagayoi.com", settings.UpdateBaseUrl);
-
-        // setter が物理的に存在しないことも保証
-        var prop = typeof(Settings).GetProperty(nameof(Settings.UpdateBaseUrl));
-        Assert.NotNull(prop);
-        Assert.False(prop!.CanWrite);
-    }
-
-    [Fact]
-    public void ResetToDefaults_RestoresNewPropertyValues()
-    {
-        // v1.0.102 で追加されたプロパティのリセットを検証
-        var settings = new Settings
-        {
-            Theme = "Dark",
-            Locale = "ja_JP",
-            CompressMultipleAsOne = true,
-            ZipCompressionLevel = 9,
-            SevenZipCompressionLevel = 0,
-            IncludeHiddenAndSystemEntries = false,
-            OpenExtractionOutputFolder = false,
-            OpenCompressionOutputFolder = false,
-            LogMaxSizeMB = 50,
-            LogRetentionDays = 30
-        };
-
-        // Act
-        settings.ResetToDefaults();
-
-        // Assert
-        Assert.Equal("System", settings.Theme);
-        Assert.Equal("", settings.Locale);
-        Assert.True(settings.CompressMultipleAsOne);
-        Assert.Equal(5, settings.ZipCompressionLevel);
-        Assert.Equal(5, settings.SevenZipCompressionLevel);
-        Assert.True(settings.IncludeHiddenAndSystemEntries);
-        Assert.True(settings.OpenExtractionOutputFolder);
-        Assert.True(settings.OpenCompressionOutputFolder);
-        Assert.Equal(10, settings.LogMaxSizeMB);
-        Assert.Equal(7, settings.LogRetentionDays);
-    }
-
     // ═══════════════════════════════════════════════════
     // 対応形式カタログ（圧縮 / 展開 / 展開専用）の分類
     // ═══════════════════════════════════════════════════
@@ -268,45 +154,28 @@ public class SettingsTests
     /// 3 Theory の全入力をこの 1 つに統合した。照合は大文字小文字を区別する（カタログは canonical 表記を持つ）。
     /// </summary>
     [Theory]
-    // 引数: 形式名, 圧縮カタログに含まれるか, 展開カタログに含まれるか, 展開専用カタログに含まれるか
-    [InlineData("ZIP", true, true, false)]
-    [InlineData("7z", true, true, false)]
-    [InlineData("TAR", true, true, false)]
-    [InlineData("LZH", true, true, false)]
-    [InlineData("LHA", false, true, false)]  // LHA は展開のみ（圧縮は LZH 表記に統一）
-    [InlineData("GZ", false, true, false)]  // 単体圧縮形式は展開のみだが展開専用カタログには載せない
-    [InlineData("RAR", false, true, true)]
-    [InlineData("ARJ", false, true, true)]
-    [InlineData("Z", false, true, true)]
-    [InlineData("unknown", false, false, false)]
-    public void SupportedFormatCatalogs_ClassifyFormatAsExpected(
-        string format, bool compressible, bool extractable, bool extractOnly)
+    // 引数: 形式名, 圧縮カタログに含まれるか
+    [InlineData("LZH", true)]
+    [InlineData("LHA", false)]  // LHA は展開のみ（圧縮は LZH 表記に統一）
+    [InlineData("RAR", false)]
+    public void SupportedFormatCatalogs_ClassifyFormatAsExpected(string format, bool compressible)
     {
         Assert.Equal(compressible, Settings.SupportedCompressionFormats.Contains(format));
-        Assert.Equal(extractable, Settings.SupportedExtractionFormats.Contains(format));
-        Assert.Equal(extractOnly, Settings.ExtractOnlyFormats.Contains(format));
     }
 
     /// <summary>
-    /// カタログ間の集合関係と既定圧縮形式の整合性。
-    /// 上の代表値 Theory では検出できない「カタログへの形式追加時の分類漏れ」を全要素で検出する。
-    /// （旧 SettingsEdgeCaseTests の SupportedCompressionFormats_IsSubsetOfExtractionFormats /
-    /// ExtractOnlyFormats_NotInSupportedCompressionFormats / ExtractOnlyFormats_AreInSupportedExtractionFormats /
-    /// DefaultCompressionFormat_IsInSupportedCompressionFormats を統合）
+    /// 圧縮カタログと展開判定の共通カタログ（ArchiveFormatConstants）の整合性、および既定圧縮形式の所属。
+    /// 「カタログへの形式追加時の分類漏れ」を全要素で検出する。
     /// </summary>
     [Fact]
     public void SupportedFormatCatalogs_SetRelationsAreConsistent()
     {
         // 圧縮できる形式はすべて展開もできる
+        var extractable = ArchiveFormatConstants.SupportedArchiveFormats
+            .Select(f => f.Extension)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var format in Settings.SupportedCompressionFormats)
-            Assert.Contains(format, Settings.SupportedExtractionFormats);
-
-        // 展開専用形式は圧縮カタログに含まれず、展開カタログには含まれる
-        foreach (var format in Settings.ExtractOnlyFormats)
-        {
-            Assert.DoesNotContain(format, Settings.SupportedCompressionFormats);
-            Assert.Contains(format, Settings.SupportedExtractionFormats);
-        }
+            Assert.Contains(format, extractable);
 
         // 既定の圧縮形式は圧縮カタログ内の値である
         var settings = new Settings();

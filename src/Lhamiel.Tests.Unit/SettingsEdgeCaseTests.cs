@@ -7,6 +7,42 @@ namespace Lhamiel.Tests.Unit;
 /// </summary>
 public class SettingsEdgeCaseTests
 {
+    /// <summary>
+    /// 既定値の正本。新規インスタンスとリセット後の両方が、この値であること。
+    /// （旧 DefaultValues 系・ResetToDefaults 系テストをここへ集約した。）
+    /// </summary>
+    private static void AssertDefaultValues(Settings s)
+    {
+        Assert.Equal("ZIP", s.CompressionFormat);
+        Assert.Equal("System", s.Theme);
+        Assert.Equal("", s.Locale);
+        Assert.Equal("release", s.UpdateChannel);
+        Assert.Equal("https://lhamiel.kagayoi.com", s.UpdateBaseUrl);
+        Assert.True(s.Check4UpdatesOnStartup);
+        Assert.Equal(string.Empty, s.IgnoreUpdateTag);
+        Assert.False(s.ExtractionOutputToSameDirectory);
+        Assert.False(s.CompressionOutputToSameDirectory);
+        Assert.False(s.AddExtractToContextMenu);
+        Assert.False(s.AddCompressToContextMenu);
+        Assert.True(s.CompressMultipleAsOne);
+        Assert.Equal(5, s.ZipCompressionLevel);
+        Assert.Equal(5, s.SevenZipCompressionLevel);
+        Assert.Equal("LH5", s.LzhCompressionMethod);
+        Assert.True(s.OpenExtractionOutputFolder);
+        Assert.True(s.OpenCompressionOutputFolder);
+        Assert.True(s.IncludeHiddenAndSystemEntries);
+        Assert.False(s.RespectNestedGitignore);
+        Assert.Equal([".gitignore"], s.SourceIgnoreFileNames);
+        Assert.Equal(10, s.LogMaxSizeMB);
+        Assert.Equal(7, s.LogRetentionDays);
+        Assert.Equal(Settings.AppIconVariantClassic, s.AppIconVariant);
+        Assert.Equal(Settings.FileIconVariantClassic, s.FileIconVariant);
+        Assert.False(s.IsPasswordProtectionEnabled);
+        Assert.Equal("PromptEachTime", s.PasswordMode);
+        Assert.Null(s.EncryptedCompressionPassword);
+        Assert.True(s.EncryptFileNames);
+    }
+
     [Fact]
     public void NewSettings_AndResetToDefaults_ProduceSameValues()
     {
@@ -15,14 +51,38 @@ public class SettingsEdgeCaseTests
         {
             CompressionFormat = "7z",
             Theme = "Dark",
+            Locale = "ja_JP",
+            UpdateChannel = "beta",
+            Check4UpdatesOnStartup = false,
+            IgnoreUpdateTag = "v9.9.9",
             CreateArchiveNameFolder = false,
             DirectoryStructureMode = DirectoryStructureMode.Flat,
+            ExtractionOutputToSameDirectory = true,
+            CompressionOutputToSameDirectory = true,
             AddExtractToContextMenu = true,
             AddCompressToContextMenu = true,
+            CompressMultipleAsOne = false,
+            ZipCompressionLevel = 9,
+            SevenZipCompressionLevel = 0,
+            LzhCompressionMethod = "LH7",
+            OpenExtractionOutputFolder = false,
+            OpenCompressionOutputFolder = false,
+            IncludeHiddenAndSystemEntries = false,
+            RespectNestedGitignore = true,
+            LogMaxSizeMB = 50,
+            LogRetentionDays = 30,
             SourceIgnoreFileNames = [".lhamielignore", ".gitignore"],
+            AppIconVariant = Settings.AppIconVariantCrystal,
+            FileIconVariant = Settings.FileIconVariantIce,
+            IsPasswordProtectionEnabled = true,
+            PasswordMode = "Remember",
+            EncryptedCompressionPassword = [0x01, 0x02, 0x03],
+            EncryptFileNames = false,
         };
         reset.ResetToDefaults();
 
+        AssertDefaultValues(fresh);
+        AssertDefaultValues(reset);
         Assert.Equal(fresh.CompressionFormat, reset.CompressionFormat);
         Assert.Equal(fresh.Theme, reset.Theme);
         Assert.Equal(fresh.Locale, reset.Locale);
@@ -59,25 +119,6 @@ public class SettingsEdgeCaseTests
         Assert.Empty(s._legacyExcludedFilePatterns!);
     }
 
-    [Fact]
-    public void Settings_LegacyExcludedFilePatterns_NullIsTreatedAsNull()
-    {
-        // null は「キーが無かった」状態なので legacy フィールドも null のまま。
-        var s = new Settings();
-        s.ExcludedFilePatternsLegacy = null;
-        Assert.Null(s._legacyExcludedFilePatterns);
-    }
-
-    [Fact]
-    public void LhaignoreFile_DefaultContentContainsAllIgnoredItems()
-    {
-        var content = LhaignoreFile.CreateDefaultContent();
-        foreach (var file in ArchiveExtractor.IgnoredSystemFiles)
-            Assert.Contains(file, content, StringComparison.Ordinal);
-        foreach (var dir in ArchiveExtractor.IgnoredSystemDirectories)
-            Assert.Contains(dir + "/", content, StringComparison.Ordinal);
-    }
-
     // 対応形式カタログ間の集合関係と既定圧縮形式の所属は
     // SettingsTests.SupportedFormatCatalogs_SetRelationsAreConsistent に集約。
 
@@ -91,76 +132,14 @@ public class SettingsEdgeCaseTests
         Assert.Equal("release", settings.UpdateChannel);
     }
 
-    [Theory]
-    [InlineData("release", "release")]
-    [InlineData("prerelease", "prerelease")]
-    [InlineData("RELEASE", "release")]      // 大文字混ざりは canonical ケースに正規化される
-    [InlineData("PreRelease", "prerelease")] // 同上
-    public void SanitizeAfterLoad_AllowListedUpdateChannel_NormalizedToCanonicalCase(string input, string expected)
-    {
-        var settings = new Settings { UpdateChannel = input };
-        settings.SanitizeAfterLoad();
-        Assert.Equal(expected, settings.UpdateChannel);
-    }
-
-    [Theory]
-    [InlineData("DARK", "Dark")]
-    [InlineData("light", "Light")]
-    [InlineData("system", "System")]
-    public void SanitizeAfterLoad_Theme_NormalizedToCanonicalCase(string input, string expected)
-    {
-        var settings = new Settings { Theme = input };
-        settings.SanitizeAfterLoad();
-        Assert.Equal(expected, settings.Theme);
-    }
-
-    [Theory]
-    [InlineData(0, 0)]    // 有効値はそのまま
-    [InlineData(1, 1)]
-    [InlineData(3, 3)]
-    [InlineData(5, 5)]
-    [InlineData(7, 7)]
-    [InlineData(9, 9)]
-    [InlineData(-1, 0)]   // 下限割れ → 最小の有効値
-    [InlineData(-100, 0)]
-    [InlineData(int.MinValue, 0)] // Math.Abs オーバーフロー境界 (long キャストで救済)
-    [InlineData(int.MaxValue, 9)] // 対称な境界
-    [InlineData(2, 1)]    // 同距離 (|2-1|=|2-3|=1) はより軽い方
-    [InlineData(4, 3)]    // 同距離 (|4-3|=|4-5|=1) はより軽い方
-    [InlineData(6, 5)]
-    [InlineData(8, 7)]
-    [InlineData(10, 9)]   // 上限超え → 最大の有効値
-    [InlineData(999, 9)]
-    public void SnapToValidCompressionLevel_SnapsToNearestValid(int input, int expected)
-    {
-        Assert.Equal(expected, Settings.SnapToValidCompressionLevel(input));
-    }
-
-    [Theory]
-    [InlineData("LH0", "LH0")]
-    [InlineData("lh5", "LH5")]
-    [InlineData("Lh6", "LH6")]
-    [InlineData("lh7", "LH7")]
-    [InlineData("LH4", "LH5")]
-    [InlineData(null, "LH5")]
-    public void NormalizeLzhCompressionMethod_NormalizesAllowedValuesAndDefaults(
-        string? input,
-        string expected)
-    {
-        Assert.Equal(expected, Settings.NormalizeLzhCompressionMethod(input));
-    }
-
     [Fact]
-    public void LzhCompressionMethod_SerializationRoundTrip_PreservesSelection()
+    public void SanitizeAfterLoad_Theme_NormalizedToCanonicalCase()
     {
-        var settings = new Settings { LzhCompressionMethod = "LH7" };
-
-        var json = System.Text.Json.JsonSerializer.Serialize(settings, AppJsonContext.Default.Settings);
-        var restored = System.Text.Json.JsonSerializer.Deserialize(json, AppJsonContext.Default.Settings);
-
-        Assert.NotNull(restored);
-        restored.SanitizeAfterLoad();
-        Assert.Equal("LH7", restored.LzhCompressionMethod);
+        // 大文字小文字違いは canonical 表記へ。アイコン種別も同じ経路で確認する。
+        var settings = new Settings { Theme = "DARK", FileIconVariant = "ICE" };
+        settings.SanitizeAfterLoad();
+        Assert.Equal("Dark", settings.Theme);
+        Assert.Equal("Ice", settings.FileIconVariant);
     }
 
     [Fact]
@@ -180,6 +159,7 @@ public class SettingsEdgeCaseTests
     [InlineData(-1, 0)]
     [InlineData(int.MinValue, 0)] // Load 時オーバーフロー防御 (改竄 settings.json の最悪値)
     [InlineData(2, 1)]
+    [InlineData(7, 7)] // 有効値はそのまま
     public void SanitizeAfterLoad_OutOfRangeCompressionLevel_SnappedToValid(int input, int expected)
     {
         // settings.json 改竄/旧ビルド/手書きで範囲外値が入っても、ArchiveCompressor の
@@ -245,58 +225,20 @@ public class SettingsEdgeCaseTests
     }
 
     [Fact]
-    public void SanitizeAfterLoad_UnknownTheme_FallsBackToSystem()
-    {
-        var settings = new Settings { Theme = "HackerGreen" };
-        settings.SanitizeAfterLoad();
-        Assert.Equal("System", settings.Theme);
-    }
-
-    [Theory]
-    [InlineData("System")]
-    [InlineData("Dark")]
-    [InlineData("Light")]
-    public void SanitizeAfterLoad_SupportedTheme_Preserved(string theme)
-    {
-        var settings = new Settings { Theme = theme };
-        settings.SanitizeAfterLoad();
-        Assert.Equal(theme, settings.Theme);
-    }
-
-    [Fact]
     public void SanitizeAfterLoad_UnknownCompressionFormat_FallsBackToZip()
     {
-        var settings = new Settings { CompressionFormat = "RAR" }; // Lhamiel は RAR を圧縮できない
+        // 未知値はすべて既定値へ矯正される（形式・テーマ・アイコン種別・LZH 方式）。
+        var settings = new Settings
+        {
+            CompressionFormat = "RAR", // Lhamiel は RAR を圧縮できない
+            Theme = "HackerGreen",
+            FileIconVariant = "MetalBoxArrow",
+            LzhCompressionMethod = "LH4",
+        };
         settings.SanitizeAfterLoad();
         Assert.Equal("ZIP", settings.CompressionFormat);
-    }
-
-    [Fact]
-    public void SanitizeAfterLoad_UnknownFileIconVariant_FallsBackToClassic()
-    {
-        var settings = new Settings { FileIconVariant = "MetalBoxArrow" };
-        settings.SanitizeAfterLoad();
+        Assert.Equal("System", settings.Theme);
         Assert.Equal(Settings.FileIconVariantClassic, settings.FileIconVariant);
-    }
-
-    [Theory]
-    [InlineData("classic", "Classic")]
-    [InlineData("FOLDER", "Folder")]
-    [InlineData("cute", "Cute")]
-    [InlineData("ICE", "Ice")]
-    public void SanitizeAfterLoad_FileIconVariant_NormalizedToCanonicalCase(string input, string expected)
-    {
-        var settings = new Settings { FileIconVariant = input };
-        settings.SanitizeAfterLoad();
-        Assert.Equal(expected, settings.FileIconVariant);
-    }
-
-    [Fact]
-    public void SupportedThemes_ContainsAllThreeValues()
-    {
-        Assert.Contains("System", Settings.SupportedThemes);
-        Assert.Contains("Dark", Settings.SupportedThemes);
-        Assert.Contains("Light", Settings.SupportedThemes);
-        Assert.Equal(3, Settings.SupportedThemes.Length);
+        Assert.Equal("LH5", settings.LzhCompressionMethod);
     }
 }

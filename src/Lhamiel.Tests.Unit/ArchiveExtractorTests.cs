@@ -1,4 +1,3 @@
-using Cube.FileSystem.SevenZip;
 using Lhamiel.Util;
 using System.IO.Compression;
 using Xunit;
@@ -81,30 +80,6 @@ public class ArchiveExtractorTests
     }
 
     /// <summary>
-    /// テスト用のZIPファイルを作成する（複数のルートレベルファイル）
-    /// </summary>
-    /// <param name="testDir">テスト用ディレクトリ</param>
-    /// <returns>作成されたZIPファイルのパス</returns>
-    private static string CreateTestZipWithMultipleRootFiles(string testDir)
-    {
-        // テスト用の構造：ProjectC.zip のルートに複数のファイルがあるケース
-        var projectDir = Path.Combine(testDir, "ProjectC");
-        Directory.CreateDirectory(projectDir);
-
-        File.WriteAllText(Path.Combine(projectDir, "file1.txt"), "File 1");
-        File.WriteAllText(Path.Combine(projectDir, "file2.txt"), "File 2");
-        File.WriteAllText(Path.Combine(projectDir, "readme.md"), "README");
-
-        var zipPath = Path.Combine(testDir, "ProjectC.zip");
-        ZipFile.CreateFromDirectory(projectDir, zipPath);
-
-        // テスト用ディレクトリを削除
-        Directory.Delete(projectDir, true);
-
-        return zipPath;
-    }
-
-    /// <summary>
     /// テスト用のZIPファイルを作成する（__MACOSXとProjectDがルートに並ぶ）
     /// </summary>
     /// <param name="testDir">テスト用ディレクトリ</param>
@@ -149,42 +124,11 @@ public class ArchiveExtractorTests
         File.WriteAllText(Path.Combine(projectDir, "Thumbs.db"), "Windows thumbnail cache");
         File.WriteAllText(Path.Combine(projectDir, ".DS_Store"), "macOS folder metadata");
         File.WriteAllText(Path.Combine(subDir, "data.txt"), "Data content");
-        File.WriteAllText(Path.Combine(subDir, "desktop.ini"), "Subfolder desktop.ini");
+        File.WriteAllText(Path.Combine(subDir, "DESKTOP.INI"), "Subfolder desktop.ini (大文字表記でも除外される)");
 
         var zipPath = Path.Combine(testDir, "ProjectE.zip");
         ZipFile.CreateFromDirectory(parentDir, zipPath);
 
-        Directory.Delete(parentDir, true);
-
-        return zipPath;
-    }
-
-    /// <summary>
-    /// テスト用のZIPファイルを作成する（再帰的な同名フォルダのネスト）
-    /// </summary>
-    /// <param name="testDir">テスト用ディレクトリ</param>
-    /// <returns>作成されたZIPファイルのパス</returns>
-    private static string CreateTestZipWithRecursiveNestedFolders(string testDir)
-    {
-        // テスト用の構造：ABC.zip 内に ABC/ABC/ABC/ABC/ABC/中身/ があるケース
-        var parentDir = Path.Combine(testDir, "temp_for_abc_zip");
-        var level1 = Path.Combine(parentDir, "ABC");
-        var level2 = Path.Combine(level1, "ABC");
-        var level3 = Path.Combine(level2, "ABC");
-        var level4 = Path.Combine(level3, "ABC");
-        var level5 = Path.Combine(level4, "ABC");
-        var contentsDir = Path.Combine(level5, "中身");
-
-        Directory.CreateDirectory(contentsDir);
-
-        File.WriteAllText(Path.Combine(contentsDir, "file1.txt"), "File 1");
-        File.WriteAllText(Path.Combine(contentsDir, "file2.txt"), "File 2");
-
-        var zipPath = Path.Combine(testDir, "ABC.zip");
-        // 親ディレクトリを圧縮することで、ABC/ フォルダを含める
-        ZipFile.CreateFromDirectory(parentDir, zipPath);
-
-        // テスト用ディレクトリを削除
         Directory.Delete(parentDir, true);
 
         return zipPath;
@@ -243,181 +187,44 @@ public class ArchiveExtractorTests
         }
     }
 
+    // 上書き対象の判定（EdgeCase から移設）
+    [Fact]
+    public void ShouldShowOverwriteDialog_WithEmptyOverwriteCheckPaths_HasNoOverwriteTarget()
+    {
+        var tempDir = CreateTemporaryTestDirectory();
+        try
+        {
+            // 空配列は「親フォルダー直下へ展開するが置換対象なし」を表す。
+            Assert.False(ArchiveExtractor.ShouldShowOverwriteDialog(tempDir, Array.Empty<string>()));
+        }
+        finally
+        {
+            Directory.Delete(tempDir, true);
+        }
+    }
+
     /// <summary>
     /// overwriteCheckPaths内のいずれかが存在する場合、ダイアログを表示すること
     /// </summary>
     [Fact]
-    public void ShouldShowOverwriteDialog_WhenOverwriteTargetExists_ReturnsTrue()
+    public void ShouldShowOverwriteDialog_WithMultipleCheckPathsOneExists_ReturnsTrue()
     {
         var tempDir = CreateTemporaryTestDirectory();
         try
         {
-            var outputPath = tempDir;
-            var existingFolder = Path.Combine(outputPath, "ExistingProject");
-            Directory.CreateDirectory(existingFolder);
-            var overwriteCheckPaths = new[] { existingFolder };
-
-            var result = ArchiveExtractor.ShouldShowOverwriteDialog(outputPath, overwriteCheckPaths);
-
-            Assert.True(result);
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-                Directory.Delete(tempDir, true);
-        }
-    }
-
-    [Fact]
-    public void IsSupportedArchiveType_WithZipExtension_ReturnsTrue()
-    {
-        // Act & Assert
-        var result = ArchiveExtractor.IsSupportedArchiveType("test.zip");
-        Assert.True(result);
-    }
-
-    [Fact]
-    public void IsSupportedArchiveType_WithUnsupportedExtension_ReturnsFalse()
-    {
-        // Act & Assert
-        var result = ArchiveExtractor.IsSupportedArchiveType("test.txt");
-        Assert.False(result);
-    }
-
-    [Fact]
-    public void GetOutputDirectory_WithValidPath_ReturnsExpectedPath()
-    {
-        // Arrange
-        var tempDir = CreateTemporaryTestDirectory();
-        try
-        {
-            // テスト用ディレクトリ内にダミーファイルを作成
-            var dummyFile = Path.Combine(tempDir, "dummy.txt");
-            File.WriteAllText(dummyFile, "test");
-
-            var outputDir = Path.Combine(tempDir, "output");
-
-            // Act
-            var result = ArchiveExtractor.GetOutputDirectory(dummyFile, outputDir);
-
-            // Assert
-            // outputDir の下に dummy というフォルダが作成されるはず
-            Assert.Contains("dummy", result);
-            Assert.StartsWith(outputDir, result);
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-                Directory.Delete(tempDir, true);
-        }
-    }
-
-    [Fact]
-    public void GetOutputDirectory_WithSingleFolderInRoot_CreatesArchiveFolder()
-    {
-        // Arrange
-        var tempDir = CreateTemporaryTestDirectory();
-        try
-        {
-            // ルートレベルに1つだけフォルダがあるZIPファイルを作成
-            var zipPath = CreateTestZipWithDoubleFolder(tempDir);
-            var outputDir = Path.Combine(tempDir, "output");
-            var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ProjectA"
-
-            // デバッグ: アーカイブ内容と期待値を出力
-            using (var reader = new ArchiveReader(zipPath))
+            var existingSub = Path.Combine(tempDir, "existing");
+            Directory.CreateDirectory(existingSub);
+            var paths = new[]
             {
-                var contents = reader.Items.Select(item => item.FullName).ToList();
-                foreach (var item in contents)
-                {
-                }
-            }
-
-            // Act
-            var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
-
-            // Assert: ケース1 - ルートアイテムが1つ＋フォルダ
-            // GetOutputDirectory は アーカイブ名フォルダを返す（リフトアップは展開時に行う）
-            var expectedPath = Path.Combine(outputDir, zipFileName);
-            Assert.Equal(expectedPath, result);
+                Path.Combine(tempDir, "nonexistent"),
+                existingSub,
+                Path.Combine(tempDir, "another_nonexistent")
+            };
+            Assert.True(ArchiveExtractor.ShouldShowOverwriteDialog(tempDir, paths));
         }
         finally
         {
-            if (Directory.Exists(tempDir))
-                Directory.Delete(tempDir, true);
-        }
-    }
-
-    [Fact]
-    public void GetOutputDirectory_WithMultipleFoldersInRoot_CreatesFolder()
-    {
-        // Arrange
-        var tempDir = CreateTemporaryTestDirectory();
-        try
-        {
-            // 複数フォルダのZIPファイルを作成
-            var zipPath = CreateTestZipWithMultipleFolders(tempDir);
-            var outputDir = Path.Combine(tempDir, "output");
-            var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ProjectB"
-
-            // デバッグ: アーカイブ内容と期待値を出力
-            using (var reader = new ArchiveReader(zipPath))
-            {
-                var contents = reader.Items.Select(item => item.FullName).ToList();
-                foreach (var item in contents)
-                {
-                }
-            }
-
-            // Act
-            var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
-
-            var expectedPath = Path.Combine(outputDir, zipFileName);
-
-            // Assert: ケース2 - ルートレベルに複数のアイテムがある場合
-            // GetOutputDirectory はアーカイブ名フォルダを返す
-            Assert.Equal(expectedPath, result);
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-                Directory.Delete(tempDir, true);
-        }
-    }
-
-    [Fact]
-    public void GetOutputDirectory_WithDeepNestedFolders_CreatesArchiveFolder()
-    {
-        // Arrange
-        var tempDir = CreateTemporaryTestDirectory();
-        try
-        {
-            // 深いネストを持つZIPファイルを作成
-            var zipPath = CreateTestZipWithRecursiveNestedFolders(tempDir);
-            var outputDir = Path.Combine(tempDir, "output");
-            var zipFileName = Path.GetFileNameWithoutExtension(zipPath); // "ABC"
-
-            // デバッグ: アーカイブ内容と期待値を出力
-            using (var reader = new ArchiveReader(zipPath))
-            {
-                var contents = reader.Items.Select(item => item.FullName).ToList();
-                foreach (var item in contents)
-                {
-                }
-            }
-
-            // Act
-            var result = ArchiveExtractor.GetOutputDirectory(zipPath, outputDir);
-
-            // Assert: ケース1 - ルートアイテムが1つ＋フォルダ（ABC フォルダ）
-            // GetOutputDirectory はアーカイブ名フォルダを返す（リフトアップは展開時に行う）
-            var expectedPath = Path.Combine(outputDir, zipFileName);
-            Assert.Equal(expectedPath, result);
-        }
-        finally
-        {
-            if (Directory.Exists(tempDir))
-                Directory.Delete(tempDir, true);
+            Directory.Delete(tempDir, true);
         }
     }
 
@@ -430,32 +237,14 @@ public class ArchiveExtractorTests
         {
             // ルートレベルに1つだけフォルダがあるZIPファイルを作成
             var zipPath = CreateTestZipWithDoubleFolder(tempDir);
-            Path.GetFileNameWithoutExtension(zipPath);
             var baseOutputDir = Path.Combine(tempDir, "extract_output");
 
-            using (var reader = new ArchiveReader(zipPath))
-            {
-                var contents = reader.Items.Select(item => item.FullName).ToList();
-                foreach (var item in contents.Take(5))
-                {
-                }
-                if (contents.Count > 5)
-                {
-                }
-            }
-
-            // Act: GetOutputDirectory を使用して正しい展開先を決定する
-            var actualOutputDir = ArchiveExtractor.GetOutputDirectory(zipPath, baseOutputDir);
-            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            // Act: 基準フォルダー + アーカイブ名フォルダを展開先にする
+            var actualOutputDir = ArchiveExtractor.ResolveArchiveOutputDirectory(
+                ArchiveExtractor.GetBaseOutputDirectory(zipPath, baseOutputDir), zipPath);
             await ArchiveExtractor.ExtractArchive(zipPath, actualOutputDir, null, null, false, TestContext.Current.CancellationToken);
 
             // Assert: 展開結果を確認
-            var topLevelItems = Directory.GetFileSystemEntries(actualOutputDir);
-            foreach (var item in topLevelItems.Take(5))
-            {
-                var name = Path.GetFileName(item);
-                var isDir = Directory.Exists(item) ? "(dir)" : "(file)";
-            }
 
             // ケース1: ルートアイテムが1つ＋フォルダ
             // ProjectA フォルダが actualOutputDir (baseOutputDir/ProjectA) の下に作成されている
@@ -486,26 +275,10 @@ public class ArchiveExtractorTests
             var zipPath = CreateTestZipWithMultipleFolders(tempDir);
             var baseOutputDir = Path.Combine(tempDir, "extract_output");
 
-            using (var reader = new ArchiveReader(zipPath))
-            {
-                var contents = reader.Items.Select(item => item.FullName).ToList();
-                foreach (var item in contents)
-                {
-                }
-            }
-
-            // Act: GetOutputDirectory を使用して正しい展開先を決定する
-            var actualOutputDir = ArchiveExtractor.GetOutputDirectory(zipPath, baseOutputDir);
-            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
+            // Act: 基準フォルダー + アーカイブ名フォルダを展開先にする
+            var actualOutputDir = ArchiveExtractor.ResolveArchiveOutputDirectory(
+                ArchiveExtractor.GetBaseOutputDirectory(zipPath, baseOutputDir), zipPath);
             await ArchiveExtractor.ExtractArchive(zipPath, actualOutputDir, null, null, false, TestContext.Current.CancellationToken);
-
-            // Assert: 展開結果を確認
-            var topLevelItems = Directory.GetFileSystemEntries(actualOutputDir);
-            foreach (var item in topLevelItems)
-            {
-                var name = Path.GetFileName(item);
-                var isDir = Directory.Exists(item) ? "(dir)" : "(file)";
-            }
 
             // ケース2: ルートアイテムが複数
             // folder1 と folder2 が直接存在することを確認

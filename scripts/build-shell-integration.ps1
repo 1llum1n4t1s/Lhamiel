@@ -19,33 +19,9 @@ param(
 
 
 
-# 指定した作業出力は絶対パスの外部ディレクトリに限定し、リンク経由の書込みも拒否する。
-function Resolve-ExternalWorkDirectory {
-    param([string]$Path, [string]$RepositoryRoot)
-    if ([string]::IsNullOrWhiteSpace($Path) -or -not [IO.Path]::IsPathFullyQualified($Path)) { throw 'WorkDirectory は絶対パスで指定してください。' }
-    $resolved = [IO.Path]::GetFullPath($Path).TrimEnd('\','/')
-    $forbiddenRoots = @($RepositoryRoot, (Join-Path ([Environment]::GetFolderPath('UserProfile')) '.codex'))
-    if ($env:CODEX_HOME) { $forbiddenRoots += $env:CODEX_HOME }
-    foreach ($root in $forbiddenRoots) {
-        $boundary = [IO.Path]::GetFullPath($root).TrimEnd('\','/')
-        if ($resolved.Equals($boundary, [StringComparison]::OrdinalIgnoreCase) -or $resolved.StartsWith($boundary + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw "WorkDirectory はリポジトリ / Codex ディレクトリの外に指定してください: $resolved" }
-    }
-    $ancestor = $resolved
-    while ($ancestor) {
-        if (Test-Path -LiteralPath $ancestor) {
-            $item = Get-Item -LiteralPath $ancestor -Force -ErrorAction Stop
-            if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "WorkDirectory の祖先は通常のディレクトリに限定します: $ancestor" }
-        }
-        $ancestor = Split-Path $ancestor -Parent
-    }
-    if (Test-Path -LiteralPath $resolved) {
-        if (@(Get-ChildItem -LiteralPath $resolved -Recurse -Force -ErrorAction Stop | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }).Count) { throw "WorkDirectory 内のリンクを除いてください: $resolved" }
-    }
-    return $resolved
-}
-
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'WorkDirectory.Common.ps1')
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $publishPath = [System.IO.Path]::GetFullPath($PublishDir, $repoRoot)

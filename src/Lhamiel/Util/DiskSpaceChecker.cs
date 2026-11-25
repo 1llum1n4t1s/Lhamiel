@@ -115,8 +115,9 @@ public static partial class DiskSpaceChecker
         {
             try
             {
-                if (File.Exists(path))
-                    total = checked(total + new FileInfo(path).Length);
+                var fileInfo = new FileInfo(path);
+                if (fileInfo.Exists)
+                    total = checked(total + fileInfo.Length);
                 else if (Directory.Exists(path))
                     total = checked(total + new DirectoryInfo(path)
                         .EnumerateFiles("*", SearchOption.AllDirectories)

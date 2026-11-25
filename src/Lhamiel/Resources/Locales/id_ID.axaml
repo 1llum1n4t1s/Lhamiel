@@ -5,12 +5,10 @@
   </ResourceDictionary.MergedDictionaries>
 
   <!-- Window Titles -->
-  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Alat Kompresi &amp; Ekstraksi Arsip</x:String>
   <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">Tujuan kompresi merupakan tautan ke folder dan tidak dapat ditimpa: {0}</x:String>
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} item</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Batalkan semua</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Memproses...</x:String>
-  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Ganti Berkas</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Opsi Pemulihan Kesalahan</x:String>
 
   <!-- Drop Zone -->
@@ -23,7 +21,6 @@
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">Kompresi</x:String>
   <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">Pengecualian kompresi</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">Asosiasi Berkas</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">Versi</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">Umum</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">Ekstraksi</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">Kompresi</x:String>
@@ -68,7 +65,6 @@
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Buka folder tujuan setelah kompresi</x:String>
-  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Kompresi Gabungan</x:String>
   <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Opsi Kompresi</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Kompres beberapa berkas menjadi satu arsip</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Jika MATI, setiap berkas akan dikompres menjadi arsip terpisah</x:String>
@@ -81,7 +77,6 @@
   <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">Metode kompresi LZH</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Sertakan file dan folder tersembunyi/sistem</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Entri dengan atribut Hidden atau System juga ditambahkan ke arsip.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Pengecualian Kompresi</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Pengaturan di halaman ini berlaku untuk semua kompresi Lhamiel bagi pengguna Windows ini. Tentukan pengecualian khusus sumber dalam berkas aturan di setiap folder sumber.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">Aturan pengecualian bersama</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">Pola yang didaftarkan di sini berlaku untuk semua sumber kompresi. Sintaksis kompatibel .gitignore didukung.</x:String>
@@ -120,7 +115,6 @@
   <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">Folder beku</x:String>
 
   <!-- Version Tab -->
-  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">Alat Kompresi &amp; Ekstraksi Arsip</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">Versi</x:String>
   <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
@@ -156,7 +150,6 @@
   <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Layanan dukungan tidak dapat dihubungi. Coba lagi nanti.</x:String>
 
   <!-- Buttons -->
-  <x:String x:Key="Text.Button.Save" xml:space="preserve">Simpan</x:String>
   <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Batal</x:String>
   <x:String x:Key="Text.Button.OK" xml:space="preserve">OK</x:String>
   <x:String x:Key="Text.Button.Yes" xml:space="preserve">Ya</x:String>
@@ -169,7 +162,6 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Memindahkan file...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Mengekstrak</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Mengompresi</x:String>
-  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Memverifikasi integritas...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Menerapkan tanda keamanan...</x:String>
   <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">Memindai berkas... {0:N0}</x:String>
   <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">Menyiapkan kompresi... {0:N0} / {1:N0}</x:String>
@@ -187,11 +179,6 @@
   <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Ingat pilihan ini</x:String>
 
   <!-- Overwrite Dialog -->
-  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">Folder '{0}' sudah ada.\n\nHapus folder yang ada dan timpa?</x:String>
-  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">Berkas '{0}' sudah ada.\n\nGanti berkas ini?</x:String>
-  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Konfirmasi Penimpaan Folder</x:String>
-  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Ganti Berkas</x:String>
-  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">Berkas sudah ada.\n\nGanti berkas ini?</x:String>
 
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Kesalahan</x:String>
@@ -206,15 +193,12 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Format berkas tidak didukung.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Format kompresi tidak didukung.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Terjadi kesalahan saat ekstraksi.\n{0}</x:String>
-  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Verifikasi integritas CRC gagal: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Terjadi kesalahan saat kompresi.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Terjadi kesalahan saat pemrosesan.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Keluaran '{0}' sedang digunakan atau akses ditolak.</x:String>
-  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">Gagal menyimpan pengaturan.</x:String>
   <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">Gagal memproses berkas.</x:String>
   <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">Gagal menerapkan pengaturan asosiasi berkas.</x:String>
   <x:String x:Key="Text.Error.InitApp" xml:space="preserve">Gagal menginisialisasi aplikasi.</x:String>
-  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">Gagal menampilkan dialog konfirmasi penimpaan: {0}</x:String>
   <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">Terjadi kesalahan saat memilih semua.</x:String>
   <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">Terjadi kesalahan saat membatalkan semua pilihan.</x:String>
   <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Kesalahan Ekstraksi</x:String>
@@ -225,10 +209,6 @@
   <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">Terjadi kesalahan saat membuat pintasan.</x:String>
 
   <!-- Update Messages -->
-  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Menerapkan pembaruan... Memulai ulang.</x:String>
-  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Sudah versi terbaru.</x:String>
-  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ Tidak dapat memeriksa pembaruan di lingkungan pengembangan.</x:String>
-  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ Repositori pembaruan belum dikonfigurasi.</x:String>
   <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ Terjadi kesalahan saat memeriksa pembaruan.</x:String>
   <x:String x:Key="Text.Update.Timeout" xml:space="preserve">Pemeriksaan pembaruan habis waktu.</x:String>
   <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Mengunduh pembaruan...</x:String>
@@ -305,8 +285,6 @@
 
   <!-- Partial Extraction -->
   <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Mengekstrak: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Mengekstrak ulang: {0}</x:String>
-  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">Berkas target tidak ditemukan dalam arsip.</x:String>
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Berkas: {0}\nKesalahan: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Anda dapat memilih untuk mencoba lagi atau melewati.</x:String>
 
@@ -365,6 +343,10 @@
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Tidak ada berkas yang ditentukan untuk dikompresi.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Jalur yang ditentukan tidak ditemukan: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Gagal menyimpan pengaturan: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedStartupUnreadable" xml:space="preserve">settings.json tidak dapat dibaca saat startup, sehingga penyimpanan dibatalkan untuk melindungi pengaturan Anda yang ada. Silakan mulai ulang aplikasi</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedFileUnreadable" xml:space="preserve">settings.json saat ini tidak dapat dibaca (mungkin sedang dibuka aplikasi lain), sehingga penyimpanan dibatalkan untuk melindungi pengaturan Anda yang ada</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableStartup" xml:space="preserve">Lhamiel tidak dapat membaca settings.json dan dimulai dengan pengaturan default. Perubahan pada sesi ini tidak akan disimpan. Kata sandi kompresi yang tersimpan dan pengaturan perlindungan kata sandi juga tidak dapat dibaca, sehingga arsip mungkin dibuat tanpa perlindungan kata sandi. Periksa apakah Lhamiel atau aplikasi lain membuka settings.json, lalu mulai ulang Lhamiel.</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableExternalChange" xml:space="preserve">Karena settings.json tidak dapat dibaca, perubahan ini (menu konteks, asosiasi file, ikon, atau pintasan) tidak dapat diterapkan. Silakan mulai ulang aplikasi.</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Berkas yang diekstrak tidak ditemukan.</x:String>
 
   <!-- Path validation messages -->
@@ -407,7 +389,6 @@
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Kata sandi tidak cocok. Silakan masukkan ulang konfirmasi.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Silakan masukkan kata sandi.</x:String>
   <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">Kata sandi harus terdiri dari minimal 4 karakter.</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Anda dapat menempel dari pengelola kata sandi (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Hapus kata sandi yang tersimpan?</x:String>
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Beralih ke "Tanyakan setiap kali drop" akan menghapus kata sandi yang saat ini tersimpan. Lanjutkan?</x:String>

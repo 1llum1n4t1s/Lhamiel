@@ -1,6 +1,5 @@
 using Cube.FileSystem.SevenZip;
 using Lhamiel.Util;
-using System.Text;
 using Xunit;
 namespace Lhamiel.Tests.Unit;
 
@@ -28,160 +27,7 @@ public class ArchiveCompressionTests
     }
 
     /// <summary>
-    /// テスト用のファイルとディレクトリ構造を作成する
-    /// </summary>
-    /// <param name="testDir">テスト用ディレクトリ</param>
-    /// <returns>作成されたテストディレクトリのパス</returns>
-    private static string CreateTestFileStructure(string testDir)
-    {
-        var sourceDir = Path.Combine(testDir, "source");
-        var subDir = Path.Combine(sourceDir, "subfolder");
-        Directory.CreateDirectory(subDir);
-
-        // テストファイルを作成
-        File.WriteAllText(Path.Combine(sourceDir, "readme.txt"), "This is a readme file");
-        File.WriteAllText(Path.Combine(sourceDir, "config.txt"), "Configuration data");
-        File.WriteAllText(Path.Combine(subDir, "data.json"), "{\"key\": \"value\"}");
-        File.WriteAllText(Path.Combine(subDir, "notes.txt"), "Some notes here");
-
-        return sourceDir;
-    }
-
-    /// <summary>
-    /// アーカイブ内のファイル数と内容を検証する
-    /// </summary>
-    /// <param name="extractedDir">展開されたディレクトリ</param>
-    private static void VerifyExtractedContent(string extractedDir)
-    {
-        // 展開されたディレクトリが存在することを確認
-        Assert.True(Directory.Exists(extractedDir), $"Expected directory not found: {extractedDir}");
-
-        // 展開されたファイルを確認（全ディレクトリを再帰的に検索）
-        var files = Directory.GetFiles(extractedDir, "*", SearchOption.AllDirectories).ToList();
-
-        // ファイルが存在することを確認（ファイル数は形式によって異なるため、最低1つのファイルがあることを確認）
-        Assert.True(files.Count > 0, $"No files found in {extractedDir}. Directory structure: {GetDirectoryStructure(extractedDir)}");
-
-        // ファイル内容を検証（readme.txtが存在すればその内容を確認）
-        var readmeFile = files.FirstOrDefault(f => f.EndsWith("readme.txt"));
-        if (readmeFile != null)
-        {
-            Assert.Equal("This is a readme file", File.ReadAllText(readmeFile));
-        }
-
-        // ファイル内容を検証（data.jsonが存在すればその内容を確認）
-        var jsonFile = files.FirstOrDefault(f => f.EndsWith("data.json"));
-        if (jsonFile != null)
-        {
-            Assert.Equal("{\"key\": \"value\"}", File.ReadAllText(jsonFile));
-        }
-    }
-
-    /// <summary>
-    /// デバッグ用にディレクトリ構造を取得する
-    /// </summary>
-    private static string GetDirectoryStructure(string path, string indent = "")
-    {
-        var sb = new StringBuilder();
-        try
-        {
-            var di = new DirectoryInfo(path);
-            sb.AppendLine($"{indent}{di.Name}/");
-
-            foreach (var dir in di.GetDirectories())
-            {
-                sb.Append(GetDirectoryStructure(dir.FullName, indent + "  "));
-            }
-
-            foreach (var file in di.GetFiles())
-            {
-                sb.AppendLine($"{indent}  {file.Name}");
-            }
-        }
-        catch
-        {
-            // ディレクトリが存在しない場合
-        }
-
-        return sb.ToString();
-    }
-
-    /// <summary>
-    /// ZIP・7z・TAR形式で圧縮・展開し、内容が保持されるか確認
-    /// </summary>
-    [Theory]
-    [InlineData(".zip", Format.Zip)]
-    [InlineData(".7z", Format.SevenZip)]
-    [InlineData(".tar", Format.Tar)]
-    public async Task CompressAndExtract_WithMultipleFormats_SucceedsAndPreservesContent(string extension, Format expectedFormat)
-    {
-        // Arrange
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var sourceDir = CreateTestFileStructure(testDir);
-            var archivePath = Path.Combine(testDir, $"archive{extension}");
-            var extractDir = Path.Combine(testDir, $"extracted{extension}");
-            Directory.CreateDirectory(extractDir);
-
-            // Act - 圧縮
-            var format = ArchiveCompressor.ParseFormat(extension.TrimStart('.'));
-            Assert.Equal(expectedFormat, format);
-            await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, format, null, TestContext.Current.CancellationToken);
-
-            // Assert - 圧縮ファイルが作成されたか
-            Assert.True(File.Exists(archivePath), $"{extension} archive should be created");
-
-            // Act - 展開
-            // メソッド呼び出し: 静的メソッドとしてのExtractArchiveを呼び出し
-            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
-
-            // Assert - 内容を検証（展開後のディレクトリ構造に対応）
-            var extractedFiles = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
-            Assert.True(extractedFiles.Length > 0, $"No files extracted for {extension}. Directory: {GetDirectoryStructure(extractDir)}");
-
-            // readme.txtが展開されたか確認
-            var readmeFile = extractedFiles.FirstOrDefault(f => f.EndsWith("readme.txt"));
-            Assert.NotNull(readmeFile);
-            Assert.Equal("This is a readme file", File.ReadAllText(readmeFile));
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-                Directory.Delete(testDir, true);
-        }
-    }
-
-    /// <summary>
-    /// ファイルを圧縮できるか確認
-    /// </summary>
-    [Fact]
-    public async Task CompressFile_WithZipFormat_Succeeds()
-    {
-        // Arrange
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var testFile = Path.Combine(testDir, "testfile.txt");
-            File.WriteAllText(testFile, "Test file content");
-
-            var archivePath = Path.Combine(testDir, "single_file.zip");
-
-            // Act
-            await ArchiveCompressor.CompressFilesAsync([testFile], archivePath, Format.Zip, null, TestContext.Current.CancellationToken);
-
-            // Assert
-            Assert.True(File.Exists(archivePath), "Zip archive should be created");
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-                Directory.Delete(testDir, true);
-        }
-    }
-
-    /// <summary>
-    /// 複数ファイルを圧縮できるか確認
+    /// 複数の入力元（個別ファイル3つ）を圧縮し、展開後に3項目の内容が揃うか確認
     /// </summary>
     [Fact]
     public async Task CompressMultipleFiles_WithZipFormat_Succeeds()
@@ -205,6 +51,16 @@ public class ArchiveCompressionTests
 
             // Assert
             Assert.True(File.Exists(archivePath), "Zip archive with multiple files should be created");
+
+            var extractDir = Path.Combine(testDir, "extracted");
+            await ArchiveExtractor.ExtractArchive(archivePath, extractDir, null, null, false, TestContext.Current.CancellationToken);
+            var extracted = Directory.GetFiles(extractDir, "*", SearchOption.AllDirectories);
+            Assert.Equal(3, extracted.Length);
+            for (var i = 1; i <= 3; i++)
+            {
+                var path = Assert.Single(extracted, f => Path.GetFileName(f) == $"file{i}.txt");
+                Assert.Equal($"Content {i}", File.ReadAllText(path));
+            }
         }
         finally
         {
@@ -255,6 +111,9 @@ public class ArchiveCompressionTests
             Console.WriteLine($"元のディレクトリ: {sourceDir}");
             Console.WriteLine($"{formatName}ファイル: {archivePath}");
 
+            // 拡張子と形式の対応（ParseFormat は未知値を無言で ZIP にするため取り違えを検出する）
+            Assert.Equal(format, ArchiveCompressor.ParseFormat(extension.TrimStart('.')));
+
             // Act: 圧縮
             await ArchiveCompressor.CompressFilesAsync([sourceDir], archivePath, format, null, TestContext.Current.CancellationToken);
 
@@ -275,7 +134,8 @@ public class ArchiveCompressionTests
             }
 
             // 日本語ファイル名が正しく保持されているか確認
-            Assert.True(extractedFiles.Any(f => f.Contains("読んでください.txt")), "日本語ファイル名 '読んでください.txt' が保持されているべき");
+            var readme = Assert.Single(extractedFiles, f => f.EndsWith("読んでください.txt", StringComparison.Ordinal));
+            Assert.Equal("これは日本語のファイルです", File.ReadAllText(readme));
             Assert.True(extractedFiles.Any(f => f.Contains("設定ファイル.txt")), "日本語ファイル名 '設定ファイル.txt' が保持されているべき");
             Assert.True(extractedFiles.Any(f => f.Contains("データ.json")), "日本語ファイル名 'データ.json' が保持されているべき");
             Assert.True(extractedFiles.Any(f => f.Contains("メモ帳.txt")), "日本語ファイル名 'メモ帳.txt' が保持されているべき");

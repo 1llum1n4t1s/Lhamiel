@@ -1241,7 +1241,10 @@ public partial class App : Application
             // 自動表示するため、二重 Show を避けて showExplicitly:false で早期 return する。
             // ライフタイム開始後（IPC 受信時など）は自動表示されないため、以降の Show + 前面化を行う。
             if (!showExplicitly)
+            {
+                NotifySettingsUnreadableOnce();
                 return true;
+            }
         }
 
         // 既存 or 生成直後のメインウィンドウを復元・前面化する。
@@ -1261,7 +1264,24 @@ public partial class App : Application
         if (handle != IntPtr.Zero)
             NativeMethods.SetForegroundWindow(handle);
 
+        NotifySettingsUnreadableOnce();
         return true;
+    }
+
+    private bool _settingsUnreadableNotified;
+
+    /// <summary>
+    /// 起動時に settings.json を読めなかった UI セッションで、保存されないことを1回だけ警告する。
+    /// メインウィンドウを出す経路（EnsureMainWindowShown）だけから呼ぶため、CLI・worker・サイレント更新確認では出ない。
+    /// 起動順・終了判定を止めないよう、待たずにウィンドウ表示後へ投げる。
+    /// </summary>
+    private void NotifySettingsUnreadableOnce()
+    {
+        if (_settingsUnreadableNotified || !SettingsManager.Instance.StartedWithUnreadableSettings)
+            return;
+
+        _settingsUnreadableNotified = true;
+        Dispatcher.UIThread.Post(() => _ = MessageService.ShowError(App.Text("Error.SettingsUnreadableStartup")));
     }
 
 
@@ -1403,9 +1423,8 @@ public partial class App : Application
                         Dispatcher.UIThread.Post(() =>
                         {
                             // MutateAndSave で atomic にする (Mutate と Save の間に別 thread が割り込まない)。
-                            // Save 失敗時はメモリ状態を巻き戻してから例外を表に出し、ユーザーに通知する
+                            // Save 失敗時のメモリは SettingsManager が変更前へ戻すので、ここでは通知する
                             // ("スキップしたのに次回再表示" のサイレント失効を防ぐ)。
-                            var oldTag = SettingsManager.Instance.Current.IgnoreUpdateTag;
                             try
                             {
                                 SettingsManager.Instance.MutateAndSave(s => s.IgnoreUpdateTag = tag);
@@ -1413,7 +1432,6 @@ public partial class App : Application
                             }
                             catch (Exception saveEx)
                             {
-                                SettingsManager.Instance.Mutate(s => s.IgnoreUpdateTag = oldTag);
                                 Logger.LogException("IgnoreUpdateTag の保存に失敗", saveEx);
                                 _ = MessageService.ShowError(App.Text("Error.SaveSettingsFailed", saveEx.Message));
                             }

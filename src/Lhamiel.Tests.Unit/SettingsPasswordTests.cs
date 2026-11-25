@@ -21,22 +21,6 @@ public class SettingsPasswordTests
     }
 
     [Theory]
-    [InlineData("PromptEachTime")]
-    [InlineData("Remember")]
-    public void SanitizeAfterLoad_ValidPasswordMode_Preserved(string mode)
-    {
-        // Remember + ciphertext あり、で degrade が起きないように ciphertext を仕込む
-        var s = new Settings
-        {
-            PasswordMode = mode,
-            IsPasswordProtectionEnabled = true,
-            EncryptedCompressionPassword = mode == "Remember" ? new byte[] { 0x01, 0x02 } : null,
-        };
-        s.SanitizeAfterLoad();
-        Assert.Equal(mode, s.PasswordMode);
-    }
-
-    [Theory]
     [InlineData("REMEMBER", "Remember")]
     [InlineData("prompteachtime", "PromptEachTime")]
     public void SanitizeAfterLoad_PasswordModeCaseInsensitive_Normalized(string input, string expected)
@@ -91,34 +75,6 @@ public class SettingsPasswordTests
         Assert.Equal("Remember", s.PasswordMode);
     }
 
-    [Fact]
-    public void SanitizeAfterLoad_RememberWithEmptyCiphertext_PreservesRemember()
-    {
-        // 空 byte[] も null と同じく「未保存」として扱う。Remember は保持。
-        var s = new Settings
-        {
-            IsPasswordProtectionEnabled = true,
-            PasswordMode = "Remember",
-            EncryptedCompressionPassword = [],
-        };
-        s.SanitizeAfterLoad();
-        Assert.Equal("Remember", s.PasswordMode);
-    }
-
-    [Fact]
-    public void SanitizeAfterLoad_RememberWithCiphertextButProtectionOff_DoesNotDegrade()
-    {
-        // 保護 OFF だと PasswordMode=Remember のまま保持して問題ない (使われないので)
-        var s = new Settings
-        {
-            IsPasswordProtectionEnabled = false,
-            PasswordMode = "Remember",
-            EncryptedCompressionPassword = null,
-        };
-        s.SanitizeAfterLoad();
-        Assert.Equal("Remember", s.PasswordMode);
-    }
-
     [Theory]
     [InlineData("TAR")]
     [InlineData("LZH")]
@@ -156,38 +112,7 @@ public class SettingsPasswordTests
         Assert.True(s.IsPasswordProtectionEnabled);
     }
 
-    [Fact]
-    public void ResetToDefaults_PasswordFieldsAreReset()
-    {
-        var s = new Settings
-        {
-            IsPasswordProtectionEnabled = true,
-            PasswordMode = "Remember",
-            EncryptedCompressionPassword = new byte[] { 0x01, 0x02, 0x03 },
-        };
-        s.ResetToDefaults();
-        Assert.False(s.IsPasswordProtectionEnabled);
-        Assert.Equal("PromptEachTime", s.PasswordMode);
-        Assert.Null(s.EncryptedCompressionPassword);
-    }
-
-    [Fact]
-    public void Snapshot_CiphertextIsSharedNotCloned()
-    {
-        // wholesale-replace 規約のため byte[] は参照共有で OK (Array.Clear/in-place mutation 禁止)。
-        // Snapshot した byte[] と元の byte[] が同一参照であることを確認 (= 浅いコピー)。
-        var original = new byte[] { 0x10, 0x20 };
-        var s = new Settings { EncryptedCompressionPassword = original };
-        var snap = s.Snapshot();
-        Assert.Same(original, snap.EncryptedCompressionPassword);
-    }
-
-    [Fact]
-    public void EncryptFileNames_DefaultIsTrue()
-    {
-        var s = new Settings();
-        Assert.True(s.EncryptFileNames);
-    }
+    // パスワード欄の既定値とリセットは SettingsEdgeCaseTests.NewSettings_AndResetToDefaults_ProduceSameValues に集約。
 
     [Fact]
     public void Snapshot_PreservesRuntimeOnlyEncryptFileNames()

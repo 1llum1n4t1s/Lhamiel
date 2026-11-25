@@ -18,34 +18,6 @@ namespace Lhamiel.Tests.Unit;
 [Collection("Sequential")]
 public sealed class LzhArchiveIntegrationTests
 {
-    [Theory]
-    [InlineData("archive.lzh", true)]
-    [InlineData("archive.LHA", true)]
-    [InlineData("archive.zip", false)]
-    [InlineData("archive.lzh.txt", false)]
-    public void IsLzhArchivePath_RecognizesOnlyLzhAndLhaExtensions(string path, bool expected)
-    {
-        Assert.Equal(expected, ArchiveExtractor.IsLzhArchivePath(path));
-    }
-
-    [Fact]
-    public void LzhProgressThrottler_RapidExtractFinalizeAlternation_ReportsOnlyFirstOfEachPhase()
-    {
-        var throttler = new LzhProgressThrottler(reportIntervalMs: 60_000);
-        var reported = 0;
-
-        for (var index = 0; index < 10_000; index++)
-        {
-            var phase = index % 2 == 0
-                ? LzhArchiveProgressPhase.ExtractOrVerify
-                : LzhArchiveProgressPhase.Finalize;
-            if (throttler.ShouldReport(new LzhArchiveProgress(phase, (ulong)index, 10_000)))
-                reported++;
-        }
-
-        Assert.Equal(2, reported);
-    }
-
     [Fact]
     public async Task CompressThenExtractLzh_RoundTripsUnicodeEmptyDirectorySelectionAndTimestamp()
     {
@@ -397,19 +369,6 @@ public sealed class LzhArchiveIntegrationTests
     }
 
     [Fact]
-    public void ListLzh_WithCancelledToken_PropagatesCancellation()
-    {
-        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
-            TestContext.Current.CancellationToken);
-        cancellation.Cancel();
-
-        var exception = Assert.ThrowsAny<OperationCanceledException>(() =>
-            new UnLhaReArchiveBackend().List("cancelled.lzh", cancellation.Token));
-
-        Assert.Equal(cancellation.Token, exception.CancellationToken);
-    }
-
-    [Fact]
     public async Task VisitEntriesLzh_CancelledFromVisitor_PropagatesCancellation()
     {
         Assert.SkipWhen(!OperatingSystem.IsWindows(), "Kagayoi.UnLhaRe の native asset は Windows 限定");
@@ -451,7 +410,8 @@ public sealed class LzhArchiveIntegrationTests
     public void GetArchiveStructureInfo_Lzh_UsesStreamingEntryVisitor()
     {
         using var temp = TestDirectory.Create(nameof(GetArchiveStructureInfo_Lzh_UsesStreamingEntryVisitor));
-        var archive = Path.Combine(temp.Path, "streaming.lzh");
+        // 大文字の .LHA 拡張子でも LZH 分岐に入ること（旧 IsLzhArchivePath の検査をここへ統合）。
+        var archive = Path.Combine(temp.Path, "streaming.LHA");
         File.WriteAllBytes(archive, [0x00]);
         var backend = new StreamingOnlyBackend(
         [

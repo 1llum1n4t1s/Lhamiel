@@ -6,14 +6,10 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <UseWPF>false</UseWPF>
-    <UseWindowsForms>false</UseWindowsForms>
     <ApplicationIcon>icon\app.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <SatelliteResourceLanguages>ja</SatelliteResourceLanguages>
     <Optimize>true</Optimize>
-    <DebugType>portable</DebugType>
-    <EnableDefaultCompileItems>true</EnableDefaultCompileItems>
     <!-- ネイティブAOT -->
     <PublishAot>true</PublishAot>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -37,11 +33,6 @@
     <UnLhaReVersion>1.0.4</UnLhaReVersion>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <EnableDefaultPageItems>false</EnableDefaultPageItems>
-    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
-  </PropertyGroup>
-
   <!-- .axaml は Avalonia SDK が自動インクルードするため明示不要 -->
 
   <ItemGroup>
@@ -53,29 +44,29 @@
       SetConfiguration="Configuration=$(Configuration)"
       SetPlatform="Platform=AnyCPU" />
     <PackageReference Include="Kagayoi.Support.Client" Version="$(KagayoiSupportClientVersion)" Condition="'$(KagayoiSupportClientProject)' == ''" />
-    <PackageReference Include="Avalonia" Version="12.1.6" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
+    <PackageReference Include="Avalonia" Version="12.2.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.2.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.2.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.2.0" />
     <!-- CRDebugger.Avalonia は復元グラフを構成非依存に保ち、Debug 時だけ下の Reference で使用する。
          PackageReference を Configuration 条件付きにすると、共有 project.assets.json が Release 復元で
          上書きされた後の Debug Rebuild で CS0246 になるため、compile/runtime asset は常時除外する。 -->
     <PackageReference
       Include="CRDebugger.Avalonia"
-      Version="1.0.34"
+      Version="1.0.38"
       ExcludeAssets="compile;runtime"
       GeneratePathProperty="true"
       PrivateAssets="all" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
-    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.94" GeneratePathProperty="true" />
+    <PackageReference Include="1llum1n4t1s.Sevenzip" Version="1.0.95" GeneratePathProperty="true" />
     <PackageReference Include="Kagayoi.UnLhaRe" Version="$(UnLhaReVersion)" />
-    <PackageReference Include="SuperLightLogger" Version="1.0.22" />
+    <PackageReference Include="SuperLightLogger" Version="1.0.23" />
     <!-- 圧縮パスワードを DPAPI (CurrentUser) で暗号化して settings.json に保存するため。
          Windows 専用 (Lhamiel 自体 Windows 専用なので問題なし)。Native AOT 対応。
          製品の TargetFramework (net11.0) に合わせて 11.x を使う。 -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="11.0.0" />
     <!-- 7z.dll は 1llum1n4t1s.Sevenzip の runtimes/{rid}/native/ から .NET SDK が自動配置 -->
-    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.22" />
+    <PackageReference Include="VelopackUpdateDialog.Avalonia" Version="1.0.24" />
   </ItemGroup>
 
   <ItemGroup>
@@ -88,7 +79,7 @@
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <Reference Include="CRDebugger.Avalonia">
-      <HintPath>$(PkgCRDebugger_Avalonia)\lib\net10.0\CRDebugger.Avalonia.dll</HintPath>
+      <HintPath>$(PkgCRDebugger_Avalonia)\lib\net11.0\CRDebugger.Avalonia.dll</HintPath>
       <Private>true</Private>
     </Reference>
   </ItemGroup>

@@ -1,7 +1,6 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
@@ -32,7 +31,7 @@ public partial class ArchiveOverwriteDialog : Window
         _sourcePaths = sourcePaths;
         _destinationPath = destinationPath;
 
-        AvaloniaXamlLoader.Load(this);
+        InitializeComponent();
         // アクリル代替背景 → 共通枠 → アイコンの順で初期化する（順序は DialogChrome.InitializeDialog が固定）。
         DialogChrome.InitializeDialog(this);
 
@@ -46,33 +45,29 @@ public partial class ArchiveOverwriteDialog : Window
         };
     }
 
-    private T Find<T>(string name) where T : Control => this.FindControl<T>(name)!;
-
     private void PopulateStaticText(ArchiveOverwriteInfo.OverwritePreview preview)
     {
         var outputName = ArchiveOverwriteInfo.GetDisplayName(_destinationPath);
         var folder = Path.GetDirectoryName(_destinationPath) ?? _destinationPath;
-        Find<TextBlock>("OutputNameText").Text = outputName;
-        Find<TextBlock>("LocationText").Text = App.Text("Overwrite.Location", folder);
+        OutputNameText.Text = outputName;
+        LocationText.Text = App.Text("Overwrite.Location", folder);
 
-        var existingCard = Find<Border>("ExistingCard");
         var existingParts = new List<string>();
-        SetOptionalText("ExistingModifiedText", preview.DestinationModified is { } m ? App.Text("Overwrite.Modified", FormatTime(m)) : null, existingParts);
-        SetOptionalText("ExistingSizeText", preview.DestinationSize is { } s ? App.Text("Overwrite.Size", DiskSpaceChecker.FormatSize(s)) : null, existingParts);
-        AutomationProperties.SetName(existingCard, string.Join(" ", [App.Text("Overwrite.Existing"), outputName, .. existingParts]));
+        SetOptionalText(ExistingModifiedText, preview.DestinationModified is { } m ? App.Text("Overwrite.Modified", FormatTime(m)) : null, existingParts);
+        SetOptionalText(ExistingSizeText, preview.DestinationSize is { } s ? App.Text("Overwrite.Size", DiskSpaceChecker.FormatSize(s)) : null, existingParts);
+        AutomationProperties.SetName(ExistingCard, string.Join(" ", [App.Text("Overwrite.Existing"), outputName, .. existingParts]));
 
         var (names, more) = ArchiveOverwriteInfo.SummarizeNames(_sourcePaths);
-        var namesPanel = Find<StackPanel>("NewNamesPanel");
         foreach (var name in names)
-            namesPanel.Children.Add(NewNameBlock(name, FontWeight.SemiBold));
+            NewNamesPanel.Children.Add(NewNameBlock(name, FontWeight.SemiBold));
         if (more > 0)
-            namesPanel.Children.Add(NewNameBlock(App.Text("Overwrite.SourceMore", more), FontWeight.Normal));
-        ToolTip.SetTip(namesPanel, string.Join(Environment.NewLine, _sourcePaths));
+            NewNamesPanel.Children.Add(NewNameBlock(App.Text("Overwrite.SourceMore", more), FontWeight.Normal));
+        ToolTip.SetTip(NewNamesPanel, string.Join(Environment.NewLine, _sourcePaths));
 
         var newParts = new List<string>(names);
-        SetOptionalText("NewModifiedText", preview.SourceModified is { } nm ? App.Text("Overwrite.Modified", FormatTime(nm)) : null, newParts);
-        Find<TextBlock>("NewTotalText").Text = App.Text("Overwrite.Calculating");
-        AutomationProperties.SetName(Find<Border>("NewCard"), string.Join(" ", [App.Text("Overwrite.New"), .. newParts]));
+        SetOptionalText(NewModifiedText, preview.SourceModified is { } nm ? App.Text("Overwrite.Modified", FormatTime(nm)) : null, newParts);
+        NewTotalText.Text = App.Text("Overwrite.Calculating");
+        AutomationProperties.SetName(NewCard, string.Join(" ", [App.Text("Overwrite.New"), .. newParts]));
     }
 
     private static TextBlock NewNameBlock(string text, FontWeight weight) => new()
@@ -86,9 +81,8 @@ public partial class ArchiveOverwriteDialog : Window
     private static string FormatTime(DateTime time) => time.ToString("yyyy/MM/dd HH:mm");
 
     /// <summary>値があるときだけ表示し、無いときは枠ごと隠す（偽値は出さない）。</summary>
-    private void SetOptionalText(string controlName, string? text, List<string> automationParts)
+    private static void SetOptionalText(TextBlock block, string? text, List<string> automationParts)
     {
-        var block = Find<TextBlock>(controlName);
         block.Text = text;
         block.IsVisible = text != null;
         if (text != null) automationParts.Add(text);
@@ -96,7 +90,7 @@ public partial class ArchiveOverwriteDialog : Window
 
     private void OnOpened(object? sender, EventArgs e)
     {
-        Find<Button>("CancelButton").Focus();
+        CancelButton.Focus();
         var token = _cts.Token;
         _ = LoadIconsAsync(token);
         _ = CalculateTotalAsync(token);
@@ -110,8 +104,8 @@ public partial class ArchiveOverwriteDialog : Window
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (token.IsCancellationRequested) return;
-            Find<Image>("ExistingIcon").Source = existing;
-            Find<Image>("NewIcon").Source = source;
+            ExistingIcon.Source = existing;
+            NewIcon.Source = source;
         });
     }
 
@@ -150,7 +144,7 @@ public partial class ArchiveOverwriteDialog : Window
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (token.IsCancellationRequested) return;
-            Find<TextBlock>("NewTotalText").Text = total is { } t
+            NewTotalText.Text = total is { } t
                 ? App.Text("Overwrite.SourceTotal", DiskSpaceChecker.FormatSize(t.Bytes), t.Files)
                 : App.Text("Overwrite.CalculationFailed");
         });

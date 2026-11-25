@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Lhamiel.Util;
 namespace Lhamiel.View;
@@ -32,14 +31,6 @@ public enum PasswordDialogMode
 /// </remarks>
 public partial class PasswordDialog : Window
 {
-    private TextBox? _passwordBox;
-    private TextBox? _confirmBox;
-    private TextBlock? _extractMessage;
-    private TextBlock? _compressNewMessage;
-    private TextBlock? _mismatchWarning;
-    private TextBlock? _emptyWarning;
-    private TextBlock? _tooShortWarning;
-
     /// <summary>
     /// 新規圧縮パスワードの最小文字数 (codex P2 #3384761804)。
     /// Logger.RegisterRedactionToken は 4 文字未満の token を登録しない契約
@@ -85,8 +76,8 @@ public partial class PasswordDialog : Window
 
     private void ClearPasswordInputs()
     {
-        if (_passwordBox != null) _passwordBox.Text = string.Empty;
-        if (_confirmBox != null) _confirmBox.Text = string.Empty;
+        PasswordBox.Text = string.Empty;
+        ConfirmBox.Text = string.Empty;
     }
 
     protected override void OnClosed(EventArgs e)
@@ -110,28 +101,12 @@ public partial class PasswordDialog : Window
         IsRetry = isRetry;
         Mode = mode;
         InitializeComponent();
-        // アクリル代替背景 → 共通枠 → アイコンの順で初期化する（順序は DialogChrome.InitializeDialog が固定）。
-        DialogChrome.InitializeDialog(this);
-
-        Opened += (_, _) => _passwordBox?.Focus();
-    }
-
-    private void InitializeComponent()
-    {
-        AvaloniaXamlLoader.Load(this);
-        _passwordBox = this.FindControl<TextBox>("PasswordBox");
-        _confirmBox = this.FindControl<TextBox>("ConfirmBox");
-        _extractMessage = this.FindControl<TextBlock>("ExtractMessage");
-        _compressNewMessage = this.FindControl<TextBlock>("CompressNewMessage");
-        _mismatchWarning = this.FindControl<TextBlock>("MismatchWarning");
-        _emptyWarning = this.FindControl<TextBlock>("EmptyWarning");
-        _tooShortWarning = this.FindControl<TextBlock>("TooShortWarning");
 
         // モードに応じて要素の表示切替（locale 動的切替は短寿命モーダルなので追従不要）。
         var isCompressNew = Mode == PasswordDialogMode.CompressNew;
-        if (_extractMessage != null) _extractMessage.IsVisible = !isCompressNew;
-        if (_compressNewMessage != null) _compressNewMessage.IsVisible = isCompressNew;
-        if (_confirmBox != null) _confirmBox.IsVisible = isCompressNew;
+        ExtractMessage.IsVisible = !isCompressNew;
+        CompressNewMessage.IsVisible = isCompressNew;
+        ConfirmBox.IsVisible = isCompressNew;
 
         // ウィンドウタイトルもモードで切り替え。DynamicResource を XAML で動的差し替えするより
         // App.Text() の現在値を 1 回読むほうが簡素（短寿命モーダルで locale 切替に追従不要のため）。
@@ -139,40 +114,42 @@ public partial class PasswordDialog : Window
         Title = App.Text(isCompressNew ? "Password.SetTitle" : "Password.Title");
 
         DataContext = this;
+
+        // アクリル代替背景 → 共通枠 → アイコンの順で初期化する（順序は DialogChrome.InitializeDialog が固定）。
+        DialogChrome.InitializeDialog(this);
+
+        Opened += (_, _) => PasswordBox.Focus();
     }
 
     private void OkButton_Click(object? sender, RoutedEventArgs e)
     {
-        var pwd = _passwordBox?.Text ?? string.Empty;
+        var pwd = PasswordBox.Text ?? string.Empty;
 
         if (Mode == PasswordDialogMode.CompressNew)
         {
             // 空入力拒否（CompressNew モードのみ。Extract はライブラリ仕様により空文字列も valid な「パスワードなし」入力）。
             if (string.IsNullOrEmpty(pwd))
             {
-                ShowSingleWarning(_emptyWarning);
-                _passwordBox?.Focus();
+                ShowSingleWarning(EmptyWarning);
+                PasswordBox.Focus();
                 return;
             }
 
             // 最小文字数 (理由は MinCompressPasswordLength の doc コメント参照)。
             if (pwd.Length < MinCompressPasswordLength)
             {
-                ShowSingleWarning(_tooShortWarning);
-                _passwordBox?.Focus();
+                ShowSingleWarning(TooShortWarning);
+                PasswordBox.Focus();
                 return;
             }
 
             // 一致確認。primary は保持して confirm 側だけクリア（ユーザーの再入力負担を減らす）。
-            var confirm = _confirmBox?.Text ?? string.Empty;
+            var confirm = ConfirmBox.Text ?? string.Empty;
             if (!string.Equals(pwd, confirm, System.StringComparison.Ordinal))
             {
-                ShowSingleWarning(_mismatchWarning);
-                if (_confirmBox != null)
-                {
-                    _confirmBox.Text = string.Empty;
-                    _confirmBox.Focus();
-                }
+                ShowSingleWarning(MismatchWarning);
+                ConfirmBox.Text = string.Empty;
+                ConfirmBox.Focus();
                 return;
             }
         }
@@ -184,11 +161,11 @@ public partial class PasswordDialog : Window
     }
 
     /// <summary>検証警告 3 種のうち指定したものだけを表示する（他は非表示に揃える）。</summary>
-    private void ShowSingleWarning(TextBlock? target)
+    private void ShowSingleWarning(TextBlock target)
     {
-        if (_emptyWarning != null) _emptyWarning.IsVisible = ReferenceEquals(_emptyWarning, target);
-        if (_tooShortWarning != null) _tooShortWarning.IsVisible = ReferenceEquals(_tooShortWarning, target);
-        if (_mismatchWarning != null) _mismatchWarning.IsVisible = ReferenceEquals(_mismatchWarning, target);
+        EmptyWarning.IsVisible = ReferenceEquals(EmptyWarning, target);
+        TooShortWarning.IsVisible = ReferenceEquals(TooShortWarning, target);
+        MismatchWarning.IsVisible = ReferenceEquals(MismatchWarning, target);
     }
 
     private void CancelButton_Click(object? sender, RoutedEventArgs e)
@@ -202,9 +179,9 @@ public partial class PasswordDialog : Window
         if (e.Key == Key.Enter)
         {
             // CompressNew では Enter で ConfirmBox にフォーカスを移し、ConfirmBox の Enter で submit する。
-            if (Mode == PasswordDialogMode.CompressNew && _confirmBox is { IsVisible: true })
+            if (Mode == PasswordDialogMode.CompressNew && ConfirmBox.IsVisible)
             {
-                _confirmBox.Focus();
+                ConfirmBox.Focus();
                 e.Handled = true;
                 return;
             }

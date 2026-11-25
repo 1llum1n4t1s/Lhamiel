@@ -5,12 +5,10 @@
   </ResourceDictionary.MergedDictionaries>
 
   <!-- Window Titles -->
-  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - காப்பக சுருக்கம் &amp; பிரித்தெடுத்தல் கருவி</x:String>
   <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">சுருக்கக் கோப்பின் வெளியீட்டு இடம் ஒரு கோப்புறைக்கான இணைப்பாக இருப்பதால் அதை மேலெழுத முடியாது: {0}</x:String>
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} உருப்படிகள்</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">அனைத்தையும் ரத்துசெய்</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">செயலாக்கம்...</x:String>
-  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">கோப்பை மாற்றவும்</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">பிழை மீட்பு விருப்பங்கள்</x:String>
 
   <!-- Drop Zone -->
@@ -23,7 +21,6 @@
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">சுருக்கம்</x:String>
   <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">சுருக்க விலக்கு அமைப்புகள்</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">கோப்பு தொடர்புகள்</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">பதிப்பு</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">பொது</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">பிரித்தல்</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">சுருக்கம்</x:String>
@@ -68,7 +65,6 @@
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">சுருக்கிய பின் இலக்கு கோப்புறையைத் திற</x:String>
-  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">ஒருங்கிணைந்த சுருக்கம்</x:String>
   <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">சுருக்க விருப்பங்கள்</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">பல கோப்புகளை ஒரே காப்பகமாக சுருக்கு</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">முடக்கப்பட்டால், ஒவ்வொரு கோப்பும் தனித்தனி காப்பகமாக சுருக்கப்படும்</x:String>
@@ -81,7 +77,6 @@
   <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">LZH சுருக்க முறை</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">மறை/System கோப்புகள் மற்றும் கோப்புறைகளைச் சேர்க்கவும்</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden அல்லது System பண்புள்ள உருப்படிகளும் காப்பகத்தில் சேர்க்கப்படும்.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">சுருக்க விலக்கு அமைப்புகள்</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">இந்தப் பக்கத்தின் அமைப்புகள் இந்த Windows பயனரின் அனைத்து Lhamiel சுருக்கங்களுக்கும் பொருந்தும். ஒவ்வொரு மூலக் கோப்புறைக்கான விலக்குகளை அதன் விதிக் கோப்பில் அமைக்கவும்.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">பொதுவான விலக்கு விதிகள்</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">இங்கு சேர்க்கப்படும் வடிவங்கள் அனைத்து சுருக்க மூலங்களுக்கும் பொருந்தும். .gitignore இணக்கமான தொடரியல் ஆதரிக்கப்படுகிறது.</x:String>
@@ -120,7 +115,6 @@
   <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">பனிக் கோப்புறை</x:String>
 
   <!-- Version Tab -->
-  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">காப்பக சுருக்கம் &amp; பிரித்தெடுத்தல் கருவி</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">பதிப்பு</x:String>
   <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
@@ -156,7 +150,6 @@
   <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">ஆதரவு சேவையை அணுக முடியவில்லை. பின்னர் மீண்டும் முயற்சிக்கவும்.</x:String>
 
   <!-- Buttons -->
-  <x:String x:Key="Text.Button.Save" xml:space="preserve">சேமி</x:String>
   <x:String x:Key="Text.Button.Cancel" xml:space="preserve">ரத்துசெய்</x:String>
   <x:String x:Key="Text.Button.OK" xml:space="preserve">சரி</x:String>
   <x:String x:Key="Text.Button.Yes" xml:space="preserve">ஆம்</x:String>
@@ -169,7 +162,6 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">கோப்புகள் நகர்த்தப்படுகின்றன...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">பிரித்தெடுத்தல்</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">சுருக்குதல்</x:String>
-  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">ஒருமைப்பாடு சரிபார்ப்பு...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">பாதுகாப்பு அடையாளம் செலுத்துகிறது...</x:String>
   <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">கோப்புகள் தேடப்படுகின்றன... {0:N0}</x:String>
   <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">அழுத்தம் தயாராகிறது... {0:N0} / {1:N0}</x:String>
@@ -187,11 +179,6 @@
   <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">இந்தத் தேர்வை நினைவில் கொள்</x:String>
 
   <!-- Overwrite Dialog -->
-  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">'{0}' கோப்புறை ஏற்கனவே உள்ளது.\n\nஏற்கனவே உள்ள கோப்புறையை நீக்கி மேலெழுதவா?</x:String>
-  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">'{0}' கோப்பு ஏற்கனவே உள்ளது.\n\nஅதை மாற்றவா?</x:String>
-  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">கோப்புறை மேலெழுதலை உறுதிப்படுத்து</x:String>
-  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">கோப்பை மாற்றவும்</x:String>
-  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">கோப்பு ஏற்கனவே உள்ளது.\n\nஅதை மாற்றவா?</x:String>
 
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">பிழை</x:String>
@@ -206,15 +193,12 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">ஆதரிக்கப்படாத கோப்பு வடிவம்.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">ஆதரிக்கப்படாத சுருக்க வடிவம்.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">பிரித்தெடுக்கும் போது பிழை ஏற்பட்டது.\n{0}</x:String>
-  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">CRC ஒருமைப்பாடு சரிபார்ப்பு தோல்வி: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">சுருக்கும் போது பிழை ஏற்பட்டது.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">செயலாக்கத்தின் போது பிழை ஏற்பட்டது.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">வெளியீடு '{0}' பயன்பாட்டில் உள்ளது அல்லது அணுகல் மறுக்கப்பட்டது.</x:String>
-  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">அமைப்புகளைச் சேமிக்க இயலவில்லை.</x:String>
   <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">கோப்புகளைச் செயலாக்க இயலவில்லை.</x:String>
   <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">கோப்பு தொடர்பு அமைப்புகளைப் பயன்படுத்த இயலவில்லை.</x:String>
   <x:String x:Key="Text.Error.InitApp" xml:space="preserve">பயன்பாட்டை துவக்க இயலவில்லை.</x:String>
-  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">மேலெழுதல் உறுதிப்படுத்தல் உரையாடலைக் காட்ட இயலவில்லை: {0}</x:String>
   <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">அனைத்தையும் தேர்வுசெய்யும் போது பிழை ஏற்பட்டது.</x:String>
   <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">அனைத்தையும் நீக்கும் போது பிழை ஏற்பட்டது.</x:String>
   <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">பிரித்தெடுத்தல் பிழை</x:String>
@@ -225,10 +209,6 @@
   <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">குறுக்குவழியை உருவாக்கும் போது பிழை ஏற்பட்டது.</x:String>
 
   <!-- Update Messages -->
-  <x:String x:Key="Text.Update.Applying" xml:space="preserve">புதுப்பிப்பைப் பயன்படுத்துகிறது... மறுதொடக்கம்.</x:String>
-  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ ஏற்கனவே புதுப்பித்த நிலையில் உள்ளது.</x:String>
-  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ மேம்பாட்டு சூழலில் புதுப்பிப்புகளைச் சரிபார்க்க இயலாது.</x:String>
-  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ புதுப்பிப்பு களஞ்சியம் கட்டமைக்கப்படவில்லை.</x:String>
   <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ புதுப்பிப்புகளைச் சரிபார்க்கும் போது பிழை ஏற்பட்டது.</x:String>
   <x:String x:Key="Text.Update.Timeout" xml:space="preserve">புதுப்பிப்பு சரிபார்ப்பு காலாவதியானது.</x:String>
   <x:String x:Key="Text.Update.Downloading" xml:space="preserve">புதுப்பிப்பைப் பதிவிறக்குகிறது...</x:String>
@@ -266,9 +246,9 @@
   <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">கோப்பு பயன்பாட்டில் உள்ளது</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">கோப்பு வேறொரு பயன்பாட்டால் பயன்படுத்தப்படுகிறது: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">கோப்பைப் பயன்படுத்தும் பயன்பாட்டை மூடிவிட்டு மீண்டும் முயற்சிக்கவும்.</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">Device is not responding</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">External device (USB / NAS / removable media) was disconnected or is not responding: {0}</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">சாதனம் பதிலளிக்கவில்லை</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">வெளிப்புற சாதனம் (USB / NAS / அகற்றக்கூடிய ஊடகம்) துண்டிக்கப்பட்டது அல்லது பதிலளிக்கவில்லை: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">சாதனத்தின் இணைப்பைச் சரிபார்த்து, மீண்டும் முயற்சிக்கும் முன் மீண்டும் இணைக்கவும்.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">I/O பிழை ஏற்பட்டது</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">கோப்பின் நிலையைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</x:String>
   <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">காப்பகம் செயலாக்கப் பாதுகாப்பு வரம்பை மீறுகிறது</x:String>
@@ -305,8 +285,6 @@
 
   <!-- Partial Extraction -->
   <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">பிரித்தெடுக்கிறது: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">மீண்டும் பிரித்தெடுக்கிறது: {0}</x:String>
-  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">இலக்குக் கோப்பு காப்பகத்தில் கிடைக்கவில்லை.</x:String>
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">கோப்பு: {0}\nபிழை: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">மீண்டும் முயற்சிக்கவும் அல்லது தவிர்க்கவும் தேர்வுசெய்யலாம்.</x:String>
 
@@ -365,6 +343,10 @@
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">சுருக்குவதற்கு கோப்புகள் குறிப்பிடப்படவில்லை.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">குறிப்பிட்ட பாதை கிடைக்கவில்லை: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">அமைப்புகளைச் சேமிக்க இயலவில்லை: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedStartupUnreadable" xml:space="preserve">தொடக்கத்தில் settings.json ஐப் படிக்க முடியவில்லை, எனவே உங்கள் தற்போதைய அமைப்புகளைப் பாதுகாக்க சேமிப்பு ரத்து செய்யப்பட்டது. பயன்பாட்டை மீண்டும் தொடங்கவும்</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedFileUnreadable" xml:space="preserve">settings.json ஐ இப்போது படிக்க முடியவில்லை (வேறு பயன்பாடு அதைத் திறந்து வைத்திருக்கலாம்), எனவே உங்கள் தற்போதைய அமைப்புகளைப் பாதுகாக்க சேமிப்பு ரத்து செய்யப்பட்டது</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableStartup" xml:space="preserve">Lhamiel ஆல் settings.json ஐப் படிக்க முடியவில்லை, இயல்புநிலை அமைப்புகளுடன் தொடங்கியது. இந்த அமர்வில் செய்யும் மாற்றங்கள் சேமிக்கப்படாது. சேமித்த சுருக்கக் கடவுச்சொல்லும் கடவுச்சொல் பாதுகாப்பு அமைப்பும் படிக்கப்படவில்லை, எனவே காப்பகங்கள் கடவுச்சொல் பாதுகாப்பு இல்லாமல் உருவாக்கப்படலாம். வேறு Lhamiel அல்லது பயன்பாடு settings.json ஐத் திறந்துள்ளதா எனச் சரிபார்த்து, Lhamiel ஐ மீண்டும் தொடங்கவும்.</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableExternalChange" xml:space="preserve">settings.json ஐப் படிக்க முடியாததால், இந்த மாற்றத்தை (வலது-கிளிக் மெனு, கோப்பு தொடர்புகள், ஐகான்கள், குறுக்குவழிகள்) செயல்படுத்த முடியாது. பயன்பாட்டை மீண்டும் தொடங்கவும்.</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">பிரித்தெடுக்கப்பட்ட கோப்பு கிடைக்கவில்லை.</x:String>
 
   <!-- Path validation messages -->
@@ -407,7 +389,6 @@
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">கடவுச்சொற்கள் பொருந்தவில்லை. உறுதிப்படுத்தலை மீண்டும் உள்ளிடவும்.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">கடவுச்சொல்லை உள்ளிடவும்.</x:String>
   <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">கடவுச்சொல் குறைந்தது 4 எழுத்துகள் கொண்டிருக்க வேண்டும்.</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">கடவுச்சொல் மேலாளரிலிருந்து ஒட்டலாம் (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">சேமிக்கப்பட்ட கடவுச்சொல்லை அழிக்கவா?</x:String>
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">"ஒவ்வொரு போடுதலிலும் கேள்" என்பதற்கு மாறுவது தற்போது சேமிக்கப்பட்டுள்ள கடவுச்சொல்லை அழிக்கும். தொடரவா?</x:String>

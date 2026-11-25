@@ -9,30 +9,6 @@ namespace Lhamiel.Tests.Unit;
 public class ProgramLifecycleTests
 {
     [Fact]
-    public void RestoreSelectedApplicationShortcutIcons_AppliesNormalizedSelectedVariant()
-    {
-        string? appliedVariant = null;
-
-        Program.RestoreSelectedApplicationShortcutIcons(
-            variant => appliedVariant = variant,
-            "crystal");
-
-        Assert.Equal(Settings.AppIconVariantCrystal, appliedVariant);
-    }
-
-    [Fact]
-    public void RestoreSelectedApplicationShortcutIcons_UnknownVariantFallsBackToClassic()
-    {
-        string? appliedVariant = null;
-
-        Program.RestoreSelectedApplicationShortcutIcons(
-            variant => appliedVariant = variant,
-            "unknown");
-
-        Assert.Equal(Settings.AppIconVariantClassic, appliedVariant);
-    }
-
-    [Fact]
     public void ShortcutIconRestorePending_RestoresOnceAndClearsMarker()
     {
         var tempDirectory = Path.Combine(Path.GetTempPath(), $"Lhamiel-IconRestore-{Guid.NewGuid():N}");
@@ -46,7 +22,7 @@ public class ProgramLifecycleTests
             Assert.True(Program.RestoreSelectedApplicationShortcutIconsIfPending(
                 markerPath,
                 variant => appliedVariant = variant,
-                Settings.AppIconVariantCrystal));
+                "crystal")); // 小文字の入力が正規化されて適用される
 
             Assert.Equal(Settings.AppIconVariantCrystal, appliedVariant);
             Assert.False(File.Exists(markerPath));

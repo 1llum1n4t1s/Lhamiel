@@ -1,7 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Automation;
 using Avalonia.Interactivity;
-using Avalonia.Markup.Xaml;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -99,30 +98,25 @@ public partial class FileConflictDialog : Window
         var totalConflicts = conflictGroups.Count;
         var headerStr = App.Text("Conflict.Header", totalConflicts);
         Title = headerStr;
-        var headerText = this.FindControl<TextBlock>("HeaderText");
-        if (headerText != null)
-            headerText.Text = headerStr;
+        HeaderText.Text = headerStr;
 
         // 説明文（展開時と圧縮時で異なる）
-        var descriptionText = this.FindControl<TextBlock>("DescriptionText");
-        if (descriptionText != null)
-            descriptionText.Text = isTwoPane
-                ? App.Text("Conflict.Description.Extract")
-                : App.Text("Conflict.Description.Compress");
+        DescriptionText.Text = isTwoPane
+            ? App.Text("Conflict.Description.Extract")
+            : App.Text("Conflict.Description.Compress");
 
         // 列ヘッダー（2ペインモードのみ表示）
-        var columnHeaders = this.FindControl<Grid>("ColumnHeaders");
-        if (columnHeaders != null && isTwoPane)
+        if (isTwoPane)
         {
             var leftName = _columnNames[0];
             var rightName = _columnNames[1];
-            columnHeaders.Children.Add(CreateColumnCheckBox(leftName, 0, isLeft: true));
+            ColumnHeaders.Children.Add(CreateColumnCheckBox(leftName, 0, isLeft: true));
             if (!string.IsNullOrEmpty(rightName))
-                columnHeaders.Children.Add(CreateColumnCheckBox(rightName, 1, isLeft: false));
+                ColumnHeaders.Children.Add(CreateColumnCheckBox(rightName, 1, isLeft: false));
         }
-        else if (columnHeaders != null)
+        else
         {
-            columnHeaders.IsVisible = false;
+            ColumnHeaders.IsVisible = false;
         }
 
         // リストバインド
@@ -133,23 +127,15 @@ public partial class FileConflictDialog : Window
             application.ResourcesChanged += OnApplicationResourcesChanged;
             Closed += (_, _) => application.ResourcesChanged -= OnApplicationResourcesChanged;
         }
-        var conflictList = this.FindControl<ItemsControl>("ConflictList");
-        if (conflictList != null)
-            conflictList.ItemsSource = _rows;
+        ConflictList.ItemsSource = _rows;
 
         // 「全て上書き」ボタン（展開時の2ペインモードのみ表示）
-        var overwriteAllButton = this.FindControl<Button>("OverwriteAllButton");
-        if (overwriteAllButton != null)
-            overwriteAllButton.IsVisible = isTwoPane;
+        OverwriteAllButton.IsVisible = isTwoPane;
 
         // 同一ファイルスキップ（常に表示）
-        var skipCheckBox = this.FindControl<CheckBox>("SkipIdenticalCheckBox");
-        if (skipCheckBox != null)
-        {
-            var identicalCount = CountIdenticalFiles(conflictGroups);
-            skipCheckBox.Content = App.Text("Conflict.SkipIdentical", identicalCount);
-            skipCheckBox.IsCheckedChanged += (_, _) => ApplySkipIdentical(skipCheckBox.IsChecked == true);
-        }
+        var identicalCount = CountIdenticalFiles(conflictGroups);
+        SkipIdenticalCheckBox.Content = App.Text("Conflict.SkipIdentical", identicalCount);
+        SkipIdenticalCheckBox.IsCheckedChanged += (_, _) => ApplySkipIdentical(SkipIdenticalCheckBox.IsChecked == true);
 
         // ダイアログ表示後にアイコンをバックグラウンドでバッチロードする。
         // ハンドラを async void にすると例外がフレームワーク側で握り潰されるため
@@ -215,8 +201,6 @@ public partial class FileConflictDialog : Window
             // ダイアログ Close によるキャンセルは正常系。エラーログは出さない。
         }
     }
-
-    private void InitializeComponent() => AvaloniaXamlLoader.Load(this);
 
     /// <summary>
     /// 列ヘッダーのチェックボックスを生成（「現在の場所 フォルダ名(リンク)」形式）
@@ -292,9 +276,9 @@ public partial class FileConflictDialog : Window
                 right.AutomationName = GetCellAutomationName(right, isLeft: false);
         }
 
-        if (_isTwoPane && this.FindControl<Grid>("ColumnHeaders") is { } headers)
+        if (_isTwoPane)
         {
-            foreach (var checkBox in headers.Children.OfType<CheckBox>())
+            foreach (var checkBox in ColumnHeaders.Children.OfType<CheckBox>())
             {
                 var column = Grid.GetColumn(checkBox);
                 AutomationProperties.SetName(checkBox,
@@ -441,14 +425,10 @@ public partial class FileConflictDialog : Window
         }
 
         // ヘッダーの件数を更新（表示中の行数 = 衝突ファイル数）
-        var headerText = this.FindControl<TextBlock>("HeaderText");
-        if (headerText != null)
-        {
-            var displayCount = skip ? visibleCount : _rows.Count;
-            var headerStr = App.Text("Conflict.Header", displayCount);
-            headerText.Text = headerStr;
-            Title = headerStr;
-        }
+        var displayCount = skip ? visibleCount : _rows.Count;
+        var headerStr = App.Text("Conflict.Header", displayCount);
+        HeaderText.Text = headerStr;
+        Title = headerStr;
     }
 
     private static int CountIdenticalFiles(List<FileConflictGroup> groups)

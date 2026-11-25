@@ -40,16 +40,7 @@ public class ArchiveOverwriteInfoTests : IDisposable
         File.WriteAllBytes(Path.Combine(dir, "a.bin"), new byte[1]);
         // ジャンクションは権限不要で作れる。
         var link = Path.Combine(dir, "link");
-        var startInfo = new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/d /c mklink /J \"{link}\" \"{target}\"")
-        {
-            CreateNoWindow = true,
-            UseShellExecute = false,
-        };
-        using (var mk = System.Diagnostics.Process.Start(startInfo)!)
-        {
-            mk.WaitForExit();
-            Assert.Equal(0, mk.ExitCode);
-        }
+        DirectoryJunction.Create(link, target);
 
         var (bytes, files) = ArchiveOverwriteInfo.ScanTotal([dir], CancellationToken.None);
 

@@ -7,10 +7,6 @@ namespace Lhamiel.Util;
 public static class FolderOpener
 {
     /// <summary>
-    /// テスト時に Process.Start をスキップするためのフラグ（InternalsVisibleTo 経由で設定）
-    /// </summary>
-    internal static bool DryRun { get; set; }
-    /// <summary>
     /// 展開結果のフォルダを開き、ファイルマネージャー起動 (Process.Start のリターン) まで完了する
     /// Task を返す。CreateArchiveNameFolder=ON + 二重ネスト防止スキップ時は、アーカイブのルートフォルダを開く。
     /// </summary>
@@ -127,7 +123,7 @@ public static class FolderOpener
     }
 
     /// <summary>
-    /// フォルダオープンの共通事前チェック (空パス / 絶対パス解決 / 非存在 / DryRun)。
+    /// フォルダオープンの共通事前チェック (空パス / 絶対パス解決 / 非存在)。
     /// 開いてよければ解決済みの絶対パス、スキップすべきなら理由をログして null を返す。
     /// </summary>
     /// <remarks>
@@ -159,12 +155,6 @@ public static class FolderOpener
         if (!Directory.Exists(fullPath))
         {
             Logger.Log($"指定されたフォルダが見つかりません: {fullPath}", LogLevel.Warning);
-            return null;
-        }
-
-        if (DryRun)
-        {
-            Logger.Log($"フォルダを開く処理をスキップしました（DryRun）: {fullPath}", LogLevel.Debug);
             return null;
         }
 

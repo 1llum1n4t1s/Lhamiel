@@ -146,11 +146,7 @@ public static class ArchiveErrorHandler
             // Cube.FileSystem.SevenZip は「パスワード無し/誤入力」時にこの例外を投げるが、既定の
             // IOException message "I/O error occurred." が表示され本当の原因が隠れてしまうため、専用の案内に置き換える。
             case EncryptionException:
-                errorInfo.ErrorType = ArchiveErrorType.EncryptedOrWrongPassword;
-                errorInfo.Message = App.Text("ErrorHandler.EncryptedOrWrongPassword");
-                errorInfo.Details = App.Text("ErrorHandler.EncryptedOrWrongPasswordDetail", archivePath);
-                errorInfo.RecommendedAction = App.Text("ErrorHandler.EncryptedOrWrongPasswordAction");
-                errorInfo.IsRecoverable = true;
+                ApplyEncrypted(errorInfo, archivePath);
                 break;
 
             // 7z.dll 由来の HRESULT ベース例外。SevenZipException と EncryptionException は
@@ -186,11 +182,7 @@ public static class ArchiveErrorHandler
             case InvalidOperationException:
                 if (IsCorruptedFileError(ex))
                 {
-                    errorInfo.ErrorType = ArchiveErrorType.CorruptedFile;
-                    errorInfo.Message = App.Text("ErrorHandler.Corrupted");
-                    errorInfo.Details = GetCorruptionDetails(ex, archivePath);
-                    errorInfo.RecommendedAction = App.Text("ErrorHandler.CorruptedAction");
-                    errorInfo.IsRecoverable = false;
+                    ApplyCorrupted(errorInfo, ex, archivePath);
                 }
                 else
                 {
@@ -203,11 +195,7 @@ public static class ArchiveErrorHandler
                 break;
 
             case NotSupportedException:
-                errorInfo.ErrorType = ArchiveErrorType.UnsupportedFormat;
-                errorInfo.Message = App.Text("ErrorHandler.UnsupportedFormat");
-                errorInfo.Details = App.Text("ErrorHandler.UnsupportedFormatDetail", Path.GetExtension(archivePath));
-                errorInfo.RecommendedAction = App.Text("ErrorHandler.UnsupportedFormatAction");
-                errorInfo.IsRecoverable = false;
+                ApplyUnsupported(errorInfo, archivePath);
                 break;
 
             default:
@@ -234,19 +222,11 @@ public static class ArchiveErrorHandler
             case LzhArchiveErrorKind.InvalidPath:
             case LzhArchiveErrorKind.Exists:
                 // 展開は空の一時ディレクトリへ行うため、Exists は重複名など書庫側の矛盾を示す。
-                errorInfo.ErrorType = ArchiveErrorType.CorruptedFile;
-                errorInfo.Message = App.Text("ErrorHandler.Corrupted");
-                errorInfo.Details = GetCorruptionDetails(ex, archivePath);
-                errorInfo.RecommendedAction = App.Text("ErrorHandler.CorruptedAction");
-                errorInfo.IsRecoverable = false;
+                ApplyCorrupted(errorInfo, ex, archivePath);
                 break;
 
             case LzhArchiveErrorKind.Unsupported:
-                errorInfo.ErrorType = ArchiveErrorType.UnsupportedFormat;
-                errorInfo.Message = App.Text("ErrorHandler.UnsupportedFormat");
-                errorInfo.Details = App.Text("ErrorHandler.UnsupportedFormatDetail", Path.GetExtension(archivePath));
-                errorInfo.RecommendedAction = App.Text("ErrorHandler.UnsupportedFormatAction");
-                errorInfo.IsRecoverable = false;
+                ApplyUnsupported(errorInfo, archivePath);
                 break;
 
             case LzhArchiveErrorKind.Limit:
@@ -366,31 +346,49 @@ public static class ArchiveErrorHandler
         switch (ex.Code)
         {
             case SevenZipCode.WrongPassword:
-                errorInfo.ErrorType = ArchiveErrorType.EncryptedOrWrongPassword;
-                errorInfo.Message = App.Text("ErrorHandler.EncryptedOrWrongPassword");
-                errorInfo.Details = App.Text("ErrorHandler.EncryptedOrWrongPasswordDetail", archivePath);
-                errorInfo.RecommendedAction = App.Text("ErrorHandler.EncryptedOrWrongPasswordAction");
-                errorInfo.IsRecoverable = true;
+                ApplyEncrypted(errorInfo, archivePath);
                 break;
 
             case SevenZipCode.UnsupportedMethod:
-                errorInfo.ErrorType = ArchiveErrorType.UnsupportedFormat;
-                errorInfo.Message = App.Text("ErrorHandler.UnsupportedFormat");
-                errorInfo.Details = App.Text("ErrorHandler.UnsupportedFormatDetail", Path.GetExtension(archivePath));
-                errorInfo.RecommendedAction = App.Text("ErrorHandler.UnsupportedFormatAction");
-                errorInfo.IsRecoverable = false;
+                ApplyUnsupported(errorInfo, archivePath);
                 break;
 
             default:
                 // DataError / CrcError / HeadersError / IsNotArc / UnexpectedEnd / DataAfterEnd /
                 // Unavailable / UnknownError → アーカイブ破損として扱う。
-                errorInfo.ErrorType = ArchiveErrorType.CorruptedFile;
-                errorInfo.Message = App.Text("ErrorHandler.Corrupted");
-                errorInfo.Details = GetCorruptionDetails(ex, archivePath);
-                errorInfo.RecommendedAction = App.Text("ErrorHandler.CorruptedAction");
-                errorInfo.IsRecoverable = false;
+                ApplyCorrupted(errorInfo, ex, archivePath);
                 break;
         }
+    }
+
+    /// <summary>アーカイブ破損としてエラー情報を設定する。</summary>
+    private static void ApplyCorrupted(ArchiveErrorInfo errorInfo, Exception ex, string archivePath)
+    {
+        errorInfo.ErrorType = ArchiveErrorType.CorruptedFile;
+        errorInfo.Message = App.Text("ErrorHandler.Corrupted");
+        errorInfo.Details = GetCorruptionDetails(ex, archivePath);
+        errorInfo.RecommendedAction = App.Text("ErrorHandler.CorruptedAction");
+        errorInfo.IsRecoverable = false;
+    }
+
+    /// <summary>非対応形式としてエラー情報を設定する。</summary>
+    private static void ApplyUnsupported(ArchiveErrorInfo errorInfo, string archivePath)
+    {
+        errorInfo.ErrorType = ArchiveErrorType.UnsupportedFormat;
+        errorInfo.Message = App.Text("ErrorHandler.UnsupportedFormat");
+        errorInfo.Details = App.Text("ErrorHandler.UnsupportedFormatDetail", Path.GetExtension(archivePath));
+        errorInfo.RecommendedAction = App.Text("ErrorHandler.UnsupportedFormatAction");
+        errorInfo.IsRecoverable = false;
+    }
+
+    /// <summary>暗号化・パスワード誤りとしてエラー情報を設定する。</summary>
+    private static void ApplyEncrypted(ArchiveErrorInfo errorInfo, string archivePath)
+    {
+        errorInfo.ErrorType = ArchiveErrorType.EncryptedOrWrongPassword;
+        errorInfo.Message = App.Text("ErrorHandler.EncryptedOrWrongPassword");
+        errorInfo.Details = App.Text("ErrorHandler.EncryptedOrWrongPasswordDetail", archivePath);
+        errorInfo.RecommendedAction = App.Text("ErrorHandler.EncryptedOrWrongPasswordAction");
+        errorInfo.IsRecoverable = true;
     }
 
     /// <summary>ディスク容量不足としてエラー情報を設定する。</summary>

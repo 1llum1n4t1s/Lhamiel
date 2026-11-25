@@ -5,12 +5,10 @@
   </ResourceDictionary.MergedDictionaries>
 
   <!-- Window Titles -->
-  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Ferramenta de Compressão &amp; Extração de Arquivos</x:String>
   <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">O destino da compactação é um link para uma pasta e não pode ser sobrescrito: {0}</x:String>
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} itens</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Cancelar tudo</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Processando...</x:String>
-  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Substituir Arquivo</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Opções de Recuperação de Erro</x:String>
 
   <!-- Drop Zone -->
@@ -23,7 +21,6 @@
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">Compressão</x:String>
   <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">Exclusões de compactação</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">Associações de Arquivo</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">Versão</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">Geral</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">Extração</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">Compressão</x:String>
@@ -68,7 +65,6 @@
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Abrir pasta de destino após a compressão</x:String>
-  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Compressão Combinada</x:String>
   <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Opções de compressão</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Compactar múltiplos arquivos em um único arquivo</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Quando DESATIVADO, cada arquivo será compactado em um arquivo separado</x:String>
@@ -81,7 +77,6 @@
   <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">Método de compressão LZH</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Incluir arquivos e pastas ocultos/do sistema</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Entradas com atributos Hidden ou System também são adicionadas aos arquivos.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Exclusões de compactação</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">As configurações desta página valem para todas as compactações do Lhamiel deste usuário do Windows. Defina exclusões específicas da origem nos arquivos de regras de cada pasta.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">Regras de exclusão compartilhadas</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">Os padrões registrados aqui são aplicados a todas as origens de compactação. Há suporte à sintaxe compatível com .gitignore.</x:String>
@@ -120,7 +115,6 @@
   <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">Pasta congelada</x:String>
 
   <!-- Version Tab -->
-  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">Ferramenta de Compressão &amp; Extração de Arquivos</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">Versão</x:String>
   <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
@@ -156,7 +150,6 @@
   <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Não foi possível acessar o serviço de suporte. Tente novamente mais tarde.</x:String>
 
   <!-- Buttons -->
-  <x:String x:Key="Text.Button.Save" xml:space="preserve">Salvar</x:String>
   <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Cancelar</x:String>
   <x:String x:Key="Text.Button.OK" xml:space="preserve">OK</x:String>
   <x:String x:Key="Text.Button.Yes" xml:space="preserve">Sim</x:String>
@@ -169,7 +162,6 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Movendo arquivos...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Extraindo</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Comprimindo</x:String>
-  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Verificando integridade...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Aplicando marca de segurança...</x:String>
   <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">Verificando arquivos... {0:N0}</x:String>
   <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">Preparando a compressão... {0:N0} / {1:N0}</x:String>
@@ -187,11 +179,6 @@
   <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Lembrar esta escolha</x:String>
 
   <!-- Overwrite Dialog -->
-  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">A pasta '{0}' já existe.\n\nExcluir a pasta existente e substituir?</x:String>
-  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">O arquivo '{0}' já existe.\n\nDeseja substituí-lo?</x:String>
-  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Confirmar Substituição de Pasta</x:String>
-  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Substituir Arquivo</x:String>
-  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">O arquivo já existe.\n\nDeseja substituí-lo?</x:String>
 
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Erro</x:String>
@@ -206,15 +193,12 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Formato de arquivo não suportado.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Formato de compressão não suportado.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Ocorreu um erro durante a extração.\n{0}</x:String>
-  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Falha na verificação de integridade CRC: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Ocorreu um erro durante a compressão.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Ocorreu um erro durante o processamento.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">A saída '{0}' está em uso ou o acesso foi negado.</x:String>
-  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">Falha ao salvar as configurações.</x:String>
   <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">Falha ao processar os arquivos.</x:String>
   <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">Falha ao aplicar as configurações de associação de arquivos.</x:String>
   <x:String x:Key="Text.Error.InitApp" xml:space="preserve">Falha ao inicializar o aplicativo.</x:String>
-  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">Falha ao exibir o diálogo de confirmação de substituição: {0}</x:String>
   <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">Ocorreu um erro ao selecionar tudo.</x:String>
   <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">Ocorreu um erro ao desmarcar tudo.</x:String>
   <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Erro de Extração</x:String>
@@ -225,10 +209,6 @@
   <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">Ocorreu um erro ao criar o atalho.</x:String>
 
   <!-- Update Messages -->
-  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Aplicando atualização... Reiniciando.</x:String>
-  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Já está atualizado.</x:String>
-  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ Não é possível verificar atualizações no ambiente de desenvolvimento.</x:String>
-  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ O repositório de atualizações não está configurado.</x:String>
   <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ Ocorreu um erro ao verificar atualizações.</x:String>
   <x:String x:Key="Text.Update.Timeout" xml:space="preserve">A verificação de atualização expirou.</x:String>
   <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Baixando atualização...</x:String>
@@ -305,8 +285,6 @@
 
   <!-- Partial Extraction -->
   <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Extraindo: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Re-extraindo: {0}</x:String>
-  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">Arquivo alvo não encontrado no arquivo compactado.</x:String>
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Arquivo: {0}\nErro: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Você pode escolher tentar novamente ou pular.</x:String>
 
@@ -365,6 +343,10 @@
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Nenhum arquivo especificado para compactação.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">O caminho especificado não foi encontrado: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Falha ao salvar as configurações: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedStartupUnreadable" xml:space="preserve">Não foi possível ler o settings.json na inicialização, então o salvamento foi cancelado para proteger suas configurações existentes. Reinicie o aplicativo</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedFileUnreadable" xml:space="preserve">O settings.json não pode ser lido agora (outro aplicativo pode estar com ele aberto), então o salvamento foi cancelado para proteger suas configurações existentes</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableStartup" xml:space="preserve">O Lhamiel não conseguiu ler o settings.json e foi iniciado com as configurações padrão. As alterações feitas nesta sessão não serão salvas. A senha de compactação salva e a proteção por senha também não puderam ser lidas, portanto os arquivos podem ser criados sem proteção por senha. Verifique se outro Lhamiel ou aplicativo está com o settings.json aberto e reinicie o Lhamiel.</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableExternalChange" xml:space="preserve">Como o settings.json não pôde ser lido, esta alteração (menu de contexto, associações de arquivo, ícones ou atalhos) não pode ser aplicada. Reinicie o aplicativo.</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Arquivo extraído não encontrado.</x:String>
 
   <!-- Path validation messages -->
@@ -407,7 +389,6 @@
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">As senhas não conferem. Reinsira a confirmação.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Insira uma senha.</x:String>
   <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">A senha deve ter pelo menos 4 caracteres.</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Você pode colar de um gerenciador de senhas (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Excluir a senha salva?</x:String>
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Mudar para "Perguntar a cada arrastar/soltar" excluirá a senha salva atual. Continuar?</x:String>

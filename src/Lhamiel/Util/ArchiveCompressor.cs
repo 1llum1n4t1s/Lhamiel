@@ -944,7 +944,7 @@ public static class ArchiveCompressor
         // 上の `A.txt` と `a.txt` を正しく別ファイルとして扱う。
         var groups = files
             .GroupBy(f => f.relativePath, StringComparer.OrdinalIgnoreCase)
-            .Where(g => g
+            .Where(g => g.Count() > 1 && g
                 .Select(f => f.fullPath)
                 .Distinct(PathComparer)
                 .Skip(1)

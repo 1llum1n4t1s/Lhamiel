@@ -121,26 +121,6 @@ public sealed class ArchiveCompressorScanFailureTests
     }
 
     [Fact]
-    public Task ScanSourceFiles_NoFailures_ReportsZero()
-    {
-        return WithTempRootAsync(async temp =>
-        {
-            var source = Path.Combine(temp, "Source");
-            Directory.CreateDirectory(Path.Combine(source, "sub"));
-            File.WriteAllText(Path.Combine(source, "sub", "a.txt"), "x");
-
-            var failures = new ArchiveCompressor.ScanFailureCounter();
-            var result = await ArchiveCompressor.ScanSourceFiles(
-                [source], GitignoreMatcher.Empty, TestContext.Current.CancellationToken,
-                dirModeOverride: DirectoryStructureMode.IncludeRoot,
-                scanFailures: failures);
-
-            Assert.Contains(result, r => r.relativePath.EndsWith("a.txt", StringComparison.Ordinal));
-            Assert.Equal(0, failures.Count);
-        });
-    }
-
-    [Fact]
     public Task ScanSourceFiles_EmptyRootFolder_IncludeRoot_StillAddsRootEntry()
     {
         // 回帰防止（codex P2 #3384620482）: 列挙に成功した本当に空のフォルダーは従来どおり

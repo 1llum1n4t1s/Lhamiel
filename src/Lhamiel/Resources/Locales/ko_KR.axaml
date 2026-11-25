@@ -5,12 +5,10 @@
   </ResourceDictionary.MergedDictionaries>
 
   <!-- Window Titles -->
-  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - 아카이브 압축 &amp; 해제 도구</x:String>
   <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">압축 출력 대상이 폴더 링크이므로 덮어쓸 수 없습니다: {0}</x:String>
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">대상 {0}개</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">모두 취소</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">처리 중...</x:String>
-  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">파일 덮어쓰기</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">오류 복구 옵션</x:String>
 
   <!-- Drop Zone -->
@@ -23,7 +21,6 @@
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">압축</x:String>
   <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">압축 제외 설정</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">파일 연결</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">버전</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">일반</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">압축 해제</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">압축</x:String>
@@ -68,7 +65,6 @@
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">압축 후 대상 폴더 열기</x:String>
-  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">통합 압축</x:String>
   <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">압축 옵션</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">여러 파일을 하나의 아카이브로 압축</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">끄면 각 파일이 별도의 아카이브로 압축됩니다</x:String>
@@ -81,7 +77,6 @@
   <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">LZH 압축 방식</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">숨김/System 파일 및 폴더 포함</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Hidden 또는 System 특성이 있는 항목도 아카이브에 추가합니다.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">압축 제외 설정</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">이 페이지의 설정은 현재 Windows 사용자가 Lhamiel로 수행하는 모든 압축에 공통으로 적용됩니다. 소스별 제외 내용은 각 폴더 안의 규칙 파일에서 설정합니다.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">공통 제외 규칙</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">여기에 등록한 패턴은 모든 압축 소스에 적용됩니다. .gitignore 호환 구문을 지원합니다.</x:String>
@@ -120,7 +115,6 @@
   <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">얼음 폴더</x:String>
 
   <!-- Version Tab -->
-  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">아카이브 압축 &amp; 해제 도구</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">버전</x:String>
   <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
@@ -156,7 +150,6 @@
   <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">지원 서비스에 연결할 수 없습니다. 나중에 다시 시도하세요.</x:String>
 
   <!-- Buttons -->
-  <x:String x:Key="Text.Button.Save" xml:space="preserve">저장</x:String>
   <x:String x:Key="Text.Button.Cancel" xml:space="preserve">취소</x:String>
   <x:String x:Key="Text.Button.OK" xml:space="preserve">확인</x:String>
   <x:String x:Key="Text.Button.Yes" xml:space="preserve">예</x:String>
@@ -169,7 +162,6 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">파일 이동 중...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">압축 해제 중</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">압축 중</x:String>
-  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">무결성 검증 중...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">보안 마크 적용 중...</x:String>
   <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">파일 확인 중... {0:N0}</x:String>
   <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">압축 준비 중... {0:N0} / {1:N0}</x:String>
@@ -187,11 +179,6 @@
   <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">이 선택을 기억</x:String>
 
   <!-- Overwrite Dialog -->
-  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">'{0}' 폴더가 이미 존재합니다.\n\n기존 폴더를 삭제하고 덮어쓰시겠습니까?</x:String>
-  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">'{0}' 파일이 이미 존재합니다.\n\n덮어쓰시겠습니까?</x:String>
-  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">폴더 덮어쓰기 확인</x:String>
-  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">파일 덮어쓰기</x:String>
-  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">파일이 이미 존재합니다.\n\n덮어쓰시겠습니까?</x:String>
 
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">오류</x:String>
@@ -206,15 +193,12 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">지원하지 않는 파일 형식입니다.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">지원하지 않는 압축 형식입니다.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">해제 중 오류가 발생했습니다.\n{0}</x:String>
-  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">CRC 무결성 검증 실패: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">압축 중 오류가 발생했습니다.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">처리 중 오류가 발생했습니다.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">출력 '{0}'이(가) 사용 중이거나 액세스가 거부되었습니다.</x:String>
-  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">설정 저장에 실패했습니다.</x:String>
   <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">파일 처리에 실패했습니다.</x:String>
   <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">파일 연결 설정 적용에 실패했습니다.</x:String>
   <x:String x:Key="Text.Error.InitApp" xml:space="preserve">애플리케이션 초기화에 실패했습니다.</x:String>
-  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">덮어쓰기 확인 대화 상자를 표시하지 못했습니다: {0}</x:String>
   <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">전체 선택 중 오류가 발생했습니다.</x:String>
   <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">전체 해제 중 오류가 발생했습니다.</x:String>
   <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">해제 오류</x:String>
@@ -225,10 +209,6 @@
   <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">바로 가기 생성 중 오류가 발생했습니다.</x:String>
 
   <!-- Update Messages -->
-  <x:String x:Key="Text.Update.Applying" xml:space="preserve">업데이트 적용 중... 다시 시작합니다.</x:String>
-  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ 이미 최신 버전입니다.</x:String>
-  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ 개발 환경에서는 업데이트를 확인할 수 없습니다.</x:String>
-  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ 업데이트 저장소가 구성되지 않았습니다.</x:String>
   <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ 업데이트 확인 중 오류가 발생했습니다.</x:String>
   <x:String x:Key="Text.Update.Timeout" xml:space="preserve">업데이트 확인 시간이 초과되었습니다.</x:String>
   <x:String x:Key="Text.Update.Downloading" xml:space="preserve">업데이트 다운로드 중...</x:String>
@@ -305,8 +285,6 @@
 
   <!-- Partial Extraction -->
   <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">해제 중: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">재해제 중: {0}</x:String>
-  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">대상 파일이 아카이브에 없습니다.</x:String>
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">파일: {0}\n오류: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">다시 시도하거나 건너뛸 수 있습니다.</x:String>
 
@@ -365,6 +343,10 @@
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">압축할 파일이 지정되지 않았습니다.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">지정된 경로를 찾을 수 없습니다: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">설정 저장에 실패했습니다: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedStartupUnreadable" xml:space="preserve">시작할 때 settings.json을 읽을 수 없어 기존 설정을 보호하기 위해 저장을 취소했습니다. 앱을 다시 시작하세요</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedFileUnreadable" xml:space="preserve">settings.json을 지금 읽을 수 없어(다른 앱에서 열려 있을 수 있습니다) 기존 설정을 보호하기 위해 저장을 취소했습니다</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableStartup" xml:space="preserve">Lhamiel이 settings.json을 읽지 못해 기본 설정으로 시작했습니다. 이번 실행 중의 변경 사항은 저장되지 않습니다. 저장된 압축 암호와 암호 보호 설정도 읽지 못했으므로 암호 보호 없이 압축 파일이 만들어질 수 있습니다. 다른 Lhamiel이나 앱이 settings.json을 열고 있지 않은지 확인한 뒤 Lhamiel을 다시 시작하세요.</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableExternalChange" xml:space="preserve">settings.json을 읽지 못했으므로 이 변경(오른쪽 클릭 메뉴, 파일 연결, 아이콘, 바로 가기)을 적용할 수 없습니다. 앱을 다시 시작하세요.</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">압축 해제된 파일을 찾을 수 없습니다.</x:String>
 
   <!-- Path validation messages -->
@@ -407,7 +389,6 @@
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">암호가 일치하지 않습니다. 확인란을 다시 입력하세요.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">암호를 입력하세요.</x:String>
   <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">비밀번호는 4자 이상이어야 합니다.</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">암호 관리자에서 붙여넣기할 수 있습니다 (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">저장된 암호를 삭제할까요?</x:String>
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">"드롭할 때마다 확인"으로 전환하면 현재 저장된 암호가 삭제됩니다. 계속할까요?</x:String>

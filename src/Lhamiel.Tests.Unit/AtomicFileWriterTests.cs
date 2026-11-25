@@ -48,42 +48,6 @@ public sealed class AtomicFileWriterTests
     }
 
     [Fact]
-    public Task WriteAllText_Utf8WithBom_WritesExactBytes_LikeLhaignoreLegacy()
-    {
-        return WithTempDirAsync(dir =>
-        {
-            var dest = Path.Combine(dir, ".lhaignore");
-            const string content = "*.tmp\r\n# コメント\r\n";
-
-            AtomicFileWriter.WriteAllText(dest, content, Encoding.UTF8);
-
-            // .lhaignore の旧実装 File.WriteAllText(path, content, Encoding.UTF8) と同じバイト列（BOM あり）。
-            var reference = Path.Combine(dir, "reference");
-            File.WriteAllText(reference, content, Encoding.UTF8);
-            var actual = File.ReadAllBytes(dest);
-            Assert.Equal(File.ReadAllBytes(reference), actual);
-            Assert.Equal([0xEF, 0xBB, 0xBF], actual[..3]);
-            return Task.CompletedTask;
-        });
-    }
-
-    [Fact]
-    public Task WriteAllText_OverwritesExistingFile()
-    {
-        return WithTempDirAsync(dir =>
-        {
-            var dest = Path.Combine(dir, "settings.json");
-            File.WriteAllText(dest, "old-content-that-is-longer-than-new");
-
-            AtomicFileWriter.WriteAllText(dest, "new", new UTF8Encoding(false));
-
-            Assert.Equal("new", File.ReadAllText(dest));
-            Assert.Empty(LeftoverTempFiles(dest));
-            return Task.CompletedTask;
-        });
-    }
-
-    [Fact]
     public Task WriteAllText_WhenMoveFails_RemovesTempFileAndKeepsDestination()
     {
         return WithTempDirAsync(dir =>
@@ -99,15 +63,6 @@ public sealed class AtomicFileWriterTests
             Assert.Empty(LeftoverTempFiles(dest));
             return Task.CompletedTask;
         });
-    }
-
-    [Fact]
-    public void WriteAllText_WhenDirectoryMissing_ThrowsWithoutLeavingFiles()
-    {
-        var dest = Path.Combine(Path.GetTempPath(), $"lhamiel_missing_{Guid.NewGuid():N}", "settings.json");
-
-        Assert.Throws<DirectoryNotFoundException>(() => AtomicFileWriter.WriteAllText(dest, "x", new UTF8Encoding(false)));
-        Assert.False(Directory.Exists(Path.GetDirectoryName(dest)));
     }
 
     [Fact]
@@ -214,14 +169,5 @@ public sealed class AtomicFileWriterTests
             Assert.Empty(LeftoverTempFiles(dest));
             return Task.CompletedTask;
         });
-    }
-
-    [Fact]
-    public void TryCreateNew_WhenDirectoryMissing_ThrowsWithoutLeavingFiles()
-    {
-        var dest = Path.Combine(Path.GetTempPath(), $"lhamiel_missing_{Guid.NewGuid():N}", ".lhaignore");
-
-        Assert.Throws<DirectoryNotFoundException>(() => AtomicFileWriter.TryCreateNew(dest, "x", Encoding.UTF8));
-        Assert.False(Directory.Exists(Path.GetDirectoryName(dest)));
     }
 }

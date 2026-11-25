@@ -5,12 +5,10 @@
   </ResourceDictionary.MergedDictionaries>
 
   <!-- Window Titles -->
-  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Outil de compression &amp; extraction d'archives</x:String>
   <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">La destination de compression est un lien vers un dossier et ne peut pas être remplacée : {0}</x:String>
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} éléments</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Tout annuler</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Traitement en cours...</x:String>
-  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Remplacer le fichier</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Options de récupération d'erreur</x:String>
 
   <!-- Drop Zone -->
@@ -23,7 +21,6 @@
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">Compression</x:String>
   <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">Exclusions de compression</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">Associations de fichiers</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">Version</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">Général</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">Extraction</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">Compression</x:String>
@@ -68,7 +65,6 @@
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Ouvrir le dossier de destination après la compression</x:String>
-  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Compression fusionnée</x:String>
   <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Options de compression</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Compresser plusieurs fichiers en une seule archive</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Lorsque désactivé, chaque fichier sera compressé dans une archive séparée</x:String>
@@ -81,7 +77,6 @@
   <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">Méthode de compression LZH</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Inclure les fichiers et dossiers cachés/système</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Les éléments avec les attributs Hidden ou System sont aussi ajoutés aux archives.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Exclusions de compression</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Les paramètres de cette page s'appliquent à toutes les compressions effectuées par Lhamiel pour cet utilisateur Windows. Définissez les exclusions propres à une source dans les fichiers de règles de chaque dossier.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">Règles d'exclusion communes</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">Les motifs enregistrés ici s'appliquent à toutes les sources de compression. La syntaxe compatible .gitignore est prise en charge.</x:String>
@@ -120,7 +115,6 @@
   <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">Dossier gelé</x:String>
 
   <!-- Version Tab -->
-  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">Outil de compression &amp; extraction d'archives</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">Version</x:String>
   <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
@@ -156,7 +150,6 @@
   <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Le service de support est inaccessible. Réessayez plus tard.</x:String>
 
   <!-- Buttons -->
-  <x:String x:Key="Text.Button.Save" xml:space="preserve">Enregistrer</x:String>
   <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Annuler</x:String>
   <x:String x:Key="Text.Button.OK" xml:space="preserve">OK</x:String>
   <x:String x:Key="Text.Button.Yes" xml:space="preserve">Oui</x:String>
@@ -169,7 +162,6 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Déplacement des fichiers...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Extraction</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Compression</x:String>
-  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Vérification de l'intégrité...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Application du marquage de sécurité...</x:String>
   <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">Analyse des fichiers... {0:N0}</x:String>
   <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">Préparation de la compression... {0:N0} / {1:N0}</x:String>
@@ -187,11 +179,6 @@
   <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Mémoriser ce choix</x:String>
 
   <!-- Overwrite Dialog -->
-  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">Le dossier « {0} » existe déjà.\n\nSupprimer le dossier existant et le remplacer ?</x:String>
-  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">Le fichier « {0} » existe déjà.\n\nLe remplacer ?</x:String>
-  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Confirmer le remplacement du dossier</x:String>
-  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Remplacer le fichier</x:String>
-  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">Le fichier existe déjà.\n\nLe remplacer ?</x:String>
 
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Erreur</x:String>
@@ -206,15 +193,12 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Format de fichier non pris en charge.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Format de compression non pris en charge.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Une erreur est survenue lors de l'extraction.\n{0}</x:String>
-  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Échec de la vérification d'intégrité CRC : {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Une erreur est survenue lors de la compression.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Une erreur est survenue lors du traitement.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">La sortie « {0} » est en cours d'utilisation ou l'accès est refusé.</x:String>
-  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">Échec de l'enregistrement des paramètres.</x:String>
   <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">Échec du traitement des fichiers.</x:String>
   <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">Échec de l'application des paramètres d'association de fichiers.</x:String>
   <x:String x:Key="Text.Error.InitApp" xml:space="preserve">Échec de l'initialisation de l'application.</x:String>
-  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">Échec de l'affichage de la boîte de dialogue de confirmation de remplacement : {0}</x:String>
   <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">Une erreur est survenue lors de la sélection de tous les éléments.</x:String>
   <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">Une erreur est survenue lors de la désélection de tous les éléments.</x:String>
   <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Erreur d'extraction</x:String>
@@ -225,10 +209,6 @@
   <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">Une erreur est survenue lors de la création du raccourci.</x:String>
 
   <!-- Update Messages -->
-  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Application de la mise à jour... Redémarrage.</x:String>
-  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Déjà à jour.</x:String>
-  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ Impossible de vérifier les mises à jour dans l'environnement de développement.</x:String>
-  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ Le dépôt de mises à jour n'est pas configuré.</x:String>
   <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ Une erreur est survenue lors de la vérification des mises à jour.</x:String>
   <x:String x:Key="Text.Update.Timeout" xml:space="preserve">La vérification des mises à jour a expiré.</x:String>
   <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Téléchargement de la mise à jour...</x:String>
@@ -305,8 +285,6 @@
 
   <!-- Partial Extraction -->
   <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Extraction : {0}</x:String>
-  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Réextraction : {0}</x:String>
-  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">Fichier cible introuvable dans l'archive.</x:String>
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Fichier : {0}\nErreur : {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Vous pouvez choisir de réessayer ou d'ignorer.</x:String>
 
@@ -365,6 +343,10 @@
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Aucun fichier spécifié pour la compression.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Le chemin spécifié est introuvable : {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Échec de l'enregistrement des paramètres : {0}</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedStartupUnreadable" xml:space="preserve">settings.json n'a pas pu être lu au démarrage ; l'enregistrement a été annulé pour protéger vos paramètres existants. Veuillez redémarrer l'application</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedFileUnreadable" xml:space="preserve">settings.json est actuellement illisible (une autre application l'a peut-être ouvert) ; l'enregistrement a été annulé pour protéger vos paramètres existants</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableStartup" xml:space="preserve">Lhamiel n'a pas pu lire settings.json et a démarré avec les paramètres par défaut. Les modifications de cette session ne seront pas enregistrées. Le mot de passe de compression enregistré et la protection par mot de passe n'ont pas pu être lus non plus ; les archives risquent donc d'être créées sans protection par mot de passe. Vérifiez qu'aucun autre Lhamiel ou aucune autre application n'a ouvert settings.json, puis redémarrez Lhamiel.</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableExternalChange" xml:space="preserve">settings.json n'ayant pas pu être lu, cette modification (menu contextuel, associations de fichiers, icônes ou raccourcis) ne peut pas être appliquée. Veuillez redémarrer l'application.</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Fichier extrait introuvable.</x:String>
 
   <!-- Path validation messages -->
@@ -384,43 +366,41 @@
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordDetail" xml:space="preserve">Cette archive est protégée par mot de passe. Aucun mot de passe n'a été fourni ou le mot de passe ne correspond pas : {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.EncryptedOrWrongPasswordAction" xml:space="preserve">Réessayez l'extraction et saisissez le bon mot de passe.</x:String>
 
-  <!-- Password protection (v1.0.181+) 窶・TODO: localize from en_US baseline -->
-  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Password Protection</x:String>
-  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Protect with password</x:String>
-  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Encrypts with AES-256 (WinZip AE-2) for ZIP, AES-256 for 7z.</x:String>
-  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR and LZH do not support password protection. Choose ZIP or 7z.</x:String>
-  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Note: AES-256 encrypted ZIPs cannot be opened by the built-in Windows Explorer. Recipients need 7-Zip, WinRAR, or another compatible tool.</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Encrypt file names too</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Encrypts the file-name listing (header) inside the archive. Without the password, even the contents cannot be browsed.</x:String>
-  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">The ZIP format cannot encrypt file names (central directory). Switch to 7z to enable this option.</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">How to enter the password</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">Prompt on every drop</x:String>
-  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">Save and reuse (DPAPI encrypted)</x:String>
-  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">Password: set</x:String>
-  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">Password: not set (you will be asked on the next compression)</x:String>
-  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">Change Password</x:String>
-  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">Clear Password</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordHeader" xml:space="preserve">Protection par mot de passe</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePassword" xml:space="preserve">Protéger par mot de passe</x:String>
+  <x:String x:Key="Text.Settings.Compression.EnablePasswordDescription" xml:space="preserve">Chiffrement AES-256 (WinZip AE-2) pour ZIP, AES-256 pour 7z.</x:String>
+  <x:String x:Key="Text.Settings.Compression.UnsupportedEncryptionNote" xml:space="preserve">TAR et LZH ne prennent pas en charge la protection par mot de passe. Choisissez ZIP ou 7z.</x:String>
+  <x:String x:Key="Text.Settings.Compression.ZipAesExplorerNote" xml:space="preserve">Remarque : les fichiers ZIP chiffrés en AES-256 ne peuvent pas être ouverts par l'Explorateur Windows intégré. Les destinataires ont besoin de 7-Zip, WinRAR ou d'un autre outil compatible.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNames" xml:space="preserve">Chiffrer aussi les noms de fichiers</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesDescription" xml:space="preserve">Chiffre la liste des noms de fichiers (en-tête) dans l'archive. Sans le mot de passe, même le contenu ne peut pas être parcouru.</x:String>
+  <x:String x:Key="Text.Settings.Compression.EncryptFileNamesZipUnsupported" xml:space="preserve">Le format ZIP ne permet pas de chiffrer les noms de fichiers (répertoire central). Passez à 7z pour activer cette option.</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.GroupLabel" xml:space="preserve">Mode de saisie du mot de passe</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.PromptEachTime" xml:space="preserve">Demander à chaque dépôt</x:String>
+  <x:String x:Key="Text.Settings.Compression.PasswordMode.Remember" xml:space="preserve">Enregistrer et réutiliser (chiffré avec DPAPI)</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.Set" xml:space="preserve">Mot de passe : défini</x:String>
+  <x:String x:Key="Text.Settings.Compression.SavedPasswordStatus.NotSet" xml:space="preserve">Mot de passe : non défini (il vous sera demandé à la prochaine compression)</x:String>
+  <x:String x:Key="Text.Settings.Compression.ChangeSavedPassword" xml:space="preserve">Modifier le mot de passe</x:String>
+  <x:String x:Key="Text.Settings.Compression.ClearSavedPassword" xml:space="preserve">Effacer le mot de passe</x:String>
 
-  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">Set a Password</x:String>
-  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">Set a password to encrypt the archive. Enter it twice for confirmation.</x:String>
-  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Password (confirm)</x:String>
-  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Passwords do not match. Please re-enter the confirmation.</x:String>
-  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Please enter a password.</x:String>
+  <x:String x:Key="Text.Password.SetTitle" xml:space="preserve">Définir un mot de passe</x:String>
+  <x:String x:Key="Text.Password.SetMessage" xml:space="preserve">Définissez un mot de passe pour chiffrer l'archive. Saisissez-le deux fois pour confirmation.</x:String>
+  <x:String x:Key="Text.Password.ConfirmPlaceholder" xml:space="preserve">Mot de passe (confirmation)</x:String>
+  <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Les mots de passe ne correspondent pas. Veuillez ressaisir la confirmation.</x:String>
+  <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Veuillez saisir un mot de passe.</x:String>
   <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">Le mot de passe doit comporter au moins 4 caractères.</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">You can paste from a password manager (Ctrl+V).</x:String>
 
-  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Delete the saved password?</x:String>
-  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Switching to "Prompt on every drop" will delete the currently saved password. Continue?</x:String>
-  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">Delete the saved password?</x:String>
-  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">The saved password will be deleted. You will be asked to enter it again on the next compression. Continue?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Supprimer le mot de passe enregistré ?</x:String>
+  <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Passer à « Demander à chaque dépôt » supprimera le mot de passe actuellement enregistré. Continuer ?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Title" xml:space="preserve">Supprimer le mot de passe enregistré ?</x:String>
+  <x:String x:Key="Text.Confirm.ClearSavedPassword.Message" xml:space="preserve">Le mot de passe enregistré sera supprimé. Il vous sera redemandé à la prochaine compression. Continuer ?</x:String>
 
-  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">The saved password could not be restored (likely caused by copying settings from another PC or a Windows password reset). Please set the password again.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordDecryptFailed" xml:space="preserve">Impossible de restaurer le mot de passe enregistré (probablement dû à la copie des paramètres depuis un autre PC ou à une réinitialisation du mot de passe Windows). Veuillez définir à nouveau le mot de passe.</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Le mot de passe enregistré contient des caractères inutilisables au format ZIP (ASCII uniquement). Saisissez un mot de passe pour cette compression (le mot de passe enregistré ne sera pas modifié).</x:String>
-  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">The saved password is too short to use (at least {0} characters are required). Please set a new password.</x:String>
-  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} file(s) were skipped because they were inaccessible. A password-protected archive was created with the remaining files.</x:String>
+  <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">Le mot de passe enregistré est trop court pour être utilisé (au moins {0} caractères sont requis). Veuillez définir un nouveau mot de passe.</x:String>
+  <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} fichier(s) ont été ignorés car inaccessibles. Une archive protégée par mot de passe a été créée avec les fichiers restants.</x:String>
 
-  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">All source files were inaccessible, so compression was aborted. An empty archive was not created.</x:String>
-  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">The {0} format does not support password protection. Choose ZIP or 7z.</x:String>
+  <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Tous les fichiers sources étaient inaccessibles ; la compression a donc été abandonnée. Aucune archive vide n'a été créée.</x:String>
+  <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Le format {0} ne prend pas en charge la protection par mot de passe. Choisissez ZIP ou 7z.</x:String>
   <x:String x:Key="Text.Error.LzhEntryTooLarge" xml:space="preserve">LZH prend en charge jusqu'à {1} Mio par fichier. Fichier dépassant la limite : {0}</x:String>
   <x:String x:Key="Text.Error.ZipPasswordAsciiOnly" xml:space="preserve">Les mots de passe ZIP ne peuvent contenir que des caractères ASCII (lettres, chiffres et symboles). Pour utiliser d'autres caractères (lettres accentuées, japonais, etc.), choisissez le format 7z.</x:String>
 </ResourceDictionary>

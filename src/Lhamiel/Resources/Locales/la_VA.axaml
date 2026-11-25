@@ -5,12 +5,10 @@
   </ResourceDictionary.MergedDictionaries>
 
   <!-- Window Titles -->
-  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Instrumentum Compressionis &amp; Extractionis Archivorum</x:String>
   <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">Destinatio compressionis est nexus ad indicem et superscribi non potest: {0}</x:String>
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} elementa</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Omnia revoca</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Processus...</x:String>
-  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Substitutio Fasciculi</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Optiones Recuperationis Erroris</x:String>
 
   <!-- Drop Zone -->
@@ -23,7 +21,6 @@
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">Compressio</x:String>
   <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">Exclusiones compressionis</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">Consociationes Fasciculorum</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">Versio</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">Generalia</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">Extractio</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">Compressio</x:String>
@@ -68,7 +65,6 @@
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Aperire directorium post compressionem</x:String>
-  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Compressio Coniuncta</x:String>
   <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Optiones Compressionis</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Comprimere plures fasciculos in unum archivum</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Si desactivatum, quisque fasciculus separatim comprimetur</x:String>
@@ -81,7 +77,6 @@
   <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">Modus compressionis LZH</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Includere fasciculos et folders occultos/systema</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Elementa attributis Hidden vel System etiam in archivum adduntur.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Exclusiones compressionis</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Huius paginae configurationes omnibus compressionibus Lhamiel huius usoris Windows valent. Exclusiones proprias fontis in fasciculis regularum cuiusque directorii constitue.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">Regulae exclusionis communes</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">Formae hic inscriptae omnibus fontibus compressionis valent. Syntaxis cum .gitignore compatibilis sustinetur.</x:String>
@@ -120,7 +115,6 @@
   <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">Theca glacialis</x:String>
 
   <!-- Version Tab -->
-  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">Instrumentum Compressionis &amp; Extractionis Archivorum</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">Versio</x:String>
   <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
@@ -156,7 +150,6 @@
   <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Ministerium auxilii attingi non potest. Postea iterum tenta.</x:String>
 
   <!-- Buttons -->
-  <x:String x:Key="Text.Button.Save" xml:space="preserve">Servare</x:String>
   <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Rescindere</x:String>
   <x:String x:Key="Text.Button.OK" xml:space="preserve">Bene</x:String>
   <x:String x:Key="Text.Button.Yes" xml:space="preserve">Ita</x:String>
@@ -169,7 +162,6 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Fasciculi moventur...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Extractio</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Compressio</x:String>
-  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Integritas verificatur...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Signum securitatis applicatur...</x:String>
   <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">Limae perscrutantur... {0:N0}</x:String>
   <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">Compressio paratur... {0:N0} / {1:N0}</x:String>
@@ -187,11 +179,6 @@
   <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Meminisse hanc electionem</x:String>
 
   <!-- Overwrite Dialog -->
-  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">Directorium '{0}' iam existit.\n\nDelere directorium existens et substituere?</x:String>
-  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">Fasciculus '{0}' iam existit.\n\nSubstituere?</x:String>
-  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Confirmare Substitutionem Directorii</x:String>
-  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Substituere Fasciculum</x:String>
-  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">Fasciculus iam existit.\n\nSubstituere?</x:String>
 
   <!-- Dialog Titles -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Error</x:String>
@@ -206,15 +193,12 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Forma fasciculi non sustinetur.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Forma compressionis non sustinetur.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Error accidit in extractione.\n{0}</x:String>
-  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Verificatio integritatis CRC defecit: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Error accidit in compressione.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Error accidit in processu.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Exitus '{0}' in usu est vel accessus negatur.</x:String>
-  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">Optiones servare non potuit.</x:String>
   <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">Fasciculos processare non potuit.</x:String>
   <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">Optiones consociationis applicare non potuit.</x:String>
   <x:String x:Key="Text.Error.InitApp" xml:space="preserve">Applicationem initiare non potuit.</x:String>
-  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">Dialogum substitutionis ostendere non potuit: {0}</x:String>
   <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">Error accidit in selectione omnium.</x:String>
   <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">Error accidit in deselectione omnium.</x:String>
   <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Error Extractionis</x:String>
@@ -225,10 +209,6 @@
   <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">Error accidit dum compendium creatur.</x:String>
 
   <!-- Update Messages -->
-  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Renovatio applicatur... Reinitiatio.</x:String>
-  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Iam ad diem.</x:String>
-  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ Renovationes in ambitu progressionis quaeri non possunt.</x:String>
-  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ Repositorium renovationum non configuratum est.</x:String>
   <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ Error accidit dum renovationes quaeruntur.</x:String>
   <x:String x:Key="Text.Update.Timeout" xml:space="preserve">Tempus quaerendi renovationes excessum est.</x:String>
   <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Renovatio deponitur...</x:String>
@@ -266,9 +246,9 @@
   <x:String x:Key="Text.ErrorHandler.FileInUse" xml:space="preserve">Fasciculus in usu est</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseDetail" xml:space="preserve">Fasciculus ab alia applicatione usurpatur: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInUseAction" xml:space="preserve">Claude applicationem fasciculum usurpantem et iterum tempta.</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">Device is not responding</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">External device (USB / NAS / removable media) was disconnected or is not responding: {0}</x:String>
-  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Check the device connection and reconnect before retrying.</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnected" xml:space="preserve">Instrumentum non respondet</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedDetail" xml:space="preserve">Instrumentum externum (USB / NAS / media removibilia) disiunctum est aut non respondet: {0}</x:String>
+  <x:String x:Key="Text.ErrorHandler.DeviceDisconnectedAction" xml:space="preserve">Coniunctionem instrumenti inspice et iterum coniunge antequam iterum temptas.</x:String>
   <x:String x:Key="Text.ErrorHandler.IOError" xml:space="preserve">Error I/O accidit</x:String>
   <x:String x:Key="Text.ErrorHandler.IOErrorAction" xml:space="preserve">Statum fasciculi verifica et iterum tempta.</x:String>
   <x:String x:Key="Text.ErrorHandler.ResourceLimit" xml:space="preserve">Tabularium modum securitatis processus excedit</x:String>
@@ -305,8 +285,6 @@
 
   <!-- Partial Extraction -->
   <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Extrahitur: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Iterum extrahitur: {0}</x:String>
-  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">Fasciculus destinatus in archivo non inventus est.</x:String>
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Fasciculus: {0}\nError: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Iterare vel praeterire potes.</x:String>
 
@@ -365,6 +343,10 @@
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Nulli fasciculi ad compressionem designati.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Via designata non inventa est: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Optiones servare non potuit: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedStartupUnreadable" xml:space="preserve">Fasciculus settings.json in initio legi non potuit; servatio omissa est ut optiones tuae exstantes tuerentur. Applicationem rursus incipe</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedFileUnreadable" xml:space="preserve">Fasciculus settings.json nunc legi non potest (fortasse ab alia applicatione apertus est); servatio omissa est ut optiones tuae exstantes tuerentur</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableStartup" xml:space="preserve">Lhamiel fasciculum settings.json legere non potuit et cum optionibus praedefinitis incepit. Mutationes huius sessionis non servabuntur. Signum compressionis servatum et tutela signi etiam legi non potuerunt, itaque archiva sine tutela signi fieri possunt. Vide num alius Lhamiel vel alia applicatio settings.json aperuerit, deinde Lhamiel rursus incipe.</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableExternalChange" xml:space="preserve">Quia settings.json legi non potuit, haec mutatio (menu contextualis, associationes fasciculorum, icones vel breviationes) applicari non potest. Applicationem rursus incipe.</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Fasciculus extractus non inventus.</x:String>
 
   <!-- Path validation messages -->
@@ -407,7 +389,6 @@
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Tesserae non congruunt. Confirmationem iterum insere.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Tesseram insere.</x:String>
   <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">Tessera saltem 4 characteres habere debet.</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Ex tesserarum administro inserere potes (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Tesseram servatam delere?</x:String>
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Ad "Singulis demissionibus rogare" mutatio tesseram nunc servatam delebit. Pergere?</x:String>

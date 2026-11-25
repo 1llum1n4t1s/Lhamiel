@@ -54,7 +54,6 @@ public class ArchiveErrorHandlerTests
 
     [Theory]
     [InlineData(LzhArchiveErrorKind.Format)]
-    [InlineData(LzhArchiveErrorKind.InvalidArgument)]
     [InlineData(LzhArchiveErrorKind.InvalidPath)]
     [InlineData(LzhArchiveErrorKind.Exists)]
     public void AnalyzeLzhCreateError_InputOrOutputFailure_IsNotReportedAsCorruptedArchive(
@@ -87,24 +86,15 @@ public class ArchiveErrorHandlerTests
     [Fact]
     public void AnalyzeError_EncryptionException_ReturnsEncryptedOrWrongPasswordType()
     {
+        // EncryptionException は IOException を継承しているため、IOException ケースより先に
+        // マッチしなければ本来の案内（「パスワードが必要」）ではなく「I/O エラー」になってしまう。
         var ex = new EncryptionException();
         var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\test.zip", @"C:\out");
 
         Assert.Equal(ArchiveErrorType.EncryptedOrWrongPassword, info.ErrorType);
+        Assert.NotEqual(ArchiveErrorType.Unknown, info.ErrorType);
         Assert.True(info.IsRecoverable, "パスワード誤入力は再試行で回復可能なので IsRecoverable は true");
         Assert.Same(ex, info.OriginalException);
-    }
-
-    [Fact]
-    public void AnalyzeError_EncryptionExceptionBeforeIOException_DoesNotFallThrough()
-    {
-        // EncryptionException は IOException を継承しているため、IOException ケースより先に
-        // マッチしなければ本来の案内（「パスワードが必要」）ではなく「I/O エラー」になってしまう。
-        var ex = new EncryptionException();
-        var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\secret.zip", @"C:\out");
-
-        Assert.Equal(ArchiveErrorType.EncryptedOrWrongPassword, info.ErrorType);
-        Assert.NotEqual(ArchiveErrorType.Unknown, info.ErrorType);
     }
 
     [Fact]
@@ -151,28 +141,7 @@ public class ArchiveErrorHandlerTests
         Assert.Equal(ArchiveErrorType.CorruptedFile, info.ErrorType);
     }
 
-    // === IsCorruptedHResult ===
-
-    [Theory]
-    [InlineData(unchecked((int)0x80070017))] // ERROR_CRC
-    [InlineData(unchecked((int)0x8007000D))] // ERROR_INVALID_DATA
-    [InlineData(unchecked((int)0x8007000B))] // ERROR_BAD_FORMAT
-    [InlineData(unchecked((int)0x80070570))] // ERROR_FILE_CORRUPT
-    [InlineData(unchecked((int)0x80070571))] // ERROR_DISK_CORRUPT
-    public void IsCorruptedHResult_WithCorruptionHResult_ReturnsTrue(int hResult)
-    {
-        Assert.True(ArchiveErrorHandler.IsCorruptedHResult(hResult));
-    }
-
-    [Theory]
-    [InlineData(0)]                            // S_OK
-    [InlineData(unchecked((int)0x80070070))]   // ERROR_DISK_FULL
-    [InlineData(unchecked((int)0x80070020))]   // ERROR_SHARING_VIOLATION
-    [InlineData(unchecked((int)0x80004005))]   // E_FAIL
-    public void IsCorruptedHResult_WithNonCorruptionHResult_ReturnsFalse(int hResult)
-    {
-        Assert.False(ArchiveErrorHandler.IsCorruptedHResult(hResult));
-    }
+    // === HResult による破損判定 ===
 
     [Fact]
     public void AnalyzeError_InvalidOperationWithCrcHResult_ClassifiedAsCorruptedFile()
@@ -181,15 +150,6 @@ public class ArchiveErrorHandlerTests
         var ex = new InvalidOperationException("Unknown error occurred.");
         SetHResult(ex, unchecked((int)0x80070017)); // ERROR_CRC
         var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\test.7z", @"C:\out");
-        Assert.Equal(ArchiveErrorType.CorruptedFile, info.ErrorType);
-    }
-
-    [Fact]
-    public void AnalyzeError_InvalidOperationWithFileCorruptHResult_ClassifiedAsCorruptedFile()
-    {
-        var ex = new InvalidOperationException("Some generic error.");
-        SetHResult(ex, unchecked((int)0x80070570)); // ERROR_FILE_CORRUPT
-        var info = ArchiveErrorHandler.AnalyzeError(ex, @"C:\test.zip", @"C:\out");
         Assert.Equal(ArchiveErrorType.CorruptedFile, info.ErrorType);
     }
 

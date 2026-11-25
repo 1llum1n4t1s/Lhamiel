@@ -1,8 +1,8 @@
 # release-local.ps1 — ローカル署名付き Velopack リリース
 #
 # 署名は Sigilune (Certum SimplySign のクラウド鍵を signtool /dlib で使う CLI) で行う。
-# 通常のリリースは GitHub Actions の .github/workflows/release.yml (手動起動・Environment "release") が
-# 本スクリプトを実行する。ローカル実行も同じ手順で動き、検証や再開に使う。
+# 通常のリリースは GitHub Actions の .github/workflows/release.yml (版タグ push で起動。手動は再実行用・
+# Environment "release") が本スクリプトを実行する。ローカル実行も同じ手順で動き、検証や再開に使う。
 #
 # 前提:
 #   - Sigilune を使えること (scripts/Sigilune.Common.ps1 参照)。
@@ -27,37 +27,10 @@ param(
 )
 
 
-
-# 作業出力は絶対パスの外部 Temp に限定し、リンク経由の書込みも拒否する。
-function Resolve-ExternalWorkDirectory {
-    param([string]$Path, [string]$RepositoryRoot)
-    if ([string]::IsNullOrWhiteSpace($Path) -or -not [IO.Path]::IsPathFullyQualified($Path)) { throw 'WorkDirectory は絶対パスで指定してください。' }
-    $resolved = [IO.Path]::GetFullPath($Path).TrimEnd('\','/')
-    $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd('\','/')
-    if (-not $resolved.StartsWith($tempRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'WorkDirectory はユーザーの Temp 配下に指定してください。' }
-    $forbiddenRoots = @($RepositoryRoot, (Join-Path ([Environment]::GetFolderPath('UserProfile')) '.codex'))
-    if ($env:CODEX_HOME) { $forbiddenRoots += $env:CODEX_HOME }
-    foreach ($root in $forbiddenRoots) {
-        $boundary = [IO.Path]::GetFullPath($root).TrimEnd('\','/')
-        if ($resolved.Equals($boundary, [StringComparison]::OrdinalIgnoreCase) -or $resolved.StartsWith($boundary + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw "WorkDirectory はリポジトリ / Codex ディレクトリの外に指定してください: $resolved" }
-    }
-    $ancestor = $resolved
-    while ($ancestor) {
-        if (Test-Path -LiteralPath $ancestor) {
-            $item = Get-Item -LiteralPath $ancestor -Force -ErrorAction Stop
-            if (-not $item.PSIsContainer -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "WorkDirectory の祖先は通常のディレクトリに限定します: $ancestor" }
-        }
-        $ancestor = Split-Path $ancestor -Parent
-    }
-    if (Test-Path -LiteralPath $resolved) {
-        if (@(Get-ChildItem -LiteralPath $resolved -Recurse -Force -ErrorAction Stop | Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint }).Count) { throw "WorkDirectory 内のリンクを除いてください: $resolved" }
-    }
-    return $resolved
-}
-
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'R2Distribution.Common.ps1')
+. (Join-Path $PSScriptRoot 'WorkDirectory.Common.ps1')
 
 # ---- 定数 ----
 # Velopack (vpk) は常に最新安定版を使う (ゆろ君ルール): NuGet から実行時に最新を解決して pin する
@@ -85,7 +58,7 @@ if (-not $WorkDirectory) {
     if ($ReusePublish -or $UploadOnly) { throw '再開時は既存の絶対 Temp パスを -WorkDirectory に指定してください。' }
     $WorkDirectory = Join-Path ([IO.Path]::GetTempPath()) "Codex\Lhamiel\release-$version-$([guid]::NewGuid().ToString('N'))"
 }
-$WorkDir = Resolve-ExternalWorkDirectory -Path $WorkDirectory -RepositoryRoot $RepoRoot
+$WorkDir = Resolve-ExternalWorkDirectory -Path $WorkDirectory -RepositoryRoot $RepoRoot -RequireUserTemp
 if (-not $UploadOnly -and -not $ReusePublish -and (Test-Path -LiteralPath $WorkDir) -and @(Get-ChildItem -LiteralPath $WorkDir -Force).Count) {
     throw "WorkDirectory が空ではありません: $WorkDir。PRUNLET.md に従い Prunlet CLI を直接 CMD から実行して清掃するか、新しいディレクトリを指定してください。"
 }

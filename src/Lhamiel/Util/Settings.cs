@@ -257,16 +257,6 @@ public class Settings
     public static readonly string[] SupportedPasswordModes = ["PromptEachTime", "Remember"];
 
     /// <summary>
-    /// サポートされている展開形式の一覧
-    /// </summary>
-    public static readonly string[] SupportedExtractionFormats = ["ZIP", "7z", "TAR", "GZ", "BZ2", "LZMA", "XZ", "RAR", "LZH", "LHA", "CAB", "ARJ", "Z"];
-
-    /// <summary>
-    /// 展開専用形式の一覧
-    /// </summary>
-    public static readonly string[] ExtractOnlyFormats = ["RAR", "ARJ", "Z"];
-
-    /// <summary>
     /// ログファイルの最大サイズ (MB)
     /// </summary>
     public int LogMaxSizeMB { get; set; } = 10;
@@ -396,167 +386,312 @@ public class Settings
     }
 
     /// <summary>
+    /// <paramref name="source"/>（<see cref="Snapshot"/> で取った変更前の複製）の値でこのインスタンスを巻き戻す。
+    /// <see cref="SettingsManager"/> が保存の失敗・中止時に、ロック内でメモリ上の設定を変更前へ戻すために使う。
+    /// 設定プロパティを追加したときは必ずここへ追記する（<c>SettingsCopyFromTests</c> が全プロパティの網羅を検査する）。
+    /// </summary>
+    internal void CopyFrom(Settings source)
+    {
+        Theme = source.Theme;
+        Locale = source.Locale;
+        CompressionFormat = source.CompressionFormat;
+        FileIconVariant = source.FileIconVariant;
+        AppIconVariant = source.AppIconVariant;
+        ExtractionOutputDirectory = source.ExtractionOutputDirectory;
+        CompressionOutputDirectory = source.CompressionOutputDirectory;
+        ExtractionOutputToSameDirectory = source.ExtractionOutputToSameDirectory;
+        CompressionOutputToSameDirectory = source.CompressionOutputToSameDirectory;
+        UpdateChannel = source.UpdateChannel;
+        Check4UpdatesOnStartup = source.Check4UpdatesOnStartup;
+        AddExtractToContextMenu = source.AddExtractToContextMenu;
+        AddCompressToContextMenu = source.AddCompressToContextMenu;
+        IgnoreUpdateTag = source.IgnoreUpdateTag;
+        OpenExtractionOutputFolder = source.OpenExtractionOutputFolder;
+        CreateArchiveNameFolder = source.CreateArchiveNameFolder;
+        OpenCompressionOutputFolder = source.OpenCompressionOutputFolder;
+        CompressMultipleAsOne = source.CompressMultipleAsOne;
+        DirectoryStructureMode = source.DirectoryStructureMode;
+        IncludeHiddenAndSystemEntries = source.IncludeHiddenAndSystemEntries;
+        LogMaxSizeMB = source.LogMaxSizeMB;
+        LogRetentionDays = source.LogRetentionDays;
+        ZipCompressionLevel = source.ZipCompressionLevel;
+        SevenZipCompressionLevel = source.SevenZipCompressionLevel;
+        LzhCompressionMethod = source.LzhCompressionMethod;
+        VerifyAfterExtraction = source.VerifyAfterExtraction;
+        NormalizeUnicodeFileNames = source.NormalizeUnicodeFileNames;
+        PropagateMarkOfTheWeb = source.PropagateMarkOfTheWeb;
+        RespectNestedGitignore = source.RespectNestedGitignore;
+        SourceIgnoreFileNames = [.. source.SourceIgnoreFileNames];
+        IsPasswordProtectionEnabled = source.IsPasswordProtectionEnabled;
+        PasswordMode = source.PasswordMode;
+        EncryptedCompressionPassword = source.EncryptedCompressionPassword;
+        EncryptFileNames = source.EncryptFileNames;
+    }
+
+    /// <summary>
     /// 設定をファイルから読み込むメソッド
     /// </summary>
     /// <returns>読み込まれた設定オブジェクト</returns>
-    public static Settings Load()
+    public static Settings Load() => LoadWithStatus().Settings;
+
+    /// <summary>
+    /// <see cref="Load"/> と同じ読み込みを行い、読み込み結果の種別も返す。
+    /// 他プロセスの排他などで読めなかった場合は <see cref="SettingsLoadStatus.Unreadable"/> となり、
+    /// 設定は既定値になる（起動は継続できるが、呼び出し側は既定値をファイルへ書き戻してはならない）。
+    /// </summary>
+    internal static SettingsLoadResult LoadWithStatus()
     {
-        Settings? settings = null;
+        var result = LoadFromPath(SettingsFilePath, Path.Combine(AppContext.BaseDirectory, "settings.json"));
+        // 読めなかったときの設定は既定値なので、それを根拠に .lhaignore（外部ファイル）を作成・移行しない。
+        if (result.Status != SettingsLoadStatus.Unreadable)
+            InitializeLhaignore(result.Settings, LhaignoreFile.FilePath);
+        return result;
+    }
+
+    /// <summary>settings.json の読込み（一時ロックの再試行回数。待機は 40ms + 80ms 程度で合計 0.2 秒未満）。</summary>
+    private const int ReadMaxAttempts = 3;
+
+    private const int ReadInitialDelayMs = 40;
+
+    /// <summary>
+    /// 指定パスの設定を読み込む。パスを引数に取るのは、テストが実ユーザーの設定へ触れずに検証できるようにするため。
+    /// </summary>
+    /// <param name="settingsPath">settings.json のパス</param>
+    /// <param name="legacySettingsPath">旧位置（実行ディレクトリ）の settings.json。新位置に無いときだけ移行する</param>
+    internal static SettingsLoadResult LoadFromPath(string settingsPath, string legacySettingsPath)
+    {
         try
         {
-            // 旧パス（アプリケーション実行ディレクトリ）
-            var oldSettingsFilePath = Path.Combine(AppContext.BaseDirectory, "settings.json");
-
-            // ディレクトリ作成
-            if (!Directory.Exists(AppDataDirectory))
+            var directory = Path.GetDirectoryName(settingsPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
-                Directory.CreateDirectory(AppDataDirectory);
+                Directory.CreateDirectory(directory);
             }
 
+            // File.Exists は属性の取得失敗でも false を返すため、不存在と読取り不能を区別して調べる。
+            var probe = ProbeSettingsFile(settingsPath);
+
             // 移行処理：新しい場所に設定ファイルがなく、古い場所にある場合は移動する
-            if (!File.Exists(SettingsFilePath) && File.Exists(oldSettingsFilePath))
+            if (probe.Error is null && !probe.Exists && File.Exists(legacySettingsPath))
             {
                 try
                 {
-                    File.Move(oldSettingsFilePath, SettingsFilePath);
+                    File.Move(legacySettingsPath, settingsPath);
                     // Logger.Log を使うと再帰の恐れがあるため、デバッグ出力のみ
-                    Debug.WriteLine($"設定ファイルを移行しました: {oldSettingsFilePath} -> {SettingsFilePath}");
+                    Debug.WriteLine($"設定ファイルを移行しました: {legacySettingsPath} -> {settingsPath}");
                 }
                 catch (Exception ex)
                 {
                     Debug.WriteLine($"設定ファイルの移行に失敗しました: {ex.Message}");
                 }
+                probe = ProbeSettingsFile(settingsPath);
             }
 
-            if (File.Exists(SettingsFilePath))
+            if (probe.Error is not null)
             {
-                var json = File.ReadAllText(SettingsFilePath);
+                return UnreadableResult(probe.Error);
+            }
+
+            if (probe.Exists)
+            {
+                string? json;
                 try
                 {
-                    settings = JsonSerializer.Deserialize(json, AppJsonContext.Default.Settings);
+                    json = LockedFileRetryPolicy.Execute<string?>(
+                        () => File.ReadAllText(settingsPath), settingsPath, ReadMaxAttempts, ReadInitialDelayMs);
                 }
-                catch (JsonException ex)
+                catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
                 {
-                    // 二段階デコード: JsonSerializer が失敗しても、JsonDocument で個別プロパティを
-                    // 救済できる可能性がある（1 プロパティの型不整合で全滅を防ぐ）。
-                    settings = TryRecoverFromJsonDocument(json);
-
-                    if (settings == null)
-                    {
-                        // JsonDocument でも回収不能 → 破損ファイル退避して全デフォルト化
-                        var backupPath = $"{SettingsFilePath}.corrupt_{DateTime.Now:yyyyMMddHHmmss_fff}.bak";
-                        // 実際に起きた処理をログへ正しく出すため、どの段で片付いたかを記録する。
-                        // 順序（Move → Delete → 空 JSON で上書き）は DESIGN.md / docs/SETTINGS_SCHEMA.md の契約。
-                        string? statusMsg = null;
-                        try
-                        {
-                            File.Move(SettingsFilePath, backupPath, overwrite: true);
-                            statusMsg = $"破損ファイルは {backupPath} に退避済みです";
-                        }
-                        catch (Exception moveEx)
-                        {
-                            Debug.WriteLine($"破損 settings.json の Move に失敗: {moveEx.Message}");
-                            // Delete で内容を失う前に、コピーでの退避を試みる（Move はロック中でも読み取りは
-                            // できる場合がある: OneDrive 同期中・ウイルス対策の検査中など）。失敗しても続行する。
-                            var copiedToBackup = false;
-                            try
-                            {
-                                File.Copy(SettingsFilePath, backupPath, overwrite: true);
-                                copiedToBackup = true;
-                            }
-                            catch (Exception copyEx)
-                            {
-                                Debug.WriteLine($"破損 settings.json のコピー退避に失敗: {copyEx.Message}");
-                            }
-                            try
-                            {
-                                File.Delete(SettingsFilePath);
-                                statusMsg = copiedToBackup
-                                    ? $"破損ファイルは {backupPath} にコピーで退避し、元ファイルを削除しました"
-                                    : "破損ファイルを退避できなかったため削除しました（内容は保存されていません）";
-                            }
-                            catch (Exception deleteEx)
-                            {
-                                Debug.WriteLine($"破損 settings.json の Delete に失敗: {deleteEx.Message}");
-                                try
-                                {
-                                    // 最終フォールバックの空 JSON 上書きも atomic 書込で部分破損を防ぐ。
-                                    // RTK レビュー #B1-008 対応。
-                                    WriteAtomically(SettingsFilePath, "{}");
-                                    statusMsg = copiedToBackup
-                                        ? $"破損ファイルは {backupPath} にコピーで退避し、元ファイルを空 JSON で上書きしました"
-                                        : "破損ファイルを退避・削除できなかったため空 JSON で上書きしました（内容は保存されていません）";
-                                }
-                                catch (Exception writeEx)
-                                {
-                                    Debug.WriteLine($"破損 settings.json の空 JSON 上書きに失敗: {writeEx.Message}");
-                                    // RTK レビュー #F-012 対応: 3 段フォールバック全失敗ケースで、Logger も
-                                    // 未初期化な可能性が高いため、emergency.log に直接書く最終フォールバック。
-                                    Logger.WriteEmergencyLog(
-                                        $"settings.json の退避・削除・空 JSON 上書きが全て失敗。次回起動時も同じエラーが再発します。元エラー: {ex.Message}",
-                                        writeEx);
-                                }
-                            }
-                        }
-                        Debug.WriteLine($"設定ファイルの解析に失敗しました（デフォルトに戻します）: {ex.Message}");
-                        try
-                        {
-                            statusMsg ??= "破損ファイルの退避に失敗しました（次回起動時も同じエラーが再発する可能性があります）";
-                            Logger.Log(
-                                $"settings.json の解析に失敗したためデフォルトに戻しました。{statusMsg}。理由: {ex.Message}",
-                                LogLevel.Warning);
-                        }
-                        catch { /* Logger 未初期化のケース */ }
-                    }
-                    else
-                    {
-                        try
-                        {
-                            Logger.Log(
-                                $"settings.json の一部プロパティに不整合がありましたが、有効なプロパティは回収しました。理由: {ex.Message}",
-                                LogLevel.Warning);
-                        }
-                        catch { /* Logger 未初期化のケース */ }
-                    }
+                    // 調べた直後に消えた場合は不存在として扱う（新規作成へ進む）。
+                    json = null;
+                }
+                catch (Exception ex)
+                {
+                    return UnreadableResult(ex);
                 }
 
-                if (settings != null)
+                if (json is not null)
                 {
-                    var migratedLegacyContextMenu = MigrateLegacyContextMenuSettings(settings, json);
-                    settings.SanitizeAfterLoad();
-                    if (migratedLegacyContextMenu)
-                    {
-                        try
-                        {
-                            // 旧キーを新しい2キーへ置き換え、ヘッドレス起動だけでも移行を完了させる。
-                            settings.Save();
-                        }
-                        catch (Exception migrationSaveException)
-                        {
-                            // 値はメモリ上で移行済みなので起動は継続し、次回の通常保存で再試行する。
-                            Debug.WriteLine($"右クリックメニュー設定の移行保存に失敗しました: {migrationSaveException.Message}");
-                        }
-                    }
+                    return ParseLoadedSettings(json, settingsPath);
                 }
             }
-            else
+
+            var defaultSettings = new Settings();
+            try
             {
-                var defaultSettings = new Settings();
-                defaultSettings.Save(); // 新規作成時にファイルに書き込む
-                settings = defaultSettings;
+                defaultSettings.SaveTo(settingsPath); // 新規作成時にファイルに書き込む
             }
+            catch (Exception ex)
+            {
+                // 存在しないファイルへの書込み失敗なので、既存設定は失われない。起動は既定値で継続する。
+                Debug.WriteLine($"設定ファイルの新規作成に失敗しました: {ex.Message}");
+            }
+            return new SettingsLoadResult(defaultSettings, SettingsLoadStatus.Created);
         }
         catch (Exception ex)
         {
-            // ここも再帰回避のため Logger.Log は控える
-            Debug.WriteLine($"設定ファイルの読み込みに失敗しました: {ex.Message}");
+            return UnreadableResult(ex);
+        }
+    }
+
+    private static SettingsLoadResult UnreadableResult(Exception error)
+    {
+        // ここも再帰回避のため Logger.Log は控える
+        Debug.WriteLine($"設定ファイルの読み込みに失敗しました: {error.Message}");
+        return new SettingsLoadResult(new Settings(), SettingsLoadStatus.Unreadable, error);
+    }
+
+    /// <summary>設定ファイルの有無を調べる。不存在以外の失敗（アクセス拒否など）は <c>Error</c> に返す。</summary>
+    private static (bool Exists, Exception? Error) ProbeSettingsFile(string path)
+    {
+        try
+        {
+            var attributes = File.GetAttributes(path);
+            return (attributes & FileAttributes.Directory) == 0
+                ? (true, null)
+                : (false, new IOException($"設定ファイルのパスがフォルダーです: {path}"));
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return (false, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex);
+        }
+    }
+
+    /// <summary>読み込んだ JSON を設定へ変換する。破損時は回収を試み、回収不能なら退避して既定値にする。</summary>
+    private static SettingsLoadResult ParseLoadedSettings(string json, string settingsPath)
+    {
+        Settings? settings = null;
+        var status = SettingsLoadStatus.Loaded;
+        try
+        {
+            settings = JsonSerializer.Deserialize(json, AppJsonContext.Default.Settings);
+        }
+        catch (JsonException ex)
+        {
+            // 二段階デコード: JsonSerializer が失敗しても、JsonDocument で個別プロパティを
+            // 救済できる可能性がある（1 プロパティの型不整合で全滅を防ぐ）。
+            settings = TryRecoverFromJsonDocument(json);
+
+            if (settings == null)
+            {
+                // JsonDocument でも回収不能 → 破損ファイル退避して全デフォルト化
+                status = SettingsLoadStatus.CorruptReset;
+                var statusMsg = QuarantineCorruptSettingsFile(settingsPath, DateTime.Now, ex.Message);
+                Debug.WriteLine($"設定ファイルの解析に失敗しました（デフォルトに戻します）: {ex.Message}");
+                try
+                {
+                    statusMsg ??= "破損ファイルの退避に失敗しました（次回起動時も同じエラーが再発する可能性があります）";
+                    Logger.Log(
+                        $"settings.json の解析に失敗したためデフォルトに戻しました。{statusMsg}。理由: {ex.Message}",
+                        LogLevel.Warning);
+                }
+                catch { /* Logger 未初期化のケース */ }
+            }
+            else
+            {
+                try
+                {
+                    Logger.Log(
+                        $"settings.json の一部プロパティに不整合がありましたが、有効なプロパティは回収しました。理由: {ex.Message}",
+                        LogLevel.Warning);
+                }
+                catch { /* Logger 未初期化のケース */ }
+            }
         }
 
-        settings ??= new Settings();
+        if (settings != null)
+        {
+            var migratedLegacyContextMenu = MigrateLegacyContextMenuSettings(settings, json);
+            settings.SanitizeAfterLoad();
+            if (migratedLegacyContextMenu)
+            {
+                try
+                {
+                    // 旧キーを新しい2キーへ置き換え、ヘッドレス起動だけでも移行を完了させる。
+                    settings.SaveTo(settingsPath);
+                }
+                catch (Exception migrationSaveException)
+                {
+                    // 値はメモリ上で移行済みなので起動は継続し、次回の通常保存で再試行する。
+                    Debug.WriteLine($"右クリックメニュー設定の移行保存に失敗しました: {migrationSaveException.Message}");
+                }
+            }
+        }
 
-        InitializeLhaignore(settings, LhaignoreFile.FilePath);
+        return new SettingsLoadResult(settings ?? new Settings(), status);
+    }
 
-        return settings;
+    /// <summary>
+    /// 回収不能に破損した settings.json を片付ける。順序（Move → Copy → Delete → 空 JSON で上書き → 緊急ログ）は
+    /// DESIGN.md / docs/SETTINGS_SCHEMA.md の契約。実際に起きた処理をログへ正しく出すため、どの段で片付いたかを返す。
+    /// </summary>
+    /// <param name="settingsPath">破損した settings.json のパス</param>
+    /// <param name="timestamp">退避ファイル名に使う時刻</param>
+    /// <param name="originalMessage">破損の原因となった <see cref="JsonException"/> のメッセージ（緊急ログ用）</param>
+    /// <returns>ログ用の結果説明。全段が失敗したときは null。</returns>
+    internal static string? QuarantineCorruptSettingsFile(string settingsPath, DateTime timestamp, string originalMessage)
+    {
+        var backupPath = $"{settingsPath}.corrupt_{timestamp:yyyyMMddHHmmss_fff}.bak";
+        try
+        {
+            File.Move(settingsPath, backupPath, overwrite: true);
+            return $"破損ファイルは {backupPath} に退避済みです";
+        }
+        catch (Exception moveEx)
+        {
+            Debug.WriteLine($"破損 settings.json の Move に失敗: {moveEx.Message}");
+            return QuarantineByCopyAndDelete(settingsPath, backupPath, originalMessage);
+        }
+    }
+
+    private static string? QuarantineByCopyAndDelete(string settingsPath, string backupPath, string originalMessage)
+    {
+        // Delete で内容を失う前に、コピーでの退避を試みる（Move はロック中でも読み取りは
+        // できる場合がある: OneDrive 同期中・ウイルス対策の検査中など）。失敗しても続行する。
+        var copiedToBackup = false;
+        try
+        {
+            File.Copy(settingsPath, backupPath, overwrite: true);
+            copiedToBackup = true;
+        }
+        catch (Exception copyEx)
+        {
+            Debug.WriteLine($"破損 settings.json のコピー退避に失敗: {copyEx.Message}");
+        }
+        try
+        {
+            File.Delete(settingsPath);
+            return copiedToBackup
+                ? $"破損ファイルは {backupPath} にコピーで退避し、元ファイルを削除しました"
+                : "破損ファイルを退避できなかったため削除しました（内容は保存されていません）";
+        }
+        catch (Exception deleteEx)
+        {
+            Debug.WriteLine($"破損 settings.json の Delete に失敗: {deleteEx.Message}");
+        }
+        try
+        {
+            // 最終フォールバックの空 JSON 上書きも atomic 書込で部分破損を防ぐ。
+            // RTK レビュー #B1-008 対応。
+            WriteAtomically(settingsPath, "{}");
+            return copiedToBackup
+                ? $"破損ファイルは {backupPath} にコピーで退避し、元ファイルを空 JSON で上書きしました"
+                : "破損ファイルを退避・削除できなかったため空 JSON で上書きしました（内容は保存されていません）";
+        }
+        catch (Exception writeEx)
+        {
+            Debug.WriteLine($"破損 settings.json の空 JSON 上書きに失敗: {writeEx.Message}");
+            // RTK レビュー #F-012 対応: 3 段フォールバック全失敗ケースで、Logger も
+            // 未初期化な可能性が高いため、emergency.log に直接書く最終フォールバック。
+            Logger.WriteEmergencyLog(
+                $"settings.json の退避・削除・空 JSON 上書きが全て失敗。次回起動時も同じエラーが再発します。元エラー: {originalMessage}",
+                writeEx);
+            return null;
+        }
     }
 
     /// <summary>
@@ -888,16 +1023,20 @@ public class Settings
     /// 部分書き込みを排除する。RTK レビュー #B1-007 対応。
     /// </para>
     /// </summary>
-    public void Save()
+    public void Save() => SaveTo(SettingsFilePath);
+
+    /// <summary>指定パスへ保存する（テストが実ユーザーの設定へ触れずに検証できるよう、パスを引数に取る）。</summary>
+    internal void SaveTo(string settingsPath)
     {
         try
         {
             var json = JsonSerializer.Serialize(this, AppJsonContext.Default.Settings);
-            WriteAtomically(SettingsFilePath, json);
+            WriteAtomically(settingsPath, json);
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException(App.Text("Error.SaveSettingsFailed", ex.Message), ex);
+            // 利用者向けの接頭辞（Error.SaveSettingsFailed）は表示する側が1回だけ付ける。ここでは原因だけを運ぶ。
+            throw new InvalidOperationException(ex.Message, ex);
         }
     }
 

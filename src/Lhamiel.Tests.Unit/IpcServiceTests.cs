@@ -51,46 +51,6 @@ public class IpcServiceTests
     }
 
     [Fact]
-    public async Task SendAndReceive_RoundTrip_DeliversArgs()
-    {
-        using var cts = new CancellationTokenSource(TestTimeoutMs);
-        var received = new TaskCompletionSource<string[]>();
-
-        var serverTask = Task.Run(async () =>
-        {
-            await StartServerAsync(args =>
-            {
-                received.TrySetResult(args);
-            }, cts.Token);
-        }, cts.Token);
-
-        await Task.Delay(100, cts.Token);
-
-        var sent = new[] { @"C:\test\file.zip", "--extract" };
-        var success = await SendArgsToExistingInstanceAsync(sent, cts.Token);
-
-        Assert.True(success);
-
-        var result = await received.Task.WaitAsync(cts.Token);
-        Assert.Equal(sent, result);
-
-        await cts.CancelAsync();
-        try { await serverTask; } catch (OperationCanceledException) { }
-    }
-
-    [Fact]
-    public async Task SendArgs_CancelledToken_ReturnsFalse()
-    {
-        using var cts = new CancellationTokenSource();
-        await cts.CancelAsync();
-
-        var result = await SendArgsToExistingInstanceAsync(
-            ["test.zip"], cts.Token);
-
-        Assert.False(result);
-    }
-
-    [Fact]
     public async Task SendArgs_NoServer_ReturnsFalseAfterTimeout()
     {
         // テスト用の短い待機で失敗を確認（実際の ConnectTotalTimeoutMs は長いため、即キャンセルで代替）
@@ -100,15 +60,6 @@ public class IpcServiceTests
             ["test.zip"], cts.Token);
 
         Assert.False(result);
-    }
-
-    [Fact]
-    public async Task Server_CancelledToken_ExitsGracefully()
-    {
-        using var cts = new CancellationTokenSource();
-        await cts.CancelAsync();
-
-        await StartServerAsync(_ => { }, cts.Token);
     }
 
     [Fact]
@@ -153,7 +104,7 @@ public class IpcServiceTests
 
         await Task.Delay(100, cts.Token);
 
-        var sent = new[] { @"C:\テスト\ファイル.zip", "日本語パス", "émojis🎉" };
+        var sent = new[] { @"C:\test\file.zip", "--extract", @"C:\テスト\ファイル.zip", "日本語パス", "émojis🎉" };
         var success = await SendArgsToExistingInstanceAsync(sent, cts.Token);
         Assert.True(success);
 

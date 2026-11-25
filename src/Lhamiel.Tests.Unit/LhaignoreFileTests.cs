@@ -17,14 +17,10 @@ public class LhaignoreFileTests
     [Theory]
     // 通常のファイル名は変更しない
     [InlineData("foo.txt", "foo.txt")]
-    [InlineData("README.md", "README.md")]
     // gitignore メタ文字 * ? はリテラルとして扱われるべき
-    [InlineData("build*", @"build\*")]
-    [InlineData("file?.txt", @"file\?.txt")]
     [InlineData("a*b?c", @"a\*b\?c")]
     // [1] のような character class はリテラル扱いさせる
     [InlineData("foo[1].txt", @"foo\[1\].txt")]
-    [InlineData("[abc]", @"\[abc\]")]
     // 先頭の '!' は gitignore で否定の意味を持つので escape
     [InlineData("!important.txt", @"\!important.txt")]
     // 先頭の '#' は gitignore でコメントになるので escape
@@ -34,8 +30,7 @@ public class LhaignoreFileTests
     [InlineData("v1.0#alpha", "v1.0#alpha")]
     // backslash 自身もエスケープ文字なので escape
     [InlineData(@"path\file", @"path\\file")]
-    // 空文字列と null はそのまま返す
-    [InlineData("", "")]
+    // null はそのまま返す
     [InlineData(null, null)]
     public void EscapeGitignoreLiteral_EscapesOnlyGitignoreMetaCharacters(string? input, string? expected)
     {

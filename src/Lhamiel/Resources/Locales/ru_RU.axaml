@@ -5,12 +5,10 @@
   </ResourceDictionary.MergedDictionaries>
 
   <!-- Window Titles -->
-  <x:String x:Key="Text.App.Title" xml:space="preserve">Lhamiel - Инструмент сжатия &amp; распаковки архивов</x:String>
   <x:String x:Key="Text.Error.DirectoryLinkCompressionOutput" xml:space="preserve">Путь вывода архива является ссылкой на папку, поэтому его нельзя перезаписать: {0}</x:String>
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} объектов</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Отменить всё</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Обработка...</x:String>
-  <x:String x:Key="Text.Overwrite.Title" xml:space="preserve">Замена файла</x:String>
   <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Параметры восстановления после ошибки</x:String>
 
   <!-- Drop Zone -->
@@ -23,7 +21,6 @@
   <x:String x:Key="Text.Settings.Tab.Compression" xml:space="preserve">Сжатие</x:String>
   <x:String x:Key="Text.Settings.Tab.CompressionExclusions" xml:space="preserve">Исключения при сжатии</x:String>
   <x:String x:Key="Text.Settings.Tab.Association" xml:space="preserve">Ассоциации файлов</x:String>
-  <x:String x:Key="Text.Settings.Tab.Version" xml:space="preserve">Версия</x:String>
   <x:String x:Key="Text.Sidebar.General" xml:space="preserve">Общие</x:String>
   <x:String x:Key="Text.Sidebar.Extraction" xml:space="preserve">Распаковка</x:String>
   <x:String x:Key="Text.Sidebar.Compression" xml:space="preserve">Сжатие</x:String>
@@ -68,7 +65,6 @@
 
   <!-- Compression Settings -->
   <x:String x:Key="Text.Settings.Compression.OpenFolder" xml:space="preserve">Открыть папку назначения после сжатия</x:String>
-  <x:String x:Key="Text.Settings.Compression.MergeHeader" xml:space="preserve">Объединённое сжатие</x:String>
   <x:String x:Key="Text.Settings.Compression.OptionHeader" xml:space="preserve">Параметры сжатия</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeOption" xml:space="preserve">Сжать несколько файлов в один архив</x:String>
   <x:String x:Key="Text.Settings.Compression.MergeDescription" xml:space="preserve">Если выключено, каждый файл будет сжат в отдельный архив</x:String>
@@ -81,7 +77,6 @@
   <x:String x:Key="Text.Settings.Compression.LzhMethod" xml:space="preserve">Метод сжатия LZH</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystem" xml:space="preserve">Включать скрытые/системные файлы и папки</x:String>
   <x:String x:Key="Text.Settings.Compression.IncludeHiddenAndSystemDescription" xml:space="preserve">Элементы с атрибутом Hidden или System также добавляются в архив.</x:String>
-  <x:String x:Key="Text.Settings.ExcludedPatterns.Header" xml:space="preserve">Исключения при сжатии</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Description" xml:space="preserve">Настройки на этой странице применяются ко всем операциям сжатия Lhamiel для текущего пользователя Windows. Исключения для конкретного источника задаются в файлах правил внутри его папок.</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Header" xml:space="preserve">Общие правила исключения</x:String>
   <x:String x:Key="Text.Settings.ExcludedPatterns.Global.Description" xml:space="preserve">Указанные здесь шаблоны применяются ко всем источникам сжатия. Поддерживается синтаксис, совместимый с .gitignore.</x:String>
@@ -120,7 +115,6 @@
   <x:String x:Key="Text.Settings.Association.IconIce" xml:space="preserve">Ледяная папка</x:String>
 
   <!-- Version Tab -->
-  <x:String x:Key="Text.Version.AppName" xml:space="preserve">Lhamiel</x:String>
   <x:String x:Key="Text.Version.Description" xml:space="preserve">Инструмент сжатия &amp; распаковки архивов</x:String>
   <x:String x:Key="Text.Version.Label" xml:space="preserve">Версия</x:String>
   <x:String x:Key="Text.Version.SevenZipLabel" xml:space="preserve">7-Zip</x:String>
@@ -156,7 +150,6 @@
   <x:String x:Key="Text.Support.ServerUnreachable" xml:space="preserve">Не удалось связаться со службой поддержки. Повторите попытку позже.</x:String>
 
   <!-- Buttons -->
-  <x:String x:Key="Text.Button.Save" xml:space="preserve">Сохранить</x:String>
   <x:String x:Key="Text.Button.Cancel" xml:space="preserve">Отмена</x:String>
   <x:String x:Key="Text.Button.OK" xml:space="preserve">ОК</x:String>
   <x:String x:Key="Text.Button.Yes" xml:space="preserve">Да</x:String>
@@ -169,7 +162,6 @@
   <x:String x:Key="Text.Progress.MovingFiles" xml:space="preserve">Перемещение файлов...</x:String>
   <x:String x:Key="Text.Progress.Extracting" xml:space="preserve">Извлечение</x:String>
   <x:String x:Key="Text.Progress.Compressing" xml:space="preserve">Сжатие</x:String>
-  <x:String x:Key="Text.Progress.VerifyingIntegrity" xml:space="preserve">Проверка целостности...</x:String>
   <x:String x:Key="Text.Progress.ApplyingSecurityMark" xml:space="preserve">Применение метки безопасности...</x:String>
   <x:String x:Key="Text.Progress.ScanningFiles" xml:space="preserve">Поиск файлов... {0:N0}</x:String>
   <x:String x:Key="Text.Progress.PreparingCompression" xml:space="preserve">Подготовка к сжатию... {0:N0} / {1:N0}</x:String>
@@ -187,11 +179,6 @@
   <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Запомнить этот выбор</x:String>
 
   <!-- Overwrite Dialog -->
-  <x:String x:Key="Text.Overwrite.FolderMessage" xml:space="preserve">Папка «{0}» уже существует.\n\nУдалить существующую папку и перезаписать?</x:String>
-  <x:String x:Key="Text.Overwrite.FileMessage" xml:space="preserve">Файл «{0}» уже существует.\n\nЗаменить его?</x:String>
-  <x:String x:Key="Text.Overwrite.FolderTitle" xml:space="preserve">Подтверждение перезаписи папки</x:String>
-  <x:String x:Key="Text.Overwrite.FileTitle" xml:space="preserve">Замена файла</x:String>
-  <x:String x:Key="Text.Overwrite.DefaultMessage" xml:space="preserve">Файл уже существует.\n\nЗаменить его?</x:String>
 
   <!-- Dialog Titles (MessageService) -->
   <x:String x:Key="Text.Dialog.Error" xml:space="preserve">Ошибка</x:String>
@@ -206,15 +193,12 @@
   <x:String x:Key="Text.Error.UnsupportedFormat" xml:space="preserve">Неподдерживаемый формат файла.\n{0}</x:String>
   <x:String x:Key="Text.Error.UnsupportedCompression" xml:space="preserve">Неподдерживаемый формат сжатия.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringExtraction" xml:space="preserve">Произошла ошибка при распаковке.\n{0}</x:String>
-  <x:String x:Key="Text.Error.CrcVerificationFailed" xml:space="preserve">Ошибка проверки целостности CRC: {0}\n{1}</x:String>
   <x:String x:Key="Text.Error.DuringCompression" xml:space="preserve">Произошла ошибка при сжатии.\n{0}</x:String>
   <x:String x:Key="Text.Error.DuringProcessing" xml:space="preserve">Произошла ошибка при обработке.\n{0}</x:String>
   <x:String x:Key="Text.Error.FileLocked" xml:space="preserve">Файл «{0}» используется или доступ запрещён.</x:String>
-  <x:String x:Key="Text.Error.SaveSettings" xml:space="preserve">Не удалось сохранить настройки.</x:String>
   <x:String x:Key="Text.Error.ProcessFiles" xml:space="preserve">Не удалось обработать файлы.</x:String>
   <x:String x:Key="Text.Error.ApplyAssociation" xml:space="preserve">Не удалось применить настройки ассоциаций файлов.</x:String>
   <x:String x:Key="Text.Error.InitApp" xml:space="preserve">Не удалось инициализировать приложение.</x:String>
-  <x:String x:Key="Text.Error.OverwriteDialog" xml:space="preserve">Не удалось отобразить диалог подтверждения перезаписи: {0}</x:String>
   <x:String x:Key="Text.Error.SelectAll" xml:space="preserve">Произошла ошибка при выборе всех элементов.</x:String>
   <x:String x:Key="Text.Error.DeselectAll" xml:space="preserve">Произошла ошибка при снятии выделения.</x:String>
   <x:String x:Key="Text.Error.ExtractionTitle" xml:space="preserve">Ошибка распаковки</x:String>
@@ -225,10 +209,6 @@
   <x:String x:Key="Text.Shortcut.Error" xml:space="preserve">Произошла ошибка при создании ярлыка.</x:String>
 
   <!-- Update Messages -->
-  <x:String x:Key="Text.Update.Applying" xml:space="preserve">Применение обновления... Перезапуск.</x:String>
-  <x:String x:Key="Text.Update.UpToDate" xml:space="preserve">✅ Установлена последняя версия.</x:String>
-  <x:String x:Key="Text.Update.DevEnvironment" xml:space="preserve">⚠ Невозможно проверить обновления в среде разработки.</x:String>
-  <x:String x:Key="Text.Update.NoRepository" xml:space="preserve">⚠ Репозиторий обновлений не настроен.</x:String>
   <x:String x:Key="Text.Update.Error" xml:space="preserve">⚠ Произошла ошибка при проверке обновлений.</x:String>
   <x:String x:Key="Text.Update.Timeout" xml:space="preserve">Время ожидания проверки обновлений истекло.</x:String>
   <x:String x:Key="Text.Update.Downloading" xml:space="preserve">Загрузка обновления...</x:String>
@@ -305,8 +285,6 @@
 
   <!-- Partial Extraction -->
   <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Распаковка: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ReExtracting" xml:space="preserve">Повторная распаковка: {0}</x:String>
-  <x:String x:Key="Text.Extraction.FileNotInArchive" xml:space="preserve">Целевой файл не найден в архиве.</x:String>
   <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Файл: {0}\nОшибка: {1}</x:String>
   <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Вы можете повторить попытку или пропустить.</x:String>
 
@@ -365,6 +343,10 @@
   <x:String x:Key="Text.Error.NoFilesToCompress" xml:space="preserve">Не указаны файлы для сжатия.</x:String>
   <x:String x:Key="Text.Error.PathNotFound" xml:space="preserve">Указанный путь не найден: {0}</x:String>
   <x:String x:Key="Text.Error.SaveSettingsFailed" xml:space="preserve">Не удалось сохранить настройки: {0}</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedStartupUnreadable" xml:space="preserve">Не удалось прочитать settings.json при запуске, поэтому сохранение отменено, чтобы защитить существующие настройки. Перезапустите приложение</x:String>
+  <x:String x:Key="Text.Error.SaveAbortedFileUnreadable" xml:space="preserve">Сейчас не удаётся прочитать settings.json (возможно, он открыт в другом приложении), поэтому сохранение отменено, чтобы защитить существующие настройки</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableStartup" xml:space="preserve">Lhamiel не удалось прочитать settings.json, и он запущен с настройками по умолчанию. Изменения в этом сеансе не будут сохранены. Сохранённый пароль сжатия и защита паролем также не были прочитаны, поэтому архивы могут создаваться без защиты паролем. Проверьте, не открыт ли settings.json в другом Lhamiel или приложении, и перезапустите Lhamiel.</x:String>
+  <x:String x:Key="Text.Error.SettingsUnreadableExternalChange" xml:space="preserve">Поскольку settings.json не удалось прочитать, это изменение (контекстное меню, сопоставления файлов, значки или ярлыки) применить нельзя. Перезапустите приложение.</x:String>
   <x:String x:Key="Text.Error.ExtractedFileNotFound" xml:space="preserve">Извлечённый файл не найден.</x:String>
 
   <!-- Path validation messages -->
@@ -407,7 +389,6 @@
   <x:String x:Key="Text.Password.MismatchWarning" xml:space="preserve">Пароли не совпадают. Введите подтверждение ещё раз.</x:String>
   <x:String x:Key="Text.Password.EmptyPasswordWarning" xml:space="preserve">Введите пароль.</x:String>
   <x:String x:Key="Text.Password.TooShortWarning" xml:space="preserve">Пароль должен содержать не менее 4 символов.</x:String>
-  <x:String x:Key="Text.Password.PasteHint" xml:space="preserve">Можно вставить из менеджера паролей (Ctrl+V).</x:String>
 
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Title" xml:space="preserve">Удалить сохранённый пароль?</x:String>
   <x:String x:Key="Text.Confirm.WipeSavedPassword.Message" xml:space="preserve">Переключение на "Запрашивать при каждом перетаскивании" удалит текущий сохранённый пароль. Продолжить?</x:String>

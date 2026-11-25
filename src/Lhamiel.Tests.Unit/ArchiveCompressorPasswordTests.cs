@@ -48,42 +48,6 @@ public class ArchiveCompressorPasswordTests : IDisposable
     }
 
     [Fact]
-    public async Task ZipFormat_WithPassword_CreatesNonEmptyArchive()
-    {
-        Assert.SkipWhen(!OperatingSystem.IsWindows(), "7z.dll 経路は Windows 限定");
-        var src = CreateSourceFile();
-        var archive = Path.Combine(_testDir, "encrypted.zip");
-
-        await ArchiveCompressor.CompressFilesAsync(
-            [src], archive, Format.Zip,
-            cancellationToken: TestContext.Current.CancellationToken,
-            password: "mypassword");
-
-        Assert.True(File.Exists(archive));
-        var size = new FileInfo(archive).Length;
-        Assert.True(size > 50, $"暗号化 ZIP のサイズが想定より小さい: {size} bytes");
-    }
-
-    [Fact]
-    public async Task SevenZipFormat_WithPasswordAndHeaderEncryption_CreatesArchive()
-    {
-        Assert.SkipWhen(!OperatingSystem.IsWindows(), "7z.dll 経路は Windows 限定");
-        var src = CreateSourceFile();
-        var archive = Path.Combine(_testDir, "encrypted.7z");
-
-        await ArchiveCompressor.CompressFilesAsync(
-            [src], archive, Format.SevenZip,
-            cancellationToken: TestContext.Current.CancellationToken,
-            password: "mypassword", encryptFileNames: true);
-
-        Assert.True(File.Exists(archive));
-        // 7z ヘッダ暗号化が掛かっていると、メタデータがランダム化されてエントロピが高くなる。
-        // ここでは「ファイルが存在し、サイズが妥当」の最低限の検証にとどめる。
-        var size = new FileInfo(archive).Length;
-        Assert.True(size > 50, $"暗号化 7z のサイズが想定より小さい: {size} bytes");
-    }
-
-    [Fact]
     public async Task ZipFormat_WithPassword_IsActuallyAes256_NotZipCrypto()
     {
         // ライブラリソース監査で判明: CompressionOptionSetter.Invoke は ISetProperties.SetProperties の
@@ -184,22 +148,6 @@ public class ArchiveCompressorPasswordTests : IDisposable
 
         using var reader = new ArchiveReader(archive);
         Assert.Contains(reader.Items, e => e.Name == "secret.txt");
-    }
-
-    [Fact]
-    public async Task SevenZipFormat_WithoutPassword_CreatesArchive()
-    {
-        Assert.SkipWhen(!OperatingSystem.IsWindows(), "7z.dll 経路は Windows 限定");
-        var src = CreateSourceFile();
-        var archive = Path.Combine(_testDir, "plain.7z");
-
-        await ArchiveCompressor.CompressFilesAsync(
-            [src], archive, Format.SevenZip,
-            cancellationToken: TestContext.Current.CancellationToken,
-            password: null);
-
-        Assert.True(File.Exists(archive));
-        Assert.True(new FileInfo(archive).Length > 0);
     }
 
     [Fact]

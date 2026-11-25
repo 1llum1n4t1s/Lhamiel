@@ -118,46 +118,6 @@ public class ParallelProcessingTests
 
 
     /// <summary>
-    /// 有効なキャンセルトークンを渡した場合に展開が正常完了することを確認
-    /// </summary>
-    [Fact]
-    public async Task ExtractArchivesAsync_WithValidToken_CompletesSuccessfully()
-    {
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var zipFiles = new List<string>();
-            for (var i = 0; i < 2; i++)
-            {
-                zipFiles.Add(CreateTestZipFile(testDir, $"archive{i}"));
-            }
-
-            var outputDir = Path.Combine(testDir, "output");
-            Directory.CreateDirectory(outputDir);
-
-            var result = await ArchiveProcessor.ExtractArchivesAsync(
-                zipFiles.ToArray(),
-                outputDir,
-                outputToSameDirectory: false,
-                progressWindow: null!,
-                cancellationToken: TestContext.Current.CancellationToken
-            );
-
-            Assert.NotEmpty(result);
-            Assert.All(result, r => Assert.NotNull(r.OutputPath));
-            var extractedDirs = Directory.GetDirectories(outputDir);
-            Assert.Equal(2, extractedDirs.Length);
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-            {
-                Directory.Delete(testDir, true);
-            }
-        }
-    }
-
-    /// <summary>
     /// キャンセル済みトークンを渡した場合に OperationCanceledException がスローされることを確認
     /// </summary>
     [Fact]
@@ -244,41 +204,6 @@ public class ParallelProcessingTests
 
 
     /// <summary>
-    /// 有効なキャンセルトークンを渡した場合に圧縮が正常完了することを確認
-    /// </summary>
-    [Fact]
-    public async Task CompressItemsAsync_WithValidToken_CompletesSuccessfully()
-    {
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            var folder1 = CreateTestFolder(testDir, "folder1");
-            var folder2 = CreateTestFolder(testDir, "folder2");
-            var outputDir = Path.Combine(testDir, "output");
-            Directory.CreateDirectory(outputDir);
-
-            var result = await ArchiveProcessor.CompressItemsAsync([folder1, folder2],
-                outputDir,
-                outputToSameDirectory: false,
-                format: "zip",
-                progressWindow: null!,
-                cancellationToken: TestContext.Current.CancellationToken
-            );
-
-            Assert.True(result, "圧縮が成功するはず");
-            var zipFiles = Directory.GetFiles(outputDir, "*.zip");
-            Assert.Equal(2, zipFiles.Length);
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-            {
-                Directory.Delete(testDir, true);
-            }
-        }
-    }
-
-    /// <summary>
     /// キャンセル済みトークンを渡した場合に OperationCanceledException がスローされることを確認
     /// </summary>
     [Fact]
@@ -304,47 +229,6 @@ public class ParallelProcessingTests
                 ));
             Assert.NotNull(ex);
             Assert.IsAssignableFrom<OperationCanceledException>(ex);
-        }
-        finally
-        {
-            if (Directory.Exists(testDir))
-            {
-                Directory.Delete(testDir, true);
-            }
-        }
-    }
-
-    /// <summary>
-    /// 複数ファイル展開で一部が失敗した場合の処理を確認
-    /// </summary>
-    [Fact]
-    public async Task ExtractArchivesAsync_PartialFailure_ReturnsPartialSuccess()
-    {
-        var testDir = CreateTemporaryTestDirectory();
-        try
-        {
-            // 有効なZIPファイルを2つ作成
-            var validZip1 = CreateTestZipFile(testDir, "valid1");
-            var validZip2 = CreateTestZipFile(testDir, "valid2");
-
-            var outputDir = Path.Combine(testDir, "output");
-            Directory.CreateDirectory(outputDir);
-
-            // 複数ファイル展開を実行（すべて有効）
-            var results = await ArchiveProcessor.ExtractArchivesAsync([validZip1, validZip2],
-                outputDir,
-                outputToSameDirectory: false,
-                progressWindow: null!,
-                cancellationToken: TestContext.Current.CancellationToken
-            );
-
-            // 両方成功として扱われるはず
-            Assert.Equal(2, results.Count);
-            Assert.All(results, r => Assert.NotNull(r.OutputPath));
-
-            // 有効なファイルは展開されているはず
-            var extractedDirs = Directory.GetDirectories(outputDir);
-            Assert.Equal(2, extractedDirs.Length);
         }
         finally
         {

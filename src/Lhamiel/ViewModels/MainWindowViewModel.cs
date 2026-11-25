@@ -438,7 +438,25 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
         _appliedAppIconVariant = normalized;
         AppIconManager.ApplyToOpenWindows(normalized);
+        // 開いているウィンドウのアイコンはメモリ上の表示だけなので適用する。ショートカット（外部ファイル）は、
+        // 設定を読めていないセッションでは書き換えない。
+        if (RefuseExternalChangeWhenSettingsUnreadable())
+            return;
         ShortcutCreator.RefreshKnownApplicationShortcutIcons(normalized);
+    }
+
+    /// <summary>
+    /// このセッションが settings.json を読めず既定値で動いているとき、外部状態（右クリックメニュー・関連付け・
+    /// ショートカット）を変える操作を適用前に拒否し、理由を通知する。拒否したら true。
+    /// </summary>
+    private bool RefuseExternalChangeWhenSettingsUnreadable()
+    {
+        if (!_settingsManager.StartedWithUnreadableSettings)
+            return false;
+
+        Logger.Log("settings.json を読めていないため、外部状態を変更する操作を拒否しました", LogLevel.Warning);
+        _ = MessageService.ShowError(App.Text("Error.SettingsUnreadableExternalChange"));
+        return true;
     }
 
     partial void OnExtractionOutputDirectoryChanged(string value) => AutoSave();
@@ -533,11 +551,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (confirmed)
         {
             // 1 トランザクションで mode + ciphertext を更新（中間状態を作らない、critique security #3）
-            SettingsManager.Instance.MutateAndSave(s =>
+            try
             {
-                s.PasswordMode = "PromptEachTime";
-                s.EncryptedCompressionPassword = null;
-            });
+                SettingsManager.Instance.MutateAndSave(s =>
+                {
+                    s.PasswordMode = "PromptEachTime";
+                    s.EncryptedCompressionPassword = null;
+                });
+            }
+            catch (Exception ex)
+            {
+                // 保存中止・失敗時のメモリは SettingsManager が変更前へ戻し済み。UI だけを Remember へ戻す。
+                _suppressPasswordModeWipe = true;
+                try { PasswordMode = "Remember"; }
+                finally { _suppressPasswordModeWipe = false; }
+                Logger.LogException("保存済みパスワードの削除に失敗", ex);
+                _ = MessageService.ShowError(App.Text("Error.SaveSettingsFailed", ex.Message));
+            }
             OnPropertyChanged(nameof(HasSavedPassword));
             OnPropertyChanged(nameof(SavedPasswordStatusText));
         }
@@ -569,7 +599,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
         });
         if (!confirmed) return;
 
-        SettingsManager.Instance.MutateAndSave(s => s.EncryptedCompressionPassword = null);
+        try
+        {
+            SettingsManager.Instance.MutateAndSave(s => s.EncryptedCompressionPassword = null);
+        }
+        catch (Exception ex)
+        {
+            // 保存失敗時のメモリは SettingsManager が変更前へ戻し済み（表示と実体は一致している）。
+            Logger.LogException("保存済みパスワードの削除に失敗", ex);
+            _ = MessageService.ShowError(App.Text("Error.SaveSettingsFailed", ex.Message));
+        }
         OnPropertyChanged(nameof(HasSavedPassword));
         OnPropertyChanged(nameof(SavedPasswordStatusText));
     }
@@ -595,6 +634,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             // Protect 内部やこの try の catch で平文混入経路があってもマスクされる。
             using var _ = Logger.RegisterRedactionToken(newPassword);
             var ciphertext = CompressionPasswordSession.Protect(newPassword);
+            // 保存失敗時のメモリは SettingsManager が変更前へ戻す。
             SettingsManager.Instance.MutateAndSave(s => s.EncryptedCompressionPassword = ciphertext);
             OnPropertyChanged(nameof(HasSavedPassword));
             OnPropertyChanged(nameof(SavedPasswordStatusText));
@@ -602,6 +642,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         catch (Exception ex)
         {
             Logger.LogException("圧縮パスワードの保存に失敗", ex);
+            _ = MessageService.ShowError(App.Text("Error.SaveSettingsFailed", ex.Message));
         }
     }
 
@@ -619,35 +660,23 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     partial void OnAddExtractToContextMenuChanged(bool value)
     {
-        if (_isLoading)
-            return;
-
-        if (ShellContextMenu.SetEnabled(AddExtractToContextMenu, AddCompressToContextMenu))
-        {
-            AutoSave();
-            return;
-        }
-
-        // 適用に失敗した場合は、UI と永続設定を実際の変更前の状態へ戻す。
-        _isLoading = true;
-        try
-        {
-            AddExtractToContextMenu = !value;
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-
-        _ = MessageService.ShowError(App.Text("Error.ApplyAssociation"));
+        ApplyContextMenuChange(() => AddExtractToContextMenu = !value);
     }
 
     partial void OnAddCompressToContextMenuChanged(bool value)
     {
+        ApplyContextMenuChange(() => AddCompressToContextMenu = !value);
+    }
+
+    /// <summary>右クリックメニューの設定変更を適用し、失敗時は <paramref name="rollback"/> で UI と永続設定を変更前へ戻す。</summary>
+    private void ApplyContextMenuChange(Action rollback)
+    {
         if (_isLoading)
             return;
 
-        if (ShellContextMenu.SetEnabled(AddExtractToContextMenu, AddCompressToContextMenu))
+        // 設定を読めていないセッションでは、既定値を根拠に登録を変えない（適用前に拒否して UI を戻す）。
+        var refused = RefuseExternalChangeWhenSettingsUnreadable();
+        if (!refused && ShellContextMenu.SetEnabled(AddExtractToContextMenu, AddCompressToContextMenu))
         {
             AutoSave();
             return;
@@ -657,14 +686,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _isLoading = true;
         try
         {
-            AddCompressToContextMenu = !value;
+            rollback();
         }
         finally
         {
             _isLoading = false;
         }
 
-        _ = MessageService.ShowError(App.Text("Error.ApplyAssociation"));
+        if (!refused)
+            _ = MessageService.ShowError(App.Text("Error.ApplyAssociation"));
     }
 
     partial void OnSelectedDirectoryStructureModeChanged(int value) => AutoSave();
@@ -1247,6 +1277,10 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void CreateShortcut(DesktopShortcutKind kind)
     {
+        // アイコンの種類が既定値になり、利用者の選択と食い違うショートカットを作らない。
+        if (RefuseExternalChangeWhenSettingsUnreadable())
+            return;
+
         try
         {
             if (ShortcutCreator.CreateDesktopShortcut(kind, SelectedAppIconVariant))
@@ -1383,6 +1417,26 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private bool _suppressAssociationApply;
 
+    /// <summary>適用を拒否したあと、チェックボックスを実際の関連付け状態へ戻す（戻す操作自体は適用を起動しない）。</summary>
+    private void RestoreAssociationDisplayFromSystem()
+    {
+        _suppressAssociationApply = true;
+        try
+        {
+            var status = FileAssociation.GetCurrentAssociationStatus();
+            foreach (var item in Associations)
+                item.IsAssociated = status.GetValueOrDefault(item.Extension, false);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("関連付けの表示を戻せませんでした", ex);
+        }
+        finally
+        {
+            _suppressAssociationApply = false;
+        }
+    }
+
     /// <summary>
     /// 各関連付け項目の変更を購読し、チェックボックス操作時に即座に適用する
     /// </summary>
@@ -1400,6 +1454,13 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private void ApplyAssociationSettings(bool refreshAssociatedIcons = false)
     {
+        // 設定を読めていないセッションでは、関連付けを書き換えず、画面の表示を実際の登録状態へ戻す。
+        if (RefuseExternalChangeWhenSettingsUnreadable())
+        {
+            RestoreAssociationDisplayFromSystem();
+            return;
+        }
+
         try
         {
             Logger.Log("関連付け設定の適用を開始");
@@ -1511,8 +1572,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (string.IsNullOrEmpty(IgnoredUpdateTag)) return;
         try
         {
-            _settingsManager.Mutate(s => s.IgnoreUpdateTag = "");
-            _settingsManager.Save();
+            // 失敗時はメモリが変更前へ戻り、UI の表示（IgnoredUpdateTag）も変えない。
+            _settingsManager.MutateAndSave(s => s.IgnoreUpdateTag = "");
             IgnoredUpdateTag = "";
             Logger.Log("IgnoreUpdateTag をユーザー操作によりクリアしました", LogLevel.Warning);
         }

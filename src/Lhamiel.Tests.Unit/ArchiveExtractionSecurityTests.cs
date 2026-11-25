@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.IO.Compression;
 using Lhamiel.Util;
 using Xunit;
@@ -101,7 +100,7 @@ public sealed class ArchiveExtractionSecurityTests
         Directory.CreateDirectory(output);
         File.WriteAllText(targetFile, "preserve");
         File.SetAttributes(targetFile, File.GetAttributes(targetFile) | FileAttributes.ReadOnly);
-        CreateJunction(junction, target);
+        DirectoryJunction.Create(junction, target);
 
         try
         {
@@ -140,7 +139,7 @@ public sealed class ArchiveExtractionSecurityTests
         Directory.CreateDirectory(target);
         File.WriteAllText(targetFile, "preserve");
         File.SetAttributes(targetFile, File.GetAttributes(targetFile) | FileAttributes.ReadOnly);
-        CreateJunction(junction, target);
+        DirectoryJunction.Create(junction, target);
 
         try
         {
@@ -155,21 +154,6 @@ public sealed class ArchiveExtractionSecurityTests
             if (File.Exists(targetFile))
                 File.SetAttributes(targetFile, File.GetAttributes(targetFile) & ~FileAttributes.ReadOnly);
         }
-    }
-
-    private static void CreateJunction(string junction, string target)
-    {
-        using var process = Process.Start(new ProcessStartInfo("cmd.exe")
-        {
-            UseShellExecute = false,
-            CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            ArgumentList = { "/d", "/c", "mklink", "/J", junction, target },
-        });
-        Assert.NotNull(process);
-        process.WaitForExit();
-        Assert.True(process.ExitCode == 0, process.StandardError.ReadToEnd());
     }
 
     private sealed class TempDirectory : IDisposable

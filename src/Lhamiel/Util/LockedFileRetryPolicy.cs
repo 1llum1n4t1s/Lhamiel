@@ -27,28 +27,11 @@ internal static class LockedFileRetryPolicy
     internal static void Execute(Action action, string contextPath, int maxAttempts = 6, int initialDelayMs = 50,
         CancellationToken cancellationToken = default)
     {
-        var delayMs = initialDelayMs;
-        for (var attempt = 1; ; attempt++)
+        Execute<object?>(() =>
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            try
-            {
-                action();
-                if (attempt > 1)
-                    Logger.Log($"操作成功（リトライ {attempt - 1} 回）: {contextPath}");
-                return;
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception ex) when (IsTransientLockError(ex) && attempt < maxAttempts)
-            {
-                var jitteredDelay = ApplyJitter(delayMs);
-                Logger.Log(
-                    $"一時的なロックで操作失敗（試行 {attempt}/{maxAttempts}）: {contextPath}: {ex.Message}。{jitteredDelay}ms 待機して再試行",
-                    LogLevel.Warning);
-                SleepCancellable(jitteredDelay, cancellationToken);
-                delayMs *= 2;
-            }
-        }
+            action();
+            return null;
+        }, contextPath, maxAttempts, initialDelayMs, cancellationToken);
     }
 
     /// <summary>

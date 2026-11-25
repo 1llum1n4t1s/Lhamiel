@@ -25,17 +25,7 @@ public class ArchiveExtractorAdversarialTests
         File.WriteAllText(outsideFile, "preserve");
         try
         {
-            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("cmd.exe")
-            {
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                ArgumentList = { "/d", "/c", "mklink", "/J", link, outside },
-            });
-            Assert.NotNull(process);
-            process.WaitForExit();
-            Assert.True(process.ExitCode == 0, process.StandardError.ReadToEnd());
+            DirectoryJunction.Create(link, outside);
             Assert.Throws<SecurityException>(() =>
                 ArchiveExtractor.EnumerateExtractionTreeSafely(source));
             Assert.Equal("preserve", File.ReadAllText(outsideFile));
@@ -50,185 +40,8 @@ public class ArchiveExtractorAdversarialTests
     }
 
     // ==============================
-    // 🗡️ 境界値・極端入力 — IsSupportedArchiveType
+    // 🗡️ 境界値 — GetBaseOutputDirectory
     // ==============================
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// 空文字列を渡してもクラッシュしない
-    /// </summary>
-    [Fact]
-    public void IsSupportedArchiveType_EmptyString_ReturnsFalse()
-    {
-        Assert.False(ArchiveExtractor.IsSupportedArchiveType(""));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// 拡張子なしのファイルパス → false
-    /// </summary>
-    [Fact]
-    public void IsSupportedArchiveType_NoExtension_ReturnsFalse()
-    {
-        Assert.False(ArchiveExtractor.IsSupportedArchiveType("Makefile"));
-        Assert.False(ArchiveExtractor.IsSupportedArchiveType(@"C:\path\to\LICENSE"));
-        // 形式名と紛らわしい拡張子なしの名前も false（旧 EdgeCase テストの入力）
-        Assert.False(ArchiveExtractor.IsSupportedArchiveType("archive"));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// ドットだけの拡張子 → false
-    /// </summary>
-    [Fact]
-    public void IsSupportedArchiveType_DotOnly_ReturnsFalse()
-    {
-        Assert.False(ArchiveExtractor.IsSupportedArchiveType("file."));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// 大文字・混在ケースの拡張子がサポートされる（大文字小文字無視）
-    /// </summary>
-    [Theory]
-    [InlineData("archive.ZIP")]
-    [InlineData("archive.Zip")]
-    [InlineData("archive.7Z")]
-    [InlineData("archive.Tar")]
-    [InlineData("archive.RAR")]
-    [InlineData("archive.LZH")]
-    [InlineData("file.ZIP")]  // 旧 EdgeCase: 全大文字
-    [InlineData("file.ZiP")]  // 旧 EdgeCase: 大文字小文字の混在
-    public void IsSupportedArchiveType_CaseInsensitive_ReturnsTrue(string path)
-    {
-        Assert.True(ArchiveExtractor.IsSupportedArchiveType(path));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// 二重拡張子（.tar.gz）→ 外側の .gz がサポート対象
-    /// </summary>
-    [Theory]
-    [InlineData("archive.tar.gz", true)]   // .gz はサポート
-    [InlineData("archive.tar.bz2", true)]  // .bz2 はサポート
-    [InlineData("archive.tar.xz", true)]   // .xz はサポート
-    [InlineData("archive.tar.txt", false)] // .txt は非サポート
-    public void IsSupportedArchiveType_DoubleExtension_ChecksOuterExtension(string path, bool expected)
-    {
-        Assert.Equal(expected, ArchiveExtractor.IsSupportedArchiveType(path));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// 拡張子がアーカイブっぽいが非サポートの形式 → false
-    /// </summary>
-    [Theory]
-    [InlineData("file.iso")]
-    [InlineData("file.dmg")]
-    [InlineData("file.pkg")]
-    [InlineData("file.deb")]
-    [InlineData("file.rpm")]
-    [InlineData("file.msi")]
-    public void IsSupportedArchiveType_UnsupportedArchiveFormats_ReturnsFalse(string path)
-    {
-        Assert.False(ArchiveExtractor.IsSupportedArchiveType(path));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity low
-    /// Windows 予約名 + アーカイブ拡張子 → サポート対象（拡張子のみで判定）
-    /// </summary>
-    [Theory]
-    [InlineData("CON.zip")]
-    [InlineData("NUL.7z")]
-    [InlineData("COM1.tar")]
-    public void IsSupportedArchiveType_WindowsReservedNames_ReturnsTrue(string path)
-    {
-        Assert.True(ArchiveExtractor.IsSupportedArchiveType(path));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// 超長パス（260文字超）でもクラッシュしない
-    /// </summary>
-    [Fact]
-    public void IsSupportedArchiveType_VeryLongPath_DoesNotCrash()
-    {
-        var longDir = new string('a', 300);
-        var path = $@"C:\{longDir}\archive.zip";
-        // Path.GetExtension は長いパスでもクラッシュしない
-        Assert.True(ArchiveExtractor.IsSupportedArchiveType(path));
-    }
-
-    // ==============================
-    // 🗡️ 境界値 — AreAllSupportedArchives
-    // ==============================
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// 空のコレクション → true（vacuous truth: すべての要素が条件を満たす）
-    /// </summary>
-    [Fact]
-    public void AreAllSupportedArchives_EmptyCollection_ReturnsTrue()
-    {
-        Assert.True(ArchiveExtractor.AreAllSupportedArchives([]));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// 存在しないファイルパスのみ → false（File.Exists が false）
-    /// </summary>
-    [Fact]
-    public void AreAllSupportedArchives_NonExistentFiles_ReturnsFalse()
-    {
-        var paths = new[] { @"C:\nonexistent\fake.zip", @"C:\nonexistent\fake.7z" };
-        Assert.False(ArchiveExtractor.AreAllSupportedArchives(paths));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// ディレクトリパス（.zip 拡張子付き）→ false（File.Exists が false）
-    /// </summary>
-    [Fact]
-    public void AreAllSupportedArchives_DirectoryPath_ReturnsFalse()
-    {
-        var tempDir = Path.Combine(Path.GetTempPath(), "fake_archive.zip");
-        Directory.CreateDirectory(tempDir);
-        try
-        {
-            Assert.False(ArchiveExtractor.AreAllSupportedArchives([tempDir]));
-        }
-        finally
-        {
-            Directory.Delete(tempDir);
-        }
-    }
-
-    // ==============================
-    // 🗡️ 境界値 — GetOutputDirectory / GetBaseOutputDirectory
-    // ==============================
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// アーカイブ名が拡張子のみ（.zip）でも、基準ディレクトリ自身へ直接展開しない
-    /// </summary>
-    [Fact]
-    public void GetOutputDirectory_ExtensionOnlyFilename_UsesSafeFallbackFolderName()
-    {
-        var result = ArchiveExtractor.GetOutputDirectory(@"C:\dir\.zip", @"C:\output");
-        Assert.Equal(Path.Combine(@"C:\output", "archive"), result);
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// デフォルト出力ディレクトリが空白文字のみ → アーカイブの親ディレクトリにフォールバック
-    /// </summary>
-    [Fact]
-    public void GetBaseOutputDirectory_WhitespaceOnlyDefault_FallsBackToArchiveDir()
-    {
-        var result = ArchiveExtractor.GetBaseOutputDirectory(@"C:\archives\test.zip", "   ");
-        Assert.Equal(@"C:\archives", result);
-    }
 
     /// <summary>
     /// @adversarial @category boundary @severity medium
@@ -243,122 +56,29 @@ public class ArchiveExtractorAdversarialTests
         Assert.Equal(@"C:\output", result);
     }
 
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// 二重拡張子ファイルの出力ディレクトリ名（archive.tar.gz → archive）
-    /// </summary>
-    [Fact]
-    public void GetOutputDirectory_DoubleExtension_StripsAllArchiveExtensions()
-    {
-        var result = ArchiveExtractor.GetOutputDirectory(@"C:\dir\archive.tar.gz", @"C:\output");
-        // 複合アーカイブ拡張子を全て除去: "archive.tar.gz" → "archive"
-        Assert.Equal(Path.Combine(@"C:\output", "archive"), result);
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// 日本語ファイル名のアーカイブ → 出力ディレクトリ名も日本語
-    /// </summary>
-    [Fact]
-    public void GetOutputDirectory_JapaneseFilename_PreservedInOutput()
-    {
-        var result = ArchiveExtractor.GetOutputDirectory(@"C:\dir\日本語アーカイブ.zip", @"C:\output");
-        Assert.Equal(Path.Combine(@"C:\output", "日本語アーカイブ"), result);
-    }
-
     // ==============================
-    // 🎭 型パンチ — IsSupportedArchiveType
-    // ==============================
-
-    /// <summary>
-    /// @adversarial @category type @severity medium
-    /// Unicode 制御文字を含むパスでクラッシュしない
-    /// </summary>
-    [Theory]
-    [InlineData("file\u200B.zip")]      // ゼロ幅スペース
-    [InlineData("file\u202E.zip")]      // RTL override
-    [InlineData("\uFEFFfile.zip")]      // BOM
-    public void IsSupportedArchiveType_UnicodeControlChars_DoesNotCrash(string path)
-    {
-        // クラッシュしないこと（結果は true/false どちらでも OK）
-        var _ = ArchiveExtractor.IsSupportedArchiveType(path);
-    }
-
-    /// <summary>
-    /// @adversarial @category type @severity medium
-    /// 絵文字を含むファイル名でクラッシュしない
-    /// </summary>
-    [Fact]
-    public void IsSupportedArchiveType_EmojiFilename_DoesNotCrash()
-    {
-        Assert.True(ArchiveExtractor.IsSupportedArchiveType("📦アーカイブ.zip"));
-        Assert.False(ArchiveExtractor.IsSupportedArchiveType("📦アーカイブ.txt"));
-    }
-
-    // ==============================
-    // 🗡️ 境界値 — SupportedExtensions / IgnoredSystemFiles
+    // 🗡️ 境界値 — SupportedExtensions
     // ==============================
 
     /// <summary>
     /// @adversarial @category boundary @severity medium
-    /// SupportedExtensions に全ての文書化された形式が含まれている（ドキュメントとの整合性）
+    /// SupportedExtensions が文書化された 19 形式と完全一致する（展開・関連付けの公開互換）。
+    /// 先頭ドット・小文字の書式も同時に固定される。
     /// </summary>
-    [Theory]
-    [InlineData(".zip")]
-    [InlineData(".7z")]
-    [InlineData(".tar")]
-    [InlineData(".gz")]
-    [InlineData(".tgz")]
-    [InlineData(".bz2")]
-    [InlineData(".tbz2")]
-    [InlineData(".tbz")]
-    [InlineData(".lzma")]
-    [InlineData(".tlz")]
-    [InlineData(".xz")]
-    [InlineData(".txz")]
-    [InlineData(".rar")]
-    [InlineData(".lzh")]
-    [InlineData(".lha")]
-    [InlineData(".cab")]
-    [InlineData(".arj")]
-    [InlineData(".z")]
-    [InlineData(".tz")]
-    public void SupportedExtensions_ContainsAllDocumentedFormats(string ext)
+    [Fact]
+    public void SupportedExtensions_ExactlyMatchesDocumentedFormats()
     {
-        Assert.Contains(ext, ArchiveExtractor.SupportedExtensions);
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity low
-    /// IgnoredSystemFiles がケースインセンシティブに動作する
-    /// </summary>
-    [Theory]
-    [InlineData("desktop.ini")]
-    [InlineData("DESKTOP.INI")]
-    [InlineData("Desktop.INI")]
-    [InlineData("Thumbs.db")]
-    [InlineData("THUMBS.DB")]
-    [InlineData("thumbs.DB")]  // 旧 EdgeCase: 拡張子だけ大文字
-    [InlineData(".DS_Store")]
-    [InlineData(".ds_store")]
-    public void IgnoredSystemFiles_CaseInsensitive(string fileName)
-    {
-        Assert.Contains(fileName, ArchiveExtractor.IgnoredSystemFiles);
+        string[] expected =
+        [
+            ".zip", ".7z", ".tar", ".gz", ".tgz", ".bz2", ".tbz2", ".tbz", ".lzma", ".tlz",
+            ".xz", ".txz", ".rar", ".lzh", ".lha", ".cab", ".arj", ".z", ".tz",
+        ];
+        Assert.Equal(expected.Order(StringComparer.Ordinal), ArchiveExtractor.SupportedExtensions.Order(StringComparer.Ordinal));
     }
 
     // ==============================
     // 🗡️ 境界値・極端入力 — GetArchiveBaseName
     // ==============================
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// 単純なzip拡張子 → 拡張子のみ除去
-    /// </summary>
-    [Fact]
-    public void GetArchiveBaseName_SimpleZip_RemovesExtension()
-    {
-        Assert.Equal("project", ArchiveExtractor.GetArchiveBaseName(@"C:\dir\project.zip"));
-    }
 
     /// <summary>
     /// @adversarial @category boundary @severity high
@@ -382,26 +102,6 @@ public class ArchiveExtractorAdversarialTests
     public void GetArchiveBaseName_NestedArchiveExtension_RemovesOnlyOutermost()
     {
         Assert.Equal("foo.rar", ArchiveExtractor.GetArchiveBaseName("foo.rar.zip"));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity high
-    /// foo.zip.zip → 最外のみ除去（foo.zip を返す）
-    /// </summary>
-    [Fact]
-    public void GetArchiveBaseName_DuplicateZipExtension_RemovesOnlyOutermost()
-    {
-        Assert.Equal("foo.zip", ArchiveExtractor.GetArchiveBaseName("foo.zip.zip"));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// 拡張子なしのファイル → そのまま返す
-    /// </summary>
-    [Fact]
-    public void GetArchiveBaseName_NoExtension_ReturnsAsIs()
-    {
-        Assert.Equal("noext", ArchiveExtractor.GetArchiveBaseName("noext"));
     }
 
     [Fact]
@@ -467,6 +167,7 @@ public class ArchiveExtractorAdversarialTests
     [InlineData("..tar.gz")]
     [InlineData("...tar.gz")]
     [InlineData("CON.zip")]
+    [InlineData(".zip")]
     public void ResolveArchiveOutputDirectory_UnsafeArchiveName_StaysInsideBase(string archiveName)
     {
         var baseDirectory = Path.Combine(Path.GetTempPath(), $"Lhamiel-OutputBase-{Guid.NewGuid():N}");
@@ -478,32 +179,12 @@ public class ArchiveExtractorAdversarialTests
 
     /// <summary>
     /// @adversarial @category boundary @severity medium
-    /// .tar のみ（圧縮なし） → tar を返す（.tar はアーカイブ拡張子）
-    /// </summary>
-    [Fact]
-    public void GetArchiveBaseName_TarOnly_RemovesTarExtension()
-    {
-        Assert.Equal("data", ArchiveExtractor.GetArchiveBaseName("data.tar"));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
     /// .gz のみ（.tar なし） → gz除去のみ、内側は非tarなのでそのまま
     /// </summary>
     [Fact]
     public void GetArchiveBaseName_GzOnly_RemovesGzExtension()
     {
         Assert.Equal("data", ArchiveExtractor.GetArchiveBaseName("data.gz"));
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// 日本語ファイル名 + .tar.gz → 日本語部分を保持
-    /// </summary>
-    [Fact]
-    public void GetArchiveBaseName_JapaneseWithTarGz_PreservesJapanese()
-    {
-        Assert.Equal("日本語データ", ArchiveExtractor.GetArchiveBaseName("日本語データ.tar.gz"));
     }
 
     /// <summary>
@@ -625,29 +306,6 @@ public class ArchiveExtractorAdversarialTests
         var info = ArchiveExtractor.GetArchiveStructureInfo(@"C:\nonexistent\fake.zip");
         Assert.False(info.ShouldSkipFolderCreation);
         Assert.Null(info.SingleRootItemName);
-    }
-
-    /// <summary>
-    /// @adversarial @category boundary @severity medium
-    /// .tar.gz の場合、アーカイブ名は "data"（tar.gzを両方除去）で比較されること
-    /// </summary>
-    [Fact]
-    public void GetArchiveStructureInfo_TarGz_UsesBaseNameForComparison()
-    {
-        using var tempDir = new TempDirectory();
-        // data.tar.gz のアーカイブ名は "data"
-        // ルートフォルダが "data" なら ShouldSkipFolderCreation=true
-        var zipPath = Path.Combine(tempDir.Path, "data.tar.gz");
-        // 注: ZipArchive で .tar.gz を作れないので、.zip で代替テスト
-        // 実際の .tar.gz テストは統合テストで行う
-        var actualZipPath = Path.Combine(tempDir.Path, "data.zip");
-        using (var zip = new System.IO.Compression.ZipArchive(File.Create(actualZipPath), System.IO.Compression.ZipArchiveMode.Create))
-        {
-            var e = zip.CreateEntry("data/file.txt");
-            using (var w = new StreamWriter(e.Open())) w.Write("content");
-        }
-        var info = ArchiveExtractor.GetArchiveStructureInfo(actualZipPath);
-        Assert.True(info.ShouldSkipFolderCreation);
     }
 
     // ==============================

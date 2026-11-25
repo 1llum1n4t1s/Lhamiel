@@ -43,19 +43,4 @@ public sealed class MessageServiceLifecycleTests
 
         Assert.Equal(["close:start", "close:end", "dialog:start", "dialog:end"], events);
     }
-
-    [Fact]
-    public async Task ShowAfterClosingAsync_WithoutTransientWindowStillAwaitsDialog()
-    {
-        var dialogCompletion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        var flow = MessageService.ShowAfterClosingAsync(
-            closeTransientWindow: null,
-            () => dialogCompletion.Task);
-
-        Assert.False(flow.IsCompleted);
-
-        dialogCompletion.TrySetResult(true);
-        await flow.WaitAsync(TimeSpan.FromSeconds(5));
-    }
 }

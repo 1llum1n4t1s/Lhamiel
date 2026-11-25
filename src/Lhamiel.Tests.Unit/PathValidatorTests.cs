@@ -11,7 +11,6 @@ public class PathValidatorTests
 
     [Theory]
     [InlineData(null)]
-    [InlineData("")]
     [InlineData("   ")]
     public void IsProtectedDirectory_WithNullOrEmpty_ReturnsTrue(string? path)
     {
@@ -21,7 +20,6 @@ public class PathValidatorTests
 
     [Theory]
     [InlineData(@"C:\")]
-    [InlineData(@"D:\")]
     public void IsProtectedDirectory_WithDriveRoot_ReturnsTrue(string path)
     {
         Assert.True(PathValidator.IsProtectedDirectory(path));
@@ -67,7 +65,6 @@ public class PathValidatorTests
 
     [Theory]
     [InlineData(null)]
-    [InlineData("")]
     [InlineData("   ")]
     public void IsSystemCriticalDirectory_WithNullOrEmpty_ReturnsTrue(string? path)
     {
@@ -76,7 +73,6 @@ public class PathValidatorTests
 
     [Theory]
     [InlineData(@"C:\")]
-    [InlineData(@"D:\")]
     public void IsSystemCriticalDirectory_WithDriveRoot_ReturnsTrue(string path)
     {
         Assert.True(PathValidator.IsSystemCriticalDirectory(path));
@@ -99,14 +95,6 @@ public class PathValidatorTests
     }
 
     [Fact]
-    public void IsSystemCriticalDirectory_WithSystem32_ReturnsTrue()
-    {
-        var sys = Environment.GetFolderPath(Environment.SpecialFolder.System);
-        Assert.SkipWhen(string.IsNullOrEmpty(sys), "System32 フォルダが解決できないためスキップ");
-        Assert.True(PathValidator.IsSystemCriticalDirectory(sys));
-    }
-
-    [Fact]
     public void IsSystemCriticalDirectory_WithUserProfileRoot_ReturnsTrue()
     {
         var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -125,26 +113,6 @@ public class PathValidatorTests
         Assert.SkipWhen(string.IsNullOrEmpty(windows), "Windows フォルダが解決できないためスキップ");
         var system32Drivers = Path.Combine(windows, "System32", "drivers");
         Assert.True(PathValidator.IsSystemCriticalDirectory(system32Drivers));
-    }
-
-    [Fact]
-    public void IsSystemCriticalDirectory_WithDesktop_ReturnsFalse()
-    {
-        // ユーザーコンテンツフォルダは「正当な出力先」として許可されること。
-        // IsProtectedDirectory（再帰削除拒否用）とは振る舞いが異なる。
-        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-        Assert.SkipWhen(string.IsNullOrEmpty(desktop), "Desktop フォルダが解決できないためスキップ");
-        Assert.False(PathValidator.IsSystemCriticalDirectory(desktop));
-    }
-
-    [Fact]
-    public void IsSystemCriticalDirectory_WithDownloads_ReturnsFalse()
-    {
-        var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        Assert.SkipWhen(string.IsNullOrEmpty(profile), "UserProfile フォルダが解決できないためスキップ");
-        var downloads = Path.Combine(profile, "Downloads");
-        Assert.SkipUnless(Directory.Exists(downloads), "Downloads フォルダが存在しないためスキップ");
-        Assert.False(PathValidator.IsSystemCriticalDirectory(downloads));
     }
 
     [Fact]

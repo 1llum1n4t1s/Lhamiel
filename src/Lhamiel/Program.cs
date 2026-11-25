@@ -60,8 +60,9 @@ internal class Program
             })
             .OnRestarted(v =>
             {
-                RestoreSelectedApplicationShortcutIcons();
-                ClearShortcutIconRestorePending();
+                // 設定を読めず見送ったときは保留マーカーを残し、次回の正常な起動で復元する。
+                if (RestoreSelectedApplicationShortcutIcons())
+                    ClearShortcutIconRestorePending();
             })
             .OnBeforeUninstallFastCallback(v => CleanupBeforeUninstall())
             .Run();
@@ -98,6 +99,14 @@ internal class Program
     /// </summary>
     private static void RefreshShellContextMenuRegistration()
     {
+        // settings.json を読めなかったときの Current は既定値（両方 OFF）なので、
+        // それを根拠に利用者の右クリックメニュー登録を解除・変更しない。
+        if (SettingsManager.Instance.StartedWithUnreadableSettings)
+        {
+            Logger.Log("settings.json を読めなかったため、右クリックメニュー登録の更新を見送りました", LogLevel.Warning);
+            return;
+        }
+
         var settings = SettingsManager.Instance.Current;
         _ = ShellContextMenu.SetEnabled(
             settings.AddExtractToContextMenu,
@@ -142,13 +151,24 @@ internal class Program
     /// <c>OnAfterUpdateFastCallback</c> の実行後に Velopack 自身が .lnk を保存するため、
     /// この処理はショートカット更新後に発火する <c>OnRestarted</c> から呼び出す。
     /// </remarks>
-    internal static void RestoreSelectedApplicationShortcutIcons(
+    /// <returns>
+    /// 復元を実行したら true。設定を読めず既定値のアイコンで既存ショートカットを書き換えてしまう場合は、何もせず false。
+    /// </returns>
+    internal static bool RestoreSelectedApplicationShortcutIcons(
         Action<string?>? refreshShortcutIcons = null,
-        string? appIconVariant = null)
+        string? appIconVariant = null,
+        bool? settingsUnreadable = null)
     {
+        if (appIconVariant is null && (settingsUnreadable ?? SettingsManager.Instance.StartedWithUnreadableSettings))
+        {
+            Logger.Log("settings.json を読めなかったため、ショートカットのアイコン復元を見送りました", LogLevel.Warning);
+            return false;
+        }
+
         var variant = Settings.NormalizeAppIconVariant(
             appIconVariant ?? SettingsManager.Instance.Current.AppIconVariant);
         (refreshShortcutIcons ?? ShortcutCreator.RefreshKnownApplicationShortcutIcons)(variant);
+        return true;
     }
 
     /// <summary>
@@ -178,13 +198,15 @@ internal class Program
     internal static bool RestoreSelectedApplicationShortcutIconsIfPending(
         string? markerPath = null,
         Action<string?>? refreshShortcutIcons = null,
-        string? appIconVariant = null)
+        string? appIconVariant = null,
+        bool? settingsUnreadable = null)
     {
         var path = markerPath ?? GetShortcutIconRestoreMarkerPath();
         if (!File.Exists(path))
             return false;
 
-        RestoreSelectedApplicationShortcutIcons(refreshShortcutIcons, appIconVariant);
+        if (!RestoreSelectedApplicationShortcutIcons(refreshShortcutIcons, appIconVariant, settingsUnreadable))
+            return false;
         ClearShortcutIconRestorePending(path);
         return true;
     }
