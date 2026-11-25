@@ -315,8 +315,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (hasValidSourceIgnoreFileNames)
                 s.SourceIgnoreFileNames = sourceIgnoreFileNames;
             s.Check4UpdatesOnStartup = Check4UpdatesOnStartup;
-            s.AddExtractToContextMenu = AddExtractToContextMenu;
-            s.AddCompressToContextMenu = AddCompressToContextMenu;
+            // 登録の適用中は、未適用の UI 値ではなく適用済みの値を保存する（終了時のフラッシュと登録状態を一致させる）。
+            s.AddExtractToContextMenu = _contextMenuApplying ? _appliedExtractToContextMenu : AddExtractToContextMenu;
+            s.AddCompressToContextMenu = _contextMenuApplying ? _appliedCompressToContextMenu : AddCompressToContextMenu;
             s.DirectoryStructureMode = (DirectoryStructureMode)SelectedDirectoryStructureMode;
             s.ZipCompressionLevel = ZipCompressionLevel;
             s.SevenZipCompressionLevel = SevenZipCompressionLevel;
@@ -421,8 +422,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (string.IsNullOrEmpty(value) || string.Equals(normalized, _appliedFileIconVariant, StringComparison.Ordinal))
             return;
 
+        // 適用できなかったときは適用済みの値を進めず、選び直しで再適用できるようにする。
+        var previousApplied = _appliedFileIconVariant;
         _appliedFileIconVariant = normalized;
-        ApplyAssociationSettings(refreshAssociatedIcons: true);
+        if (!ApplyAssociationSettings(refreshAssociatedIcons: true))
+            _appliedFileIconVariant = previousApplied;
     }
 
     partial void OnSelectedAppIconVariantChanged(string value)
@@ -540,13 +544,24 @@ public sealed partial class MainWindowViewModel : ObservableObject
             AutoSave();
             return;
         }
-        var confirmed = await Dispatcher.UIThread.InvokeAsync(async () =>
+        bool confirmed;
+        try
         {
-            var dialog = new ConfirmDialog(
-                App.Text("Confirm.WipeSavedPassword.Message"),
-                App.Text("Confirm.WipeSavedPassword.Title"));
-            return await dialog.ShowDialog<bool>(owner);
-        });
+            confirmed = await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                var dialog = new ConfirmDialog(
+                    App.Text("Confirm.WipeSavedPassword.Message"),
+                    App.Text("Confirm.WipeSavedPassword.Title"));
+                return await dialog.ShowDialog<bool>(owner);
+            });
+        }
+        catch (Exception ex)
+        {
+            // 確認を経ないままモードだけが PromptEachTime で保存されないよう、画面を Remember へ戻す。
+            RevertPasswordModeToRemember();
+            Logger.LogException("保存済みパスワード削除の確認ダイアログでエラーが発生", ex);
+            return;
+        }
 
         if (confirmed)
         {
@@ -562,9 +577,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             catch (Exception ex)
             {
                 // 保存中止・失敗時のメモリは SettingsManager が変更前へ戻し済み。UI だけを Remember へ戻す。
-                _suppressPasswordModeWipe = true;
-                try { PasswordMode = "Remember"; }
-                finally { _suppressPasswordModeWipe = false; }
+                RevertPasswordModeToRemember();
                 Logger.LogException("保存済みパスワードの削除に失敗", ex);
                 _ = MessageService.ShowError(App.Text("Error.SaveSettingsFailed", ex.Message));
             }
@@ -577,10 +590,16 @@ public sealed partial class MainWindowViewModel : ObservableObject
             // PasswordMode セッターは ObservableProperty が PropertyChanged を発火するので、
             // MainWindow 側で購読している InitPasswordModeRadioButtons が UI 上の radio も Remember に戻す
             // (CodeRabbit #3381138457: PropertyChanged 購読方式に統一)。
-            _suppressPasswordModeWipe = true;
-            try { PasswordMode = "Remember"; }
-            finally { _suppressPasswordModeWipe = false; }
+            RevertPasswordModeToRemember();
         }
+    }
+
+    /// <summary>パスワードモードを Remember へ戻す（<c>_suppressPasswordModeWipe</c> で確認処理の再帰を防ぐ）。</summary>
+    private void RevertPasswordModeToRemember()
+    {
+        _suppressPasswordModeWipe = true;
+        try { PasswordMode = "Remember"; }
+        finally { _suppressPasswordModeWipe = false; }
     }
 
     /// <summary>保存済みパスワードを削除する（確認ダイアログあり）。</summary>
@@ -675,27 +694,141 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
 
         // 設定を読めていないセッションでは、既定値を根拠に登録を変えない（適用前に拒否して UI を戻す）。
-        var refused = RefuseExternalChangeWhenSettingsUnreadable();
-        if (!refused && ShellContextMenu.SetEnabled(AddExtractToContextMenu, AddCompressToContextMenu))
+        if (RefuseExternalChangeWhenSettingsUnreadable())
         {
-            AutoSave();
+            RunWithoutSideEffects(rollback);
             return;
         }
 
-        // 適用に失敗した場合は、UI と永続設定を実際の変更前の状態へ戻す。
+        // 登録中の切替は、実行中の適用ループが完了後に最新の UI 値を再確認して直列に処理する。
+        if (_contextMenuApplying)
+            return;
+
+        _contextMenuApplying = true;
+        _ = ApplyContextMenuChangesAsync();
+    }
+
+    /// <summary>UI 値の変更通知による保存・適用を起こさずに <paramref name="action"/> を実行する。</summary>
+    private void RunWithoutSideEffects(Action action)
+    {
+        var wasLoading = _isLoading;
         _isLoading = true;
         try
         {
-            rollback();
+            action();
         }
         finally
         {
-            _isLoading = false;
+            _isLoading = wasLoading;
         }
-
-        if (!refused)
-            _ = MessageService.ShowError(App.Text("Error.ApplyAssociation"));
     }
+
+    /// <summary>
+    /// 右クリックメニューの登録（MSIX 登録の同期待ちを含む）を背景スレッドで行い、UI スレッドを塞がない。
+    /// 実行中は 1 件ずつ直列に処理し、完了ごとに UI の最新値と適用済みの値を比べて続きを適用する。
+    /// 設定の保存は適用成功後に UI スレッドで行い、失敗時の巻き戻しと通知も UI スレッドで行う。
+    /// </summary>
+    private async Task ApplyContextMenuChangesAsync()
+    {
+        try
+        {
+            // UI の最新値が適用済みの値と違う間、1 件ずつ適用する。
+            while (AddExtractToContextMenu != _appliedExtractToContextMenu
+                   || AddCompressToContextMenu != _appliedCompressToContextMenu)
+            {
+                var extract = AddExtractToContextMenu;
+                var compress = AddCompressToContextMenu;
+                var work = StartContextMenuRegistration(extract, compress);
+                _contextMenuRegistrationWork = (work, extract, compress);
+                var succeeded = await work.ConfigureAwait(true);
+                _contextMenuRegistrationWork = null;
+
+                // 終了処理が結果を反映済み（または待ちきれず放棄）なので、二重の適用・保存・通知をしない。
+                if (_exiting)
+                    return;
+
+                if (succeeded)
+                {
+                    _appliedExtractToContextMenu = extract;
+                    _appliedCompressToContextMenu = compress;
+                    AutoSave();
+                    continue;
+                }
+
+                // 適用に失敗した場合は、UI と永続設定を実際の適用済みの状態へ戻す。
+                RevertContextMenuToApplied();
+                _ = MessageService.ShowError(App.Text("Error.ApplyAssociation"));
+            }
+        }
+        finally
+        {
+            _contextMenuApplying = false;
+        }
+    }
+
+    private void RevertContextMenuToApplied() => RunWithoutSideEffects(() =>
+    {
+        AddExtractToContextMenu = _appliedExtractToContextMenu;
+        AddCompressToContextMenu = _appliedCompressToContextMenu;
+    });
+
+    /// <summary>
+    /// ThreadPool（MTA）で登録を開始する。ネイティブ側も自前の MTA スレッドで MSIX 登録を待つため、前提は変わらない。
+    /// 返す Task は UI スレッドへ戻る継続を持たないので、終了処理が UI スレッドから待ってもデッドロックしない。
+    /// </summary>
+    private static Task<bool> StartContextMenuRegistration(bool extract, bool compress) => Task.Run(() =>
+    {
+        try
+        {
+            return ShellContextMenu.SetEnabled(extract, compress);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("右クリックメニューの適用で予期しないエラーが発生", ex);
+            return false;
+        }
+    });
+
+    /// <summary>進行中の登録（背景 Task と、その対象値）。登録中でなければ null。</summary>
+    private (Task<bool> Task, bool Extract, bool Compress)? _contextMenuRegistrationWork;
+
+    private volatile bool _exiting;
+
+    /// <summary>
+    /// 終了時の設定フラッシュの前に呼ぶ。進行中の右クリックメニュー登録を待ち、成功ならその値を適用済みとして反映する。
+    /// 待ちは上限付き: 登録は MSIX の配置を伴い数秒かかり得るが、終了を無期限に止めないため 10 秒で打ち切り、
+    /// 打ち切った場合は適用済みの旧値が保存される（次回の更新時か、利用者の再切替で設定へ合わせ直される）。
+    /// </summary>
+    internal void CompleteContextMenuRegistrationBeforeExit()
+    {
+        _exiting = true;
+        if (_contextMenuRegistrationWork is not { } work)
+            return;
+
+        try
+        {
+            if (!work.Task.Wait(TimeSpan.FromSeconds(10)))
+            {
+                Logger.Log("右クリックメニューの登録が終了時に完了しなかったため、適用済みの設定を保存します", LogLevel.Warning);
+                return;
+            }
+
+            if (work.Task.Result)
+            {
+                _appliedExtractToContextMenu = work.Extract;
+                _appliedCompressToContextMenu = work.Compress;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogException("終了時の右クリックメニュー登録の待機に失敗", ex);
+        }
+    }
+
+    /// <summary>右クリックメニューの登録を実際に適用済みの値（読み込み時または直近の成功時点）。</summary>
+    private bool _appliedExtractToContextMenu;
+    private bool _appliedCompressToContextMenu;
+    private bool _contextMenuApplying;
 
     partial void OnSelectedDirectoryStructureModeChanged(int value) => AutoSave();
 
@@ -759,21 +892,29 @@ public sealed partial class MainWindowViewModel : ObservableObject
         var savedSevenZipLevel = SevenZipCompressionLevel;
         var savedLzhMethod = LzhCompressionMethod;
 
+        // 呼び出し元（LoadFromSettings 中のロケール設定など）が読み込み中なら、その状態を壊さず元へ戻す。
+        var wasLoading = _isLoading;
         _isLoading = true;
-        for (var i = 0; i < CompressionLevels.Count; i++)
+        try
         {
-            var old = CompressionLevels[i];
-            CompressionLevels[i] = new CompressionLevelItem(old.Level, old.ResourceKey);
+            for (var i = 0; i < CompressionLevels.Count; i++)
+            {
+                var old = CompressionLevels[i];
+                CompressionLevels[i] = new CompressionLevelItem(old.Level, old.ResourceKey);
+            }
+
+            for (var i = 0; i < LzhCompressionMethods.Count; i++)
+                LzhCompressionMethods[i] = new LzhCompressionMethodItem(LzhCompressionMethods[i].Method);
+
+            // 選択状態を復元
+            SelectedZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == savedZipLevel);
+            SelectedSevenZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == savedSevenZipLevel);
+            SelectedLzhMethod = LzhCompressionMethods.FirstOrDefault(m => m.Method == savedLzhMethod);
         }
-
-        for (var i = 0; i < LzhCompressionMethods.Count; i++)
-            LzhCompressionMethods[i] = new LzhCompressionMethodItem(LzhCompressionMethods[i].Method);
-
-        // 選択状態を復元
-        SelectedZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == savedZipLevel);
-        SelectedSevenZipLevel = CompressionLevels.FirstOrDefault(l => l.Level == savedSevenZipLevel);
-        SelectedLzhMethod = LzhCompressionMethods.FirstOrDefault(m => m.Method == savedLzhMethod);
-        _isLoading = false;
+        finally
+        {
+            _isLoading = wasLoading;
+        }
     }
 
     /// <summary>
@@ -947,6 +1088,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _showProgressWindow = showProgressWindow;
         _isLoading = true;
         LoadFromSettings();
+        _appliedExtractToContextMenu = AddExtractToContextMenu;
+        _appliedCompressToContextMenu = AddCompressToContextMenu;
         LoadAssociationStatus();
         SubscribeAssociationChanges();
         LoadVersionInfo();
@@ -1259,11 +1402,17 @@ public sealed partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        // Clear でバインド先の選択が外れるため、先に退避し、再読込後も残っていれば選択を維持する。
+        var previousSelection = SelectedExcludedFilePattern;
         CompressionExcludedFilePatterns.Clear();
         foreach (var pattern in latest)
             CompressionExcludedFilePatterns.Add(pattern);
-        SelectedExcludedFilePattern = null;
+        SelectedExcludedFilePattern = RetainSelection(previousSelection, latest);
     }
+
+    /// <summary>再読込後のリストに <paramref name="previous"/> が残っていればそれを、無ければ null を返す。</summary>
+    internal static string? RetainSelection(string? previous, IReadOnlyCollection<string> latest)
+        => previous is not null && latest.Contains(previous) ? previous : null;
 
 
     [RelayCommand]
@@ -1402,7 +1551,19 @@ public sealed partial class MainWindowViewModel : ObservableObject
         catch (Exception ex)
         {
             Logger.LogException("関連付け設定の読み込みでエラーが発生", ex);
-            SetAllAssociations(false);
+            // 読めなかっただけで実際の関連付けは不明なので、表示だけを未選択にし、適用（解除）は起動しない。
+            // 表示は実状態ではないため、次の操作では適用せず先に読み直す。
+            _associationDisplayUnverified = true;
+            _suppressAssociationApply = true;
+            try
+            {
+                foreach (var item in Associations)
+                    item.IsAssociated = false;
+            }
+            finally
+            {
+                _suppressAssociationApply = false;
+            }
         }
     }
 
@@ -1417,8 +1578,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
 
     private bool _suppressAssociationApply;
 
+    /// <summary>関連付けの表示が実際の登録状態から読み込めていない間は true。この間は適用せず、先に読み直す。</summary>
+    private bool _associationDisplayUnverified;
+
     /// <summary>適用を拒否したあと、チェックボックスを実際の関連付け状態へ戻す（戻す操作自体は適用を起動しない）。</summary>
-    private void RestoreAssociationDisplayFromSystem()
+    private bool RestoreAssociationDisplayFromSystem()
     {
         _suppressAssociationApply = true;
         try
@@ -1426,10 +1590,15 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var status = FileAssociation.GetCurrentAssociationStatus();
             foreach (var item in Associations)
                 item.IsAssociated = status.GetValueOrDefault(item.Extension, false);
+            _associationDisplayUnverified = false;
+            return true;
         }
         catch (Exception ex)
         {
+            // 表示が実状態と一致している保証が無いので、次の適用の前に読み直させる。
+            _associationDisplayUnverified = true;
             Logger.LogException("関連付けの表示を戻せませんでした", ex);
+            return false;
         }
         finally
         {
@@ -1452,43 +1621,87 @@ public sealed partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private void ApplyAssociationSettings(bool refreshAssociatedIcons = false)
+    /// <summary>
+    /// 表示（<see cref="FileAssociationItem.IsAssociated"/>）と実際の登録状態の差を、渡された操作で適用する。
+    /// 1 件でも失敗したら true を返す（呼び出し側が表示を実状態へ戻して通知する）。
+    /// </summary>
+    internal static bool SyncAssociations(
+        IEnumerable<FileAssociationItem> items,
+        IReadOnlyDictionary<string, bool> currentStatus,
+        bool refreshAssociatedIcons,
+        Func<string, bool> associate,
+        Func<string, bool> disassociate)
+    {
+        var anyFailed = false;
+        foreach (var item in items)
+        {
+            var isCurrentlyAssociated = currentStatus.GetValueOrDefault(item.Extension, false);
+            if (item.IsAssociated && (!isCurrentlyAssociated || refreshAssociatedIcons))
+                anyFailed |= !RunAssociationOperation(associate, item.Extension, "設定");
+            else if (!item.IsAssociated && isCurrentlyAssociated)
+                anyFailed |= !RunAssociationOperation(disassociate, item.Extension, "解除");
+        }
+
+        return anyFailed;
+    }
+
+    private static bool RunAssociationOperation(Func<string, bool> operation, string extension, string label)
+    {
+        var succeeded = operation(extension);
+        Logger.Log(
+            $"関連付け{label}{(succeeded ? "成功" : "失敗")}: {extension}",
+            succeeded ? LogLevel.Info : LogLevel.Warning);
+        return succeeded;
+    }
+
+    /// <summary>関連付けを適用する。すべて適用できたら true、拒否・読み直しのみ・失敗なら false。</summary>
+    private bool ApplyAssociationSettings(bool refreshAssociatedIcons = false)
     {
         // 設定を読めていないセッションでは、関連付けを書き換えず、画面の表示を実際の登録状態へ戻す。
         if (RefuseExternalChangeWhenSettingsUnreadable())
         {
             RestoreAssociationDisplayFromSystem();
-            return;
+            return false;
+        }
+
+        // 表示が実状態から読めていない間は、差分で既存の関連付けを解除しないよう、適用せず読み直しだけ行い、
+        // 操作が適用されなかったことを 1 回通知する。
+        if (_associationDisplayUnverified)
+        {
+            RestoreAssociationDisplayFromSystem();
+            _ = MessageService.ShowError(App.Text("Error.ApplyAssociation"));
+            return false;
         }
 
         try
         {
             Logger.Log("関連付け設定の適用を開始");
             var currentStatus = FileAssociation.GetCurrentAssociationStatus();
-            foreach (var item in Associations)
-            {
-                var isCurrentlyAssociated = currentStatus.GetValueOrDefault(item.Extension, false);
-                if (item.IsAssociated && (!isCurrentlyAssociated || refreshAssociatedIcons))
-                {
-                    if (FileAssociation.AssociateFileType(item.Extension, SelectedFileIconVariant))
-                        Logger.Log($"関連付け設定成功: {item.Extension}");
-                    else
-                        Logger.Log($"関連付け設定失敗: {item.Extension}", LogLevel.Warning);
-                }
-                else if (!item.IsAssociated && isCurrentlyAssociated)
-                {
-                    if (FileAssociation.DisassociateFileType(item.Extension))
-                        Logger.Log($"関連付け解除成功: {item.Extension}");
-                    else
-                        Logger.Log($"関連付け解除失敗: {item.Extension}", LogLevel.Warning);
-                }
-            }
+            var iconVariant = SelectedFileIconVariant;
+            var anyFailed = SyncAssociations(
+                Associations,
+                currentStatus,
+                refreshAssociatedIcons,
+                extension => FileAssociation.AssociateFileType(extension, iconVariant),
+                FileAssociation.DisassociateFileType);
             FileAssociation.NotifyExplorer();
             Logger.Log("関連付け設定の適用が完了しました");
+
+            // 失敗した項目があれば、表示を実際の登録状態へ戻し、1 回だけ通知する。
+            if (anyFailed)
+            {
+                RestoreAssociationDisplayFromSystem();
+                _ = MessageService.ShowError(App.Text("Error.ApplyAssociation"));
+            }
+
+            return !anyFailed;
         }
         catch (Exception ex)
         {
+            // 途中まで適用した可能性があるため、表示を実状態へ戻す（読めなければ未検証として次回に読み直す）。
+            RestoreAssociationDisplayFromSystem();
             _ = MessageService.ShowException(App.Text("Error.ApplyAssociation"), ex);
+            return false;
         }
     }
 

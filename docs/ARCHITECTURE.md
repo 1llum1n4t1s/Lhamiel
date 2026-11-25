@@ -22,7 +22,6 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 │  - MainWindow.axaml                 │
 │  - ProgressWindow.axaml             │
 │  - FileConflictDialog.axaml         │
-│  - ErrorRecoveryDialog.axaml        │
 │  - DiskSpaceDialog.axaml            │
 └──────────────┬──────────────────────┘
                │
@@ -37,7 +36,6 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 │  - ArchiveExtractor（展開）         │
 │  - ArchiveCompressor（圧縮）        │
 │  - ArchiveErrorHandler（エラー分類）│
-│  - PartialExtractionHandler（部分展開）│
 │  - DiskSpaceChecker（容量チェック） │
 │  - Settings / SettingsManager       │
 │  - Logger                           │
@@ -55,7 +53,6 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 │  - IpcService（Named Pipe）         │
 │  - MotwPropagator（Zone.Identifier）│
 │  - CrashHandler（MiniDump）         │
-│  - DiagnosticsCollector（support ZIP）│
 │  - TempCleanup（一時ファイル掃除）  │
 │  - UpdateChecker（Velopack サイレント）│
 │  - App.Check4Update（VelopackUpdateDialog UI）│
@@ -73,7 +70,6 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 | `ProgressWindow.axaml` | 展開/圧縮の進捗表示。キャンセル機能、ディスク容量警告表示 |
 | `FileConflictDialog.axaml` | ファイル衝突解決。展開時（2ペイン比較）と圧縮時（グリッドリスト）の両モード |
 | `ArchiveOverwriteDialog.axaml` | 圧縮の出力先アーカイブが既存のときの上書き確認（上書き／キャンセル） |
-| `ErrorRecoveryDialog.axaml` | エラー発生時のリトライ/スキップ選択 |
 | `DiskSpaceDialog.axaml` | ディスク容量不足時の一時停止・再開/キャンセル |
 | `PasswordDialog.axaml` | パスワード保護アーカイブの入力ダイアログ。誤入力時は再試行表示、最大 3 回で自動キャンセル |
 
@@ -89,13 +85,11 @@ LhamielはWindows向けのアーカイブ圧縮・展開デスクトップアプ
 | `ArchiveExtractor` | 展開ロジック。スマート解凍（二重フォルダ防止）、一時フォルダ方式 |
 | `ArchiveCompressor` | 圧縮ロジック。ファイルスキャン、衝突検出、リネーム解決 |
 | `ArchiveErrorHandler` | エラー分類（Critical/Recoverable/Warning） |
-| `PartialExtractionHandler` | 破損アーカイブの選択的展開、エラーリトライ |
 | `DiskSpaceChecker` | 事前容量チェック + 定期監視（10秒間隔） |
 | `Settings` / `SettingsManager` | JSON設定。シングルトン管理、`MutateAndSave` で atomic 更新（Round 3c で追加） |
 | `IpcService` | Named Pipe による二重起動引数の引き継ぎ。`PipeOptions.CurrentUserOnly` |
 | `MotwPropagator` | 展開後ファイルへ Zone.Identifier ADS 伝播 |
 | `CrashHandler` | 未処理例外時の MiniDump 生成 |
-| `DiagnosticsCollector` | サポート用 ZIP（masked settings / logs / env info。ダンプ（MiniDump）とシークレットは除外する） |
 | `TempCleanup` | 起動時に `%TEMP%\Lhamiel_Temp_*` の残骸を MinAge=30 分超で削除 |
 | `App.Check4Update` | Velopack 自動更新の UI 経路。`Settings.Check4UpdatesOnStartup=true` で起動時 + 「アップデート確認」ボタンから手動起動。`VelopackUpdateDialog.UpdateDialogWindow` 経由 |
 | `LhamielUpdateStrings` | `VelopackUpdateDialog.IUpdateDialogStrings` の Lhamiel 実装（シングルトン、`App.Text` 動的解決） |

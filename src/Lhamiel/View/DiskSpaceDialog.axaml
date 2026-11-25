@@ -37,7 +37,7 @@
             <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,12">
                 <TextBlock
                     FontSize="22"
-                    Foreground="#FFCC00"
+                    Foreground="{DynamicResource Brush.Warning}"
                     Text="&#x26A0;"
                     VerticalAlignment="Center"
                     Margin="0,0,10,0" />
@@ -88,7 +88,7 @@
                         Grid.Column="1"
                         FontSize="13"
                         FontWeight="Bold"
-                        Foreground="#FF6B6B" />
+                        Foreground="{DynamicResource Brush.Error}" />
                 </Grid>
                 <TextBlock
                     x:Name="DriveText"
@@ -121,7 +121,8 @@
                     x:Name="CancelButton"
                     MinWidth="100"
                     Click="CancelButton_Click"
-                    Content="{DynamicResource Text.DiskSpace.Cancel}" />
+                    Content="{DynamicResource Text.DiskSpace.Cancel}"
+                    IsCancel="True" />
             </StackPanel>
         </Grid>
     </Panel>

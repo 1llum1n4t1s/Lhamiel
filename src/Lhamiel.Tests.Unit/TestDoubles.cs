@@ -18,10 +18,20 @@ internal sealed class RecordingMessageService : IMessageService
     /// <summary>ShowError に渡されたメッセージを呼び出し順に保持する。</summary>
     public List<string> Errors { get; } = [];
 
+    /// <summary>ShowInfo に渡されたメッセージを呼び出し順に保持する。</summary>
+    public List<string> Infos { get; } = [];
+
     public Task ShowError(string message, string? title = null)
     {
         lock (Errors)
             Errors.Add(message);
+        return Task.CompletedTask;
+    }
+
+    public Task ShowInfo(string message, string? title = null)
+    {
+        lock (Infos)
+            Infos.Add(message);
         return Task.CompletedTask;
     }
 }

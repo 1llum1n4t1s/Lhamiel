@@ -1,4 +1,3 @@
-#pragma warning disable CS0618 // PartialExtractionHandler は [Obsolete] だが移行完了まで使用（参照が複数メソッドに分散するためファイルレベルで抑制）
 using Avalonia.Controls;
 using Lhamiel.View;
 using LzhArchiveNativeException = Kagayoi.UnLhaRe.ArchiveNativeException;
@@ -295,12 +294,11 @@ public static class ArchiveProcessor
     /// <param name="outputToSameDirectory">同じディレクトリに出力するかどうか</param>
     /// <param name="progressWindow">進行状況ウィンドウ</param>
     /// <param name="cancellationToken">キャンセルトークン</param>
-    /// <param name="enablePartialExtraction">部分展開を有効にするかどうか</param>
     /// <param name="individualProgress">個別ファイルの進捗報告（並列処理時は空のProgressで無効化）</param>
     /// <param name="closeWindowOnCompletion">完了時に進捗ウィンドウを閉じるかどうか</param>
     /// <param name="settingsSnapshot">設定のスナップショット（バッチ処理時に呼び出し側で 1 回だけ取得して渡すと、各ファイルごとのロック競合＆アロケを削減できる）</param>
     /// <param name="allowSelfExtractingExecutable">展開直通ルートで自己展開形式 EXE を許可するかどうか。</param>
-    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, ProgressWindow? progressWindow, CancellationToken cancellationToken = default, bool enablePartialExtraction = false, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true, Settings? settingsSnapshot = null, bool allowSelfExtractingExecutable = false)
+    public static async Task<(string? outputPath, ArchiveExtractor.ArchiveStructureInfo? structureInfo)> ExtractArchiveAsync(string filePath, string outputDir, bool outputToSameDirectory, ProgressWindow? progressWindow, CancellationToken cancellationToken = default, IProgress<ProgressInfo>? individualProgress = null, bool closeWindowOnCompletion = true, Settings? settingsSnapshot = null, bool allowSelfExtractingExecutable = false)
     {
         Logger.Log($"ArchiveProcessor.ExtractArchiveAsync開始: filePath={filePath}, outputDir={outputDir}, outputToSameDirectory={outputToSameDirectory}");
 
@@ -510,114 +508,83 @@ public static class ArchiveProcessor
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // 2. 展開実行
-                if (enablePartialExtraction)
+                // 上書き確認パスの精密化:
+                // フォルダ作成時: outputPath（baseDir/archiveName）の存在をチェック → overwriteCheckPaths=null
+                // baseDir直接展開時: 展開されるトップレベルアイテムのパスのみをチェック
+                IReadOnlyList<string>? overwriteCheckPaths = null;
+                if (outputPath == baseDirectory)
                 {
-                    Logger.Log($"部分展開モードで展開処理を実行: {filePath}");
-
-                    var result = await PartialExtractionHandler.ExtractWithPartialFailureHandling(
-                        filePath,
-                        outputPath,
-                        PartialExtractionHandler.ErrorHandlingOption.AskUser,
-                        (percentage, _) => UiDispatcherImpl.Post(() => progressWindow?.UpdateProgress(percentage)),
-                        failedFile => ShowErrorRecoveryDialogAsync(failedFile, progressWindow),
-                        cancellationToken);
-
-                    if (result.SuccessCount > 0)
-                    {
-                        var summary = PartialExtractionHandler.GenerateResultSummary(result);
-                        Logger.Log($"部分展開完了:\n{summary}");
-
-                        UiDispatcherImpl.Post(() =>
-                            progressWindow?.SetCompleted(App.Text("Progress.ExtractionComplete", result.SuccessCount, result.TotalFiles)));
-
-                        if (closeWindowOnCompletion)
-                        {
-                            progressWindow?.CloseSafe();
-                        }
-                        return (outputPath, structureInfo);
-                    }
-                    return (null, null);
+                    // 既存の baseDirectory へ直接展開するときは、単一／複数ルートを問わず
+                    // アーカイブが実際に置換するトップレベル項目だけを退避する。
+                    // null のままだと outputPath 全体が退避・破棄され、書庫と無関係な既存
+                    // ファイルまで失われる。空配列も「置換対象なし」として明示的に渡す。
+                    overwriteCheckPaths = structureInfo.RootItemNames
+                        .Select(rootName => Path.Combine(outputPath, rootName))
+                        .ToArray();
                 }
-                else
+
+                // 一時フォルダ方式（上書き確認あり）or 直接展開
+                // structureInfo.TotalUncompressedSize は GetArchiveStructureInfo で計算済み。
+                // ExtractArchiveAsync 側で再度 reader を開いて Items を走査するのを避ける。
+                await ArchiveExtractor.ExtractArchiveAsync(filePath, outputPath,
+                    progress,
+                    progressWindow,
+                    cancellationToken,
+                    overwriteCheckPaths,
+                    progressWindow,
+                    structureInfo.TotalUncompressedSize,
+                    snapshot.NormalizeUnicodeFileNames,
+                    knownPassword,
+                    structurePromptExhausted,
+                    OnPasswordPrompted);
+
+                // CRC 整合性は展開中に 7z.dll が照合済み (二度読みの再検証パスは v1.0.183 で廃止)。
+                // エントリの CRC 不一致は SetOperationResult(CRCError) → ライブラリが Cancel を
+                // 返して展開を中断 → reader.Save が SevenZipException を投げるため、
+                // ExtractArchiveAsync が成功した時点で全エントリの CRC 検証が完了している
+                // (ライブラリの ExtractCallback / CallbackBase.Make(Failed)=Cancel の構造的保証)。
+                // 旧実装はここで ArchiveIntegrityVerifier.VerifyArchiveAsync (reader.Test()) を
+                // 呼んでいたが、同じアーカイブの全エントリをもう一度フルデコードするだけの
+                // 重複処理で、大型アーカイブでは展開時間を約 2 倍にしていた。
+
+                // Mark of the Web 伝播（設定で有効 かつ 元アーカイブに Zone.Identifier がある場合）
+                // 既存ファイルに誤って Zone.Identifier を付与しないよう、ディレクトリ全体ではなく
+                // 展開されたルートアイテムのみに限定する（outputPath が既存フォルダの場合も安全）
+                if (snapshot.PropagateMarkOfTheWeb && outputPath != null && structureInfo != null)
                 {
-                    // 上書き確認パスの精密化:
-                    // フォルダ作成時: outputPath（baseDir/archiveName）の存在をチェック → overwriteCheckPaths=null
-                    // baseDir直接展開時: 展開されるトップレベルアイテムのパスのみをチェック
-                    IReadOnlyList<string>? overwriteCheckPaths = null;
-                    if (outputPath == baseDirectory)
+                    UiDispatcherImpl.Post(() => progressWindow?.SetIndeterminate(App.Text("Progress.ApplyingSecurityMark")));
+                    var zoneId = MotwPropagator.ReadZoneIdentifier(filePath);
+                    if (zoneId != null)
                     {
-                        // 既存の baseDirectory へ直接展開するときは、単一／複数ルートを問わず
-                        // アーカイブが実際に置換するトップレベル項目だけを退避する。
-                        // null のままだと outputPath 全体が退避・破棄され、書庫と無関係な既存
-                        // ファイルまで失われる。空配列も「置換対象なし」として明示的に渡す。
-                        overwriteCheckPaths = structureInfo.RootItemNames
-                            .Select(rootName => Path.Combine(outputPath, rootName))
-                            .ToArray();
-                    }
-
-                    // 一時フォルダ方式（上書き確認あり）or 直接展開
-                    // structureInfo.TotalUncompressedSize は GetArchiveStructureInfo で計算済み。
-                    // ExtractArchiveAsync 側で再度 reader を開いて Items を走査するのを避ける。
-                    await ArchiveExtractor.ExtractArchiveAsync(filePath, outputPath,
-                        progress,
-                        progressWindow,
-                        cancellationToken,
-                        overwriteCheckPaths,
-                        progressWindow,
-                        structureInfo.TotalUncompressedSize,
-                        snapshot.NormalizeUnicodeFileNames,
-                        knownPassword,
-                        structurePromptExhausted,
-                        OnPasswordPrompted);
-
-                    // CRC 整合性は展開中に 7z.dll が照合済み (二度読みの再検証パスは v1.0.183 で廃止)。
-                    // エントリの CRC 不一致は SetOperationResult(CRCError) → ライブラリが Cancel を
-                    // 返して展開を中断 → reader.Save が SevenZipException を投げるため、
-                    // ExtractArchiveAsync が成功した時点で全エントリの CRC 検証が完了している
-                    // (ライブラリの ExtractCallback / CallbackBase.Make(Failed)=Cancel の構造的保証)。
-                    // 旧実装はここで ArchiveIntegrityVerifier.VerifyArchiveAsync (reader.Test()) を
-                    // 呼んでいたが、同じアーカイブの全エントリをもう一度フルデコードするだけの
-                    // 重複処理で、大型アーカイブでは展開時間を約 2 倍にしていた。
-
-                    // Mark of the Web 伝播（設定で有効 かつ 元アーカイブに Zone.Identifier がある場合）
-                    // 既存ファイルに誤って Zone.Identifier を付与しないよう、ディレクトリ全体ではなく
-                    // 展開されたルートアイテムのみに限定する（outputPath が既存フォルダの場合も安全）
-                    if (snapshot.PropagateMarkOfTheWeb && outputPath != null && structureInfo != null)
-                    {
-                        UiDispatcherImpl.Post(() => progressWindow?.SetIndeterminate(App.Text("Progress.ApplyingSecurityMark")));
-                        var zoneId = MotwPropagator.ReadZoneIdentifier(filePath);
-                        if (zoneId != null)
+                        var capturedOutputPath = outputPath;
+                        var capturedRootNames = structureInfo.RootItemNames;
+                        var capturedNormalize = snapshot.NormalizeUnicodeFileNames;
+                        await Task.Run(() =>
                         {
-                            var capturedOutputPath = outputPath;
-                            var capturedRootNames = structureInfo.RootItemNames;
-                            var capturedNormalize = snapshot.NormalizeUnicodeFileNames;
-                            await Task.Run(() =>
+                            var normalizedMotwBase = ArchiveExtractor.NormalizeBaseDirectory(capturedOutputPath);
+                            foreach (var rootName in capturedRootNames)
                             {
-                                var normalizedMotwBase = ArchiveExtractor.NormalizeBaseDirectory(capturedOutputPath);
-                                foreach (var rootName in capturedRootNames)
+                                cancellationToken.ThrowIfCancellationRequested();
+                                if (!ArchiveExtractor.TryResolveExistingEntryPathFromNormalized(
+                                        normalizedMotwBase, rootName, out var rootItemPath, capturedNormalize))
                                 {
-                                    cancellationToken.ThrowIfCancellationRequested();
-                                    if (!ArchiveExtractor.TryResolveExistingEntryPathFromNormalized(
-                                            normalizedMotwBase, rootName, out var rootItemPath, capturedNormalize))
-                                    {
-                                        Logger.Log($"MotW 伝播対象の展開実体を解決できませんでした: {rootName}", LogLevel.Warning);
-                                        continue;
-                                    }
-                                    if (Directory.Exists(rootItemPath))
-                                        MotwPropagator.PropagateToDirectory(rootItemPath, zoneId, cancellationToken);
-                                    else if (File.Exists(rootItemPath))
-                                        MotwPropagator.TryWriteZoneIdentifier(rootItemPath, zoneId);
+                                    Logger.Log($"MotW 伝播対象の展開実体を解決できませんでした: {rootName}", LogLevel.Warning);
+                                    continue;
                                 }
-                            }, cancellationToken);
-                        }
+                                if (Directory.Exists(rootItemPath))
+                                    MotwPropagator.PropagateToDirectory(rootItemPath, zoneId, cancellationToken);
+                                else if (File.Exists(rootItemPath))
+                                    MotwPropagator.TryWriteZoneIdentifier(rootItemPath, zoneId);
+                            }
+                        }, cancellationToken);
                     }
-
-                    if (closeWindowOnCompletion)
-                    {
-                        progressWindow?.CloseSafe();
-                    }
-                    return (outputPath, structureInfo);
                 }
+
+                if (closeWindowOnCompletion)
+                {
+                    progressWindow?.CloseSafe();
+                }
+                return (outputPath, structureInfo);
             }
             catch (OperationCanceledException oce) when (
                 structurePromptExhausted
@@ -748,7 +715,7 @@ public static class ArchiveProcessor
                     var mappedProgress = ArchiveProgressHelper.CreateMappedProgress(
                         totalCount, lockObject, () => successCount + failedFiles.Count, progressWindow, sharedThrottler);
 
-                    var extractResult = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, enablePartialExtraction: false, individualProgress: mappedProgress, closeWindowOnCompletion: false, settingsSnapshot: sharedSettings, allowSelfExtractingExecutable: allowSelfExtractingExecutable);
+                    var extractResult = await ExtractArchiveAsync(filePath, outputDir, outputToSameDirectory, progressWindow, cancellationToken, individualProgress: mappedProgress, closeWindowOnCompletion: false, settingsSnapshot: sharedSettings, allowSelfExtractingExecutable: allowSelfExtractingExecutable);
                     var finalOutputPath = extractResult.outputPath;
                     var structureInfo = extractResult.structureInfo;
 
@@ -997,7 +964,12 @@ public static class ArchiveProcessor
                             .Concat(selectedFiles)
                             .ToList();
                         if (resolvedFiles.Count == 0)
+                        {
+                            Logger.Log("圧縮: 競合解決後のファイルが0件のため何も作成しません");
+                            await NotifyNothingToCompressAsync(
+                                progressReporter == null && closeWindowOnCompletion ? progressWindow : null);
                             return false;
+                        }
                     }
                 }
 
@@ -1595,6 +1567,7 @@ public static class ArchiveProcessor
                 if (resolvedFiles.Count == 0)
                 {
                     Logger.Log("まとめ圧縮: 解決済みファイルが0件のためスキップ");
+                    await NotifyNothingToCompressAsync(closeWindowOnCompletion ? progressWindow : null);
                     return false;
                 }
 
@@ -1689,6 +1662,18 @@ public static class ArchiveProcessor
         }, actualCancellationToken);
     }
 
+    /// <summary>
+    /// 圧縮対象が 0 件になりアーカイブを作成しなかったことを通知する。
+    /// 進捗ウィンドウを先に閉じ、ダイアログの背面隠れを防ぐ。
+    /// </summary>
+    /// <param name="windowToClose">先に閉じる進捗ウィンドウ（閉じない場合は null）。</param>
+    private static async Task NotifyNothingToCompressAsync(ProgressWindow? windowToClose)
+    {
+        windowToClose?.CloseSafe();
+        await UiDispatcherImpl.InvokeAsync(() =>
+            MessageServiceImpl.ShowInfo(App.Text("Notify.NothingToCompress")));
+    }
+
     /// <summary>圧縮時の例外を、利用者が対処できる分類と詳細へ整形する。</summary>
     internal static string FormatCompressionErrorMessage(Exception ex, string outputPath)
     {
@@ -1701,45 +1686,5 @@ public static class ArchiveProcessor
             new[] { errorInfo.Message, errorInfo.Details, errorInfo.RecommendedAction }
                 .Where(static value => !string.IsNullOrWhiteSpace(value)));
         return App.Text("Error.DuringCompression", detail);
-    }
-
-    /// <summary>
-    /// エラー回復ダイアログを表示
-    /// </summary>
-    /// <param name="failedFile">失敗したファイル情報</param>
-    /// <param name="parentWindow">親ウィンドウ</param>
-    /// <returns>選択されたエラー処理オプション</returns>
-    private static async Task<PartialExtractionHandler.ErrorHandlingOption> ShowErrorRecoveryDialogAsync(
-        PartialExtractionHandler.FailedFileInfo failedFile,
-        ProgressWindow? parentWindow)
-    {
-        try
-        {
-            var errorInfo = new ArchiveErrorInfo
-            {
-                ErrorType = failedFile.ErrorType,
-                Message = failedFile.ErrorMessage,
-                Details = App.Text("Extraction.ErrorFile", failedFile.FilePath, failedFile.ErrorMessage),
-                ProblematicFilePath = failedFile.FilePath,
-                RecommendedAction = failedFile.IsRecoverable ? App.Text("Extraction.RetryOrSkip") : App.Text("ErrorHandler.UnexpectedAction"),
-                IsRecoverable = failedFile.IsRecoverable
-            };
-
-            if (parentWindow != null)
-            {
-                return await UiDispatcherImpl.InvokeAsync(async () =>
-                {
-                    var dialog = new ErrorRecoveryDialog(errorInfo);
-                    var option = await dialog.ShowDialog<PartialExtractionHandler.ErrorHandlingOption?>(parentWindow);
-                    return option ?? PartialExtractionHandler.ErrorHandlingOption.StopOnError;
-                });
-            }
-            return PartialExtractionHandler.ErrorHandlingOption.SkipOnError;
-        }
-        catch (Exception ex)
-        {
-            Logger.Log($"エラー回復ダイアログの表示でエラーが発生: {ex.Message}");
-            return PartialExtractionHandler.ErrorHandlingOption.SkipOnError;
-        }
     }
 }

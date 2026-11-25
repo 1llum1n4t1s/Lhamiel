@@ -4,11 +4,12 @@ using Lhamiel.Models;
 namespace Lhamiel.Util;
 
 /// <summary>
-/// エラー表示の抽象。テスト時はスタブに差し替え可能。
+/// エラー・情報表示の抽象。テスト時はスタブに差し替え可能。
 /// </summary>
 internal interface IMessageService
 {
     Task ShowError(string message, string? title = null);
+    Task ShowInfo(string message, string? title = null);
 }
 
 /// <summary>
@@ -51,6 +52,7 @@ internal interface IPasswordDialogService
 internal sealed class DefaultMessageService : IMessageService
 {
     public Task ShowError(string message, string? title = null) => MessageService.ShowError(message, title);
+    public Task ShowInfo(string message, string? title = null) => MessageService.ShowInfo(message, title);
 }
 
 internal sealed class DefaultUiDispatcher : IUiDispatcher

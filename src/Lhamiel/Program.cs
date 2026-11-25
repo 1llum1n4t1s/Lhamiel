@@ -23,8 +23,9 @@ internal class Program
     /// 通常 UI モードの単一インスタンス Mutex 名。
     /// <para>
     /// UI 側（<c>App.OnFrameworkInitializationCompleted</c> の多重起動チェック）と、サイレント更新経路
-    /// （<see cref="Main"/> の UI 並走検知）の両方が同じ名前で所有権を取る。片方だけ変えると並走検知が
-    /// 黙って効かなくなるため、ここに 1 か所で定義する。値は既存のリリースと互換を保つため変更しない。
+    /// （<see cref="RunSilentUpdate"/> の UI 並走検知と適用直前の所有権取得）の両方が同じ名前を使う。
+    /// 片方だけ変えると並走検知が黙って効かなくなるため、ここに 1 か所で定義する。
+    /// 値は既存のリリースと互換を保つため変更しない。
     /// <c>Local\</c> プレフィックスでセッションローカルに限定し、別セッション/別ユーザーによる
     /// Mutex 先取りでのサービス妨害（DoS）を防ぐ。
     /// </para>
@@ -45,7 +46,10 @@ internal class Program
     {
         CrashHandler.Register();
 
+        // ダウンロード済みの更新を起動時に自動適用させない。自動適用すると、worker や IPC 転送の起動でも
+        // Update.exe がインストール先の全プロセスを強制終了するため、適用は RunSilentUpdate と更新画面だけが行う。
         VelopackApp.Build()
+            .SetAutoApplyOnStartup(false)
             .OnAfterInstallFastCallback(v =>
             {
                 StartupRegistration.Register();
@@ -75,12 +79,14 @@ internal class Program
         }
 
         // ApplyUpdatesAndExit を使うサイレント更新は OnRestarted を通らないため、
-        // 更新フックが残した保留マーカーを次の通常起動で一度だけ回収する。
-        RestoreSelectedApplicationShortcutIconsIfPending();
+        // 更新フックが残した保留マーカーを次の通常起動で一度だけ回収する（worker では行わない）。
+        if (!IsArchiveWorker)
+            RestoreSelectedApplicationShortcutIconsIfPending();
 
         // インストール／更新フックの登録完了後、最初のウィンドウ生成前に確定する。
         TaskbarIdentity.Apply();
-        ShortcutCreator.RefreshKnownApplicationShortcutIdentity();
+        if (!IsArchiveWorker)
+            ShortcutCreator.RefreshKnownApplicationShortcutIdentity();
 
         try
         {
@@ -236,10 +242,11 @@ internal class Program
     /// Windows ログイン時のスタートアップ (`HKCU\Run` 経由) から呼び出される
     /// </summary>
     /// <remarks>
-    /// 通常 UI モードのインスタンスと並走すると <c>ApplyUpdatesAndExit</c> による
-    /// ファイル差し替えが UI モード側のファイルロックと衝突する経路があるため、
-    /// 通常 UI モードの Mutex (`Local\Lhamiel_MainWindow_SingleInstance`) が掴まれていれば
-    /// サイレント更新は諦めて次回ログインに回す。
+    /// 適用時の <c>ApplyUpdatesAndExit</c> は Update.exe がインストール先の全プロセスを強制終了するため、
+    /// 動作中の UI・worker があれば適用を見送る。確認とダウンロード（最大10分）の間は Mutex を持たず、
+    /// UI の起動を妨げない。適用の直前にだけ <see cref="RunSilentUpdate"/> が Mutex を取って他プロセスを確認する。
+    /// 取得済みの更新は、次回のサイレント更新か更新画面の操作時に適用する
+    /// （起動時の自動適用は <c>SetAutoApplyOnStartup(false)</c> で無効にしている）。
     /// </remarks>
     private static void RunSilentUpdateCheck()
     {
@@ -259,83 +266,128 @@ internal class Program
             System.Diagnostics.Debug.WriteLine($"--update-check モードでの Logger 初期化に失敗: {initEx.Message}");
         }
 
-        // 通常 UI モードのインスタンスとの並走を検知する。UI モード Mutex が掴まれている場合、
-        // 自動更新適用 (ApplyUpdatesAndExit) が UI モードのファイルロックと衝突するため、
-        // サイレント更新は適用せず次回ログインに回す。
-        // ⚠️ RTK レビュー #D-003 対応: UI 側 (App.axaml.cs) と同じ `initiallyOwned: true` で所有権を取り、
-        // サイレント実行中に UI モード起動が走るレースを完全に防ぐ。所有権取得は finally 内で
-        // ReleaseMutex してから Dispose する。
-        const string uiMutexName = MainWindowSingleInstanceMutexName;
-        Mutex? guardMutex = null;
-        var guardMutexOwned = false;
-        var skipSilentUpdate = false;
         try
         {
-            guardMutex = new Mutex(initiallyOwned: true, uiMutexName, out var createdNew);
-            if (!createdNew)
-            {
-                Logger.Log("通常 UI モードが既に起動中のためサイレント更新をスキップします (次回ログイン時に再試行)", LogLevel.Warning);
-                // CodeRabbit 指摘対応 (#3305115838): 早期 return すると下流の finally を通らないため、
-                // フラグを立てて通常パスから抜けて finally で Mutex / Logger を確実に Dispose する。
-                skipSilentUpdate = true;
-            }
-            else
-            {
-                // createdNew=true なら所有権を獲得済み（initiallyOwned: true による）
-                guardMutexOwned = true;
-            }
-        }
-        catch (AbandonedMutexException)
-        {
-            // 前回プロセスが Release せずに死んだケース。new Mutex は所有権を引き継いで例外を投げる。
-            // サイレント更新を続行してよい（前回の UI モードはもう存在しないことが確実）。
-            Logger.Log("前回プロセスが Mutex を Release せずに終了していました。所有権を引き継いでサイレント更新を続行します。", LogLevel.Warning);
-            guardMutexOwned = true;
-        }
-        catch (Exception mutexEx)
-        {
-            Logger.LogException("UI モード Mutex の確認に失敗 (サイレント更新は安全側で中止)", mutexEx);
-            skipSilentUpdate = true;
-        }
-
-        try
-        {
-            if (skipSilentUpdate)
-                return; // finally で guardMutex / Logger を Dispose してから抜ける
             Logger.Log("サイレント更新チェックを開始します。");
-
-            var result = UpdateChecker.CheckAndDownloadAsync().GetAwaiter().GetResult();
-
-            if (result.Result == UpdateChecker.UpdateResult.Downloaded && result.Info != null && result.Manager != null)
-            {
-                Logger.Log("ダウンロード完了。更新を適用します。");
-                result.Manager.ApplyUpdatesAndExit(result.Info);
-            }
-            else
-            {
-                Logger.Log($"サイレント更新チェック完了: {result.Result} - {result.Message}");
-            }
+            RunSilentUpdate(
+                MainWindowSingleInstanceMutexName,
+                CheckAndDownloadForSilentUpdate,
+                IsAnotherInstanceRunning);
         }
         catch (Exception ex)
         {
-            Logger.LogException("サイレント更新チェック中にエラーが発生しました", ex);
+            // Mutex の作成失敗・確認失敗などは、更新を適用せず安全側で中止する。
+            Logger.LogException("サイレント更新チェック中にエラーが発生しました (適用せず中止)", ex);
         }
         finally
         {
-            // Mutex は所有権を取ったスレッドからしか ReleaseMutex できないので、明示的に解放してから Dispose する。
-            // (RTK レビュー #D-003 対応: initiallyOwned: true の対称化に伴う後始末)
-            try
-            {
-                if (guardMutexOwned)
-                {
-                    try { guardMutex?.ReleaseMutex(); }
-                    catch (ApplicationException) { /* 別スレッドからの release は無視 */ }
-                }
-                guardMutex?.Dispose();
-            }
-            catch { /* best-effort */ }
             Logger.Dispose();
         }
+    }
+
+    private static Action? CheckAndDownloadForSilentUpdate()
+    {
+        var result = UpdateChecker.CheckAndDownloadAsync().GetAwaiter().GetResult();
+
+        if (result.Result == UpdateChecker.UpdateResult.Downloaded && result.Info != null && result.Manager != null)
+        {
+            var manager = result.Manager;
+            var info = result.Info;
+            Logger.Log("ダウンロード完了。適用の可否を確認します。");
+            return () => manager.ApplyUpdatesAndExit(info);
+        }
+
+        Logger.Log($"サイレント更新チェック完了: {result.Result} - {result.Message}");
+        return null;
+    }
+
+    /// <summary>
+    /// 確認とダウンロードは Mutex なしで行い、適用の直前にだけ UI と同じ Mutex の所有権を取って適用する。
+    /// </summary>
+    /// <param name="mutexName">UI と共有する単一インスタンス Mutex 名</param>
+    /// <param name="checkAndDownload">確認とダウンロード。適用が必要なら適用処理を返し、不要なら null</param>
+    /// <param name="isAnotherInstanceRunning">自分以外の Lhamiel プロセス（UI・worker）が動作中か</param>
+    internal static void RunSilentUpdate(
+        string mutexName,
+        Func<Action?> checkAndDownload,
+        Func<bool> isAnotherInstanceRunning)
+    {
+        // UI が動作中なら、ダウンロードも行わず次回に回す。確認だけなのでハンドルは持ち続けない
+        // （持つと後から起動する UI の createdNew が false になり、多重起動と誤判定される）。
+        if (Mutex.TryOpenExisting(mutexName, out var running))
+        {
+            running.Dispose();
+            Logger.Log("通常 UI モードが既に起動中のためサイレント更新をスキップします (次回ログイン時に再試行)", LogLevel.Warning);
+            return;
+        }
+
+        var apply = checkAndDownload();
+        if (apply is null)
+            return;
+
+        // ダウンロード中に UI が起動した場合に備え、適用の直前に所有権を取り直す。
+        using var guard = new Mutex(initiallyOwned: true, mutexName, out var createdNew);
+        if (!createdNew)
+        {
+            Logger.Log("ダウンロード中に通常 UI モードが起動したため更新の適用を見送ります (次回のサイレント更新または更新画面で適用)", LogLevel.Warning);
+            return;
+        }
+
+        try
+        {
+            // 適用時の Update.exe はインストール先の全プロセスを強制終了するため、UI 以外（worker 等）も見送りの対象にする。
+            // ただし ApplyUpdatesAndExit はプロセスを直ちに終了させるので、Mutex が守るのは適用開始の判定まで。
+            // 差し替え中に起動した UI・worker は防げず、Update.exe に終了されうる。
+            if (isAnotherInstanceRunning())
+            {
+                Logger.Log("他の Lhamiel プロセスが動作中のため更新の適用を見送ります (次回のサイレント更新または更新画面で適用)", LogLevel.Warning);
+                return;
+            }
+
+            Logger.Log("更新を適用します。");
+            apply();
+        }
+        finally
+        {
+            guard.ReleaseMutex();
+        }
+    }
+
+    /// <summary>
+    /// 自プロセス以外に、同じ実行ファイルの Lhamiel プロセスが動作中かを返す。確認できないときは安全側で true。
+    /// </summary>
+    internal static bool IsAnotherInstanceRunning()
+    {
+        var currentPath = Environment.ProcessPath;
+        if (currentPath is null)
+            return true;
+
+        var selfId = Environment.ProcessId;
+        var processName = Path.GetFileNameWithoutExtension(currentPath);
+        foreach (var process in System.Diagnostics.Process.GetProcessesByName(processName))
+        {
+            using (process)
+            {
+                if (process.Id == selfId)
+                    continue;
+                try
+                {
+                    var path = process.MainModule?.FileName;
+                    if (string.Equals(path, currentPath, StringComparison.OrdinalIgnoreCase))
+                        return true;
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                    // 権限不足などでパスを確認できない同名プロセスは、安全側で動作中とみなす。
+                    return true;
+                }
+                catch (InvalidOperationException)
+                {
+                    // 確認中に終了したプロセスは無視する。
+                }
+            }
+        }
+        return false;
     }
 
     /// <summary>

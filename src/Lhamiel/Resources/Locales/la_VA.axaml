@@ -9,7 +9,6 @@
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} elementa</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Omnia revoca</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Processus...</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Optiones Recuperationis Erroris</x:String>
 
   <!-- Drop Zone -->
   <x:String x:Key="Text.DropZone.Message" xml:space="preserve">Fasciculos hic depone ad comprimendum vel extrahendum</x:String>
@@ -168,16 +167,6 @@
   <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">Perficitur...</x:String>
   <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">Spatium liberum inspicitur...</x:String>
 
-  <!-- Error Recovery Dialog -->
-  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informationes Erroris</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">Fasciculus Problematicus</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">Optiones Recuperationis</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">Praeterire hunc fasciculum et continuare</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">Iterare</x:String>
-  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">Sistere extractionem</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">Praeterire omnes errores sequentes</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Meminisse hanc electionem</x:String>
-
   <!-- Overwrite Dialog -->
 
   <!-- Dialog Titles -->
@@ -268,25 +257,7 @@
   <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">Ultima modificatio: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">Informationes fasciculi obtinere non potuit</x:String>
 
-  <!-- Error Recovery File Info -->
-  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">Nomen fasciculi: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">Magnitudo: {0:N0} octeti</x:String>
-  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">Creatum: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">Modificatum: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">Attributa: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">Informationes disci:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">Spatium disponibile: {0:N0} octeti</x:String>
-  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">Capacitas totalis: {0:N0} octeti</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">Informationes fasciculi obtinere non potuit: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">Singula exceptionis:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">Genus: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">Nuntius: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">Exceptio interior: {0}</x:String>
-
   <!-- Partial Extraction -->
-  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Extrahitur: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Fasciculus: {0}\nError: {1}</x:String>
-  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Iterare vel praeterire potes.</x:String>
 
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Locus praesens {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Destinatio {0}</x:String>
@@ -326,9 +297,6 @@
   <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">Summa ante compressionem obtineri non potuit</x:String>
   <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">Et {0} alia</x:String>
   <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">Rescribe</x:String>
-
-  <!-- Progress completion -->
-  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Extractio perfecta: {0}/{1} fasciculi feliciter</x:String>
 
   <!-- Info display -->
   <x:String x:Key="Text.Info.Unknown" xml:space="preserve">Ignotum</x:String>
@@ -399,6 +367,7 @@
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Tessera servata litteras continet quae in forma ZIP adhiberi non possunt (ASCII solum). Tesseram huic compressioni inscribe (tessera servata non mutabitur).</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">Tessera servata brevior est quam ut adhiberi possit (saltem {0} litterae requiruntur). Novam tesseram constitue.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} fasciculus(i) praeteritus(i) sunt ob inaccessibilitatem. Archivum tessera tutum cum reliquis fasciculis creatum est.</x:String>
+  <x:String x:Key="Text.Notify.NothingToCompress" xml:space="preserve">Nulla fasciculi ad comprimendum relicti sunt, itaque nullum archivum creatum est.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Omnes fasciculi originales inaccessibiles erant, itaque compressio abrupta est. Archivum inane non creatum est.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Forma {0} tutelam tesserae non sustinet. ZIP vel 7z elige.</x:String>

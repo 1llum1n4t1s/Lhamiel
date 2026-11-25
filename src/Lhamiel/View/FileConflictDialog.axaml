@@ -259,7 +259,8 @@
                 Grid.Column="3"
                 MinWidth="110"
                 Click="CancelButton_Click"
-                Content="{DynamicResource Text.Conflict.Cancel}" />
+                Content="{DynamicResource Text.Conflict.Cancel}"
+                IsCancel="True" />
         </Grid>
     </Grid>
     </Panel>

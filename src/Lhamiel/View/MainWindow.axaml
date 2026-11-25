@@ -80,6 +80,7 @@
                                 <StackPanel Orientation="Horizontal">
                                     <ComboBox
                                         Width="200"
+                                        AutomationProperties.Name="{DynamicResource Text.Settings.Theme.Header}"
                                         ItemsSource="{Binding ThemeOptions}"
                                         SelectedValue="{Binding SelectedTheme}"
                                         SelectedValueBinding="{Binding Key, DataType=vm:ThemeItem}"
@@ -98,6 +99,7 @@
                                 <StackPanel Orientation="Horizontal">
                                     <ComboBox
                                         Width="200"
+                                        AutomationProperties.Name="{DynamicResource Text.Settings.Language.Header}"
                                         ItemsSource="{x:Static vm:MainWindowViewModel.LocaleOptions}"
                                         SelectedValue="{Binding SelectedLocale}"
                                         SelectedValueBinding="{Binding Key, DataType=vm:LocaleItem}">
@@ -173,6 +175,7 @@
                                         <TextBox
                                             x:Name="ExtractionOutputPathTextBox"
                                             Grid.Column="0"
+                                            AutomationProperties.Name="{DynamicResource Text.Settings.Output.SpecifyDirectory}"
                                             VerticalContentAlignment="Center"
                                             IsReadOnly="True"
                                             Text="{Binding ExtractionOutputDirectory}" />
@@ -232,6 +235,7 @@
                                 <ComboBox
                                     x:Name="CompressionFormatComboBox"
                                     Width="120"
+                                    AutomationProperties.Name="{DynamicResource Text.Settings.CompressionFormat.Header}"
                                     ItemsSource="{Binding CompressionFormats}"
                                     SelectedItem="{Binding SelectedCompressionFormat}">
                                     <ComboBox.SelectionBoxItemTemplate>
@@ -263,6 +267,7 @@
                                         <TextBox
                                             x:Name="CompressionOutputPathTextBox"
                                             Grid.Column="0"
+                                            AutomationProperties.Name="{DynamicResource Text.Settings.Output.SpecifyDirectory}"
                                             VerticalContentAlignment="Center"
                                             IsReadOnly="True"
                                             Text="{Binding CompressionOutputDirectory}" />
@@ -340,6 +345,7 @@
                                             Text="{DynamicResource Text.Settings.Compression.ZipLevel}" />
                                         <ComboBox
                                             HorizontalAlignment="Stretch"
+                                            AutomationProperties.Name="{DynamicResource Text.Settings.Compression.ZipLevel}"
                                             ItemsSource="{Binding CompressionLevels}"
                                             SelectedItem="{Binding SelectedZipLevel}">
                                             <ComboBox.ItemTemplate>
@@ -357,6 +363,7 @@
                                             Text="{DynamicResource Text.Settings.Compression.SevenZipLevel}" />
                                         <ComboBox
                                             HorizontalAlignment="Stretch"
+                                            AutomationProperties.Name="{DynamicResource Text.Settings.Compression.SevenZipLevel}"
                                             ItemsSource="{Binding CompressionLevels}"
                                             SelectedItem="{Binding SelectedSevenZipLevel}">
                                             <ComboBox.ItemTemplate>
@@ -370,6 +377,7 @@
                                         <TextBlock Margin="0,0,0,6" FontSize="13"
                                             Text="{DynamicResource Text.Settings.Compression.LzhMethod}" />
                                         <ComboBox HorizontalAlignment="Stretch"
+                                            AutomationProperties.Name="{DynamicResource Text.Settings.Compression.LzhMethod}"
                                             ItemsSource="{Binding LzhCompressionMethods}"
                                             SelectedItem="{Binding SelectedLzhMethod}">
                                             <ComboBox.ItemTemplate>
@@ -546,6 +554,7 @@
 
                                             <ListBox
                                                 Height="180"
+                                                AutomationProperties.Name="{DynamicResource Text.Settings.ExcludedPatterns.Global.Header}"
                                                 ItemsSource="{Binding CompressionExcludedFilePatterns}"
                                                 SelectedItem="{Binding SelectedExcludedFilePattern}">
                                                 <ListBox.ItemTemplate>
@@ -563,6 +572,7 @@
                                                 <TextBox
                                                     Grid.Column="0"
                                                     VerticalContentAlignment="Center"
+                                                    AutomationProperties.Name="{DynamicResource Text.Settings.ExcludedPatterns.Global.Header}"
                                                     PlaceholderText="{DynamicResource Text.Settings.ExcludedPatterns.Placeholder}"
                                                     Text="{Binding NewExcludedFilePattern, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                                 <Button
@@ -625,6 +635,7 @@
                                                 <TextBox
                                                     MinHeight="88"
                                                     AcceptsReturn="True"
+                                                    AutomationProperties.Name="{DynamicResource Text.Settings.ExcludedPatterns.SourceFileNames.Label}"
                                                     PlaceholderText="{DynamicResource Text.Settings.ExcludedPatterns.SourceFileNames.Placeholder}"
                                                     Text="{Binding SourceIgnoreFileNamesText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                     ToolTip.Tip="{DynamicResource Text.Settings.ExcludedPatterns.SourceFileNames.Tip}" />
@@ -635,7 +646,7 @@
                                                     TextWrapping="Wrap" />
                                                 <TextBlock
                                                     FontSize="11"
-                                                    Foreground="Red"
+                                                    Foreground="{DynamicResource Brush.Error}"
                                                     IsVisible="{Binding HasInvalidSourceIgnoreFileNames}"
                                                     Text="{DynamicResource Text.Settings.ExcludedPatterns.SourceFileNames.Invalid}"
                                                     TextWrapping="Wrap" />
@@ -684,6 +695,7 @@
                                     <ComboBox
                                         Width="200"
                                         VerticalAlignment="Top"
+                                        AutomationProperties.Name="{DynamicResource Text.Settings.Association.IconHeader}"
                                         ItemsSource="{Binding FileIconOptions}"
                                         SelectedValue="{Binding SelectedFileIconVariant}"
                                         SelectedValueBinding="{Binding Key, DataType=vm:FileIconOption}">
@@ -793,6 +805,7 @@
                                         <ComboBox
                                             Width="200"
                                             VerticalAlignment="Center"
+                                            AutomationProperties.Name="{DynamicResource Text.Settings.AppIcon.Header}"
                                             ItemsSource="{Binding AppIconOptions}"
                                             SelectedValue="{Binding SelectedAppIconVariant}"
                                             SelectedValueBinding="{Binding Key, DataType=vm:AppIconOption}">

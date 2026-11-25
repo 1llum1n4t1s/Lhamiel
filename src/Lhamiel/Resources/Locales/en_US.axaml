@@ -6,7 +6,6 @@
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} targets</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Cancel all</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Processing...</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Error Recovery Options</x:String>
 
   <!-- Drop Zone -->
   <x:String x:Key="Text.DropZone.Message" xml:space="preserve">Drop files here to compress or extract</x:String>
@@ -165,16 +164,6 @@
   <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">Finalizing...</x:String>
   <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">Checking free disk space...</x:String>
 
-  <!-- Error Recovery Dialog -->
-  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Error Information</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">Problematic File</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">Recovery Options</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">Skip this file and continue</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">Retry</x:String>
-  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">Stop extraction</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">Skip all subsequent errors</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Remember this choice</x:String>
-
   <!-- Overwrite Dialog -->
 
   <!-- Dialog Titles (MessageService) -->
@@ -265,25 +254,7 @@
   <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">Last modified: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">Failed to retrieve file information</x:String>
 
-  <!-- Error Recovery File Info -->
-  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">Filename: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">Size: {0:N0} bytes</x:String>
-  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">Created: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">Modified: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">Attributes: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">Disk information:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">Available space: {0:N0} bytes</x:String>
-  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">Total capacity: {0:N0} bytes</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">Failed to retrieve file info: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">Exception details:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">Type: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">Message: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">Inner exception: {0}</x:String>
-
   <!-- Partial Extraction -->
-  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Extracting: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">File: {0}\nError: {1}</x:String>
-  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">You can choose to retry or skip.</x:String>
 
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Current location {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Destination {0}</x:String>
@@ -323,9 +294,6 @@
   <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">Could not get the total before compression</x:String>
   <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">{0} more</x:String>
   <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">Overwrite</x:String>
-
-  <!-- Progress completion -->
-  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Extraction complete: {0}/{1} files succeeded</x:String>
 
   <!-- Info display -->
   <x:String x:Key="Text.Info.Unknown" xml:space="preserve">Unknown</x:String>
@@ -400,6 +368,7 @@
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">The saved password contains characters that cannot be used with the ZIP format (ASCII only). Enter a password to use for this compression (the saved password will not be changed).</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">The saved password is too short to use (at least {0} characters are required). Please set a new password.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} file(s) were skipped because they were inaccessible. A password-protected archive was created with the remaining files.</x:String>
+  <x:String x:Key="Text.Notify.NothingToCompress" xml:space="preserve">No files were left to compress, so no archive was created.</x:String>
 
   <!-- Password-related errors -->
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">All source files were inaccessible, so compression was aborted. An empty archive was not created.</x:String>

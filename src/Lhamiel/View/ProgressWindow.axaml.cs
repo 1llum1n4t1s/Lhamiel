@@ -40,6 +40,8 @@ public partial class ProgressWindow : Window
         // 操作タイプに応じたタイトルとラベルを設定
         Title = $"{operationType} - Lhamiel";
         OperationLabel.Text = operationType;
+        // 進行状況バーの読み上げ名は操作種別（展開/圧縮など）に合わせる。
+        AutomationProperties.SetName(ProgressBar, operationType);
 
         // キャンセル処理用のトークンソースを初期化
         _cancellationTokenSource = new CancellationTokenSource();

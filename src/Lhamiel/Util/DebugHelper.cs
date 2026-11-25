@@ -152,21 +152,6 @@ internal class DialogPreviewContainer
     }
 
     [CRCategory("展開")]
-    [CRAction(Label = "ErrorRecoveryDialog")]
-    public void ShowErrorRecoveryDialog()
-    {
-        var errorInfo = new ArchiveErrorInfo
-        {
-            ErrorType = ArchiveErrorType.CorruptedFile,
-            Message = "アーカイブが破損しています（プレビュー）",
-            Details = "CRC チェックに失敗しました。ファイルの一部が破損している可能性があります。",
-            IsRecoverable = true,
-            ProblematicFilePath = @"C:\Sample\broken_archive.zip"
-        };
-        ShowDialog(() => new ErrorRecoveryDialog(errorInfo));
-    }
-
-    [CRCategory("展開")]
     [CRAction(Label = "DiskSpaceDialog")]
     public void ShowDiskSpaceDialog()
     {

@@ -58,6 +58,7 @@
         <ProgressBar
             x:Name="ProgressBar"
             Grid.Row="2"
+            AutomationProperties.Name="{DynamicResource Text.Progress.Title}"
             Height="8"
             Margin="0,0,0,10" />
 

@@ -21,4 +21,4 @@
 | `MessageService` / `MessageDialog` | Modal dispatch, owner resolution and completion ordering. |
 | `UpdateChecker` / `App.Check4Update` | Silent and interactive updates via fixed-domain `SimpleWebSource`. |
 | `SupportDialog` | Email-verified `Kagayoi.Support.Client` submission for `lhamiel`; no access to others' tickets. |
-| `Logger`, `CrashHandler`, `DiagnosticsCollector` | Masked logs, bounded dumps and support bundles; secret-named JSON containers are wholly masked and bundles exclude dumps. |
+| `Logger`, `CrashHandler` | Masked logs and bounded dumps; user-identifying path segments and secrets are masked in logs. |

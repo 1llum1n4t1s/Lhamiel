@@ -13,7 +13,7 @@
 - Compression filters are enforced by Lhamiel's resolved file list; the SevenZip writer is not trusted to reapply `.lhaignore` or attribute filters.
 - Long-running operations use settings snapshots. UI debounce state is flushed before creating snapshots for CLI/IPC and remembered-password paths.
 - Error workflows close any transient progress window before opening a message dialog, await that dialog, and only then permit self-terminating CLI or shell launches to shut down.
-- Logs, support bundles, and user-visible error details must not contain plaintext passwords, encrypted password blobs, tokens, or user-identifying path segments.
+- Logs and user-visible error details must not contain plaintext passwords, encrypted password blobs, tokens, or user-identifying path segments.
 - Unobserved exceptions never create live-process dumps, and deferred logs omit exception messages. See [unhandled exceptions](troubleshooting.md#unhandled-exceptions).
 - Update manifests and packages come from the fixed Kagayoi R2 domain. Runtime settings cannot select another update host.
 - Released executables, installers, portable packages, shell-extension DLLs, and MSIX packages are Authenticode signed and timestamped.

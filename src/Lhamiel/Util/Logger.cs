@@ -406,6 +406,72 @@ public static class Logger
         !string.IsNullOrEmpty(token) && token.Length >= MinRedactionTokenLength;
 
     /// <summary>
+    /// 利用者向け表示用のユーザー名パターン。パス要素として完全一致した場合だけ伏せるため、
+    /// ログ用の部分一致と違い 4 文字未満の名前も対象にする。Environment.UserName は使わない
+    /// (<see cref="_userNameMaskPatterns"/> の remarks 参照)。
+    /// </summary>
+    private static readonly System.Text.RegularExpressions.Regex[] _displayMaskPatterns =
+        BuildDisplayMaskPatterns(GetDisplayMaskNames());
+
+    private static List<string> GetDisplayMaskNames()
+    {
+        var names = new List<string>(2);
+        try
+        {
+            var envUser = Environment.GetEnvironmentVariable("USERNAME");
+            if (!string.IsNullOrEmpty(envUser)) names.Add(envUser);
+
+            var profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var leaf = Path.GetFileName(
+                profile.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            if (!string.IsNullOrEmpty(leaf) && !names.Contains(leaf, StringComparer.OrdinalIgnoreCase))
+                names.Add(leaf);
+        }
+        catch
+        {
+            // 取得できなくても表示は止めない
+        }
+        return names;
+    }
+
+    private static System.Text.RegularExpressions.Regex[] BuildDisplayMaskPatterns(IEnumerable<string> names)
+    {
+        var patterns = new List<System.Text.RegularExpressions.Regex>();
+        foreach (var name in names)
+        {
+            if (string.IsNullOrEmpty(name)) continue;
+            patterns.Add(new System.Text.RegularExpressions.Regex(
+                "(?<=[\\\\/])" + System.Text.RegularExpressions.Regex.Escape(name) +
+                "(?=[\\\\/'\"」』”’,;:)\\]}>、。\\s]|$)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase |
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant));
+        }
+        return [.. patterns];
+    }
+
+    /// <summary>
+    /// 利用者向けエラー表示用のマスク。登録済み秘密値 (<c>***</c>) を伏せた後、
+    /// ユーザー名とパス要素として完全一致した箇所だけを <c>&lt;USER&gt;</c> にする。
+    /// </summary>
+    internal static string MaskForDisplay(string message)
+    {
+        if (string.IsNullOrEmpty(message)) return message;
+        return ReplaceUserNameElements(ApplyRedaction(message), _displayMaskPatterns);
+    }
+
+    /// <summary>候補名を指定してパス要素の完全一致だけを <c>&lt;USER&gt;</c> にする (テスト用の入口)。</summary>
+    internal static string MaskUserNameElements(string input, IEnumerable<string> names) =>
+        string.IsNullOrEmpty(input) ? input : ReplaceUserNameElements(input, BuildDisplayMaskPatterns(names));
+
+    private static string ReplaceUserNameElements(
+        string input, System.Text.RegularExpressions.Regex[] patterns)
+    {
+        foreach (var pattern in patterns)
+            input = pattern.Replace(input, "<USER>");
+        return input;
+    }
+
+    /// <summary>
     /// 内部 redaction ロジック。テストから直接呼べるよう internal で公開する。
     /// 通常ロガー経路 (<see cref="Log"/> / <see cref="LogException"/>) はここを通る。
     /// </summary>

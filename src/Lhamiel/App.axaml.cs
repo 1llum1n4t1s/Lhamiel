@@ -185,12 +185,6 @@ public partial class App : Application
                         return;
                     }
                 }
-                catch (AbandonedMutexException)
-                {
-                    // 前回プロセスが Release せずに死んだケース。new Mutex(true, ...) は所有権を引き継いで
-                    // 例外を投げるため _instanceMutex は取得済みになる。新規オーナーとして続行する。
-                    Logger.Log("前回のアプリケーション終了時に Mutex が正常にリリースされていません。Mutex を再取得しました。", LogLevel.Warning);
-                }
                 catch (Exception ex)
                 {
                     // Mutex 作成自体に失敗（ACL 拒否 / リソース枯渇 / AV 干渉等）。
@@ -1437,7 +1431,7 @@ public partial class App : Application
                             }
                         });
                     options.ErrorOccurred += ex =>
-                        // フルスタックトレースは DiagnosticsCollector 経由で第三者配布される ZIP に含まれる懸念
+                        // フルスタックトレースは、サポートへ共有されうるログに含まれる懸念
                         // (内部 URL / プロキシ情報 / 例外チェーンが露出)。要点のみ Warning で記録する。
                         Logger.Log(
                             $"Velopack 更新失敗: {ex.GetType().Name}: {ex.Message}",
@@ -1545,6 +1539,8 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } mainWindow }
             && mainWindow.DataContext is ViewModels.MainWindowViewModel vm)
         {
+            // 右クリックメニューの登録が進行中なら、保存する設定と登録状態が食い違わないよう上限付きで待つ。
+            vm.CompleteContextMenuRegistrationBeforeExit();
             vm.FlushPendingAutoSave();
         }
 

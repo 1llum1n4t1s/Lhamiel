@@ -9,7 +9,6 @@
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} वस्तूनि</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">सर्वं निरस्यताम्</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">संसाधनम्...</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">दोषपुनर्लाभविकल्पाः</x:String>
 
   <!-- Drop Zone -->
   <x:String x:Key="Text.DropZone.Message" xml:space="preserve">सङ्कोचनाय निष्कर्षणाय वा सञ्चिकाः अत्र निक्षिपत</x:String>
@@ -168,16 +167,6 @@
   <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">समाप्यते...</x:String>
   <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">रिक्तस्थानं परीक्ष्यते...</x:String>
 
-  <!-- Error Recovery Dialog -->
-  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">दोषसूचना</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">समस्याग्रस्तसञ्चिका</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">पुनर्लाभविकल्पाः</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">इमां सञ्चिकां लङ्घयित्वा अग्रे गच्छतु</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">पुनः प्रयततु</x:String>
-  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">निष्कर्षणं स्थगयतु</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">सर्वान् आगामिदोषान् लङ्घयतु</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">इमं विकल्पं स्मरतु</x:String>
-
   <!-- Overwrite Dialog -->
 
   <!-- Dialog Titles -->
@@ -268,25 +257,7 @@
   <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">अन्तिमपरिवर्तनम्: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">सञ्चिकासूचनां प्राप्तुं न शक्तम्</x:String>
 
-  <!-- Error Recovery File Info -->
-  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">सञ्चिकानाम: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">परिमाणम्: {0:N0} अष्टकाः</x:String>
-  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">सृष्टम्: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">परिवर्तितम्: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">गुणाः: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">चक्रिकासूचना:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">उपलब्धस्थानम्: {0:N0} अष्टकाः</x:String>
-  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">सम्पूर्णधारिता: {0:N0} अष्टकाः</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">सञ्चिकासूचनां प्राप्तुं न शक्तम्: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">अपवादविवरणम्:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">प्रकारः: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">सन्देशः: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">आन्तरिकापवादः: {0}</x:String>
-
   <!-- Partial Extraction -->
-  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">निष्कर्षणम्: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">सञ्चिका: {0}\nदोषः: {1}</x:String>
-  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">पुनः प्रयतितुं लङ्घयितुं वा शक्नुथ।</x:String>
 
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">वर्तमानस्थानम् {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">गन्तव्यस्थानम् {0}</x:String>
@@ -326,9 +297,6 @@
   <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">सङ्कोचनात् पूर्वं योगः प्राप्तुं न शक्यते</x:String>
   <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">अन्ये {0}</x:String>
   <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">पुनर्लिखतु</x:String>
-
-  <!-- Progress completion -->
-  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">निष्कर्षणं सम्पन्नम्: {0}/{1} सञ्चिकाः सफलाः</x:String>
 
   <!-- Info display -->
   <x:String x:Key="Text.Info.Unknown" xml:space="preserve">अज्ञातम्</x:String>
@@ -399,6 +367,7 @@
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">संगृहीते गुप्तशब्दे ZIP-प्रारूपे अनुपयोज्याः वर्णाः सन्ति (केवलम् ASCII)। अस्य सम्पीडनस्य कृते गुप्तशब्दं लिखत (संगृहीतः गुप्तशब्दः न परिवर्तिष्यते)।</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">संगृहीतः गुप्तशब्दः उपयोगाय अतिह्रस्वः अस्ति (न्यूनातिन्यूनं {0} वर्णाः आवश्यकाः)। नूतनं गुप्तशब्दं स्थापयतु।</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} सञ्चिकाः अप्राप्यत्वात् त्यक्ताः। शेषाभिः सञ्चिकाभिः गुप्तशब्द-रक्षितः सञ्चयः कृतः।</x:String>
+  <x:String x:Key="Text.Notify.NothingToCompress" xml:space="preserve">सङ्कोचनार्थं कोऽपि सञ्चिका नावशिष्टा, अतः कोऽपि संग्रहः न निर्मितः।</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">सर्वाः मूलसञ्चिकाः अप्राप्याः आसन्, अतः सङ्कोचनं विरतम्। रिक्तः सञ्चयः न रचितः।</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} रूपं गुप्तशब्द-रक्षां न समर्थयति। ZIP वा 7z वा चिनोतु।</x:String>

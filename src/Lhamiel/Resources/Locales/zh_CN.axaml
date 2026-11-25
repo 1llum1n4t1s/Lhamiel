@@ -9,7 +9,6 @@
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} 个项目</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">全部取消</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">处理中...</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">错误恢复选项</x:String>
 
   <!-- Drop Zone -->
   <x:String x:Key="Text.DropZone.Message" xml:space="preserve">将文件拖放到此处进行压缩或解压</x:String>
@@ -168,16 +167,6 @@
   <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">正在完成...</x:String>
   <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">正在检查可用空间...</x:String>
 
-  <!-- Error Recovery Dialog -->
-  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">错误信息</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">问题文件</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">恢复选项</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">跳过此文件并继续</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">重试</x:String>
-  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">停止解压</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">跳过所有后续错误</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">记住此选择</x:String>
-
   <!-- Overwrite Dialog -->
 
   <!-- Dialog Titles (MessageService) -->
@@ -268,25 +257,7 @@
   <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">最后修改时间：{0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">无法获取文件信息</x:String>
 
-  <!-- Error Recovery File Info -->
-  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">文件名：{0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">大小：{0:N0} 字节</x:String>
-  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">创建时间：{0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">修改时间：{0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">属性：{0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">磁盘信息：</x:String>
-  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">可用空间：{0:N0} 字节</x:String>
-  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">总容量：{0:N0} 字节</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">无法获取文件信息：{0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">异常详情：</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">类型：{0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">消息：{0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">内部异常：{0}</x:String>
-
   <!-- Partial Extraction -->
-  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">正在解压：{0}</x:String>
-  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">文件：{0}\n错误：{1}</x:String>
-  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">您可以选择重试或跳过。</x:String>
 
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">当前位置 {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">目标位置 {0}</x:String>
@@ -326,9 +297,6 @@
   <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">无法获取压缩前总计</x:String>
   <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">另有 {0} 项</x:String>
   <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">覆盖</x:String>
-
-  <!-- Progress completion -->
-  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">解压完成：{0}/{1} 个文件成功</x:String>
 
   <!-- Info display -->
   <x:String x:Key="Text.Info.Unknown" xml:space="preserve">未知</x:String>
@@ -399,6 +367,7 @@
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">已保存的密码包含 ZIP 格式无法使用的字符（仅支持 ASCII）。请输入本次压缩使用的密码（已保存的密码不会被更改）。</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">保存的密码太短，无法使用（至少需要 {0} 个字符）。请设置新密码。</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} 个文件因无法访问被跳过。已使用其余文件创建了受密码保护的压缩包。</x:String>
+  <x:String x:Key="Text.Notify.NothingToCompress" xml:space="preserve">没有剩余可压缩的文件，因此未创建压缩包。</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">所有源文件都无法访问,因此已中止压缩。未创建空的压缩包。</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} 格式不支持密码保护。请选择 ZIP 或 7z。</x:String>

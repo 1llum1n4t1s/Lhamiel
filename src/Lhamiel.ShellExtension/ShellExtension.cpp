@@ -562,8 +562,9 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, void*)
 {
     if (reason == DLL_PROCESS_ATTACH)
     {
+        // 静的 CRT（/MT）の DLL では、CRT がスレッド終了時の後始末を DLL_THREAD_DETACH で行うため
+        // DisableThreadLibraryCalls を呼ばない（Microsoft Learn の Remarks）。
         moduleHandle = instance;
-        DisableThreadLibraryCalls(instance);
     }
     return TRUE;
 }

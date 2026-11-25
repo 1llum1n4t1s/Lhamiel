@@ -106,7 +106,8 @@ public static partial class FileIconHelper
     // IShellItemImageFactory::GetImage は vtable のインデックス 3（IUnknown の3メソッド後）
     private delegate int GetImageDelegate(IntPtr pThis, SIZE size, int flags, out IntPtr phbm);
 
-    private const int SIIGBF_BIGGERSIZEOK = 0x00;
+    // 実値 0x00 は SIIGBF_RESIZETOFIT（SIIGBF_BIGGERSIZEOK は 0x01）。挙動を変えないため値は 0x00 のまま名前だけ合わせる。
+    private const int SIIGBF_RESIZETOFIT = 0x00;
 
     private const uint SHGFI_ICON = 0x000000100;
     private const uint SHGFI_SMALLICON = 0x000000001;
@@ -142,9 +143,6 @@ public static partial class FileIconHelper
 
     // 出力バッファなので [Out] を明示する（旧 DllImport では blittable 配列のピン留めにより書き戻されていた）。
     [LibraryImport("gdi32.dll")]
-    private static partial int GetBitmapBits(IntPtr hbmp, int cbBuffer, [Out] byte[] lpvBits);
-
-    [LibraryImport("gdi32.dll")]
     private static partial int GetDIBits(IntPtr hdc, IntPtr hbmp, uint start, uint cLines, [Out] byte[] lpvBits, ref BITMAPINFOHEADER lpbmi, uint usage);
 
     [LibraryImport("user32.dll")]
@@ -172,7 +170,7 @@ public static partial class FileIconHelper
     {
         try
         {
-            if (!File.Exists(filePath) || !ThumbnailExtensions.IsThumbnailable(filePath))
+            if (!ExistsOnDisk(filePath) || !ThumbnailExtensions.IsThumbnailable(filePath))
                 return null;
 
             var iid = IID_IShellItemImageFactory;
@@ -188,7 +186,7 @@ public static partial class FileIconHelper
                 var getImage = Marshal.GetDelegateForFunctionPointer<GetImageDelegate>(getImagePtr);
 
                 var requestedSize = new SIZE { cx = size, cy = size };
-                var hr = getImage(pShellItem, requestedSize, SIIGBF_BIGGERSIZEOK, out var hBitmap);
+                var hr = getImage(pShellItem, requestedSize, SIIGBF_RESIZETOFIT, out var hBitmap);
                 if (hr != 0 || hBitmap == IntPtr.Zero)
                     return null;
 
@@ -219,7 +217,7 @@ public static partial class FileIconHelper
     /// </summary>
     public static Bitmap? GetThumbnailOrIcon(string filePath, bool largeIcon = true, int thumbnailSize = 32)
     {
-        if (File.Exists(filePath) && ThumbnailExtensions.IsThumbnailable(filePath))
+        if (ExistsOnDisk(filePath) && ThumbnailExtensions.IsThumbnailable(filePath))
         {
             var thumb = GetThumbnail(filePath, thumbnailSize);
             if (thumb is not null)
@@ -271,12 +269,16 @@ public static partial class FileIconHelper
     /// <summary>
     /// ファイルパスからアイコンを Avalonia Bitmap として取得する。
     /// ファイルが存在しない場合は拡張子ベースでジェネリックアイコンを取得し、拡張子単位でキャッシュする。
+    /// 完全修飾でない名前（拡張子だけの名前など）は、カレントディレクトリの同名ファイルへ解決せず、常にその名前だけで扱う。
     /// </summary>
+    /// <remarks>
+    /// 拡張子キャッシュから返す <see cref="Bitmap"/> は全呼び出し元で共有されるため、呼び出し元は Dispose しない。
+    /// </remarks>
     public static Bitmap? GetFileIcon(string filePath, bool largeIcon = true)
     {
         // 実ファイルが存在しない場合は拡張子キャッシュを利用して P/Invoke を省略する。
         // 存在する実ファイル自体のアイコンは埋め込みアイコンが優先されるためキャッシュ対象外。
-        var shouldCache = !File.Exists(filePath) && !Directory.Exists(filePath);
+        var shouldCache = !ExistsOnDisk(filePath);
         if (shouldCache)
         {
             var ext = Path.GetExtension(filePath);
@@ -344,6 +346,21 @@ public static partial class FileIconHelper
         return LoadFileIcon(filePath, largeIcon);
     }
 
+    private static bool ExistsOnDisk(string path) => ExistsOnDisk(path, out _);
+
+    /// <summary>
+    /// 完全修飾パスのファイル／フォルダーが存在するか。相対名は File.Exists がカレントディレクトリの
+    /// 同名ファイルへ解決してしまうため、実体なし（名前だけ）として扱う。
+    /// </summary>
+    private static bool ExistsOnDisk(string path, out bool isDirectory)
+    {
+        isDirectory = false;
+        if (string.IsNullOrEmpty(path) || !Path.IsPathFullyQualified(path))
+            return false;
+        isDirectory = Directory.Exists(path);
+        return isDirectory || File.Exists(path);
+    }
+
     /// <summary>
     /// 実際に SHGetFileInfo を呼び出してアイコンを読み込む。
     /// </summary>
@@ -354,8 +371,9 @@ public static partial class FileIconHelper
             var shinfo = new SHFILEINFO();
             var flags = SHGFI_ICON | (largeIcon ? SHGFI_LARGEICON : SHGFI_SMALLICON);
 
-            var fileAttr = Directory.Exists(filePath) ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
-            if (!File.Exists(filePath) && !Directory.Exists(filePath))
+            var exists = ExistsOnDisk(filePath, out var isDirectory);
+            var fileAttr = isDirectory ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+            if (!exists)
                 flags |= SHGFI_USEFILEATTRIBUTES;
 
             var result = SHGetFileInfo(filePath, fileAttr, ref shinfo, (uint)Marshal.SizeOf(shinfo), flags);
@@ -423,46 +441,58 @@ public static partial class FileIconHelper
 
         var width = bmpStruct.bmWidth;
         var height = Math.Abs(bmpStruct.bmHeight);
-        var isBottomUp = bmpStruct.bmHeight > 0;
-        if (width <= 0 || height <= 0)
+        if (width <= 0 || height <= 0 || bmpStruct.bmBitsPixel != 32)
             return null;
 
-        var stride = width * 4;
-        var bufferSize = stride * height;
-        var pixels = new byte[bufferSize];
-
-        if (bmpStruct.bmBitsPixel == 32)
-        {
-            GetBitmapBits(hBitmap, bufferSize, pixels);
-        }
-        else
-        {
+        // GetBitmapBits は DIB セクションの向きに関わらずトップダウンで返す（実測で確認済み）。
+        // 以前は bmHeight > 0（GetObject は常に正）をボトムアップとみなして反転し、上下逆になっていた。
+        // GetDIBits の負の高さで向きを契約として固定する。
+        var pixels = ReadTopDownPixels(hBitmap, width, height);
+        if (pixels is null)
             return null;
-        }
 
-        // ボトムアップ（bmHeight > 0）の場合のみ上下反転
-        byte[] finalPixels;
-        if (isBottomUp)
-        {
-            finalPixels = new byte[bufferSize];
-            for (var y = 0; y < height; y++)
-                Array.Copy(pixels, (height - 1 - y) * stride, finalPixels, y * stride, stride);
-        }
-        else
-        {
-            finalPixels = pixels;
-        }
+        // IShellItemImageFactory が返す α はストレート（非プリマルチプライ。α=128 で B=255 を実測）。
+        return CreateBitmap(pixels, width, height, Avalonia.Platform.AlphaFormat.Unpremul);
+    }
 
+    private static WriteableBitmap CreateBitmap(byte[] pixels, int width, int height, Avalonia.Platform.AlphaFormat alphaFormat)
+    {
         var wb = new WriteableBitmap(
             new PixelSize(width, height),
             new Vector(96, 96),
             Avalonia.Platform.PixelFormat.Bgra8888,
-            Avalonia.Platform.AlphaFormat.Premul);
+            alphaFormat);
         using (var fb = wb.Lock())
         {
-            Marshal.Copy(finalPixels, 0, fb.Address, bufferSize);
+            Marshal.Copy(pixels, 0, fb.Address, pixels.Length);
         }
         return wb;
+    }
+
+    /// <summary>
+    /// 32bpp のビットマップを GetDIBits の負の高さでトップダウンの BGRA として読み出す。失敗時は null。
+    /// </summary>
+    internal static byte[]? ReadTopDownPixels(IntPtr hbmp, int width, int height)
+    {
+        var pixels = new byte[width * 4 * height];
+        var bmi = new BITMAPINFOHEADER
+        {
+            biSize = Marshal.SizeOf<BITMAPINFOHEADER>(),
+            biWidth = width,
+            biHeight = -height, // 負値 = トップダウンで取得
+            biPlanes = 1,
+            biBitCount = 32,
+            biCompression = BI_RGB,
+        };
+        var hdc = GetDC(IntPtr.Zero);
+        try
+        {
+            return GetDIBits(hdc, hbmp, 0, (uint)height, pixels, ref bmi, DIB_RGB_COLORS) == 0 ? null : pixels;
+        }
+        finally
+        {
+            ReleaseDC(IntPtr.Zero, hdc);
+        }
     }
 
     /// <summary>
@@ -470,6 +500,19 @@ public static partial class FileIconHelper
     /// </summary>
     private static Bitmap? HIconToBitmap(IntPtr hIcon)
     {
+        var pixels = ReadIconPixels(hIcon, out var width, out var height);
+        // GetIconInfo の hbmColor もストレート α（実アイコンで色成分 > α の画素を多数実測）。
+        return pixels is null ? null : CreateBitmap(pixels, width, height, Avalonia.Platform.AlphaFormat.Unpremul);
+    }
+
+    /// <summary>
+    /// HICON をトップダウンの 32bpp BGRA として読み出す。32bpp でない・取得失敗は null。
+    /// 24bpp 以下の旧形式アイコンや α が全 0 の 32bpp アイコンは、AND マスクから α を補う
+    /// （補わないと全画素が α=0 となり完全に透明になる）。
+    /// </summary>
+    internal static byte[]? ReadIconPixels(IntPtr hIcon, out int width, out int height)
+    {
+        width = height = 0;
         if (!GetIconInfo(hIcon, out var iconInfo))
             return null;
 
@@ -483,55 +526,66 @@ public static partial class FileIconHelper
             if (GetObject(hbmp, Marshal.SizeOf<BITMAP>(), ref bmpStruct) == 0)
                 return null;
 
-            var width = bmpStruct.bmWidth;
-            var height = bmpStruct.bmHeight;
-            // 32bpp BGRA を期待
-            var stride = width * 4;
-            var bufferSize = stride * height;
-            var pixels = new byte[bufferSize];
-
-            if (bmpStruct.bmBitsPixel != 32)
-            {
-                // 32bpp でない場合はフォールバック
+            // 32bpp BGRA を期待。32bpp でない場合はフォールバック（null）。
+            if (bmpStruct.bmBitsPixel != 32 || bmpStruct.bmWidth <= 0 || bmpStruct.bmHeight <= 0)
                 return null;
-            }
 
-            // GetBitmapBits はデバイス依存の格納順をそのまま返すため向きが保証されず、
-            // SHGetFileInfo 由来 (ボトムアップ) と LoadImage 由来 (トップダウン) で
-            // 結果が逆転していた。GetDIBits に負の高さを渡してトップダウンを契約で
-            // 固定し、変換側の反転処理を不要にする。
-            var bmi = new BITMAPINFOHEADER
-            {
-                biSize = Marshal.SizeOf<BITMAPINFOHEADER>(),
-                biWidth = width,
-                biHeight = -height, // 負値 = トップダウンで取得
-                biPlanes = 1,
-                biBitCount = 32,
-                biCompression = BI_RGB,
-            };
-            var hdc = GetDC(IntPtr.Zero);
-            try
-            {
-                if (GetDIBits(hdc, hbmp, 0, (uint)height, pixels, ref bmi, DIB_RGB_COLORS) == 0)
-                    return null;
-            }
-            finally
-            {
-                ReleaseDC(IntPtr.Zero, hdc);
-            }
+            var pixels = ReadTopDownPixels(hbmp, bmpStruct.bmWidth, bmpStruct.bmHeight);
+            if (pixels is null)
+                return null;
 
-            // WriteableBitmap に書き込み
-            var wb = new WriteableBitmap(new PixelSize(width, height), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul);
-            using (var fb = wb.Lock())
-            {
-                Marshal.Copy(pixels, 0, fb.Address, bufferSize);
-            }
-            return wb;
+            if (iconInfo.hbmColor != IntPtr.Zero && !HasAnyAlpha(pixels))
+                ApplyMaskAlpha(pixels, bmpStruct.bmWidth, bmpStruct.bmHeight, iconInfo.hbmMask);
+
+            width = bmpStruct.bmWidth;
+            height = bmpStruct.bmHeight;
+            return pixels;
         }
         finally
         {
             if (iconInfo.hbmColor != IntPtr.Zero) DeleteObject(iconInfo.hbmColor);
             if (iconInfo.hbmMask != IntPtr.Zero) DeleteObject(iconInfo.hbmMask);
+        }
+    }
+
+    private static bool HasAnyAlpha(byte[] pixels)
+    {
+        for (var i = 3; i < pixels.Length; i += 4)
+        {
+            if (pixels[i] != 0)
+                return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// AND マスク（0 = 不透明）から α を設定する。マスク取得に失敗した場合は何もしない。
+    /// マスク部分は α=0 に合わせて RGB も 0 にする。
+    /// </summary>
+    private static void ApplyMaskAlpha(byte[] pixels, int width, int height, IntPtr hbmMask)
+    {
+        if (hbmMask == IntPtr.Zero)
+            return;
+
+        var maskInfo = new BITMAP();
+        if (GetObject(hbmMask, Marshal.SizeOf<BITMAP>(), ref maskInfo) == 0
+            || maskInfo.bmWidth != width || maskInfo.bmHeight != height)
+            return;
+
+        var mask = ReadTopDownPixels(hbmMask, width, height);
+        if (mask is null)
+            return;
+
+        for (var i = 0; i < pixels.Length; i += 4)
+        {
+            if (mask[i] == 0)
+            {
+                pixels[i + 3] = 255;
+            }
+            else
+            {
+                pixels[i] = pixels[i + 1] = pixels[i + 2] = 0;
+            }
         }
     }
 }

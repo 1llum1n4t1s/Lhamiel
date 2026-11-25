@@ -9,7 +9,6 @@
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">대상 {0}개</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">모두 취소</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">처리 중...</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">오류 복구 옵션</x:String>
 
   <!-- Drop Zone -->
   <x:String x:Key="Text.DropZone.Message" xml:space="preserve">여기에 파일을 놓으면 압축 또는 해제합니다</x:String>
@@ -168,16 +167,6 @@
   <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">마무리 중...</x:String>
   <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">여유 공간 확인 중...</x:String>
 
-  <!-- Error Recovery Dialog -->
-  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">오류 정보</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">문제 파일</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">복구 옵션</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">이 파일을 건너뛰고 계속</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">다시 시도</x:String>
-  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">해제 중지</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">이후 모든 오류 건너뛰기</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">이 선택을 기억</x:String>
-
   <!-- Overwrite Dialog -->
 
   <!-- Dialog Titles (MessageService) -->
@@ -268,25 +257,7 @@
   <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">최종 수정: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">파일 정보를 가져오지 못했습니다</x:String>
 
-  <!-- Error Recovery File Info -->
-  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">파일명: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">크기: {0:N0} 바이트</x:String>
-  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">생성일: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">수정일: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">속성: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">디스크 정보:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">사용 가능한 공간: {0:N0} 바이트</x:String>
-  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">전체 용량: {0:N0} 바이트</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">파일 정보를 가져오지 못했습니다: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">예외 상세 정보:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">유형: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">메시지: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">내부 예외: {0}</x:String>
-
   <!-- Partial Extraction -->
-  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">해제 중: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">파일: {0}\n오류: {1}</x:String>
-  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">다시 시도하거나 건너뛸 수 있습니다.</x:String>
 
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">현재 위치 {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">대상 위치 {0}</x:String>
@@ -326,9 +297,6 @@
   <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">압축 전 합계를 가져올 수 없습니다</x:String>
   <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">외 {0}개</x:String>
   <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">덮어쓰기</x:String>
-
-  <!-- Progress completion -->
-  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">압축 해제 완료: {0}/{1}개 파일 성공</x:String>
 
   <!-- Info display -->
   <x:String x:Key="Text.Info.Unknown" xml:space="preserve">알 수 없음</x:String>
@@ -399,6 +367,7 @@
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">저장된 비밀번호에 ZIP 형식에서 사용할 수 없는 문자가 포함되어 있습니다(ASCII만 지원). 이번 압축에 사용할 비밀번호를 입력하세요(저장된 비밀번호는 변경되지 않습니다).</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">저장된 암호가 너무 짧아 사용할 수 없습니다 (최소 {0}자 필요). 새 암호를 설정해 주세요.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0}개 파일이 접근 불가로 건너뛰어졌습니다. 나머지 파일로 암호 보호된 아카이브를 만들었습니다.</x:String>
+  <x:String x:Key="Text.Notify.NothingToCompress" xml:space="preserve">압축할 파일이 남지 않아 아카이브를 만들지 않았습니다.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">모든 원본 파일에 접근할 수 없어 압축을 중단했습니다. 빈 아카이브는 생성되지 않았습니다.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} 형식은 암호 보호를 지원하지 않습니다. ZIP 또는 7z을 선택하세요.</x:String>

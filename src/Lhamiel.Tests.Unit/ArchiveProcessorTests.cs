@@ -317,5 +317,103 @@ public class ArchiveProcessorTests : IDisposable
         }
     }
 
+    // 競合解決後に圧縮対象が 0 件になったときは、黙って終わらず通知する（キャンセルは通知しない）。
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompressItemAsync_NoFilesAfterConflictResolution_NotifiesOrStaysSilentOnCancel(bool cancel)
+    {
+        var testDir = Path.Combine(Path.GetTempPath(), $"lhamiel_proc_nofiles_{Guid.NewGuid():N}");
+        var sourceDir = Path.Combine(testDir, "source");
+        var outputDir = Path.Combine(testDir, "output");
+        Directory.CreateDirectory(Path.Combine(sourceDir, "a"));
+        Directory.CreateDirectory(Path.Combine(sourceDir, "b"));
+        Directory.CreateDirectory(outputDir);
+        var originalConflict = ArchiveProcessor.ConflictDialogImpl;
+
+        try
+        {
+            await File.WriteAllTextAsync(Path.Combine(sourceDir, "a", "same.txt"), "a", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(sourceDir, "b", "same.txt"), "b", TestContext.Current.CancellationToken);
+            var stub = new RecordingMessageService();
+            ArchiveProcessor.MessageServiceImpl = stub;
+            ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
+            ArchiveProcessor.ConflictDialogImpl = new NoSelectionConflictDialog(cancel);
+
+            var result = await ArchiveProcessor.CompressItemAsync(
+                sourceDir, outputDir, outputToSameDirectory: false, format: "zip", progressWindow: null,
+                cancellationToken: TestContext.Current.CancellationToken,
+                settingsSnapshot: new Settings
+                {
+                    DirectoryStructureMode = DirectoryStructureMode.Flat,
+                    IsPasswordProtectionEnabled = false,
+                });
+
+            Assert.False(result);
+            Assert.Equal(cancel ? 0 : 1, stub.Infos.Count);
+            Assert.Empty(stub.Errors);
+            Assert.Empty(Directory.GetFiles(outputDir));
+        }
+        finally
+        {
+            ArchiveProcessor.ConflictDialogImpl = originalConflict;
+            if (Directory.Exists(testDir))
+                Directory.Delete(testDir, true);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompressMergedAsync_NoFilesAfterConflictResolution_NotifiesOrStaysSilentOnCancel(bool cancel)
+    {
+        var testDir = Path.Combine(Path.GetTempPath(), $"lhamiel_proc_nofiles_m_{Guid.NewGuid():N}");
+        var outputDir = Path.Combine(testDir, "output");
+        Directory.CreateDirectory(Path.Combine(testDir, "a"));
+        Directory.CreateDirectory(Path.Combine(testDir, "b"));
+        Directory.CreateDirectory(outputDir);
+        var originalConflict = ArchiveProcessor.ConflictDialogImpl;
+
+        try
+        {
+            var first = Path.Combine(testDir, "a", "same.txt");
+            var second = Path.Combine(testDir, "b", "same.txt");
+            await File.WriteAllTextAsync(first, "a", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(second, "b", TestContext.Current.CancellationToken);
+            var stub = new RecordingMessageService();
+            ArchiveProcessor.MessageServiceImpl = stub;
+            ArchiveProcessor.UiDispatcherImpl = new SyncUiDispatcher();
+            ArchiveProcessor.ConflictDialogImpl = new NoSelectionConflictDialog(cancel);
+
+            var result = await ArchiveProcessor.CompressMergedAsync(
+                [first, second], outputDir, outputToSameDirectory: false, format: "zip", progressWindow: null,
+                cancellationToken: TestContext.Current.CancellationToken);
+
+            Assert.False(result);
+            Assert.Equal(cancel ? 0 : 1, stub.Infos.Count);
+            Assert.Empty(stub.Errors);
+            Assert.Empty(Directory.GetFiles(outputDir));
+        }
+        finally
+        {
+            ArchiveProcessor.ConflictDialogImpl = originalConflict;
+            if (Directory.Exists(testDir))
+                Directory.Delete(testDir, true);
+        }
+    }
+
+    /// <summary>競合ダイアログで 1 件も選ばない（または Cancel を選ぶ）スタブ。</summary>
+    private sealed class NoSelectionConflictDialog(bool cancel) : IConflictDialogService
+    {
+        public Task<bool> CanOverwriteFromBackgroundAsync(
+            IReadOnlyList<string> sourcePaths, string destinationPath, Window? parentWindow)
+            => Task.FromResult(true);
+
+        public Task<(Models.FileConflictResult result, List<(string fullPath, string relativePath)> selectedFiles)>
+            ShowFromBackgroundAsync(List<Models.FileConflictGroup> groups, Window? parentWindow, bool isTwoPane = true)
+            => Task.FromResult((
+                cancel ? Models.FileConflictResult.Cancel : Models.FileConflictResult.Continue,
+                new List<(string fullPath, string relativePath)>()));
+    }
 }

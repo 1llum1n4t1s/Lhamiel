@@ -20,6 +20,9 @@
             <Color x:Key="Color.DropZoneBorder">#FF007AFF</Color>
             <Color x:Key="Color.SidebarHover">#12000000</Color>
             <Color x:Key="Color.SidebarSelected">#20000000</Color>
+            <!-- 状態色: #F2F2F7 / #FFFFFF 上でコントラスト比 4.5:1 以上（エラー 5.86 / 6.54、警告 5.78 / 6.45） -->
+            <Color x:Key="Color.Error">#FFB3261E</Color>
+            <Color x:Key="Color.Warning">#FF8A5100</Color>
 
             <!-- Fluent テーマ上書き -->
             <Color x:Key="SystemAccentColor">#FF007AFF</Color>
@@ -48,6 +51,9 @@
             <Color x:Key="Color.DropZoneBorder">#FF0A84FF</Color>
             <Color x:Key="Color.SidebarHover">#12FFFFFF</Color>
             <Color x:Key="Color.SidebarSelected">#20FFFFFF</Color>
+            <!-- 状態色: #1C1C1E / #262628 上でコントラスト比 4.5:1 以上（エラー 6.13 / 5.44、警告 11.25 / 9.99） -->
+            <Color x:Key="Color.Error">#FFFF6B6B</Color>
+            <Color x:Key="Color.Warning">#FFFFCC00</Color>
 
             <!-- Fluent テーマ上書き -->
 
@@ -122,6 +128,8 @@
     <SolidColorBrush x:Key="Brush.SidebarHover" Color="{DynamicResource Color.SidebarHover}" />
     <SolidColorBrush x:Key="Brush.SidebarSelected" Color="{DynamicResource Color.SidebarSelected}" />
     <SolidColorBrush x:Key="Brush.Accent" Color="{DynamicResource Color.Accent}" />
+    <SolidColorBrush x:Key="Brush.Error" Color="{DynamicResource Color.Error}" />
+    <SolidColorBrush x:Key="Brush.Warning" Color="{DynamicResource Color.Warning}" />
     <SolidColorBrush x:Key="Brush.DropZone" Color="{DynamicResource Color.DropZone}" />
     <SolidColorBrush x:Key="Brush.DropZoneBorder" Color="{DynamicResource Color.DropZoneBorder}" />
 

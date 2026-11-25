@@ -9,7 +9,6 @@
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} объектов</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Отменить всё</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Обработка...</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Параметры восстановления после ошибки</x:String>
 
   <!-- Drop Zone -->
   <x:String x:Key="Text.DropZone.Message" xml:space="preserve">Перетащите файлы сюда для сжатия или распаковки</x:String>
@@ -168,16 +167,6 @@
   <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">Завершение...</x:String>
   <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">Проверка свободного места...</x:String>
 
-  <!-- Error Recovery Dialog -->
-  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Информация об ошибке</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">Проблемный файл</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">Параметры восстановления</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">Пропустить этот файл и продолжить</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">Повторить</x:String>
-  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">Остановить распаковку</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">Пропускать все последующие ошибки</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Запомнить этот выбор</x:String>
-
   <!-- Overwrite Dialog -->
 
   <!-- Dialog Titles (MessageService) -->
@@ -268,25 +257,7 @@
   <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">Последнее изменение: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">Не удалось получить информацию о файле</x:String>
 
-  <!-- Error Recovery File Info -->
-  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">Имя файла: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">Размер: {0:N0} байт</x:String>
-  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">Создан: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">Изменён: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">Атрибуты: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">Информация о диске:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">Доступное место: {0:N0} байт</x:String>
-  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">Общий объём: {0:N0} байт</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">Не удалось получить информацию о файле: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">Подробности исключения:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">Тип: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">Сообщение: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">Внутреннее исключение: {0}</x:String>
-
   <!-- Partial Extraction -->
-  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Распаковка: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Файл: {0}\nОшибка: {1}</x:String>
-  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Вы можете повторить попытку или пропустить.</x:String>
 
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Текущее расположение {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Место назначения {0}</x:String>
@@ -326,9 +297,6 @@
   <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">Не удалось получить общий размер до сжатия</x:String>
   <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">Ещё {0}</x:String>
   <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">Заменить</x:String>
-
-  <!-- Progress completion -->
-  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Извлечение завершено: {0}/{1} файлов успешно</x:String>
 
   <!-- Info display -->
   <x:String x:Key="Text.Info.Unknown" xml:space="preserve">Неизвестно</x:String>
@@ -399,6 +367,7 @@
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Сохранённый пароль содержит символы, которые нельзя использовать в формате ZIP (только ASCII). Введите пароль для этого сжатия (сохранённый пароль не будет изменён).</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">Сохранённый пароль слишком короткий для использования (требуется не менее {0} символов). Установите новый пароль.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">Пропущено файлов: {0} из-за недоступности. Архив с защитой паролем создан из оставшихся файлов.</x:String>
+  <x:String x:Key="Text.Notify.NothingToCompress" xml:space="preserve">Не осталось файлов для сжатия, поэтому архив не был создан.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Все исходные файлы недоступны, поэтому сжатие отменено. Пустой архив не создан.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Формат {0} не поддерживает защиту паролем. Выберите ZIP или 7z.</x:String>

@@ -9,7 +9,6 @@
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} உருப்படிகள்</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">அனைத்தையும் ரத்துசெய்</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">செயலாக்கம்...</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">பிழை மீட்பு விருப்பங்கள்</x:String>
 
   <!-- Drop Zone -->
   <x:String x:Key="Text.DropZone.Message" xml:space="preserve">சுருக்க அல்லது பிரித்தெடுக்க கோப்புகளை இங்கே இழுக்கவும்</x:String>
@@ -168,16 +167,6 @@
   <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">நிறைவு செய்யப்படுகிறது...</x:String>
   <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">காலி இடம் சரிபார்க்கப்படுகிறது...</x:String>
 
-  <!-- Error Recovery Dialog -->
-  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">பிழைத் தகவல்</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">சிக்கலான கோப்பு</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">மீட்பு விருப்பங்கள்</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">இந்தக் கோப்பைத் தவிர்த்துத் தொடரவும்</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">மீண்டும் முயற்சி</x:String>
-  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">பிரித்தெடுத்தலை நிறுத்து</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">அடுத்தடுத்த அனைத்துப் பிழைகளையும் தவிர்</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">இந்தத் தேர்வை நினைவில் கொள்</x:String>
-
   <!-- Overwrite Dialog -->
 
   <!-- Dialog Titles (MessageService) -->
@@ -268,25 +257,7 @@
   <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">கடைசியாக மாற்றப்பட்டது: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">கோப்பு தகவலைப் பெற இயலவில்லை</x:String>
 
-  <!-- Error Recovery File Info -->
-  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">கோப்பு பெயர்: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">அளவு: {0:N0} பைட்டுகள்</x:String>
-  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">உருவாக்கப்பட்டது: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">மாற்றப்பட்டது: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">பண்புகள்: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">வட்டுத் தகவல்:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">கிடைக்கும் இடம்: {0:N0} பைட்டுகள்</x:String>
-  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">மொத்த கொள்ளளவு: {0:N0} பைட்டுகள்</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">கோப்பு தகவலைப் பெற இயலவில்லை: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">விதிவிலக்கு விவரங்கள்:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">வகை: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">செய்தி: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">உள் விதிவிலக்கு: {0}</x:String>
-
   <!-- Partial Extraction -->
-  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">பிரித்தெடுக்கிறது: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">கோப்பு: {0}\nபிழை: {1}</x:String>
-  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">மீண்டும் முயற்சிக்கவும் அல்லது தவிர்க்கவும் தேர்வுசெய்யலாம்.</x:String>
 
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">தற்போதைய இடம் {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">இலக்கு {0}</x:String>
@@ -326,9 +297,6 @@
   <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">சுருக்குவதற்கு முன் மொத்தத்தைப் பெற முடியவில்லை</x:String>
   <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">மேலும் {0}</x:String>
   <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">மேலெழுது</x:String>
-
-  <!-- Progress completion -->
-  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">பிரித்தெடுத்தல் முடிந்தது: {0}/{1} கோப்புகள் வெற்றி</x:String>
 
   <!-- Info display -->
   <x:String x:Key="Text.Info.Unknown" xml:space="preserve">தெரியாது</x:String>
@@ -399,6 +367,7 @@
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">சேமிக்கப்பட்ட கடவுச்சொல்லில் ZIP வடிவத்தில் பயன்படுத்த முடியாத எழுத்துகள் உள்ளன (ASCII மட்டும்). இந்தச் சுருக்கத்திற்கான கடவுச்சொல்லை உள்ளிடவும் (சேமிக்கப்பட்ட கடவுச்சொல் மாற்றப்படாது).</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">சேமிக்கப்பட்ட கடவுச்சொல் பயன்படுத்த முடியாத அளவுக்கு குறுகியது (குறைந்தது {0} எழுத்துகள் தேவை). புதிய கடவுச்சொல்லை அமைக்கவும்.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">அணுக முடியாததால் {0} கோப்புகள் தவிர்க்கப்பட்டன. மீதமுள்ள கோப்புகளுடன் கடவுச்சொல்லால் பாதுகாக்கப்பட்ட காப்பகம் உருவாக்கப்பட்டது.</x:String>
+  <x:String x:Key="Text.Notify.NothingToCompress" xml:space="preserve">சுருக்குவதற்குக் கோப்புகள் எதுவும் மீதமில்லாததால், காப்பகம் உருவாக்கப்படவில்லை.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">அனைத்து மூல கோப்புகளும் அணுக முடியாதவை, எனவே அமுக்கம் இரத்து செய்யப்பட்டது. வெற்று காப்பகம் உருவாக்கப்படவில்லை.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">{0} வடிவம் கடவுச்சொல் பாதுகாப்பை ஆதரிக்காது. ZIP அல்லது 7z-ஐ தேர்வுசெய்க.</x:String>

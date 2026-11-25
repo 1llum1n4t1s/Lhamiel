@@ -61,7 +61,9 @@ public static class MessageService
         return RunOnUiThreadAsync(async () =>
         {
             var owner = await GetActiveWindowAsync();
-            var dialog = new MessageDialog(message, title);
+            // 利用者向けエラー詳細にも利用者を特定するパス要素を出さない (AGENTS.md の「利用者を特定するパスをログや診断情報へ出さない」規約に準じる)。ログ側は変えない
+            var dialog = new MessageDialog(
+                kind == MessageKind.Error ? Logger.MaskForDisplay(message) : message, title);
             _ = await dialog.ShowAsync(owner);
         });
     }

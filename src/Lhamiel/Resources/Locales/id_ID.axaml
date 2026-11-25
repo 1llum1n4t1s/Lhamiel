@@ -9,7 +9,6 @@
   <x:String x:Key="Text.Progress.TargetCount" xml:space="preserve">{0} item</x:String>
   <x:String x:Key="Text.Progress.CancelAll" xml:space="preserve">Batalkan semua</x:String>
   <x:String x:Key="Text.Progress.Title" xml:space="preserve">Memproses...</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Title" xml:space="preserve">Opsi Pemulihan Kesalahan</x:String>
 
   <!-- Drop Zone -->
   <x:String x:Key="Text.DropZone.Message" xml:space="preserve">Letakkan berkas di sini untuk mengompresi atau mengekstrak</x:String>
@@ -168,16 +167,6 @@
   <x:String x:Key="Text.Progress.Finalizing" xml:space="preserve">Menyelesaikan...</x:String>
   <x:String x:Key="Text.Progress.CheckingDiskSpace" xml:space="preserve">Memeriksa ruang kosong...</x:String>
 
-  <!-- Error Recovery Dialog -->
-  <x:String x:Key="Text.ErrorRecovery.ErrorInfo" xml:space="preserve">Informasi Kesalahan</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ProblematicFile" xml:space="preserve">Berkas Bermasalah</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RecoveryOptions" xml:space="preserve">Opsi Pemulihan</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAndContinue" xml:space="preserve">Lewati berkas ini dan lanjutkan</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Retry" xml:space="preserve">Coba Lagi</x:String>
-  <x:String x:Key="Text.ErrorRecovery.StopExtraction" xml:space="preserve">Hentikan ekstraksi</x:String>
-  <x:String x:Key="Text.ErrorRecovery.SkipAllErrors" xml:space="preserve">Lewati semua kesalahan berikutnya</x:String>
-  <x:String x:Key="Text.ErrorRecovery.RememberChoice" xml:space="preserve">Ingat pilihan ini</x:String>
-
   <!-- Overwrite Dialog -->
 
   <!-- Dialog Titles (MessageService) -->
@@ -268,25 +257,7 @@
   <x:String x:Key="Text.ErrorHandler.LastModified" xml:space="preserve">Terakhir diubah: {0}</x:String>
   <x:String x:Key="Text.ErrorHandler.FileInfoFailed" xml:space="preserve">Gagal mengambil informasi berkas</x:String>
 
-  <!-- Error Recovery File Info -->
-  <x:String x:Key="Text.ErrorRecovery.FileName" xml:space="preserve">Nama berkas: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileSize" xml:space="preserve">Ukuran: {0:N0} byte</x:String>
-  <x:String x:Key="Text.ErrorRecovery.CreatedDate" xml:space="preserve">Dibuat: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ModifiedDate" xml:space="preserve">Diubah: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.Attributes" xml:space="preserve">Atribut: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.DiskInfo" xml:space="preserve">Informasi disk:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.AvailableSpace" xml:space="preserve">Ruang tersedia: {0:N0} byte</x:String>
-  <x:String x:Key="Text.ErrorRecovery.TotalSpace" xml:space="preserve">Kapasitas total: {0:N0} byte</x:String>
-  <x:String x:Key="Text.ErrorRecovery.FileInfoFailed" xml:space="preserve">Gagal mengambil info berkas: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionDetails" xml:space="preserve">Detail pengecualian:</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionType" xml:space="preserve">Tipe: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.ExceptionMessage" xml:space="preserve">Pesan: {0}</x:String>
-  <x:String x:Key="Text.ErrorRecovery.InnerException" xml:space="preserve">Pengecualian dalam: {0}</x:String>
-
   <!-- Partial Extraction -->
-  <x:String x:Key="Text.Extraction.Progress" xml:space="preserve">Mengekstrak: {0}</x:String>
-  <x:String x:Key="Text.Extraction.ErrorFile" xml:space="preserve">Berkas: {0}\nKesalahan: {1}</x:String>
-  <x:String x:Key="Text.Extraction.RetryOrSkip" xml:space="preserve">Anda dapat memilih untuk mencoba lagi atau melewati.</x:String>
 
   <x:String x:Key="Text.Conflict.ColumnLeft" xml:space="preserve">Lokasi saat ini {0}</x:String>
   <x:String x:Key="Text.Conflict.ColumnRight" xml:space="preserve">Tujuan {0}</x:String>
@@ -326,9 +297,6 @@
   <x:String x:Key="Text.Overwrite.CalculationFailed" xml:space="preserve">Tidak dapat memperoleh total sebelum kompresi</x:String>
   <x:String x:Key="Text.Overwrite.SourceMore" xml:space="preserve">{0} lainnya</x:String>
   <x:String x:Key="Text.Overwrite.Overwrite" xml:space="preserve">Timpa</x:String>
-
-  <!-- Progress completion -->
-  <x:String x:Key="Text.Progress.ExtractionComplete" xml:space="preserve">Ekstraksi selesai: {0}/{1} berkas berhasil</x:String>
 
   <!-- Info display -->
   <x:String x:Key="Text.Info.Unknown" xml:space="preserve">Tidak diketahui</x:String>
@@ -399,6 +367,7 @@
   <x:String x:Key="Text.Notify.SavedPasswordZipAsciiOnly" xml:space="preserve">Kata sandi tersimpan mengandung karakter yang tidak dapat digunakan dengan format ZIP (hanya ASCII). Masukkan kata sandi untuk kompresi ini (kata sandi tersimpan tidak akan diubah).</x:String>
   <x:String x:Key="Text.Notify.SavedPasswordTooShort" xml:space="preserve">Kata sandi yang tersimpan terlalu pendek untuk digunakan (diperlukan minimal {0} karakter). Silakan atur kata sandi baru.</x:String>
   <x:String x:Key="Text.Notify.PartialSkipWithPassword" xml:space="preserve">{0} berkas dilewati karena tidak dapat diakses. Arsip yang dilindungi kata sandi telah dibuat dari berkas yang tersisa.</x:String>
+  <x:String x:Key="Text.Notify.NothingToCompress" xml:space="preserve">Tidak ada file yang tersisa untuk dikompresi, sehingga tidak ada arsip yang dibuat.</x:String>
 
   <x:String x:Key="Text.Error.AllSourcesInaccessible" xml:space="preserve">Semua berkas sumber tidak dapat diakses, sehingga kompresi dibatalkan. Arsip kosong tidak dibuat.</x:String>
   <x:String x:Key="Text.Error.PasswordNotSupportedByFormat" xml:space="preserve">Format {0} tidak mendukung perlindungan kata sandi. Pilih ZIP atau 7z.</x:String>
