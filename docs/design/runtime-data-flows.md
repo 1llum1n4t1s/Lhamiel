@@ -15,7 +15,7 @@ Output is fully validated in staging before the final move and MotW propagation.
 
 ## Compression
 
-One filtered scan feeds capacity checks and creation; private staging is then committed. See [compression flow](section-06.md).
+One filtered scan feeds capacity checks and creation; private staging is then committed. See [compression flow](compression-flow.md).
 
 ## Settings and secrets
 

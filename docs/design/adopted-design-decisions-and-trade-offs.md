@@ -18,7 +18,7 @@ Process isolation is combined with output hierarchy locks. See [concurrency arch
 
 ## Caller-owned compression filtering
 
-SevenZip would rescan directories without exclusions, so Lhamiel supplies resolved files and empty-directory markers. Flat mode omits empty directories and their tracking sets. See [compression flow](section-06.md).
+SevenZip would rescan directories without exclusions, so Lhamiel supplies resolved files and empty-directory markers. Flat mode omits empty directories and their tracking sets. See [compression flow](compression-flow.md).
 
 ## Versioned UnLhaRe integration
 

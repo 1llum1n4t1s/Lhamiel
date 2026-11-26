@@ -14,7 +14,7 @@ Lhamiel（ラミエル）は、ファイルやフォルダーを ZIP / 7z / TAR 
 
 ## 主な特徴
 
-ドラッグ＆ドロップ、右クリック、AES-256 のパスワード保護、除外ルール、同名ファイルの競合解決、自動更新、17言語に対応します。詳細は[主な特徴](docs/readme/section-01.md)を参照してください。
+ドラッグ＆ドロップ、右クリック、AES-256 のパスワード保護、除外ルール、同名ファイルの競合解決、自動更新、17言語に対応します。詳細は[主な特徴](docs/readme/key-features.md)を参照してください。
 
 ## インストール方法
 
@@ -50,19 +50,19 @@ Windows の「設定」→「アプリ」→「インストールされている
 
 ## 対応形式
 
-圧縮は ZIP / 7z / TAR / LZH、展開は RAR・CAB・ARJ なども対応します。[対応形式](docs/readme/section-06.md)を参照してください。
+圧縮は ZIP / 7z / TAR / LZH、展開は RAR・CAB・ARJ なども対応します。[対応形式](docs/readme/supported-formats.md)を参照してください。
 
 ## 対応言語
 
-システムの言語から自動検出し、設定でも変更できます。[対応言語](docs/readme/section-07.md)を参照してください。
+システムの言語から自動検出し、設定でも変更できます。[対応言語](docs/readme/supported-languages.md)を参照してください。
 
 ## 更新について
 
-起動時・手動・Windowsログイン時に更新を確認します。停止方法は[更新について](docs/readme/section-08.md)を参照してください。
+起動時・手動・Windowsログイン時に更新を確認します。停止方法は[更新について](docs/readme/app-updates.md)を参照してください。
 
 ## トラブルシューティング
 
-展開の失敗、ログの場所、自動更新の問題などは[トラブルシューティング](docs/readme/section-09.md)を参照してください。
+展開の失敗、ログの場所、自動更新の問題などは[トラブルシューティング](docs/readme/troubleshooting.md)を参照してください。
 
 説明書の一覧: https://github.com/1llum1n4t1s/Lhamiel/tree/main/docs/readme
 
